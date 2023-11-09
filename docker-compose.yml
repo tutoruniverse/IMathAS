@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: ./
+    volumes:
+      - ./:/app/
+    ports:
+      - 8089:8000
+      

@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $response = array(
         "question" => $question->getQuestionContent(),
-        "solution" => $question->getSolutionContent()
+        "solution" => $question->getSolutionContent(),
+        "seed" => $seed
     );
 
     // Send response

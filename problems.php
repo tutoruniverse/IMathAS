@@ -53,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $response = array(
         "question" => $question->getQuestionContent(),
         "solution" => $question->getSolutionContent(),
-        "seed" => $seed
+        "seed" => $seed,
+        "jsparams" => $disp["jsparams"]
     );
 
     // Send response

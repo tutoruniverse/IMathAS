@@ -52,8 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $question = $a2->getQuestion();
     
-    error_log($question->getQuestionContent());
-
     $response = array(
         "question" => $question->getQuestionContent(),
         "solution" => $question->getSolutionContent(),

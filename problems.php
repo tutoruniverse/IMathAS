@@ -2,6 +2,8 @@
 require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
 
+$_SESSION['graphdisp'] = 1;
+
 $a2 = new AssessStandalone($DBH);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawData = file_get_contents('php://input');
@@ -49,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 
     $question = $a2->getQuestion();
+    
+    error_log($question->getQuestionContent());
 
     $response = array(
         "question" => $question->getQuestionContent(),

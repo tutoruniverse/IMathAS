@@ -46,6 +46,7 @@ function interpret($blockname,$anstype,$str,$countcnt=1)
         $r = '$wherecount[0]=0;' . $r;
         if ($countcnt==1 && count($GLOBALS['interpretcurvars']) > 0) {
             $r = genVarInit(array_unique($GLOBALS['interpretcurvars'])) . $r;
+			$r = $r . genVarsOutput($GLOBALS['interpretcurvars']);
         }
 		return $r;
 	}
@@ -880,6 +881,19 @@ function genVarInit($vars) {
         }
     }
     return $prep;
+}
+
+function genVarsOutput($vars) {
+    $uvars = array_unique($vars);
+	$out = "";
+	foreach ($uvars as $var) {
+		if ($out != "") {
+			$out = $out . ",";
+		}
+		$out = $out . "'" . $var . "'=>" . $var;
+	}
+	$out = '$varsOutput=[' . $out . '];';
+    return $out;
 }
 
 ?>

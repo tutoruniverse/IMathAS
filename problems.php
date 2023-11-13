@@ -54,7 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         "question" => $question->getQuestionContent(),
         "solution" => $question->getSolutionContent(),
         "seed" => $seed,
-        "jsparams" => $disp["jsparams"]
+        "jsparams" => $disp["jsparams"],
+        "vars" => $question->getVarsOutput()
     );
 
     // Send response

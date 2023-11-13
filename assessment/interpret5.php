@@ -892,7 +892,7 @@ function genVarsOutput($vars) {
 		}
 		$out = $out . "'" . $var . "'=>" . $var;
 	}
-	$out = '$varsOutput=[' . $out . '];';
+	$out = '$hidepreview=1;$varsOutput=[' . $out . '];';
     return $out;
 }
 

@@ -11,8 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $seed = getPost('seed');
     $qtype = getPost('qtype');
     $control = getPost('control');
-    $qtext = getPost('qtext');
-    $solution = getPost('solution');
     $answer = getPost("answer");
 
     $input = '{"email":"u@abc.co","id":"36","uniqueid":"1699501100492899","adddate":"1699501100","lastmoddate":"1699501137","ownerid":"1","author":"Nguyen,Vu","userights":"0","license":"1","description":"Algebra problem","qtype":"multipart","control":"","qcontrol":"","qtext":"","answer":"","solution":"","extref":"","hasimg":"0","deleted":"0","avgtime":"0","ancestors":"","ancestorauthors":"","otherattribution":"","importuid":"","replaceby":"0","broken":"0","solutionopts":"6","sourceinstall":"","meantimen":"1","meantime":"19","vartime":"0","meanscoren":"1","meanscore":"50","varscore":"0","isrand":"1"}';
@@ -22,8 +20,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $line["qtype"] = $qtype;
     $line["control"] = $control;
-    $line["qtext"] = $qtext;
-    $line["solution"] = $solution;
 
     $a2->setQuestionData($qn, $line);
 

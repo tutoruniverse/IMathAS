@@ -4,6 +4,12 @@ require_once 'assess2/AssessStandalone.php';
 
 $_SESSION['graphdisp'] = 1;
 
+function processContent($matches) {
+    $content = $matches[1];
+    $processedContent = makepretty($content);
+    return "`" . $processedContent . "`";
+}
+
 $a2 = new AssessStandalone($DBH);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawData = file_get_contents('php://input');
@@ -53,9 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $question = $a2->getQuestion();
     
+    $originalSolution = $question->getSolutionContent();
+    $prettySolution = preg_replace_callback('/`([^`]*)`/', 'processContent', $originalSolution);
+
     $response = array(
         "question" => $question->getQuestionContent(),
-        "solution" => $question->getSolutionContent(),
+        "originalSolution" => $originalSolution,
+        "solution" => $prettySolution,
         "seed" => $seed,
         "jsparams" => $disp["jsparams"],
         "vars" => $question->getVarsOutput(),

@@ -12,8 +12,12 @@ if((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on') || (isset($_SERVER['HTT
 if (!file_exists(__DIR__ . "/config.php")) {
 	header('Location: ' . Sanitize::url($urlmode . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\') . "/install.php?r=" . Sanitize::randomQueryStringParam()));
 }
-
-require_once __DIR__ . "/config.php";
+$env = getenv("ENV");
+if ($env === false) {
+	require_once __DIR__ . "/config.php";
+} else {
+	require_once __DIR__ . "/config_$env.php";
+}
 
 require_once __DIR__ . "/i18n/i18n.php";
 

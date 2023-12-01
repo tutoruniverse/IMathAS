@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qtext = $data['qtext'];
     $solution = $data['solution'];
     $seed = isset($data['seed']) ? $data["seed"] : rand(0,10000);
+    $stype = isset($data["stype"]) ? $data["stype"] : "template";
 
     $input = '{"email":"u@abc.co","id":"36","uniqueid":"1699501100492899","adddate":"1699501100","lastmoddate":"1699501137","ownerid":"1","author":"Nguyen,Vu","userights":"0","license":"1","description":"Algebra problem","qtype":"multipart","control":"","qcontrol":"","qtext":"","answer":"","solution":"","extref":"","hasimg":"0","deleted":"0","avgtime":"0","ancestors":"","ancestorauthors":"","otherattribution":"","importuid":"","replaceby":"0","broken":"0","solutionopts":"6","sourceinstall":"","meantimen":"1","meantime":"19","vartime":"0","meanscoren":"1","meanscore":"50","varscore":"0","isrand":"1"}';
     $qn = 27;
@@ -34,7 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $line["qtype"] = $qtype;
     $line["control"] = $control;
     $line["qtext"] = $qtext;
-    $line["solution"] = $solution;
+    if ($stype == "template") {
+        $line["solution"] = $solution;
+    } else {
+        $line["solution"] = "";
+    }
 
     $a2->setQuestionData($qn, $line);
 
@@ -59,7 +64,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $question = $a2->getQuestion();
     
-    $originalSolution = $question->getSolutionContent();
+    if ($stype == "template") {
+        $originalSolution = $question->getSolutionContent();
+    } else {
+        $vars = $question->getVarsOutput();
+        $sanitizedVars = [];
+        foreach ($vars as $key => $value) {
+            $sanitizedKey = ltrim($key, '$');
+            $sanitizedVars[$sanitizedKey] = $value;
+        }
+        extract($sanitizedVars);
+        ob_start();
+        eval($solution);
+        $originalSolution = ob_get_clean();
+    }
+    
     $prettySolution = preg_replace_callback('/`([^`]*)`/', 'processContent', $originalSolution);
 
     $response = array(

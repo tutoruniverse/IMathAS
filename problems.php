@@ -3,6 +3,7 @@ require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
 
 $_SESSION['graphdisp'] = 1;
+$_SESSION['userprefs']['drawentry'] = 1;
 
 function processContent($matches) {
     $content = $matches[1];

@@ -2,6 +2,8 @@
 require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
 
+$GLOBALS['hide-sronly'] = true;
+
 $_SESSION['graphdisp'] = 1;
 $_SESSION['userprefs']['drawentry'] = 1;
 
@@ -64,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 
     $question = $a2->getQuestion();
-    
+
     if ($stype == "template") {
         $originalSolution = $question->getSolutionContent();
     } else {
@@ -79,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         eval($solution);
         $originalSolution = ob_get_clean();
     }
-    
+
     $prettySolution = preg_replace_callback('/`([^`]*)`/', 'processContent', $originalSolution);
 
     $response = array(

@@ -32,7 +32,7 @@ class MatrixScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = .0015;
+        $defaultreltol = 0;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'answersize', 'answerformat', 'ansprompt', 'scoremethod'];
@@ -72,7 +72,7 @@ class MatrixScorePart implements ScorePart
             //$givenanslist = explode(",",preg_replace('/[^\d,\.\-]/','',$givenans));
             list($givenanslist, $stuN) = parseMatrixToArray($givenans);
         }
-        
+
         //handle nosolninf case
         if ($givenans==='oo' || $givenans==='DNE') {
             if ($answer==$givenans) {

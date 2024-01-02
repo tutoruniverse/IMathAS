@@ -32,7 +32,7 @@ class CalculatedMatrixScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = .0015;
+        $defaultreltol = 0;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'answersize', 'scoremethod', 'ansprompt'];
@@ -108,7 +108,7 @@ class CalculatedMatrixScorePart implements ScorePart
                     $givenanslistvals[$j] = evalMathParser($v);
                 }
             }
-            
+
             //this may not be backwards compatible
             $scorePartResult->setLastAnswerAsNumber(implode('|',$givenanslistvals));
         }

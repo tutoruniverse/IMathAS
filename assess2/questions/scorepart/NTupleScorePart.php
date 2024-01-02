@@ -31,9 +31,9 @@ class NTupleScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $anstype = $this->scoreQuestionParams->getAnswerType();
 
-        $defaultreltol = .0015;
+        $defaultreltol = 0;
 
-        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 
+        $optionkeys = ['answer', 'reltolerance', 'abstolerance',
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt', 'scoremethod', 'partweights'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
@@ -50,7 +50,7 @@ class NTupleScorePart implements ScorePart
         $givenans = str_replace(array('(:',':)','<<','>>'), array('<','>','<','>'), $givenans);
         $givenans = trim($givenans," ,");
         $answer = normalizemathunicode($answer);
-        
+
         $ansformats = array_map('trim',explode(',',$answerformat));
         $checkSameform = (in_array('sameform',$ansformats));
 
@@ -182,7 +182,7 @@ class NTupleScorePart implements ScorePart
                 }
             }
         }
-        
+
         if (in_array('anyorder', $ansformats)) {
             foreach ($anarr as $k=>$listans) {
                 foreach ($listans as $ork=>$orv) {

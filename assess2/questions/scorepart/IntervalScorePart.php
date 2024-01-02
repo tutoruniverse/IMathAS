@@ -31,7 +31,7 @@ class IntervalScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $anstype = $this->scoreQuestionParams->getAnswerType();
 
-        $defaultreltol = .0015;
+        $defaultreltol = 0;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'requiretimes', 'variables', 'ansprompt', 'scoremethod'];
@@ -101,7 +101,7 @@ class IntervalScorePart implements ScorePart
                     foreach ($matches[0] as $var) {
                         if (in_array($var,$mathfuncs)) { continue;}
                         if ($var!= 'or' && $var!='and' && $var!='DNE' && $var!='oo' &&
-                            strtolower($var) != 'var' && $var != 'pi' && $var != 'e' 
+                            strtolower($var) != 'var' && $var != 'pi' && $var != 'e'
                             && $var != 'E') {
                             $scorePartResult->setRawScore(0);
                             return $scorePartResult;

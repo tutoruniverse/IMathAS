@@ -41,6 +41,7 @@ class MatrixScorePart implements ScorePart
         }
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
 
+        $answersize = "";
         $ansformats = array_map('trim',explode(',',$answerformat));
 
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }

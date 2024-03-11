@@ -31,7 +31,7 @@ class NTupleScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $anstype = $this->scoreQuestionParams->getAnswerType();
 
-        $defaultreltol = 0;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance',
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt', 'scoremethod', 'partweights'];

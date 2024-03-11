@@ -30,7 +30,7 @@ class NumberScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = 0;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqdecimals',
             'reqsigfigs', 'answerformat', 'requiretimes', 'requiretimeslistpart',

@@ -30,7 +30,7 @@ class StringScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = 0;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'strflags', 'scoremethod', 'answerformat', 'variables', 'requiretimes'];
         foreach ($optionkeys as $optionkey) {

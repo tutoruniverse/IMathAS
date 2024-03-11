@@ -33,7 +33,7 @@ class MatchingScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = 0;
+        $defaultreltol = .001;
 
         $optionkeys = ['matchlist', 'noshuffle', 'scoremethod'];
         foreach ($optionkeys as $optionkey) {

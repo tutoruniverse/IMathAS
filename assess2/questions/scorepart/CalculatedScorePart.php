@@ -30,7 +30,7 @@ class CalculatedScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = 0;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqsigfigs',
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt',

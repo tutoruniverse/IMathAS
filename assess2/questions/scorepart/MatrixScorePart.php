@@ -32,7 +32,7 @@ class MatrixScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = 0;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'answersize', 'answerformat', 'ansprompt', 'scoremethod'];

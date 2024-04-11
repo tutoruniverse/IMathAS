@@ -517,10 +517,10 @@ class QuestionHtmlGenerator
                     }
                 }
                 // enact hidetips if set
-                if (!empty($hidetips) && (!is_array($hidetips) || !empty($hidetips[$atIdx]))) {
-                  unset($jsParams[$qnRef]['tip']);
-                  unset($jsParams[$qnRef]['longtip']);
-                }
+                // if (!empty($hidetips) && (!is_array($hidetips) || !empty($hidetips[$atIdx]))) {
+                //   unset($jsParams[$qnRef]['tip']);
+                //   unset($jsParams[$qnRef]['longtip']);
+                // }
             }
             $scoremethodwhole = '';
             if (isset($scoremethod)) {
@@ -601,10 +601,10 @@ class QuestionHtmlGenerator
             }
 
             // enact hidetips if set
-            if (!empty($hidetips)) {
-              unset($jsParams[$qnRef]['tip']);
-              unset($jsParams[$qnRef]['longtip']);
-            }
+            // if (!empty($hidetips)) {
+            //   unset($jsParams[$qnRef]['tip']);
+            //   unset($jsParams[$qnRef]['longtip']);
+            // }
         }
 
 

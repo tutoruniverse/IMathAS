@@ -206,12 +206,13 @@ class AnswerBoxParams
      */
     public function getQuestionIdentifierString(): ?string
     {
-        $str = sprintf(_('Question %d'), $this->questionNumber + 1);
-        if ($this->isMultiPartQuestion && $this->questionPartCount > 1) {
-          $str .= ' ' . sprintf(_('Part %d of %d'), $this->questionPartNumber + 1,
-            $this->questionPartCount);
-        }
-        return $str;
+        // $str = sprintf(_('Question %d'), $this->questionNumber + 1);
+        // if ($this->isMultiPartQuestion && $this->questionPartCount > 1) {
+        //   $str .= ' ' . sprintf(_('Part %d of %d'), $this->questionPartNumber + 1,
+        //     $this->questionPartCount);
+        // }
+        // return $str;
+        return "";
     }
 
     /**

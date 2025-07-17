@@ -716,6 +716,17 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	$commands = "setBorder(5); initPicture({$winxmin},{$winxmax},{$ymin},{$ymax});".$commands;
 	$alt = "Graphing window shows horizontal axis: {$winxmin} to {$winxmax}, vertical axis: {$ymin} to {$ymax}. ".$alt;
 
+	// Adding function list to $commands(For testing purposes)
+	$function_names = [];
+	foreach ($funcs as $f) {
+		if ($f === '') continue;
+		$parts = explode(',', $f, 2);
+		$function_names[] = trim($parts[0]);
+	}
+	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
+	$commands = "var function_list = $function_list_str; " . $commands;
+	//
+
 	if ($_SESSION['graphdisp']==0) {
 		return $alt;
 	} else {

@@ -177,6 +177,16 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	//$alt = "Graph, window x {$settings[0]} to {$settings[1]}, y {$settings[2]} to {$settings[3]}.";
 	$commands = '';
 	$alt = '';
+
+	//Adding function list to $commands
+	$function_names = [];
+	foreach ($funcs as $f) {
+		if ($f === '') continue;
+		$parts = explode(',', $f, 2);
+		$function_names[] = trim($parts[0]);
+	}
+	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
+
 	if (strpos($settings[4],':')) {
 		$lbl = explode(':',$settings[4]);
         $lbl[0] = evalbasic($lbl[0], true, true);
@@ -717,13 +727,6 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	$alt = "Graphing window shows horizontal axis: {$winxmin} to {$winxmax}, vertical axis: {$ymin} to {$ymax}. ".$alt;
 
 	// Adding function list to $commands(For testing purposes)
-	$function_names = [];
-	foreach ($funcs as $f) {
-		if ($f === '') continue;
-		$parts = explode(',', $f, 2);
-		$function_names[] = trim($parts[0]);
-	}
-	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
 	$commands = "var function_list = $function_list_str; " . $commands;
 	//
 

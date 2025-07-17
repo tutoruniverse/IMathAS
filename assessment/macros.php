@@ -728,6 +728,7 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 
 	// Adding function list to $commands(For testing purposes)
 	$commands = "var function_list = $function_list_str; " . $commands;
+	$commands = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".$commands;
 	//
 
 	if ($_SESSION['graphdisp']==0) {

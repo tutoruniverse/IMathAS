@@ -723,6 +723,7 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 		$function_names[] = trim($f);
 	}
 	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
+	$function_list_str = makexxpretty($function_list_str);
 	// $commands = "var function_list = $function_list_str; " . $commands;
 	//
 

@@ -726,7 +726,6 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	$function_list_str = makepretty($function_list_str);
 	$function_list_str = makexpretty($function_list_str);
 	$function_list_str = makexxpretty($function_list_str);
-	$function_list_str = calclisttoarray($function_list_str);
 	// $commands = "var function_list = $function_list_str; " . $commands;
 	$new_test_only = "THERE Is NOTHING";
 

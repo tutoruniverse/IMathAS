@@ -725,14 +725,13 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
 	$function_list_str = makexxpretty($function_list_str);
 	// $commands = "var function_list = $function_list_str; " . $commands;
-	//
-
+	$new_test_only = "THERE IS NOT NOTHING";
 
 
 	if ($_SESSION['graphdisp']==0) {
 		return $alt;
 	} else {
-		return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' var function_list='$function_list_str' script='$commands' />\n";
+		return "<embed type='image/svg+xml' align='middle' width='$plotwidth' 'random' = '$new_test_only' height='$plotheight' var function_list='$function_list_str' script='$commands' />\n";
 	}
 }
 

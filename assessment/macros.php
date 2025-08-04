@@ -720,7 +720,24 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	$function_names = [];
 	foreach ($funcs as $f) {
 		if ($f === '') continue;
-		$function_names[] = trim($f);
+		$parts = explode(',', $f);
+		foreach ($parts as &$part){
+			if(substr($part, 0, 1) === '[') {
+				$temp =  '[' . makexxpretty(substr($part, 1));
+				$part = $temp;
+				// $xtsddg = "a";
+			}
+			else {
+				$part = makexxpretty($part);
+			}
+			// $part = makexxpretty($part);
+			$part = trim($part);
+			// error_log($part);
+			// error_log("HET");
+		}
+		$new_f = implode(',', $parts);
+		$function_names[] = trim($new_f);
+
 	}
 	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
 	// $function_list_str = makepretty($function_list_str);
@@ -731,7 +748,7 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	if ($_SESSION['graphdisp']==0) {
 		return $alt;
 	} else {
-		return "<embed type='image/svg+xml' align='middle' width='$plotwidth' 'random' = '$new_test_only' height='$plotheight' var function_list='$function_list_str' script='$commands' />\n";
+		return "<embed type='image/svg+xml' align='middle' width='$plotwidth' func_pic height='$plotheight' function_list='$function_list_str' script='$commands' />\n";
 	}
 }
 

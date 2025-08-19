@@ -64,6 +64,11 @@ class ScoreEngine
     private $randWrapper;
     private $userRights;
     private $errors = array(); // Populated by this class' error handlers.
+    private $temp_func = array();
+
+    public function get_temp_func() {
+        return $this->temp_func;
+    }
 
     public function __construct(PDO $dbh, Rand $randWrapper)
     {
@@ -674,8 +679,11 @@ class ScoreEngine
 
             $raw[$partnum] = 0;
             try {
-              $scorePart = ScorePartFactory::getScorePart($scoreQuestionParams);
-              $scorePartResult = $scorePart->getResult();
+                $scorePart = ScorePartFactory::getScorePart($scoreQuestionParams);
+                $scorePartResult = $scorePart->getResult();
+                 //TESTING---------------------------------------------
+                $this->temp_func[] = array($inputReferenceNumber,$scorePart->get_student_function());
+
             } catch (\Throwable $t) {
                 $this->addError(
                     _('Caught error while scoring parts in this question: ')
@@ -785,6 +793,9 @@ class ScoreEngine
         $scorePart = ScorePartFactory::getScorePart($scoreQuestionParams);
         $scorePartResult = $scorePart->getResult();
         $score = $scorePartResult->getRawScore();
+
+        //TESTING---------------------------------------------
+        $this->temp_func[] = $scorePart->get_student_function();
 
         if (isset($scoremethod) && $scoremethod == "allornothing") {
             if ($score < .98) {

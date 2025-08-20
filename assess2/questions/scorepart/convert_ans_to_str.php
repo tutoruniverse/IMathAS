@@ -18,7 +18,13 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         else {
             $l_type = "polygon";
         }
-        $ans = sprintf("This %s includes a line: y = %f * x + %f from %s", $l_type, $ma, $mb, $l_range);
+        if ($mb >= 0) {
+            $sign1 = "+";
+        } else {
+            $sign1 = "-";
+            $mb = abs($mb);
+        }
+        $ans = sprintf("This %s includes a line: y = %f * x %s %f from %s", $l_type, $ma, $sign1, $mb, $l_range);
         
         return array($ans); 
     }
@@ -38,59 +44,157 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         }
         $ma = ($my - $mk) / ($mx - $mh);
         $mb = $mk - ($ma * $mh);
-
-        $ans = sprintf("This includes a %s function: y = %f * x + %f from %s", $v_type, $ma, $mb, $v_range);
+        if ($mb >= 0) {
+            $sign1 = "+";
+        } else {
+            $sign1 = "-";
+            $mb = abs($mb);
+        }
+        $ans = sprintf("This includes a %s function: y = %f * x %s %f from %s", $v_type, $ma, $sign1, $mb, $v_range);
 
         return array($ans); 
     }
 
     elseif ($type == "circs") {
         $ma = floatval(($mx - $mh)*($mx - $mh) + ($my-$mk)*($my-$mk));
-        $ans = sprintf("This includes function: (x-%f)^2 + (y-%f)^2 = %f", $mh, $mk, $ma);
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+        if ($mk >= 0) {
+            $sign2 = "-";
+        } else {
+            $sign2 = "+";
+            $mk = abs($mk);
+        }
+        $ans = sprintf("This includes function: (x %s %f)^2 + (y %s %f)^2 = %f", $sign1, $mh, $sign2, $mk, $ma);
 
         return array($ans);    
     }
 
     elseif ($type == "parabs") {
         $ma = floatval(($my - $mk) / (($mx-$mh)*($mx-$mh)));
-        $ans = sprintf("This includes function: y = %f * (x - %f)^2 + %f", $ma, $mh, $mk);
+
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "+";
+        } else {
+            $sign2 = "-";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: y = %f * (x %s %f)^2 %s %f", $ma, $sign1, $mh, $sign2, $mk);
 
         return array($ans);    
     }
 
     elseif ($type == "hparabs") {
         $ma = floatval(($my - $mk) / (($mx-$mh)*($mx-$mh)));
-        $ans = sprintf("This includes function: x = %f * (y - %f)^2 + %f", $ma, $mh, $mk);
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "+";
+        } else {
+            $sign2 = "-";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: x = %f * (y %s %f)^2 %s %f", $ma, $sign1, $mh, $sign2, $mk);
 
         return array($ans); 
     }
 
     elseif ($type == "sqrts") {
-        $flip = ($mx < $mh) ? -1 : 1;
-
         $ma = floatval(($my - $mk) / sqrt($flip * ($mx - $mh)));
-        $ans = sprintf("This includes function: y = %f * sqrt(x - %f) + %f", $ma, $mh, $mk);
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "+";
+        } else {
+            $sign2 = "";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: y = %f * sqrt(x %s %f) %s %f", $ma, $sign1, $mh, $sign2, $mk);
 
         return array($ans); 
     }
 
     elseif ($type == "cubics") {
         $ma = floatval(safepow($my-$mk, 1/3)/($mx-$mh));
-        $ans = sprintf("This includes function: y = %f * (x - %f)^3 + %f", $ma, $mh, $mk);
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "+";
+        } else {
+            $sign2 = "-";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: y = %f * (x %s %f)^3 %s %f", $ma, $sign1, $mh, $sign2, $mk);
         return array($ans); 
     }
 
     elseif ($type == "cuberoots") {
         $ma = floatval(safepow($my-$mk, 3)/($mx-$mh));
-        $ans = sprintf("This includes function: x = (1 / %f) * (y - %f)^3 + %f", $ma, $mk, $mh);
+        if ($mh >= 0) {
+            $sign1 = "+";
+        } else {
+            $sign1 = "";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "-";
+        } else {
+            $sign2 = "+";
+            $mk = abs($mk);
+        }
+        $ans = sprintf("This includes function: x = (1 / %f) * (y %s %f)^3 %s %f", $ma, $sign2, $mk, $sign1, $mh);
         return array($ans);
     }
 
     elseif ($type == "ellipses") {
         $ma = floatval(abs($mx - $mh));
         $mb = floatval(abs($my - $mk));
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
 
-        $ans = sprintf("This includes function: ((1/%f)*(x-%f))^2 + ((1/%f)(y-%f))^2 = 1", $ma, $mh, $mb, $mk);
+        if ($mk >= 0) {
+            $sign2 = "-";
+        } else {
+            $sign2 = "+";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: ((1 / %f) * (x %s %f))^2 + ((1 / %f) * (y %s %f))^2 = 1", $ma, $sign1, $mh, $mb, $sign2, $mk);
 
         return array($ans); 
     }
@@ -98,8 +202,21 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
     elseif ($type == "hhyperbolas") {
         $ma = floatval(abs($mx - $mh));
         $mb = floatval(abs($my - $mk));
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
 
-        $ans = sprintf("This includes function: ((1/%f)*(x-%f))^2 - ((1/%f)(y-%f))^2 = 1", $ma, $mh, $mb, $mk);
+        if ($mk >= 0) {
+            $sign2 = "-";
+        } else {
+            $sign2 = "+";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: ((1 / %f) * (x %s %f))^2 - ((1 / %f) * (y %s %f))^2 = 1", $ma, $sign1, $mh, $mb, $sign2, $mk);
 
         return array($ans); 
     }
@@ -108,7 +225,21 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         $ma = floatval(abs($mx - $mh));
         $mb = floatval(abs($my - $mk));
 
-        $ans = sprintf("This includes function: ((1/%f)(y-%f))^2 - ((1/%f)*(x-%f))^2 = 1", $mb, $mk, $ma, $mh);
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "-";
+        } else {
+            $sign2 = "+";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: ((1 / %f) * (y %s %f))^2 - ((1 / %f) * (x %s %f))^2 = 1", $mb, $sign2, $mk, $ma, $sign1, $mh);
 
         return array($ans); 
     }
@@ -123,7 +254,21 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             }
         }
 
-        $ans = sprintf("This includes function: y = %f * abs(x-%f) + %f", $ma, $mh, $mk);
+        if ($mh >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mh = abs($mh);
+        }
+
+        if ($mk >= 0) {
+            $sign2 = "+";
+        } else {
+            $sign2 = "-";
+            $mk = abs($mk);
+        }
+
+        $ans = sprintf("This includes function: y = %f * abs(x %s %f) %s %f", $ma, $sign1, $mh, $sign2, $mk);
 
         return array($ans); 
     }
@@ -154,10 +299,23 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             } else {
                 $str = $adjy2/safepow($base,$Lx2p-$xop);
             }
-            // if($mk < 0) {
             $str *= -1;
-            // }
-            $ans = sprintf("This includes function: y = %f + %f * %f^(x - %f)", $horizasy, $str, $base, $xop);
+            
+            if ($str >= 0) {
+                $sign1 = "+";
+            } else {
+                $sign1 = "-";
+                $str = abs($str);
+            }
+
+            if ($xop >= 0) {
+                $sign2 = "-";
+            } else {
+                $sign2 = "+";
+                $xop = abs($xop);
+            }
+
+            $ans = sprintf("This includes function: y = %f %s %f * %f^(x %s %f)", $horizasy, $sign1, $str, $base, $sign2, $xop);
 
             return array($ans); 
         }
@@ -189,10 +347,23 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             } else {
                 $str = $adjx2/safepow($base,$Ly2p-$yop);
             }
-            // if($mk < 0) {
             $str *= -1;
-            // }
-            $ans = sprintf("This includes function: x = %f + %f * %f^(y - %f)", $vertasy, $str, $base, $yop);
+
+            if ($str >= 0) {
+                $sign1 = "+";
+            } else {
+                $sign1 = "-";
+                $str = abs($str);
+            }
+
+            if ($yop >= 0) {
+                $sign2 = "-";
+            } else {
+                $sign2 = "+";
+                $yop = abs($yop);
+            }
+
+            $ans = sprintf("This includes function: x = %f %s %f * %f^(y %s %f)", $vertasy, $isgn1, $str, $base, $sign2, $yop);
 
             return array($ans); 
         }
@@ -200,7 +371,22 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
 
     elseif ($type == "rats") {
         $ma = ($mx-$mh)*($my-$mk);
-        $ans = sprintf("This includes function: y = %f + %f / (x - %f)", $mk, $ma, $mh);
+
+        if ($ma >= 0) {
+            $sign1 = "+";
+        } else {
+            $sign1 = "-";
+            $ma = abs($ma);
+        }
+
+        if ($mh >= 0) {
+            $sign2 = "-";
+        } else {
+            $sign2 = "+";
+            $mh = abs($mh);
+        }
+
+        $ans = sprintf("This includes function: y = %f %s %f / (x %s %f)", $mk, $sign1, $ma, $sign2, $mh);
 
         return array($ans); 
     }
@@ -211,7 +397,21 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         $mc = max($mx,$mh);
         $md = ($my + $mk) / 2;
 
-        $ans = sprintf("This includes function: y = %f + %f * cos(%f * (x - %f))", $md, $ma, $mb, $mc);
+        if ($mc >= 0) {
+            $sign1 = "-";
+        } else {
+            $sign1 = "+";
+            $mc = abs($mc);
+        }
+
+        if ($ma >= 0) {
+            $sign2 = "+";
+        } else {
+            $sign2 = "-";
+            $ma = abs($ma);
+        }
+
+        $ans = sprintf("This includes function: y = %f %s %f * cos(%f * (x - %f))", $md, $sign2, $ma, $mb, $sign1, $mc);
 
         return array($ans); 
     }
@@ -220,7 +420,14 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         $ma = ($my - $mk) / ($mx - $mh);
         $mb = $mk - ($ma * $mh);
 
-        $ans = sprintf("This includes function: y = %f * x + %f", $ma, $mb);
+        if ($mb >= 0) {
+            $sign1 = "+";
+        } else {
+            $sign1 = "-";
+            $mb = abs($mb);
+        }
+
+        $ans = sprintf("This includes function: y = %f * x %s %f", $ma, $sign1, $mb);
 
         return array($ans); 
     }
@@ -267,7 +474,22 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             else {
                 $l_dir = '>';
             }
-            $ans = sprintf("This includes function: y %s%s %f * (x - %f) + %f", $l_dir, $l_drt, $ma, $mh, $mk);
+
+            if ($mh >= 0) {
+                $sign1 = "-";
+            } else {
+                $sign1 = "+";
+                $mh = abs($mh);
+            }
+
+            if ($mk >= 0) {
+                $sign2 = "+";
+            } else {
+                $sign2 = "-";
+                $mk = abs($mk);
+            }
+
+            $ans = sprintf("This includes function: y %s%s %f * (x %s %f) %s %f", $l_dir, $l_drt, $ma, $sign1, $mh, $sign2, $mk);
 
             return array($ans); 
         }
@@ -283,7 +505,22 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             if($in_type === floatval(10.3)) {
                 $l_drt = '=';
             }
-            $ans = sprintf("This includes function: y %s%s %f * (x - %f)^2 + %f", $l_dir, $l_drt, $ma, $mh, $mk);
+
+            if ($mh >= 0) {
+                $sign1 = "-";
+            } else {
+                $sign1 = "+";
+                $mh = abs($mh);
+            }
+
+            if ($mk >= 0) {
+                $sign2 = "+";
+            } else {
+                $sign2 = "-";
+                $mk = abs($mk);
+            }
+
+            $ans = sprintf("This includes function: y %s%s %f * (x %s %f)^2 + %f", $l_dir, $l_drt, $ma, $sign1, $mh, $sign2, $mk);
 
             return array($ans); 
         }
@@ -306,7 +543,22 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             else {
                 $l_drt = '';
             }
-            $ans = sprintf("This includes function: y %s%s %f * abs(x - %f) + %f", $l_dir, $l_drt, $ma, $mh, $mk);
+
+            if ($mh >= 0) {
+                $sign1 = "-";
+            } else {
+                $sign1 = "+";
+                $mh = abs($mh);
+            }
+
+            if ($mk >= 0) {
+                $sign2 = "+";
+            } else {
+                $sign2 = "-";
+                $mk = abs($mk);
+            }
+
+            $ans = sprintf("This includes function: y %s%s %f * abs(x %s %f) %s %f", $l_dir, $l_drt, $ma, $sign1, $mh, $sign2, $mk);
 
             return array($ans); 
         }

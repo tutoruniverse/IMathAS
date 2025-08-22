@@ -795,7 +795,7 @@ class ScoreEngine
         $score = $scorePartResult->getRawScore();
 
         //TESTING---------------------------------------------
-        $this->temp_func[] = $scorePart->get_student_function();
+        $this->temp_func[] =  array(27,$scorePart->get_student_function());
 
         if (isset($scoremethod) && $scoremethod == "allornothing") {
             if ($score < .98) {

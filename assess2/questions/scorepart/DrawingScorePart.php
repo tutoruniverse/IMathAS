@@ -15,7 +15,6 @@ class DrawingScorePart implements ScorePart
     private $stu_func_ans =[];
 
     public function get_student_function(){
-        // error_log(json_encode($this->stu_func_ans));
         return $this->stu_func_ans;
     }
 
@@ -261,12 +260,6 @@ class DrawingScorePart implements ScorePart
             if ($extrapolys>0) {
                 $totscore = $totscore/(1+$extrapolys);
             }
-            //echo "Vals score: $vals, adj score: $adjv. </p>";
-
-            // for ($i = 0; $i < count($stu_func_ans); $i++) {
-            //     echo (implode(",", $stu_func_ans[$i]));
-            // }
-            // error_log(json_encode($stu_func_ans));
 
             if ($abstolerance !== '') {
                 if ($totscore<$abstolerance) {
@@ -1384,8 +1377,6 @@ class DrawingScorePart implements ScorePart
                 }
             }
 
-            //print_r($anscuberoots);
-            //print_r($cuberoots);
             $usedcuberoot = [];
             foreach ($anscuberoots as $key=>$anscuberoot) {
                 $scores[$scoretype[$key]][$key] = 0;
@@ -1557,11 +1548,6 @@ class DrawingScorePart implements ScorePart
                 }
             }
 
-            // for ($i = 0; $i < count($stu_func_ans); $i++) {
-            //     echo (implode(",", $stu_func_ans[$i]));
-            // }
-            // error_log(json_encode($stu_func_ans));
-
             //extra stuff is total count of drawn items - # of scored items - # of correct optional items
             $extrastuffpenalty = max((count($tplines)+count($dots)+count($odots)-count($scores[0])-array_sum($scores[1]))/(max(count($scores[0]),count($tplines)+count($dots)+count($odots))),0);
             // don't need optional scores anymore
@@ -1723,11 +1709,6 @@ class DrawingScorePart implements ScorePart
             $scores = array();
             $deftol = .1;
             $defpttol = 5;
-
-            // for ($i = 0; $i < count($stu_func_ans); $i++) {
-            //     echo (implode(",", $stu_func_ans[$i]));
-            // }
-            // error_log(json_encode($stu_func_ans));
 
             foreach ($anslines as $key=>$ansline) {
                 $scores[$key] = 0;
@@ -1932,11 +1913,6 @@ class DrawingScorePart implements ScorePart
                     }
                 }
             }
-
-            // for ($i = 0; $i < count($stu_func_ans); $i++) {
-            //     echo (implode(",", $stu_func_ans[$i]));
-            // }
-            // error_log(json_encode($stu_func_ans));
 
             $scores = array();
             if ((count($dots)+count($odots))==0) {

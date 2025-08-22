@@ -725,15 +725,12 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 			if(substr($part, 0, 1) === '[') {
 				$temp =  '[' . makexxpretty(substr($part, 1));
 				$part = $temp;
-				// $xtsddg = "a";
 			}
 			else {
 				$part = makexxpretty($part);
 			}
-			// $part = makexxpretty($part);
+
 			$part = trim($part);
-			// error_log($part);
-			// error_log("HET");
 		}
 		$new_f = implode(',', $parts);
 		$function_names[] = trim($new_f);

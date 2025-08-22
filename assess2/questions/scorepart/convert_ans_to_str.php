@@ -21,6 +21,11 @@ function minus_sign($num, $sign) {
     return [$num, $sign];
 }
 
+// @param $ans_info is an array with structure depending on the drawing type
+// @param $pixtox is a function to convert pixel x to real x
+// @param $pixtoy is a function to convert pixel y to real y
+// @param $type is the type of drawing, e.g., "line", "vecs", "circs", etc.
+// @return an array with a string description of the drawing
 function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
 
     $mh = $pixtox(floatval($ans_info[0]));
@@ -313,9 +318,7 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         $in_type = floatval($ans_info[6]);
         $mx2 = $pixtox(floatval($ans_info[4]));
         $my2 = $pixtoy(floatval($ans_info[5]));
-        error_log($my2);
         if($in_type < floatval(10.3)) {
-            error_log($in_type);
             if ($in_type === floatval(10)) {
                 $l_drt = '=';
             }

@@ -198,7 +198,7 @@ class DrawingScorePart implements ScorePart
                 $temp = "";
                 for($i = 0; $i < count($line) - 1; $i++){
                     //ADD TO ANSWER AS FUNCTION------------------------------------------------------------
-                    $temp .= implode("",fans_polygon($line[$i][0],$line[$i][1],$line[$i+1][0],$line[$i+1][1],$answerformat[0], $pixtox, $pixtoy));
+                    $temp .= implode("",fans_polygons($line[$i][0],$line[$i][1],$line[$i+1][0],$line[$i+1][1],$answerformat[0], $pixtox, $pixtoy));
                 }
                 $this->stu_func_ans[] = array($temp);
 

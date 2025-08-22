@@ -84,7 +84,7 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
         $ma = floatval(($my - $mk) / (($mx-$mh)*($mx-$mh)));
 
         list($mh, $sign1) = minus_sign($mh, $sign1);
-        list($mk, $sign2) = add_sign_sign($mk, $sign2);
+        list($mk, $sign2) = add_sign($mk, $sign2);
 
         $ans = sprintf("This includes function: y = %f * (x %s %f)^2 %s %f", $ma, $sign1, $mh, $sign2, $mk);
 
@@ -363,7 +363,7 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
             list($mh, $sign1) = minus_sign($mh, $sign1);
             list($mk, $sign2) = add_sign($mk, $sign2);
 
-            $ans = sprintf("This includes function: y %s%s %f * (x %s %f)^2 + %f", $l_dir, $l_drt, $ma, $sign1, $mh, $sign2, $mk);
+            $ans = sprintf("This includes function: y %s%s %f * (x %s %f)^2 %s %f", $l_dir, $l_drt, $ma, $sign1, $mh, $sign2, $mk);
 
             return array($ans); 
         }

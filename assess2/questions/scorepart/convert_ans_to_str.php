@@ -21,12 +21,21 @@ function minus_sign($num, $sign) {
     return [$num, $sign];
 }
 
+function clean_up($marray) {
+    foreach ($marray as $key => $value) {
+        $marray[$key] = preg_replace("/[^0-9.\-]/", "", $value);
+    }
+    return $marray;
+}
+
 // @param $ans_info is an array with structure depending on the drawing type
 // @param $pixtox is a function to convert pixel x to real x
 // @param $pixtoy is a function to convert pixel y to real y
 // @param $type is the type of drawing, e.g., "line", "vecs", "circs", etc.
 // @return an array with a string description of the drawing
 function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
+    
+    $ans_info = clean_up($ans_info);
 
     $mh = $pixtox(floatval($ans_info[0]));
     $mk = $pixtoy(floatval($ans_info[1]));

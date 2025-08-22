@@ -53,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fin_function = array();
     
     foreach ($student_func as $i => $value) {
-        error_log("AAAAAbbbAAA");
         $temp = new DrawResult($value[0], $value[1]);
         $fin_function[] = $temp;
     }

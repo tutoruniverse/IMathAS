@@ -196,10 +196,12 @@ class DrawingScorePart implements ScorePart
                     $line[$j] = explode(',',$pt);
                 }
 
+                $temp = "";
                 for($i = 0; $i < count($line) - 1; $i++){
                     //ADD TO ANSWER AS FUNCTION------------------------------------------------------------
-                    $this->stu_func_ans[] = convert_to_str_ans(array($line[$i][0],$line[$i][1],$line[$i+1][0],$line[$i+1][1],$answerformat[0]), $pixtox, $pixtoy, "line");
+                    $temp .= implode("",convert_to_str_ans(array($line[$i][0],$line[$i][1],$line[$i+1][0],$line[$i+1][1],$answerformat[0]), $pixtox, $pixtoy, "line"));
                 }
+                $this->stu_func_ans[] = array($temp);
 
                 if ($isclosed && ($line[0][0]-$line[count($line)-1][0])*($line[0][0]-$line[count($line)-1][0]) + ($line[0][1]-$line[count($line)-1][1])*($line[0][1]-$line[count($line)-1][1]) <=25*max(1,$reltolerance)) {
                     array_pop($line);

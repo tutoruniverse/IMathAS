@@ -31,7 +31,7 @@ function convert_to_str_ans(array $ans_info, $pixtox, $pixtoy, $type) {
     if($type === "line") {
         $ma = ($my - $mk) / ($mx - $mh);
         $mb = $mk - ($ma * $mh);
-        $l_range = sprintf("x = %f -> %f, ", $mh, $mx);
+        $l_range = sprintf("x = %f -> %f. ", $mh, $mx);
         if($ans_info[4] == "closedpolygon"){
             $l_type = "closed polygon";
         }

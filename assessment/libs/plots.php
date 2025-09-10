@@ -133,16 +133,15 @@ function plot_polar(array $functions, array $global_options = []): string
     // --- 4. PLOT THE FUNCTIONS ---
     $d_theta = ($config['theta_max'] - $config['theta_min']) / $config['num_points'];
     foreach ($functions as $func_item) {
-        if (!isset($func_item['function']) || !is_callable($func_item['function'])) continue;
+        if (!isset($func_item['function'])) continue;
         
         $plot_config = array_merge($config, $func_item);
         $function = $plot_config['function'];
-        
+        $function = makeMathFunction($function, "t");
         $points = [];
         for ($i = 0; $i <= $plot_config['num_points']; $i++) {
             $theta = $plot_config['theta_min'] + $i * $d_theta;
-            $r = $function($theta);
-            
+            $r = $function(["t" => $theta]);
             // Skip invalid values
             if (!is_numeric($r)) continue;
 
@@ -294,15 +293,18 @@ function plot_multiple_implicit(array $functions, array $global_options = []): s
     
     // --- LOOP THROUGH EACH FUNCTION TO PLOT ---
     foreach ($functions as $func_item) {
-        if (!isset($func_item['function']) || !is_callable($func_item['function'])) { continue; }
+        if (!isset($func_item['function'])) { continue; }
         $function = $func_item['function'];
+
+        $function = makeMathFunction($function, "x,y");
+
         $config = array_merge($global_config, $func_item);
         $grid_values = [];
         for ($i = 0; $i <= $config['resolution']; $i++) {
             for ($j = 0; $j <= $config['resolution']; $j++) {
                 $x = $config['xmin'] + $i * $step_x;
                 $y = $config['ymin'] + $j * $step_y;
-                $grid_values[$i][$j] = $function($x, $y);
+                $grid_values[$i][$j] = $function(["x" => $x, "y" => $y]);
             }
         }
         $path_data = '';

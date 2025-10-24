@@ -684,7 +684,8 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 			$infsoln = $anspromptp[2];
 		}
 	}
-	$out .= '<div id="qnwrap'.$qn.'" class="'.$colorbox.'" role="group" ';
+	$soln_type = $includeinf ? '-nosolninf' : '-nosoln';
+	$out .= '<div id="qnwrap'.$qn.$soln_type.'" class="'.$colorbox.'" role="group" ';
   if (preg_match('/aria-label=".*?"/', $answerbox, $arialabel)) {
     $answerbox = preg_replace('/aria-label=".*?"/',
       'aria-label="'.Sanitize::encodeStringForDisplay(str_replace('`','',$specsoln)).'"', $answerbox);

@@ -9,6 +9,7 @@ use Sanitize;
 class IntervalAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
+    private $tip_format = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -59,15 +60,15 @@ class IntervalAnswerBox implements AnswerBox
             $shorttip = _('Adjust the sliders');
         } else {
 
-            $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
-            $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+            $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . ($this->tip_format == 'latex' ? "\n\n" : " <br/>");
+            $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . ($this->tip_format == 'latex' ? "\n\n" : "<br/>");
             if (!in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
                 $tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
             } else {
                 $tip .= _('Use oo to enter Infinity.');
             }
             if ($reqdecimals !== '') {
-                $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
             }
             $shorttip = _('Enter an interval using interval notation');
         }

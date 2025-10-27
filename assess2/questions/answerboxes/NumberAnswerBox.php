@@ -9,6 +9,7 @@ use Sanitize;
 class NumberAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
+    private $tip_format = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -69,43 +70,43 @@ class NumberAnswerBox implements AnswerBox
         if (in_array('units', $ansformats)) {
             if (in_array('list', $ansformats) || in_array('exactlist', $ansformats) || in_array('orderedlist', $ansformats)) {
                 if (in_array('integer', $ansformats)) {
-                    $tip = _('Enter your answer as a list of integers with units, separated with commas. Example: -4 cm, 3 m') . "<br/>";
+                    $tip = _('Enter your answer as a list of integers with units, separated with commas. Example: -4 cm, 3 m') . ($this->tip_format == 'latex' ? '' : '<br/>');
                     $shorttip = _('Enter a list of integers with units');
                 } else {
-                    $tip = _('Enter your answer as a list of integer or decimal numbers with units, separated with commas. Example: -4.2 cm, 3E6 m') . "<br/>";
+                    $tip = _('Enter your answer as a list of integer or decimal numbers with units, separated with commas. Example: -4.2 cm, 3E6 m') . ($this->tip_format == 'latex' ? '' : '<br/>');
                     $shorttip = _('Enter a list of integer or decimal numbers with units');
                 }
             } else {
                 if (in_array('integer', $ansformats)) {
-                    $tip = _('Enter your answer as an integer with units. Examples: -4 cm, 5 m/s^2') . "<br/>";
+                    $tip = _('Enter your answer as an integer with units. Examples: -4 cm, 5 m/s^2') . ($this->tip_format == 'latex' ? '' : '<br/>');
                     $shorttip = _('Enter an integer with units');
                 } else {
-                    $tip = _('Enter your answer as an integer or decimal number with units. Examples: -4.2 cm, 3E6 m/s^2') . "<br/>";
+                    $tip = _('Enter your answer as an integer or decimal number with units. Examples: -4.2 cm, 3E6 m/s^2') . ($this->tip_format == 'latex' ? '' : '<br/>');
                     $shorttip = _('Enter an integer or decimal number with units');
                 }
             }
         } else if (in_array('list', $ansformats) || in_array('exactlist', $ansformats) || in_array('orderedlist', $ansformats)) {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as a list of integers separated with commas: Example: -4, 3, 2') . "<br/>";
+                $tip = _('Enter your answer as a list of integers separated with commas: Example: -4, 3, 2') . ($this->tip_format == 'latex' ? '' : '<br/>');
                 $shorttip = _('Enter a list of integers');
             } else {
-                $tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: -4, 3, 2.5172') . "<br/>";
+                $tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: -4, 3, 2.5172') . ($this->tip_format == 'latex' ? '' : '<br/>');
                 $shorttip = _('Enter a list of integer or decimal numbers');
             }
         } else if (in_array('set', $ansformats) || in_array('exactset', $ansformats)) {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as a set of integers separated with commas: Example: {-4, 3, 2}') . "<br/>";
+                $tip = _('Enter your answer as a set of integers separated with commas: Example: {-4, 3, 2}') . ($this->tip_format == 'latex' ? '' : '<br/>');
                 $shorttip = _('Enter a set of integers');
             } else {
-                $tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: {-4, 3, 2.5172}') . "<br/>";
+                $tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: {-4, 3, 2.5172}') . ($this->tip_format == 'latex' ? '' : '<br/>');
                 $shorttip = _('Enter a set of integer or decimal numbers');
             }
         } else {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . "<br/>";
+                $tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . ($this->tip_format == 'latex' ? '' : '<br/>');
                 $shorttip = _('Enter an integer');
             } else {
-                $tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . "<br/>";
+                $tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . ($this->tip_format == 'latex' ? '' : '<br/>');
                 $shorttip = _('Enter an integer or decimal number');
             }
         }
@@ -116,10 +117,10 @@ class NumberAnswerBox implements AnswerBox
             list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
             if ($exactreqdec) {
                 $exactdec = true;
-                $tip .= "<br/>" . sprintf(_('Your answer should include exactly %d decimal places.'), $reqdecimals);
+                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should include exactly %d decimal places.'), $reqdecimals);
                 $shorttip .= sprintf(_(", with %d decimal places"), $reqdecimals);
             } else {
-                $tip .= "<br/>" . sprintf(_('Your answer should be accurate to at least %d decimal places.'), $reqdecimals);
+                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should be accurate to at least %d decimal places.'), $reqdecimals);
                 $shorttip .= sprintf(_(", accurate to at least %d decimal places"), $reqdecimals);
             }
         }
@@ -127,13 +128,13 @@ class NumberAnswerBox implements AnswerBox
             list($reqsigfigs, $exactsigfig, $reqsigfigoffset, $sigfigscoretype) = parsereqsigfigs($reqsigfigs);
 
             if ($exactsigfig) {
-                $tip .= "<br/>" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
                 $shorttip .= sprintf(_(', with exactly %d significant figures'), $reqsigfigs);
             } else if ($reqsigfigoffset > 0) {
-                $tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
+                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
                 $shorttip .= sprintf(_(', with %d - %d significant figures'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
             } else {
-                $tip .= "<br/>" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
                 $shorttip .= sprintf(_(', with at least %d significant figures'), $reqsigfigs);
             }
         }

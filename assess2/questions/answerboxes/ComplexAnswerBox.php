@@ -53,16 +53,16 @@ class ComplexAnswerBox implements AnswerBox
 
         if (in_array('list', $ansformats)) {
             if (in_array('allowjcomplex', $ansformats)) {
-                $tip = _('Enter your answer as a list of complex numbers in a+bj form separated with commas.  Example: 2+5.5172j,-3-4j') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a list of complex numbers in a+bj form separated with commas.  Example: 2+5.5172j,-3-4j') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
             } else {
-                $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
             }
             $shorttip = _('Enter a list of complex numbers');
         } else {
             if (in_array('allowjcomplex', $ansformats)) {
-                $tip = _('Enter your answer as a complex number in a+bj form.  Example: 2+5.5172j') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a complex number in a+bj form.  Example: 2+5.5172j') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
             } else {
-                $tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
             }
             $shorttip = _('Enter a complex number');
         }

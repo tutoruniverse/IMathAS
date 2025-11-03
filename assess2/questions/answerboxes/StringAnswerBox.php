@@ -60,7 +60,7 @@ class StringAnswerBox implements AnswerBox
             (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
 
         if ($answerformat == 'list') {
-            $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . ($this->tip_format == 'latex' ? '' : '<br/>');
+            $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
             $shorttip = _('Enter a list of text');
         } else if ($answerformat == 'matrix') {
             $shorttip = _('Enter your answer as a matrix');

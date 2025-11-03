@@ -70,43 +70,43 @@ class NumberAnswerBox implements AnswerBox
         if (in_array('units', $ansformats)) {
             if (in_array('list', $ansformats) || in_array('exactlist', $ansformats) || in_array('orderedlist', $ansformats)) {
                 if (in_array('integer', $ansformats)) {
-                    $tip = _('Enter your answer as a list of integers with units, separated with commas. Example: -4 cm, 3 m') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                    $tip = _('Enter your answer as a list of integers with units, separated with commas. Example: -4 cm, 3 m') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                     $shorttip = _('Enter a list of integers with units');
                 } else {
-                    $tip = _('Enter your answer as a list of integer or decimal numbers with units, separated with commas. Example: -4.2 cm, 3E6 m') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                    $tip = _('Enter your answer as a list of integer or decimal numbers with units, separated with commas. Example: -4.2 cm, 3E6 m') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                     $shorttip = _('Enter a list of integer or decimal numbers with units');
                 }
             } else {
                 if (in_array('integer', $ansformats)) {
-                    $tip = _('Enter your answer as an integer with units. Examples: -4 cm, 5 m/s^2') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                    $tip = _('Enter your answer as an integer with units. Examples: -4 cm, 5 m/s^2') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                     $shorttip = _('Enter an integer with units');
                 } else {
-                    $tip = _('Enter your answer as an integer or decimal number with units. Examples: -4.2 cm, 3E6 m/s^2') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                    $tip = _('Enter your answer as an integer or decimal number with units. Examples: -4.2 cm, 3E6 m/s^2') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                     $shorttip = _('Enter an integer or decimal number with units');
                 }
             }
         } else if (in_array('list', $ansformats) || in_array('exactlist', $ansformats) || in_array('orderedlist', $ansformats)) {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as a list of integers separated with commas: Example: -4, 3, 2') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a list of integers separated with commas: Example: -4, 3, 2') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                 $shorttip = _('Enter a list of integers');
             } else {
-                $tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: -4, 3, 2.5172') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: -4, 3, 2.5172') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                 $shorttip = _('Enter a list of integer or decimal numbers');
             }
         } else if (in_array('set', $ansformats) || in_array('exactset', $ansformats)) {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as a set of integers separated with commas: Example: {-4, 3, 2}') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a set of integers separated with commas: Example: {-4, 3, 2}') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                 $shorttip = _('Enter a set of integers');
             } else {
-                $tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: {-4, 3, 2.5172}') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: {-4, 3, 2.5172}') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                 $shorttip = _('Enter a set of integer or decimal numbers');
             }
         } else {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                 $shorttip = _('Enter an integer');
             } else {
-                $tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . ($this->tip_format == 'latex' ? '' : '<br/>');
+                $tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
                 $shorttip = _('Enter an integer or decimal number');
             }
         }

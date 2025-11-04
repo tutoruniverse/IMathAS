@@ -806,9 +806,9 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 	$out .= '<span id="previewloctemp'.$partnum.'"></span>';
 	$out .= '</li>';
 
-	$out .= '<li><input type="radio" id="qs'.$qn.'-d" name="qs'.$qn.'" value="DNE" '.($laqs=='DNE'?'checked':'').'><label for="qs'.$qn.'-d">'.$nosoln.'</label></li>';
+	$out .= '<li><input type="radio" id="qs'.$qn.'-d" name="qs'.$qn.'" value="\\\\[DNE\\\\]" '.($laqs=='DNE'?'checked':'').'><label for="qs'.$qn.'-d">'.$nosoln.'</label></li>';
 	if ($includeinf) {
-		$out .= '<li><input type="radio" id="qs'.$qn.'-i" name="qs'.$qn.'" value="inf" '.($laqs=='oo'?'checked':'').'><label for="qs'.$qn.'-i">'.$infsoln.'</label></li>';
+		$out .= '<li><input type="radio" id="qs'.$qn.'-i" name="qs'.$qn.'" value="\\\\[\\\\inf\\\\]" '.($laqs=='oo'?'checked':'').'><label for="qs'.$qn.'-i">'.$infsoln.'</label></li>';
 	}
 	$out .= '</ul>';
 	//$out .= '<span class="floatright">'.getcolormark($colorbox).'</span>';

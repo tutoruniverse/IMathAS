@@ -791,7 +791,7 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
   }
   $out .= '>';
 	$out .= '<ul class="likelines">';
-	$out .= '<li><input type="radio" id="qs'.$qn.'-s" name="qs'.$qn.'" value="" ' .
+	$out .= '<li><input type="radio" id="qs'.$qn.'-s" name="qs'.$qn.'" value="\\[\\]" ' .
         (($la!='DNE' && (!$includeinf || $la!='oo'))?'checked':'') . 
         '><label for="qs'.$qn.'-s">'.$specsoln.'</label>';
 	if ($la=='DNE' || ($includeinf && $la=='oo')) {

@@ -9,7 +9,7 @@ use Sanitize;
 class StringAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -60,7 +60,11 @@ class StringAnswerBox implements AnswerBox
             (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
 
         if ($answerformat == 'list') {
-            $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
+            if ($this->tipFormat == 'latex') {
+                $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "\n\n";
+            } else {
+                $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "<br/>";
+            }
             $shorttip = _('Enter a list of text');
         } else if ($answerformat == 'matrix') {
             $shorttip = _('Enter your answer as a matrix');

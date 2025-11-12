@@ -9,7 +9,7 @@ use Sanitize;
 class ChemEquationAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;

@@ -9,7 +9,7 @@ use Sanitize;
 class CalculatedIntervalAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -56,19 +56,39 @@ class CalculatedIntervalAnswerBox implements AnswerBox
             $out .= $ansprompt;
         }
 
-        $lineSep = ($this->tip_format == 'latex' ? "\n\n" : "<br/>");
         if (in_array('inequality', $ansformats)) {
-            $tip = sprintf($this->tip_format == 'latex' ? _('Enter your answer using inequality notation.  Example: 3 <= %s < 4') : _('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . ($this->tip_format == 'latex' ? "\n\n" : " <br/>");
-            $tip .= sprintf($this->tip_format == 'latex' ? _('Use or to combine intervals.  Example: %s < 2 or %s >= 3') : _('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . $lineSep;
-            $tip .= $this->tip_format == 'latex' ? _('Enter all real numbers for solutions of that type') : _('Enter <i>all real numbers</i> for solutions of that type');
+            if ($this->tipFormat == 'latex') {
+                $tip = sprintf(_('Enter your answer using inequality notation.  Example: \\[3 <= %s < 4\\]'), $variables) . "\n\n";
+                $tip .= sprintf(_('Use or to combine intervals.  Example: \\[%s < 2 or %s >= 3\\]'), $variables, $variables) . "\n\n";
+                $tip .= _('Enter all real numbers for solutions of that type');
+            }
+            else {
+                $tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+                $tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . " <br/>";
+                $tip .= _('Enter <i>all real numbers</i> for solutions of that type');
+            }
             $shorttip = _('Enter an interval using inequalities');
         } else {
-            $tip = _('Enter your answer using interval notation.  Example: [2,5)') . ($this->tip_format == 'latex' ? "\n\n" : " <br/>");
+            if ($this->tipFormat == 'latex') {
+                $tip = _('Enter your answer using interval notation.  Example: \\[[2,5)\\]') . "\n\n";
+            } else {
+                $tip = _('Enter your answer using interval notation.  Example: [2,5)') . " <br/>";
+            }
             if (in_array('list', $ansformats)) {
-                $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . $lineSep;
+                if ($this->tipFormat == 'latex') {
+                    $tip .= _('Separate intervals by a comma.  Example: \\[(-oo,2],[4,oo)\\]') . "\n\n";
+                }
+                else {
+                    $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . " <br/>";
+                }
                 $shorttip = _('Enter a list of intervals using interval notation');
             } else {
-                $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . $lineSep;
+                if ($this->tipFormat == 'latex') {
+                    $tip .= _('Use U for union to combine intervals.  Example: \\[(-oo,2] U [4,oo)\\]') . "\n\n";
+                }
+                else {
+                    $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . " <br/>";
+                }
                 $shorttip = _('Enter an interval using interval notation');
             }
 

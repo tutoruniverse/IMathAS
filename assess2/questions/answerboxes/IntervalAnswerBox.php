@@ -9,7 +9,7 @@ use Sanitize;
 class IntervalAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -60,15 +60,24 @@ class IntervalAnswerBox implements AnswerBox
             $shorttip = _('Adjust the sliders');
         } else {
 
-            $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . ($this->tip_format == 'latex' ? "\n\n" : " <br/>");
-            $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . ($this->tip_format == 'latex' ? "\n\n" : "<br/>");
+            if ($this->tipFormat == 'latex') {
+                $tip = _('Enter your answer using interval notation.  Example: \\[[2.1,5.6172)\\]') . "\n\n";
+                $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "\n\n";
+            } else {
+                $tip = _('Enter your answer using interval notation.  Example: \\[[2.1,5.6172)\\]') . " <br/>";
+                $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . " <br/>";
+            }
             if (!in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
                 $tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
             } else {
                 $tip .= _('Use oo to enter Infinity.');
             }
             if ($reqdecimals !== '') {
-                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                if ($this->tipFormat == 'latex') {
+                    $tip .= "\n\n" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                } else {
+                    $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                }
             }
             $shorttip = _('Enter an interval using interval notation');
         }

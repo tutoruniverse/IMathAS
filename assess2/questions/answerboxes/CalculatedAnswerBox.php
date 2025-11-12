@@ -9,7 +9,7 @@ use Sanitize;
 class CalculatedAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -86,10 +86,18 @@ class CalculatedAnswerBox implements AnswerBox
         }
 
         if ($isListAnswer) {
-            $tip = _('Enter your answer as a list of values separated by commas: Example: -4, 3, 2') . ($this->tip_format == 'latex' ? "\n\n" : "<br/>");
+            if ($this->tipFormat == 'latex') {
+                $tip = _('Enter your answer as a list of values separated by commas: Example: \\[-4, 3, 2\\]') . "\n\n";
+            } else {
+                $tip = _('Enter your answer as a list of values separated by commas: Example: -4, 3, 2') . "<br/>";
+            }
             $eword = _('each value');
         } else if (in_array('set', $ansformats) || in_array('exactset', $ansformats)) {
-            $tip = _('Enter your answer as a set of values separated with commas: Example: {-4, 3, 2}') . ($this->tip_format == 'latex' ? "\n\n" : "<br/>");
+            if ($this->tipFormat == 'latex') {
+                $tip = _('Enter your answer as a set of values separated with commas: Example: \\[{-4, 3, 2}\\]') . "\n\n";
+            } else {
+                $tip = _('Enter your answer as a set of values separated with commas: Example: {-4, 3, 2}') . "<br/>";
+            }
             $eword = _('each value');
         } else {
             $tip = '';
@@ -109,10 +117,18 @@ class CalculatedAnswerBox implements AnswerBox
                 } else {
                     $answer = prettysigfig($answer, $reqsigfigs, '', false, in_array("scinot", $ansformats) || in_array("scinotordec", $ansformats));
                 }
-                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+                if ($this->tipFormat == 'latex') {
+                    $tip .= "\n\n" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+                } else {
+                    $tip .= "<br/>" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+                }
                 $shorttip .= sprintf(_(', with exactly %d significant figures'), $reqsigfigs);
             } else if ($reqsigfigoffset > 0) {
-                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
+                if ($this->tipFormat == 'latex') {
+                    $tip .= "\n\n" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
+                } else {
+                    $tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
+                }
                 $shorttip .= sprintf(_(', with %d - %d significant figures'), $reqsigfigs, $reqsigfigs + $reqsigfigoffset);
             } else {
                 if (is_numeric($answer) && $answer != 0) {
@@ -125,7 +141,11 @@ class CalculatedAnswerBox implements AnswerBox
                         $answer = prettysigfig($answer, $reqsigfigs, '', false, in_array("scinot", $ansformats) || in_array("scinotordec", $ansformats));
                     }
                 }
-                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+                if ($this->tipFormat == 'latex') {
+                    $tip .= "\n\n" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+                } else {
+                    $tip .= "<br/>" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+                }
                 $shorttip .= sprintf(_(', with at least %d significant figures'), $reqsigfigs);
             }
         }

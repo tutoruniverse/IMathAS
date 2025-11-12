@@ -9,7 +9,7 @@ use Sanitize;
 class CalculatedMatrixAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -126,7 +126,11 @@ class CalculatedMatrixAnswerBox implements AnswerBox
                 $qnref = ($multi - 1) . '-' . ($qn % 1000);
             }
             $shorttip = _('Enter your answer as a matrix');
-            $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]') . ($this->tip_format == 'latex' ? "\n\n" : '<br/>') . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+            if ($this->tipFormat == 'latex') {
+                $tip = $shorttip . _('Enter your answer as a matrix, like \\[[(2,3,4),(1,4,5)]\\]') . "\n\n" . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+            } else {
+                $tip = $shorttip . _('Enter your answer as a matrix, like [(2,3,4),(1,4,5)]') . "<br/>" . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+            }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
 
             $classes = ['text'];

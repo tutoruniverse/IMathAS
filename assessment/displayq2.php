@@ -1107,7 +1107,7 @@ function scoreq($qnidx,$qidx,$seed,$givenans,$attemptn=0,$qnpointval=1) {
 
 
 
-function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
+function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='',$tipFormat='latex') {
 	global $RND,$myrights, $useeqnhelper, $showtips, $imasroot, $staticroot;
 
 	$anstype = Sanitize::simpleString($anstype);
@@ -1147,26 +1147,51 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		}
 		if (in_array('list',$ansformats) || in_array('exactlist',$ansformats) ||  in_array('orderedlist',$ansformats)) {
 			if (in_array('integer',$ansformats)) {
-				$tip = _('Enter your answer as a list of integers separated with commas: Example: -4, 3, 2') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip = _('Enter your answer as a list of integers separated with commas: Example: \\[-4, 3, 2\\]') . "\n\n";
+				}
+				else {
+					$tip = _('Enter your answer as a list of integers separated with commas: Example: -4, 3, 2') . "<br/>";
+				}
 				$shorttip = _('Enter a list of integers');
 			} else {
-				$tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: -4, 3, 2.5172') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: \\[-4, 3, 2.5172\\]') . "\n\n";
+				} else {
+					$tip = _('Enter your answer as a list of integer or decimal numbers separated with commas: Examples: -4, 3, 2.5172') . "<br/>";
+				}
 				$shorttip = _('Enter a list of integer or decimal numbers');
 			}
 		} else if (in_array('set',$ansformats) || in_array('exactset',$ansformats)) {
 			if (in_array('integer',$ansformats)) {
-				$tip = _('Enter your answer as a set of integers separated with commas: Example: {-4, 3, 2}') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip = _('Enter your answer as a set of integers separated with commas: Example: \\[{-4, 3, 2}\\]') . "\n\n";
+				} else {
+					$tip = _('Enter your answer as a set of integers separated with commas: Example: {-4, 3, 2}') . "<br/>";
+				}
 				$shorttip = _('Enter a set of integers');
 			} else {
-				$tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: {-4, 3, 2.5172}') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: \\[{-4, 3, 2.5172}\\]') . "\n\n";
+				} else {
+					$tip = _('Enter your answer as a set of integer or decimal numbers separated with commas: Example: {-4, 3, 2.5172}') . "<br/>";
+				}
 				$shorttip = _('Enter a set of integer or decimal numbers');
 			}
 		} else {
 			if (in_array('integer',$ansformats)) {
-				$tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip = _('Enter your answer as an integer.  Examples: \\[3, -4, 0\\]') . "\n\n";
+				} else {
+					$tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . "<br/>";
+				}
 				$shorttip = _('Enter an integer');
 			} else {
-				$tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip = _('Enter your answer as an integer or decimal number.  Examples: \\[3, -4, 5.5172\\]') . "\n\n";
+				} else {
+					$tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . "<br/>";
+				}
 				$shorttip = _('Enter an integer or decimal number');
 			}
 		}
@@ -1177,11 +1202,19 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			if (substr((string)$reqdecimals,0,1)=='=') {
 				$exactdec = true;
 				$reqdecimals = substr($reqdecimals,1);
-				$tip .= "<br/>" . sprintf(_('Your answer should include exactly %d decimal places.'), $reqdecimals);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should include exactly %d decimal places.'), $reqdecimals);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should include exactly %d decimal places.'), $reqdecimals);
+				}
 				$shorttip .= sprintf(_(", with %d decimal places"), $reqdecimals);
 				$answer = prettyreal($answer, $reqdecimals);
 			} else {
-				$tip .= "<br/>" . sprintf(_('Your answer should be accurate to at least %d decimal places.'), $reqdecimals);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should be accurate to at least %d decimal places.'), $reqdecimals);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should be accurate to at least %d decimal places.'), $reqdecimals);
+				}
 				$shorttip .= sprintf(_(", accurate to at least %d decimal places"), $reqdecimals);
 			}
 		}
@@ -1193,11 +1226,19 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 				} else {
 					$answer = prettysigfig($answer,$reqsigfigs);
 				}
-				$tip .= "<br/>" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+				}
 				$shorttip .= sprintf(_(', with exactly %d significant figures'), $reqsigfigs);
 			} else if ($reqsigfigs[0]=='[') {
 				$reqsigfigparts = explode(',',substr($reqsigfigs,1,-1));
-				$tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigparts[0], $reqsigfigparts[1]);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigparts[0], $reqsigfigparts[1]);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigparts[0], $reqsigfigparts[1]);
+				}
 				$shorttip .= sprintf(_(', with %d - %d significant figures'), $reqsigfigparts[0], $reqsigfigparts[1]);
 			} else {
 				if ($answer!=0) {
@@ -1210,7 +1251,11 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 						$answer = prettysigfig($answer,$reqsigfigs);
 					}
 				}
-				$tip .= "<br/>" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+				}
 				$shorttip .= sprintf(_(', with at least %d significant figures'), $reqsigfigs);
 			}
 		}
@@ -1545,7 +1590,11 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if (isset($answers)) {
 			$akeys = array_map('trim',explode(',',$answers));
 			foreach($akeys as $akey) {
-				$sa .= '<br/>'.$questions[$akey];
+				if ($tipFormat == 'latex') {
+					$sa .= "\n\n".$questions[$akey];
+				} else {
+					$sa .= '<br/>'.$questions[$akey];
+				}
 			}
 		}
 	} else if ($anstype == "matching") {
@@ -1727,10 +1776,19 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 
 
 		if (in_array('list',$ansformats) || in_array('exactlist',$ansformats) || in_array('orderedlist',$ansformats)) {
-			$tip = _('Enter your answer as a list of values separated by commas: Example: -4, 3, 2') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a list of values separated by commas: Example: \\[-4, 3, 2\\]') . "\n\n";
+			}
+			else {
+				$tip = _('Enter your answer as a list of values separated by commas: Example: -4, 3, 2') . "<br/>";
+			}
 			$eword = _('each value');
 		} else if (in_array('set',$ansformats) || in_array('exactset',$ansformats)) {
-			$tip = _('Enter your answer as a set of values separated with commas: Example: {-4, 3, 2}') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a set of values separated with commas: Example: \\[{-4, 3, 2}\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a set of values separated with commas: Example: {-4, 3, 2}') . "<br/>";
+			}
 			$eword = _('each value');
 		} else {
 			$tip = '';
@@ -1749,11 +1807,19 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 				} else {
 					$answer = prettysigfig($answer,$reqsigfigs,'',false,in_array("scinot",$ansformats)||in_array("scinotordec",$ansformats));
 				}
-				$tip .= "<br/>" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should have exactly %d significant figures.'), $reqsigfigs);
+				}
 				$shorttip .= sprintf(_(', with exactly %d significant figures'), $reqsigfigs);
 			} else if ($reqsigfigs[0]=='[') {
 				$reqsigfigparts = explode(',',substr($reqsigfigs,1,-1));
-				$tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigparts[0], $reqsigfigparts[1]);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigparts[0], $reqsigfigparts[1]);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d significant figures.'), $reqsigfigparts[0], $reqsigfigparts[1]);
+				}
 				$shorttip .= sprintf(_(', with %d - %d significant figures'), $reqsigfigparts[0], $reqsigfigparts[1]);
 			} else {
 				if ($answer!=0) {
@@ -1766,7 +1832,11 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 						$answer = prettysigfig($answer,$reqsigfigs,'',false,in_array("scinot",$ansformats)||in_array("scinotordec",$ansformats));
 					}
 				}
-				$tip .= "<br/>" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your answer should have at least %d significant figures.'), $reqsigfigs);
+				}
 				$shorttip .= sprintf(_(', with at least %d significant figures'), $reqsigfigs);
 			}
 		}
@@ -1846,7 +1916,11 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$tip = _('Enter each element of the matrix as  number (like 5, -3, 2.2)');
 			$shorttip = _('Enter an integer or decimal number');
 			if (isset($reqdecimals)) {
-				$tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				}
 				$shorttip .= sprintf(_(", accurate to at least %d decimal places"), $reqdecimals);
 			}
 			if (!isset($sz)) { $sz = 3;}
@@ -1892,7 +1966,11 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$shorttip = _('Enter your answer as a matrix filled with numbers, like ((2,3,4),(3,4,5))');
 			$tip = $shorttip;
 			if (isset($reqdecimals)) {
-				$tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				}
 			}
 			$out .= "<input class=\"text $colorbox\" type=\"text\" size=\"$sz\" name=qn$qn id=qn$qn value=\"".Sanitize::encodeStringForDisplay($la)."\" autocomplete=\"off\" ";
 			if ($showtips==2) {
@@ -1978,8 +2056,13 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			} else {
 				$qnref = ($multi-1).'-'.($qn%1000);
 			}
-			$shorttip = _('Enter your answer as a matrix, like ((2,3,4),(1,4,5))');
-			$tip = $shorttip.'<br/>'.formathint(_('each element of the matrix'),$ansformats,isset($reqdecimals)?$reqdecimals:null,'calcmatrix');
+			if ($tipFormat == 'latex') {
+				$shorttip = _('Enter your answer as a matrix, like \\[((2,3,4),(1,4,5))\\]');
+				$tip = $shorttip."\n\n".formathint(_('each element of the matrix'),$ansformats,isset($reqdecimals)?$reqdecimals:null,'calcmatrix');
+			} else {
+				$shorttip = _('Enter your answer as a matrix, like ((2,3,4),(1,4,5))');
+				$tip = $shorttip.'<br/>'.formathint(_('each element of the matrix'),$ansformats,isset($reqdecimals)?$reqdecimals:null,'calcmatrix');
+			}
 			if (!isset($sz)) { $sz = 20;}
 			$out .= "<input class=\"text $colorbox\" type=\"text\" size=\"$sz\" name=\"tc$qn\" id=\"tc$qn\" value=\"".Sanitize::encodeStringForDisplay($la)."\" autocomplete=\"off\" ";
 			if ($showtips==2) {
@@ -2145,9 +2228,17 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		$out .= "<script type=\"text/javascript\">pts[$qn]=\"$points\";</script>\n";
 		if (in_array('equation',$ansformats)) {
 			$out .= "<script type=\"text/javascript\">iseqn[$qn] = 1;</script>\n";
-			$tip = _('Enter your answer as an equation.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as an equation.  Example: \\[y=3x^2+1, 2+x+y=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
+			} else {
+				$tip = _('Enter your answer as an equation.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
+			}
 		} else {
-			$tip = _('Enter your answer as an expression.  Example: 3x^2+1, x/5, (a+b)/c') . "\n<br/>" . _('Be sure your variables match those in the question');
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as an expression.  Example: \\[3x^2+1, x/5, (a+b)/c\\]') . "\n\n" . _('Be sure your variables match those in the question');
+			} else {
+				$tip = _('Enter your answer as an expression.  Example: 3x^2+1, x/5, (a+b)/c') . "\n<br/>" . _('Be sure your variables match those in the question');
+			}
 		}
 		if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {
 			list($out,$answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
@@ -2198,29 +2289,61 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if ($multi>0) { $qn = $multi*1000+$qn;}
 
 		if ($displayformat == 'point') {
-			$tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a point.  Example: \\[(2,5.5172)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
+			}
 			$shorttip = _('Enter a point');
 		} else if ($displayformat == 'pointlist') {
-			$tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer a list of points separated with commas.  Example: \\[(1,2), (3.5172,5)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
+			}
 			$shorttip = _('Enter a list of points');
 		} else if ($displayformat == 'vector') {
-			$tip = _('Enter your answer as a vector.  Example: <2,5.5>') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a vector.  Example: \\[<2,5.5>\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a vector.  Example: <2,5.5>') . "<br/>";
+			}
 			$shorttip = _('Enter a vector');
 		} else if ($displayformat == 'vectorlist') {
-			$tip = _('Enter your answer a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer a list of vectors separated with commas.  Example: \\[<1,2>, <3.5172,5>\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
+			}
 			$shorttip = _('Enter a list of vectors');
 		} else if ($displayformat == 'set') {
-			$tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a set of numbers.  Example: \\[{1,2,3}\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
+			}
 			$shorttip = _('Enter a set');
 		} else if ($displayformat == 'list') {
-			$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: \\[(1,2),(3.5172,4)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
+			}
 			$shorttip = _('Enter a list of n-tuples');
 		} else {
-			$tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as an n-tuple of numbers.  Example: \\[(2,5.5172)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
+			}
 			$shorttip = _('Enter an n-tuple');
 		}
 		if (isset($reqdecimals)) {
-			$tip .= sprintf(_('Each value should be accurate to %d decimal places.'), $reqdecimals).'<br/>';
+			if ($tipFormat == 'latex') {
+				$tip .= sprintf(_('Each value should be accurate to %d decimal places.'), $reqdecimals)."\n\n";
+			} else {
+				$tip .= sprintf(_('Each value should be accurate to %d decimal places.'), $reqdecimals).'<br/>';
+			}
 			$shorttip .= sprintf(_(", each value accurate to %d decimal places"), $reqdecimals);
 		}
 		if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
@@ -2270,25 +2393,53 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if ($multi>0) { $qn = $multi*1000+$qn;}
 
 		if ($displayformat == 'point') {
-			$tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a point.  Example: \\[(2,5.5172)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
+			}
 			$shorttip = _('Enter a point');
 		} else if ($displayformat == 'pointlist') {
-			$tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer a list of points separated with commas.  Example: \\[(1,2), (3.5172,5)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
+			}
 			$shorttip = _('Enter a list of points');
 		} else if ($displayformat == 'vector') {
-			$tip = _('Enter your answer as a vector.  Example: <2,5.5172>') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a vector.  Example: \\[<2,5.5172>\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a vector.  Example: <2,5.5172>') . "<br/>";
+			}
 			$shorttip = _('Enter a vector');
 		} else if ($displayformat == 'vectorlist') {
-			$tip = _('Enter your answer a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer a list of vectors separated with commas.  Example: \\[<1,2>, <3.5172,5>\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
+			}
 			$shorttip = _('Enter a list of vectors');
 		} else if ($displayformat == 'set') {
-			$tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a set of numbers.  Example: \\[{1,2,3}\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
+			}
 			$shorttip = _('Enter a set');
 		} else if ($displayformat == 'list') {
-			$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: \\[(1,2),(3.5172,4)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
+			}
 			$shorttip = _('Enter a list of n-tuples');
 		} else {
-			$tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as an n-tuple of numbers.  Example: \\[(2,5.5172)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
+			}
 			$shorttip = _('Enter an n-tuple');
 		}
 		$tip .= formathint('each value',$ansformats,isset($reqdecimals)?$reqdecimals:null,'calcntuple');
@@ -2345,10 +2496,18 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 
 
 		if (in_array('list',$ansformats)) {
-			$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a list of complex numbers in \\[a+bi\\] form separated with commas.  Example: \\[2+5.5172i,-3-4i\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . "<br/>";
+			}
 			$shorttip = _('Enter a list of complex numbers');
 		} else {
-			$tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a complex number in \\[a+bi\\] form.  Example: \\[2+5.5172i\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . "<br/>";
+			}
 			$shorttip = _('Enter a complex number');
 		}
 		if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
@@ -2393,10 +2552,18 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		$ansformats = array_map('trim',explode(',',$answerformat));
 
 		if (in_array('list',$ansformats) || in_array('exactlist',$ansformats)) {
-			$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5i,-3-4i') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a list of complex numbers in \\[a+bi\\] form separated with commas.  Example: \\[2+5i,-3-4i\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5i,-3-4i') . "<br/>";
+			}
 			$shorttip = _('Enter a list of complex numbers');
 		} else {
-			$tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5i') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a complex number in \\[a+bi\\] form.  Example: \\[2+5i\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5i') . "<br/>";
+			}
 			$shorttip = _('Enter a complex number');
 		}
 		$tip .= formathint('each value',$ansformats,isset($reqdecimals)?$reqdecimals:null,'calccomplex');
@@ -2456,7 +2623,11 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
         $la = str_replace('&tilde;', '~', $la);
 
 		if ($answerformat=='list') {
-			$tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "\n\n";
+			} else {
+				$tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "<br/>";
+			}
 			$shorttip = _('Enter a list of text');
 		} else {
 			$tip .= _('Enter your answer as letters.  Examples: A B C, linear, a cat');
@@ -2689,15 +2860,32 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$shorttip = _('Adjust the sliders');
 		} else {
 
-			$tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
-			$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
-			if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
-				$tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer using interval notation.  Example: \\[[2.1,5.6172)\\]') . "\n\n";
+				$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "\n\n";
 			} else {
-				$tip .= _('Use oo to enter Infinity.');
+				$tip = _('Enter your answer using interval notation.  Example: \\[[2.1,5.6172)\\]') . "<br/>";
+				$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+			}
+			if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . _('Enter DNE for an empty set. Use \\[oo\\] to enter Infinity.');
+				} else {
+					$tip .= "<br/>" . _('Enter DNE for an empty set. Use oo to enter Infinity.');
+				}
+			} else {
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . _('Use \\[oo\\] to enter Infinity.');
+				} else {
+					$tip .= "<br/>" . _('Use oo to enter Infinity.');
+				}
 			}
 			if (isset($reqdecimals)) {
-				$tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				if ($tipFormat == 'latex') {
+					$tip .= "\n\n" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				} else {
+					$tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+				}
 			}
 			$shorttip = _('Enter an interval using interval notation');
 		}
@@ -2794,17 +2982,35 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if ($multi>0) { $qn = $multi*1000+$qn;}
 
 		if (in_array('inequality',$ansformats)) {
-			$tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
-			$tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
-			$tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
+			if ($tipFormat == 'latex') {
+				$tip = sprintf(_('Enter your answer using inequality notation.  Example: \\[3 <= %s < 4\\]'), $variables) . "\n\n";
+				$tip .= sprintf(_('Use or to combine intervals.  Example: \\[%s < 2 or %s >= 3\\]'), $variables, $variables) . "\n\n";
+				$tip .= _('Enter all real numbers for solutions of that type') . "\n\n";
+			} else {
+				$tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+				$tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+				$tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
+			}
 			$shorttip = _('Enter an interval using inequalities');
 		} else {
-			$tip = _('Enter your answer using interval notation.  Example: [2,5)') . " <br/>";
+			if ($tipFormat == 'latex') {
+				$tip = _('Enter your answer using interval notation.  Example: \\[[2,5)\\]') . "\n\n";
+			} else {
+				$tip = _('Enter your answer using interval notation.  Example: [2,5)') . "<br/>";
+			}
 			if (in_array('list',$ansformats)) {
-				$tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip .= _('Separate intervals by a comma.  Example: \\[(-oo,2],[4,oo)\\]') . "\n\n";
+				} else {
+					$tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "<br/>";
+				}
 				$shorttip = _('Enter a list of intervals using interval notation');
 			} else {
-				$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+				if ($tipFormat == 'latex') {
+					$tip .= _('Use U for union to combine intervals.  Example: \\[(-oo,2] U [4,oo)\\]') . "\n\n";
+				} else {
+					$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+				}
 				$shorttip = _('Enter an interval using interval notation');
 			}
 
@@ -8127,14 +8333,14 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 		$listtype = "list";
 	}
 	if (in_array('fraction',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a fraction (like 3/5 or 10/4) or as an integer (like 4 or -2)'), $eword);
+		$tip .= sprintf(_('Enter %s as a fraction (like \\[3/5\\] or \\[10/4\\]) or as an integer (like \\[4\\] or \\[-2\\])'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of fractions or integers'), $listtype):_('Enter a fraction or integer');
 	} else if (in_array('reducedfraction',$ansformats)) {
 		if (in_array('fracordec',$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a reduced fraction (like 5/3, not 10/6), as an integer (like 4 or -2), or as an exact decimal (like 0.5 or 1.25)'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced fraction (like \\[5/3\\], not \\[10/6\\]), as an integer (like \\[4\\] or \\[-2\\]), or as an exact decimal (like \\[0.5\\] or \\[1.25\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of reduced fractions, integers, or exact decimals'), $listtype):_('Enter a reduced fraction, integer, or exact decimal');
 		} else {
-			$tip .= sprintf(_('Enter %s as a reduced fraction (like 5/3, not 10/6) or as an integer (like 4 or -2)'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced fraction (like \\[5/3\\], not \\[10/6\\]) or as an integer (like \\[4\\] or \\[-2\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of reduced fractions or integers'), $listtype):_('Enter a reduced fraction or integer');
 		}
 	} else if (in_array('mixednumber',$ansformats)) {
@@ -8154,14 +8360,14 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 		}
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
+			$tip .= sprintf(_('Enter %s as a mixed number (like \\[2 1/2\\]), fraction (like \\[3/5\\]), an integer (like \\[4\\] or \\[-2\\]), or exact decimal (like \\[0.5\\] or \\[1.25\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or exact decimals'), $listtype):_('Enter a mixed number, fraction, or exact decimal');
 		} else {
-			$tip .= sprintf(_('Enter %s as a fraction (like 3/5 or 10/4), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
+			$tip .= sprintf(_('Enter %s as a fraction (like \\[3/5\\] or \\[10/4\\]), an integer (like \\[4\\] or \\[-2\\]), or exact decimal (like \\[0.5\\] or \\[1.25\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of fractions or exact decimals'), $listtype):_('Enter a fraction or exact decimal');
 		}
 	} else if (in_array('decimal',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as an integer or decimal value (like 5 or 3.72)'), $eword);
+		$tip .= sprintf(_('Enter %s as an integer or decimal value (like \\[5\\] or \\[3.72\\])'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer or decimal values'), $listtype):_('Enter an integer or decimal value');
 	} else if (in_array('scinotordec',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2 = \\[3 \\cdot 10^{2}\\]'), $eword);
@@ -8170,7 +8376,7 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2 = \\[3 \\cdot 10^{2}\\]'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else {
-		$tip .= sprintf(_('Enter %s as a number (like 5, -3, 2.2172) or as a calculation (like 5/3, 2^3, 5+4)'), $eword);
+		$tip .= sprintf(_('Enter %s as a number (like \\[5\\], \\[-3\\], \\[2.2172\\]) or as a calculation (like \\[5/3\\], \\[2^3\\], \\[5+4\\])'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of mathematical expressions'), $listtype):_('Enter a mathematical expression');
 	}
 	if ((in_array('fraction',$ansformats) || in_array('reducedfraction',$ansformats)) && !in_array('allowmixed',$ansformats)) {
@@ -8179,12 +8385,12 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 	}
 	if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats)) {
 		if ($calledfrom == 'calcinterval') {
-			$tip .= "\n\n" . _('Enter DNE for an empty set. Use oo to enter Infinity.');
+			$tip .= "\n\n" . _('Enter DNE for an empty set. Use \\[oo\\] to enter Infinity.');
 		} else if ($calledfrom != 'calcmatrix') {
-			$tip .= "\n\n" . _('Enter DNE for Does Not Exist, oo for Infinity');
+			$tip .= "\n\n" . _('Enter DNE for Does Not Exist, \\[oo\\] for Infinity');
 		}
 	} else if ($calledfrom == 'calcinterval') {
-		$tip .= "\n\n" . _('Use oo to enter Infinity.');
+		$tip .= "\n\n" . _('Use \\[oo\\] to enter Infinity.');
 	}
 	if (in_array('nodecimal',$ansformats)) {
 		$tip .= "\n\n" . _('Decimal values are not allowed');

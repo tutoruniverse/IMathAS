@@ -652,14 +652,14 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 		$listtype = "list";
 	}
 	if (in_array('fraction',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a fraction (like 3/5 or 10/4) or as an integer (like 4 or -2)'), $eword);
+		$tip .= sprintf(_('Enter %s as a fraction (like \\[3/5\\] or \\[10/4\\]) or as an integer (like \\[4\\] or \\[-2\\])'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of fractions or integers'), $listtype):_('Enter a fraction or integer');
 	} else if (in_array('reducedfraction',$ansformats)) {
 		if (in_array('fracordec',$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a reduced fraction (like 5/3, not 10/6), as an integer (like 4 or -2), or as a decimal (like 0.5 or 1.25)'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced fraction (like \\[5/3\\], not \\[10/6\\]), as an integer (like \\[4\\] or \\[-2\\]), or as a decimal (like \\[0.5\\] or \\[1.25\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of reduced fractions, integers, or decimals'), $listtype):_('Enter a reduced fraction, integer, or decimal');
 		} else {
-			$tip .= sprintf(_('Enter %s as a reduced fraction (like 5/3, not 10/6) or as an integer (like 4 or -2)'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced fraction (like \\[5/3\\], not \\[10/6\\]) or as an integer (like \\[4\\] or \\[-2\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of reduced fractions or integers'), $listtype):_('Enter a reduced fraction or integer');
 		}
 	} else if (in_array('mixednumber',$ansformats)) {
@@ -679,14 +679,14 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 		}
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or decimal (like 0.5 or 1.25)'), $eword);
+			$tip .= sprintf(_('Enter %s as a mixed number (like \\[2 1/2\\]), fraction (like \\[3/5\\]), an integer (like \\[4\\] or \\[-2\\]), or decimal (like \\[0.5\\] or \\[1.25\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or decimals'), $listtype):_('Enter a mixed number, fraction, or decimal');
 		} else {
-			$tip .= sprintf(_('Enter %s as a fraction (like 3/5 or 10/4), an integer (like 4 or -2), or decimal (like 0.5 or 1.25)'), $eword);
+			$tip .= sprintf(_('Enter %s as a fraction (like \\[3/5\\] or \\[10/4\\]), an integer (like \\[4\\] or \\[-2\\]), or decimal (like \\[0.5\\] or \\[1.25\\])'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of fractions or decimals'), $listtype):_('Enter a fraction or decimal');
 		}
 	} else if (in_array('decimal',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as an integer or decimal value (like 5 or 3.72)'), $eword);
+		$tip .= sprintf(_('Enter %s as an integer or decimal value (like \\[5\\] or \\[3.72\\])'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer or decimal values'), $listtype):_('Enter an integer or decimal value');
 	} else if (in_array('scinotordec',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2 = \\[3 \\cdot 10^{2}\\]'), $eword);
@@ -695,7 +695,7 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2 = \\[3 \\cdot 10^{2}\\]'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else if (!in_array('generalcomplex',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a number (like 5, -3, 2.2172) or as a calculation (like 5/3, 2^3, 5+4)'), $eword);
+		$tip .= sprintf(_('Enter %s as a number (like \\[5\\], \\[-3\\], \\[2.2172\\]) or as a calculation (like \\[5/3\\], \\[2^3\\], \\[5+4\\])'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of mathematical expressions'), $listtype):_('Enter a mathematical expression');
 	}
 	if ((in_array('fraction',$ansformats) || in_array('reducedfraction',$ansformats)) && !in_array('allowmixed',$ansformats)) {
@@ -704,12 +704,12 @@ function formathint_latex($eword,$ansformats,$reqdecimals,$calledfrom, $islist=f
 	}
 	if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats)) {
 		if ($calledfrom == 'calcinterval') {
-			$tip .= "\n\n" . _('Enter DNE for an empty set. Use oo to enter Infinity.');
+			$tip .= "\n\n" . _('Enter DNE for an empty set. Use \\[oo\\] to enter Infinity.');
 		} else if ($calledfrom != 'calcmatrix') {
-			$tip .= "\n\n" . _('Enter DNE for Does Not Exist, oo for Infinity');
+			$tip .= "\n\n" . _('Enter DNE for Does Not Exist, \\[oo\\] for Infinity');
 		}
 	} else if ($calledfrom == 'calcinterval') {
-		$tip .= "\n\n" . _('Use oo to enter Infinity.');
+		$tip .= "\n\n" . _('Use \\[oo\\] to enter Infinity.');
 	}
 	if (in_array('nodecimal',$ansformats)) {
 		$tip .= "\n\n" . _('Decimal values are not allowed');

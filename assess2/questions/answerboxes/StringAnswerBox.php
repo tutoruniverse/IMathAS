@@ -9,7 +9,7 @@ use Sanitize;
 class StringAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -60,11 +60,19 @@ class StringAnswerBox implements AnswerBox
             (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
 
         if ($answerformat == 'list') {
-            $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . ($this->tip_format == 'latex' ? "\n" : '<br/>');
+            if ($this->tipFormat == 'latex') {
+                $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "\n\n";
+            } else {
+                $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "<br/>";
+            }
             $shorttip = _('Enter a list of text');
         } else if ($answerformat == 'matrix') {
             $shorttip = _('Enter your answer as a matrix');
-            $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]');
+            if ($this->tipFormat == 'latex') {
+                $tip .= _(', like \\[(2,3,4),(1,4,5)\\]');
+            } else {
+                $tip .= _(', like [(2,3,4),(1,4,5)]');
+            }
         } else if ($answerformat == 'logic') {
             $shorttip = _('Enter a logic statement');
             $tip = _('Enter a logic statement using the editor buttons, or use "and", "or", "xor", "neg", "implies", and "iff"');

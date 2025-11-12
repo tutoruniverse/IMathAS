@@ -9,7 +9,7 @@ use Sanitize;
 class MatrixAnswerBox implements AnswerBox
 {
     private $answerBoxParams;
-    private $tip_format = "latex";
+    private $tipFormat = "latex";
 
     private $answerBox;
     private $jsParams;
@@ -59,7 +59,11 @@ class MatrixAnswerBox implements AnswerBox
             $tip = _('Enter each element of the matrix as  number (like 5, -3, 2.2)');
             $shorttip = _('Enter an integer or decimal number');
             if ($reqdecimals!=='') {
-                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                if ($this->tipFormat == 'latex') {
+                    $tip .= "\n\n" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                } else {
+                    $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                }
                 $shorttip .= sprintf(_(", accurate to at least %d decimal places"), $reqdecimals);
             }
             if (empty($answerboxsize)) {$answerboxsize = 3;}
@@ -134,7 +138,11 @@ class MatrixAnswerBox implements AnswerBox
             $shorttip = _('Enter a matrix of integer or decimal numbers');
             $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like [(2,3,4),(3,4,5)]');
             if ($reqdecimals !== '') {
-                $tip .= ($this->tip_format == 'latex' ? "\n\n" : "<br/>") . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                if ($this->tipFormat == 'latex') {
+                    $tip .= "\n\n" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                } else {
+                    $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
+                }
             }
 
             $classes = ['text'];

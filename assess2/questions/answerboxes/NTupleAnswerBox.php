@@ -54,56 +54,56 @@ class NTupleAnswerBox implements AnswerBox
 
         if ($displayformat == 'point') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "\n\n";
+                $tip = _('Enter your answer as a point.  Example: \\[(2,5.5172)\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
             }
             $shorttip = _('Enter a point');
         } else if ($displayformat == 'pointlist') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "\n\n";
+                $tip = _('Enter your answer a list of points separated with commas.  Example: \\[(1,2), (3.5172,5)\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
             }
             $shorttip = _('Enter a list of points');
         } else if ($displayformat == 'vector') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a vector.  Example: <2,5.5>') . "\n\n";
+                $tip = _('Enter your answer as a vector.  Example: \\[<2,5.5>\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a vector.  Example: <2,5.5>') . "<br/>";
             }
             $shorttip = _('Enter a vector');
         } else if ($displayformat == 'vectorlist') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "\n\n";
+                $tip = _('Enter your answer as a list of vectors separated with commas.  Example: \\[<1,2>, <3.5172,5>\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
             }
             $shorttip = _('Enter a list of vectors');
         } else if ($displayformat == 'set') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "\n\n";
+                $tip = _('Enter your answer as a set of numbers.  Example: \\[{1,2,3}\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
             }
             $shorttip = _('Enter a set');
         } else if ($displayformat == 'setlist') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a list of sets separated with commas.  Example: {1,2,3},{4,5}') . "\n\n";
+                $tip = _('Enter your answer as a list of sets separated with commas.  Example: \\[{1,2,3},{4,5}\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a list of sets separated with commas.  Example: {1,2,3},{4,5}') . "<br/>";
             }
             $shorttip = _('Enter a list of sets');
         } else if ($displayformat == 'list') {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "\n\n";
+                $tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: \\[(1,2),(3.5172,4)\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
             }
             $shorttip = _('Enter a list of n-tuples');
         } else {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "\n\n";
+                $tip = _('Enter your answer as an n-tuple of numbers.  Example: \\[(2,5.5172)\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
             }

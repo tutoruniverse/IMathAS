@@ -75,14 +75,14 @@ class FunctionExpressionAnswerBox implements AnswerBox
                 if (in_array('inequality', $ansformats)) {
                     $shorttip = _('Enter a list of algebraic equations or inequalities');
                     if ($this->tipFormat == 'latex') {
-                        $tip = _('Enter a list of equations or inequalities, separated by commas.  Example: y=3x^2+1, 2+x+y=3') . "\n\n" . _('Be sure your variables match those in the question');
+                        $tip = _('Enter a list of equations or inequalities, separated by commas.  Example: \\[y=3x^2+1, 2+x+y=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                     } else {
                         $tip = _('Enter a list of equations or inequalities, separated by commas.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                     }
                 } else {
                     $shorttip = _('Enter a list of algebraic equations');
                     if ($this->tipFormat == 'latex') {
-                        $tip = _('Enter a list of equations, separated by commas.  Example: y=3x^2+1, 2+x+y=3') . "\n\n" . _('Be sure your variables match those in the question');
+                        $tip = _('Enter a list of equations, separated by commas.  Example: \\[y=3x^2+1, 2+x+y=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                     } else {
                         $tip = _('Enter a list of equations, separated by commas.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                     }
@@ -90,14 +90,14 @@ class FunctionExpressionAnswerBox implements AnswerBox
             } else if (in_array('inequality', $ansformats)) {
                 $shorttip = _('Enter a list of algebraic inequalities');
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter a list of inequalities, separated by commas.  Example: y<3x^2+1, 2+x+y>=3') . "\n\n" . _('Be sure your variables match those in the question');
+                    $tip = _('Enter a list of inequalities, separated by commas.  Example: \\[y<3x^2+1, 2+x+y>=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                 } else {
                     $tip = _('Enter a list of inequalities, separated by commas.  Example: y<3x^2+1, 2+x+y>=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                 }
             } else {
                 $shorttip = _('Enter a list of algebraic expressions');
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter a list of expressions, separated by commas.  Example: 3x^2+1, x/5, 2x+1') . "\n\n" . _('Be sure your variables match those in the question');
+                    $tip = _('Enter a list of expressions, separated by commas.  Example: \\[3x^2+1, x/5, 2x+1\\]') . "\n\n" . _('Be sure your variables match those in the question');
                 } else {
                     $tip = _('Enter a list of expressions, separated by commas.  Example: 3x^2+1, x/5, 2x+1') . "\n<br/>" . _('Be sure your variables match those in the question');
                 }
@@ -107,14 +107,14 @@ class FunctionExpressionAnswerBox implements AnswerBox
                 if (in_array('inequality', $ansformats)) {
                     $shorttip = _('Enter an algebraic equation or inequality');
                     if ($this->tipFormat == 'latex') {
-                        $tip = _('Enter your answer as an equation or inequality.  Example: y=3x^2+1, 2+x+y=3') . "\n\n" . _('Be sure your variables match those in the question');
+                        $tip = _('Enter your answer as an equation or inequality.  Example: \\[y=3x^2+1, 2+x+y=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                     } else {
                         $tip = _('Enter your answer as an equation or inequality.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                     }
                 } else {
                     $shorttip = _('Enter an algebraic equation');
                     if ($this->tipFormat == 'latex') {
-                        $tip = _('Enter your answer as an inequality.  Example: y<3x^2+1, 2+x+y>=3') . "\n\n" . _('Be sure your variables match those in the question');
+                        $tip = _('Enter your answer as an inequality.  Example: \\[y<3x^2+1, 2+x+y>=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                     } else {
                         $tip = _('Enter your answer as an inequality.  Example: y<3x^2+1, 2+x+y>=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                     }
@@ -122,14 +122,14 @@ class FunctionExpressionAnswerBox implements AnswerBox
             } else if (in_array('inequality', $ansformats)) {
                 $shorttip = _('Enter an algebraic inequality');
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter your answer as an inequality.  Example: y<3x^2+1, 2+x+y>=3') . "\n\n" . _('Be sure your variables match those in the question');
+                    $tip = _('Enter your answer as an inequality.  Example: \\[y<3x^2+1, 2+x+y>=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                 } else {
                     $tip = _('Enter your answer as an inequality.  Example: y<3x^2+1, 2+x+y>=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                 }
             } else {
                 $shorttip = _('Enter an algebraic expression');
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter your answer as an expression.  Example: 3x^2+1, x/5, (a+b)/c') . "\n\n" . _('Be sure your variables match those in the question');
+                    $tip = _('Enter your answer as an expression.  Example: \\[3x^2+1, x/5, (a+b)/c\\]') . "\n\n" . _('Be sure your variables match those in the question');
                 } else {
                     $tip = _('Enter your answer as an expression.  Example: 3x^2+1, x/5, (a+b)/c') . "\n<br/>" . _('Be sure your variables match those in the question');
                 }

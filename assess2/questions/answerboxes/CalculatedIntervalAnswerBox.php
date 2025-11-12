@@ -58,8 +58,8 @@ class CalculatedIntervalAnswerBox implements AnswerBox
 
         if (in_array('inequality', $ansformats)) {
             if ($this->tipFormat == 'latex') {
-                $tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 <= %s < 4'), $variables) . "\n\n";
-                $tip .= sprintf(_('Use or to combine intervals.  Example: %s < 2 or %s >= 3'), $variables, $variables) . "\n\n";
+                $tip = sprintf(_('Enter your answer using inequality notation.  Example: \\[3 <= %s < 4\\]'), $variables) . "\n\n";
+                $tip .= sprintf(_('Use or to combine intervals.  Example: \\[%s < 2 or %s >= 3\\]'), $variables, $variables) . "\n\n";
                 $tip .= _('Enter all real numbers for solutions of that type');
             }
             else {
@@ -70,13 +70,13 @@ class CalculatedIntervalAnswerBox implements AnswerBox
             $shorttip = _('Enter an interval using inequalities');
         } else {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer using interval notation.  Example: [2,5)') . "\n\n";
+                $tip = _('Enter your answer using interval notation.  Example: \\[[2,5)\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer using interval notation.  Example: [2,5)') . " <br/>";
             }
             if (in_array('list', $ansformats)) {
                 if ($this->tipFormat == 'latex') {
-                    $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "\n\n";
+                    $tip .= _('Separate intervals by a comma.  Example: \\[(-oo,2],[4,oo)\\]') . "\n\n";
                 }
                 else {
                     $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . " <br/>";
@@ -84,7 +84,7 @@ class CalculatedIntervalAnswerBox implements AnswerBox
                 $shorttip = _('Enter a list of intervals using interval notation');
             } else {
                 if ($this->tipFormat == 'latex') {
-                    $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "\n\n";
+                    $tip .= _('Use U for union to combine intervals.  Example: \\[(-oo,2] U [4,oo)\\]') . "\n\n";
                 }
                 else {
                     $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . " <br/>";

@@ -68,7 +68,11 @@ class StringAnswerBox implements AnswerBox
             $shorttip = _('Enter a list of text');
         } else if ($answerformat == 'matrix') {
             $shorttip = _('Enter your answer as a matrix');
-            $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]');
+            if ($this->tipFormat == 'latex') {
+                $tip .= _(', like \\[(2,3,4),(1,4,5)\\]');
+            } else {
+                $tip .= _(', like [(2,3,4),(1,4,5)]');
+            }
         } else if ($answerformat == 'logic') {
             $shorttip = _('Enter a logic statement');
             $tip = _('Enter a logic statement using the editor buttons, or use "and", "or", "xor", "neg", "implies", and "iff"');

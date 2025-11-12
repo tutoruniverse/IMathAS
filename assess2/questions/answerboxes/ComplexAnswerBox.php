@@ -54,13 +54,13 @@ class ComplexAnswerBox implements AnswerBox
         if (in_array('list', $ansformats)) {
             if (in_array('allowjcomplex', $ansformats)) {
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter your answer as a list of complex numbers in a+bj form separated with commas.  Example: 2+5.5172j,-3-4j') . "\n\n";
+                    $tip = _('Enter your answer as a list of complex numbers in a+bj form separated with commas.  Example: \\[2+5.5172j,-3-4j\\]') . "\n\n";
                 } else {
                     $tip = _('Enter your answer as a list of complex numbers in a+bj form separated with commas.  Example: 2+5.5172j,-3-4j') . "<br/>";
                 }
             } else {
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . "\n\n";
+                    $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: \\[2+5.5172i,-3-4i\\]') . "\n\n";
                 } else {
                     $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . "<br/>";
                 }
@@ -69,13 +69,13 @@ class ComplexAnswerBox implements AnswerBox
         } else {
             if (in_array('allowjcomplex', $ansformats)) {
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter your answer as a complex number in a+bj form.  Example: 2+5.5172j') . "\n\n";
+                    $tip = _('Enter your answer as a complex number in a+bj form.  Example: \\[2+5.5172j\\]') . "\n\n";
                 } else {
                     $tip = _('Enter your answer as a complex number in a+bj form.  Example: 2+5.5172j') . "<br/>";
                 }
             } else {
                 if ($this->tipFormat == 'latex') {
-                    $tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . "\n\n";
+                    $tip = _('Enter your answer as a complex number in a+bi form.  Example: \\[2+5.5172i\\]') . "\n\n";
                 } else {
                     $tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . "<br/>";
                 }

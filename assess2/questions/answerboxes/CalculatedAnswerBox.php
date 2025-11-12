@@ -87,14 +87,14 @@ class CalculatedAnswerBox implements AnswerBox
 
         if ($isListAnswer) {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a list of values separated by commas: Example: -4, 3, 2') . "\n\n";
+                $tip = _('Enter your answer as a list of values separated by commas: Example: \\[-4, 3, 2\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a list of values separated by commas: Example: -4, 3, 2') . "<br/>";
             }
             $eword = _('each value');
         } else if (in_array('set', $ansformats) || in_array('exactset', $ansformats)) {
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer as a set of values separated with commas: Example: {-4, 3, 2}') . "\n\n";
+                $tip = _('Enter your answer as a set of values separated with commas: Example: \\[{-4, 3, 2}\\]') . "\n\n";
             } else {
                 $tip = _('Enter your answer as a set of values separated with commas: Example: {-4, 3, 2}') . "<br/>";
             }

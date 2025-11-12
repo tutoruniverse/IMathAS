@@ -61,10 +61,10 @@ class IntervalAnswerBox implements AnswerBox
         } else {
 
             if ($this->tipFormat == 'latex') {
-                $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . "\n\n";
+                $tip = _('Enter your answer using interval notation.  Example: \\[[2.1,5.6172)\\]') . "\n\n";
                 $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "\n\n";
             } else {
-                $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
+                $tip = _('Enter your answer using interval notation.  Example: \\[[2.1,5.6172)\\]') . " <br/>";
                 $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . " <br/>";
             }
             if (!in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {

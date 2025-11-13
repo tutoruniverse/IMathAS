@@ -127,9 +127,9 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             }
             $shorttip = _('Enter your answer as a matrix');
             if ($this->tipFormat == 'latex') {
-                $tip = $shorttip . _('Enter your answer as a matrix, like \\[[(2,3,4),(1,4,5)]\\]') . "\n\n" . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+                $tip = $shorttip . _(', like \\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 1 & 4 & 5 \\end{smallmatrix}\\right]') . "\n\n" . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
             } else {
-                $tip = $shorttip . _('Enter your answer as a matrix, like [(2,3,4),(1,4,5)]') . "<br/>" . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+                $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]') . "<br/>" . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
             }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
 

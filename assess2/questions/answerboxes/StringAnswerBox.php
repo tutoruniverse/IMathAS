@@ -69,7 +69,7 @@ class StringAnswerBox implements AnswerBox
         } else if ($answerformat == 'matrix') {
             $shorttip = _('Enter your answer as a matrix');
             if ($this->tipFormat == 'latex') {
-                $tip .= _(', like \\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]');
+                $tip .= _(', like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
             } else {
                 $tip .= _(', like [(2,3,4),(1,4,5)]');
             }

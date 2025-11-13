@@ -114,9 +114,9 @@ class FunctionExpressionAnswerBox implements AnswerBox
                 } else {
                     $shorttip = _('Enter an algebraic equation');
                     if ($this->tipFormat == 'latex') {
-                        $tip = _('Enter your answer as an inequality.  Example: \\[y<3x^2+1, 2+x+y>=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
+                        $tip = _('Enter your answer as an equation.  Example: \\[y=3x^2+1, 2+x+y=3\\]') . "\n\n" . _('Be sure your variables match those in the question');
                     } else {
-                        $tip = _('Enter your answer as an inequality.  Example: y<3x^2+1, 2+x+y>=3') . "\n<br/>" . _('Be sure your variables match those in the question');
+                        $tip = _('Enter your answer as an equation.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
                     }
                 }
             } else if (in_array('inequality', $ansformats)) {

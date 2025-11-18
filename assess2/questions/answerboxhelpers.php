@@ -717,10 +717,10 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 	$out .= '</div>';
 
 	if (preg_match('/^inf/',$answer) || $answer==='oo' || $answer===$infsoln) {
-		$answer = '"'.$infsoln.'"';
+		$answer = 'infsoln';
 	}
 	if (preg_match('/^no\s*solution/',$answer) || $answer==='DNE' || $answer===$nosoln) {
-		$answer = '"'.$nosoln.'"';
+		$answer = 'nosoln';
 	}
 
 	return array($out,$answer);

@@ -162,7 +162,6 @@ class MatrixAnswerBox implements AnswerBox
             if (empty($hidepreview)) {
                 if ($useeqnhelper) {
                     $params['helper'] = 1;
-                    $params['calcformat'] = 'decimal';
                 }
                 $params['preview'] = 1;
                 $preview .= '<button type=button class=btn id="pbtn' . $qn . '">';
@@ -170,6 +169,7 @@ class MatrixAnswerBox implements AnswerBox
                 $preview .= '</button> &nbsp;';
             }
             $preview .= "<span id=p$qn></span> ";
+            $params['calcformat'] = 'decimal';
         }
 
         if (in_array('nosoln', $ansformats) || in_array('nosolninf', $ansformats)) {

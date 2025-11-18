@@ -129,9 +129,9 @@ class FunctionExpressionScorePart implements ScorePart
             $givenansvals = array();
             if (in_array('inequality',$ansformats)) {
                 if (in_array('equation',$ansformats)) {
-                    preg_match('/(.*)(<=|>=|<|>|!=|=)(.*)/', $givenans, $matches);
+                    preg_match('/(.*?)(<=|>=|<|>|!=|=)(.*)/', $givenans, $matches);
                 } else {
-                    preg_match('/(.*)(<=|>=|<|>|!=)(.*)/', $givenans, $matches);
+                    preg_match('/(.*?)(<=|>=|<|>|!=)(.*)/', $givenans, $matches);
                 }
                 if (!empty($matches)) {
                     $toevalGivenans = $matches[3] . '-(' . $matches[1] . ')';
@@ -220,9 +220,9 @@ class FunctionExpressionScorePart implements ScorePart
 
                 if (in_array('inequality',$ansformats)) {
                     if (in_array('equation',$ansformats)) {
-                        preg_match('/(.*)(<=|>=|<|>|!=|=)(.*)/', $answer, $matches);
+                        preg_match('/(.*?)(<=|>=|<|>|!=|=)(.*)/', $answer, $matches);
                     } else {
-                        preg_match('/(.*)(<=|>=|<|>|!=)(.*)/', $answer, $matches);
+                        preg_match('/(.*?)(<=|>=|<|>|!=)(.*)/', $answer, $matches);
                     }
                     $answer = $matches[3] . '-(' . $matches[1] . ')';
                     $answerInequality = $matches[2];

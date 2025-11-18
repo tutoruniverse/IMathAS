@@ -131,7 +131,8 @@ class MatrixAnswerBox implements AnswerBox
             }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
             $shorttip = _('Enter a matrix of integer or decimal numbers');
-            $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like [(2,3,4),(3,4,5)]');
+            // Convert [(2,3,4),(3,4,5)] to latex
+            $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
             if ($reqdecimals !== '') {
                 $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
             }

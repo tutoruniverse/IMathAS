@@ -8057,6 +8057,9 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a reduced mixed number, proper or improper fraction, or integer');
 		}
+	} else if (in_array('sloppymixednumber',$ansformats)) {
+		$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions or integers'), $listtype):_('Enter a mixed number, fraction or integer');
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
 			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);

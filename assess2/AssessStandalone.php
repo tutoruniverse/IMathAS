@@ -39,6 +39,11 @@ class AssessStandalone {
   private $qdata = array();
   private $now = 0;
   private $question = null;
+  private $student_func;
+
+  public function get_student_func() {
+    return $this->student_func;
+  }
 
   /**
    * Construct object
@@ -303,6 +308,7 @@ class AssessStandalone {
         ->setQnpointval(1);
 
     $scoreResult = $scoreEngine->scoreQuestion($scoreQuestionParams);
+    $this->student_func = $scoreEngine->get_temp_func();
 
     $scores = $scoreResult['scores'];
     $rawparts = $scoreResult['rawScores'];

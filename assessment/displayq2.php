@@ -2677,6 +2677,7 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if (isset($options['answer'])) {if (is_array($options['answer'])) {$answer = $options['answer'][$qn];} else {$answer = $options['answer'];}}
 		if (isset($options['reqdecimals'])) {if (is_array($options['reqdecimals'])) {$reqdecimals = $options['reqdecimals'][$qn];} else {$reqdecimals = $options['reqdecimals'];}}
 		if (isset($options['answerformat'])) {if (is_array($options['answerformat'])) {$answerformat = $options['answerformat'][$qn];} else {$answerformat = $options['answerformat'];}} else {$answerformat = '';}
+		if (isset($options['variables'])) {if (is_array($options['variables'])) {$variables = $options['variables'][$qn];} else {$variables = $options['variables'];}}
 
 		if (!isset($sz)) { $sz = 20;}
 		if (isset($ansprompt)) {$out .= "<label for=\"qn$qn\">$ansprompt</label>";}
@@ -2688,9 +2689,21 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$top = _('Enter your answer by selecting the shade type, and by clicking and dragging the sliders on the normal curve');
 			$shorttip = _('Adjust the sliders');
 		} else {
-
-			$tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
-			$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+			if (in_array('inequality', $ansformats)) {
+                $tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+                $tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+                $tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
+                $shorttip = _('Enter an interval using inequalities');
+            } else {
+                $tip = _('Enter your answer using interval notation.  Example: [2,5)') . " <br/>";
+                if (in_array('list', $ansformats)) {
+                    $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "<br/>";
+                    $shorttip = _('Enter a list of intervals using interval notation');
+                } else {
+                    $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+                    $shorttip = _('Enter an interval using interval notation');
+                }
+            }
 			if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
 				$tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
 			} else {

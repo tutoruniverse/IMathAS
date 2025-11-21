@@ -580,8 +580,8 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a reduced mixed number, proper or improper fraction, or integer');
 		}
 	} else if (in_array('sloppymixednumber',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2)'), $eword);
-		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions or integers'), $listtype):_('Enter a mixed number, fraction or integer');
+		$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, integers or exact decimals'), $listtype):_('Enter a mixed number, fraction, integer or exact decimal');
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
 			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or decimal (like 0.5 or 1.25)'), $eword);

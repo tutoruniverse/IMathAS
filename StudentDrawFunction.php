@@ -1,6 +1,7 @@
 <?php
 require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
+require_once "new_return_class.php";
 
 function getPost($key, $default = "") {
     return $_POST[$key] ?? $default;
@@ -48,11 +49,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $result = $a2->scoreQuestion($qn, $parts_to_score);
-    // $student_func = $a2->get_student_func();
+    $student_func = $a2->get_student_func();
+    $fin_function = array();
+    
+    foreach ($student_func as $i => $value) {
+        $temp = new DrawResult($value[0], $value[1]);
+        $fin_function[] = $temp;
+    }
 
-    // Send response
     header('Content-Type: application/json');
-    echo json_encode($result);
+    echo json_encode($fin_function);
+
 } else {
     header('HTTP/1.0 405 Method Not Allowed');
     header('Content-Type: application/json');

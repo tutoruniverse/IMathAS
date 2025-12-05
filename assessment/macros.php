@@ -23,7 +23,7 @@ array_push($GLOBALS['allowedmacros'],"exp","nthlog",
  "randnames","randmalenames","randfemalenames","randcity","randcities","prettytime",
  "definefunc","evalfunc","evalnumstr","safepow","arrayfindindices","stringtoarray","strtoupper",
  "strtolower","ucfirst","makereducedfraction","makereducedmixednumber","stringappend",
- "stringprepend","textonimage","addplotborder","addlabelabs","makescinot","today",
+ "stringprepend","textonimage","text_on_image_in_percentage","addplotborder","addlabelabs","makescinot","today",
  "numtoroman","sprintf","arrayhasduplicates","addfractionaxislabels","decimaltofraction",
  "ifthen","multicalconarray","htmlentities","formhoverover","formpopup","connectthedots",
  "jointsort","stringpos","stringlen","stringclean","substr","substr_count","str_replace",
@@ -3057,6 +3057,75 @@ function textonimage() {
         $top = array_shift($args);
         $hidden = (strpos($text,'[AB')===false)?'aria-hidden=true':'';
 		$out .= "<div $hidden style=\"position:absolute;top:{$top}px;left:{$left}px;\">$text</div>";
+    }
+	$out .= '</div>';
+	return $out;
+}
+
+function text_on_image_in_percentage() {
+	$args = func_get_args();
+    $img = array_shift($args);
+
+    if (substr($img,0,4)=='http') {
+        $img = '<img src="'.Sanitize::encodeStringForDisplay($img).'" alt="" />';
+    }
+    
+    // Extract width and height from the image HTML string
+    $width = 0;
+    $height = 0;
+    if (preg_match('/width\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
+        $width = (int)$matches[1];
+    }
+    if (preg_match('/height\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
+        $height = (int)$matches[1];
+    }
+    
+    // If one dimension is missing, try to calculate it from the actual image
+    if (($width > 0 && $height == 0) || ($width == 0 && $height > 0)) {
+        // Extract image URL from src attribute
+        if (preg_match('/src\s*=\s*["\']([^"\']+)["\']/i', $img, $matches)) {
+            $imageUrl = $matches[1];
+            
+            // Get actual image dimensions
+            $imageSize = @getimagesize($imageUrl);
+            if ($imageSize !== false) {
+                $actualWidth = $imageSize[0];
+                $actualHeight = $imageSize[1];
+                
+                // Only calculate if dimensions are valid (not zero)
+                if ($actualWidth > 0 && $actualHeight > 0) {
+                    $aspectRatio = $actualWidth / $actualHeight;
+                    
+                    // Calculate missing dimension
+                    if ($width > 0 && $height == 0) {
+                        $height = round($width / $aspectRatio);
+                    } else if ($height > 0 && $width == 0) {
+                        $width = round($height * $aspectRatio);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Validate that both dimensions are available
+    if ($width == 0 || $height == 0) {
+        return '<div style="color: red; border: 1px solid red; padding: 10px; margin: 10px 0;">Error: Unable to determine image dimensions. Please specify both width and height attributes in the image tag, or ensure the image URL is accessible for dimension calculation.</div>';
+    }
+    
+	$out = '<div style="position: relative;max-width:'.$width.'px;max-height:'.$height.'px;" class="txtimgwrap">';
+	$out .= '<div class="txtimgwrap" data-container="image" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
+	
+    while (count($args)>2) {
+		$text = array_shift($args);
+		$left = array_shift($args);
+        $top = array_shift($args);
+        
+        // Calculate percentage positions
+        $leftPercent = ($width > 0) ? ($left / $width * 100) : 0;
+        $topPercent = ($height > 0) ? ($top / $height * 100) : 0;
+        
+        $hidden = (strpos($text,'[AB')===false)?'aria-hidden=true':'';
+		$out .= "<div $hidden data-container=\"text-description\" style=\"position:absolute;top:{$topPercent}%;left:{$leftPercent}%;\">$text</div>";
     }
 	$out .= '</div>';
 	return $out;

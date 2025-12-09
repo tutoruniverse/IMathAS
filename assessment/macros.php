@@ -3080,8 +3080,8 @@ function text_on_image_in_percentage() {
         $height = (int)$matches[1];
     }
     
-    // If one dimension is missing, try to calculate it from the actual image
-    if (($width > 0 && $height == 0) || ($width == 0 && $height > 0)) {
+    // If any dimension is missing, try to calculate it from the actual image
+    if ($width == 0 || $height == 0) {
         // Extract image URL from src attribute
         if (preg_match('/src\s*=\s*["\']([^"\']+)["\']/i', $img, $matches)) {
             $imageUrl = $matches[1];
@@ -3094,13 +3094,19 @@ function text_on_image_in_percentage() {
                 
                 // Only calculate if dimensions are valid (not zero)
                 if ($actualWidth > 0 && $actualHeight > 0) {
-                    $aspectRatio = $actualWidth / $actualHeight;
-                    
-                    // Calculate missing dimension
-                    if ($width > 0 && $height == 0) {
-                        $height = round($width / $aspectRatio);
-                    } else if ($height > 0 && $width == 0) {
-                        $width = round($height * $aspectRatio);
+                    // Both dimensions missing - use original dimensions
+                    if ($width == 0 && $height == 0) {
+                        $width = $actualWidth;
+                        $height = $actualHeight;
+                    } else {
+                        $aspectRatio = $actualWidth / $actualHeight;
+                        
+                        // Calculate missing dimension
+                        if ($width > 0 && $height == 0) {
+                            $height = round($width / $aspectRatio);
+                        } else if ($height > 0 && $width == 0) {
+                            $width = round($height * $aspectRatio);
+                        }
                     }
                 }
             }
@@ -3112,7 +3118,7 @@ function text_on_image_in_percentage() {
         return '<div style="color: red; border: 1px solid red; padding: 10px; margin: 10px 0;">Error: Unable to determine image dimensions. Please specify both width and height attributes in the image tag, or ensure the image URL is accessible for dimension calculation.</div>';
     }
     
-	$out = '<div style="position: relative;max-width:'.$width.'px;max-height:'.$height.'px;" class="txtimgwrap">';
+	$out = '<div style="position: relative;width: fit-content" class="txtimgwrap">';
 	$out .= '<div class="txtimgwrap" data-container="image" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
 	
     while (count($args)>2) {

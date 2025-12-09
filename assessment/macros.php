@@ -3118,7 +3118,7 @@ function text_on_image_in_percentage() {
         return '<div style="color: red; border: 1px solid red; padding: 10px; margin: 10px 0;">Error: Unable to determine image dimensions. Please specify both width and height attributes in the image tag, or ensure the image URL is accessible for dimension calculation.</div>';
     }
     
-	$out = '<div style="position: relative;width: fit-content" class="txtimgwrap">';
+	$out = '<div style="position: relative;width: fit-content" class="txtimgwrap element-to-render-as-image">';
 	$out .= '<div class="txtimgwrap" data-container="image" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
 	
     while (count($args)>2) {

@@ -23,7 +23,7 @@ array_push($GLOBALS['allowedmacros'],"exp","nthlog",
  "randnames","randmalenames","randfemalenames","randcity","randcities","prettytime",
  "definefunc","evalfunc","evalnumstr","safepow","arrayfindindices","stringtoarray","strtoupper",
  "strtolower","ucfirst","makereducedfraction","makereducedmixednumber","stringappend",
- "stringprepend","textonimage","text_on_image_in_percentage","addplotborder","addlabelabs","makescinot","today",
+ "stringprepend","textonimage_deprecated","textonimage","addplotborder","addlabelabs","makescinot","today",
  "numtoroman","sprintf","arrayhasduplicates","addfractionaxislabels","decimaltofraction",
  "ifthen","multicalconarray","htmlentities","formhoverover","formpopup","connectthedots",
  "jointsort","stringpos","stringlen","stringclean","substr","substr_count","str_replace",
@@ -3040,7 +3040,9 @@ function evalfunc($farr) {
 	}
 }
 
-function textonimage() {
+// This function is deprecated and will be removed in a future version. 
+// Use textonimage() instead, which is more flexible and responsive.
+function textonimage_deprecated() {
 	$args = func_get_args();
     $img = array_shift($args);
 
@@ -3062,7 +3064,7 @@ function textonimage() {
 	return $out;
 }
 
-function text_on_image_in_percentage() {
+function textonimage() {
 	$args = func_get_args();
     $img = array_shift($args);
 

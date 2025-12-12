@@ -3157,7 +3157,8 @@ function textonimage() {
 	// Add the calculated dimensions
 	$img = str_replace('<img', '<img width="'.intval($width).'" height="'.intval($height).'"', $img);
     
-	$out = '<div style="position: relative;width: fit-content" class="txtimgwrap element-to-render-as-image">';
+	// Set explicit width/height on container to ensure percentage-based text positioning works correctly
+	$out = '<div style="position: relative; width: '.intval($width).'px; height: '.intval($height).'px;" class="txtimgwrap element-to-render-as-image">';
 	$out .= '<div class="txtimgwrap" data-container="image" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
 	
     while (count($args)>2) {

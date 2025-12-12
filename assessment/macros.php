@@ -3081,7 +3081,7 @@ function textonimage() {
 	$imageUrl = null;
 
 	// Check if user provided a direct http link to image
-	if (strpos($img, 'http') === 0) {
+	if (substr($img,0,4)=='http') {
 		$imageUrl = $img;
 		$img = '<img src="'.Sanitize::encodeStringForDisplay($img).'" alt="" />';
 	}

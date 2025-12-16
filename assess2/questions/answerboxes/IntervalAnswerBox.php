@@ -127,7 +127,12 @@ class IntervalAnswerBox implements AnswerBox
         ];
         $params['tip'] = $shorttip;
         $params['longtip'] = $tip;
-        $params['calcformat'] = $answerformat . ($answerformat == '' ? '' : ',') . 'decimal';
+
+        // Determine the default value based on the presence of 'nodecimal'
+        $defaultCalcFormat = (strpos($answerformat, 'nodecimal') !== false) ? 'integer' : 'decimal';
+        
+        $params['calcformat'] = $answerformat . ($answerformat === '' ? '' : ',') . $defaultCalcFormat;
+
         if ($useeqnhelper) {
             $params['helper'] = 1;
         }

@@ -3088,7 +3088,7 @@ function textonimage() {
 		}
 	}
 	
-	$out = '<div style="position: relative;" class="txtimgwrap element-to-render-as-image">';
+	$out = '<div style="position: relative; width: fit-content;" class="txtimgwrap element-to-render-as-image">';
 	$out .= '<div class="txtimgwrap" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
 	
 	while (count($args)>2) {

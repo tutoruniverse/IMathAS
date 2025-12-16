@@ -3064,115 +3064,47 @@ function textonimage_deprecated() {
 	return $out;
 }
 
-// Macro: textonimage
-// When user provides: 
-// - http (direct link to image): should get width and height from the image 
-// - when user provide the img tag: 
-//   - if width and height are provided, use them 
-//   - if only one dimension is provided, calculate the other dimension using the aspect ratio
-//   - if no dimensions are provided, use the original dimensions of the image 
-
+// Text on image macro 
+// When $img not URL and provide both width and height, use percent position 
+// Otherwise, use pixel position
 function textonimage() {
 	$args = func_get_args();
 	$img = array_shift($args);
-	// Extract width and height from the image HTML string
+	$use_percent = true; //default to true
 	$width = 0;
 	$height = 0;
-	$imageUrl = null;
 
-	// Check if user provided a direct http link to image
 	if (substr($img,0,4)=='http') {
-		$imageUrl = $img;
+		$use_percent = false;
 		$img = '<img src="'.Sanitize::encodeStringForDisplay($img).'" alt="" />';
 	}
 
-	// Extract width and height from the image HTML string if present
-	// Check HTML attributes first
-	if (preg_match('/width\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
-		$width = (int)$matches[1];
-	}
-	if (preg_match('/height\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
-		$height = (int)$matches[1];
-	}
-	
-	// Also check CSS styles (e.g., style="width: 100px; height: 200px;")
-	if ($width == 0 && preg_match('/style\s*=\s*["\'][^"\']*width\s*:\s*(\d+)px/i', $img, $matches)) {
-		$width = (int)$matches[1];
-	}
-	if ($height == 0 && preg_match('/style\s*=\s*["\'][^"\']*height\s*:\s*(\d+)px/i', $img, $matches)) {
-		$height = (int)$matches[1];
-	}
-	
-	// Only get image dimensions if they are missing (don't recalculate if already set via changeimagesize, etc.)
-	if ($width == 0 || $height == 0) {
-		// Extract image URL from src attribute if not already set
-		if ($imageUrl === null) {
-			if (preg_match('/src\s*=\s*["\']([^"\']+)["\']/i', $img, $matches)) {
-				$imageUrl = $matches[1];
-			}
+	if ($use_percent) {
+		if (preg_match('/width\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
+			$width = (int)$matches[1];
 		}
-		
-		if ($imageUrl !== null) {
-			// Get actual image dimensions
-			$encodedImageUrl = Sanitize::encodeStringForDisplay($imageUrl);
-			$imageSize = @getimagesize($encodedImageUrl);
-			if ($imageSize !== false) {
-				$actualWidth = $imageSize[0];
-				$actualHeight = $imageSize[1];
-				
-				// Only calculate if dimensions are valid (not zero)
-				if ($actualWidth > 0 && $actualHeight > 0) {
-					if ($width == 0 && $height == 0) {
-						// No dimensions provided - use original dimensions
-						$width = $actualWidth;
-						$height = $actualHeight;
-					} else {
-						// One dimension provided - calculate the other using aspect ratio
-						$aspectRatio = $actualWidth / $actualHeight;
-						
-						if ($width > 0 && $height == 0) {
-							$height = round($width / $aspectRatio);
-						} else if ($height > 0 && $width == 0) {
-							$width = round($height * $aspectRatio);
-						}
-					}
-				}
-			}
+		if (preg_match('/height\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
+			$height = (int)$matches[1];
 		}
 	}
-	// Validate that both dimensions are available
-	if ($width == 0 || $height == 0) {
-		return '<div style="color: red; border: 1px solid red; padding: 10px; margin: 10px 0;">Error: Unable to determine image dimensions. Please specify both width and height attributes in the image tag, or ensure the image URL is accessible for dimension calculation.</div>';
-	}
 	
-	// Ensure the img tag has width and height attributes set to the calculated values
-	// Remove existing width/height attributes (similar to changeimagesize)
-	$img = preg_replace('/\s+(width|height)\s*=\s*["\']?\d+["\']?/i', '', $img);
-	// Remove width/height from style attribute
-	$img = preg_replace('/(width|height)\s*:\s*\d+px\s*;?\s*/i', '', $img);
-	// Clean up empty style attributes
-	$img = preg_replace('/style\s*=\s*["\']\s*["\']/', '', $img);
-	// Clean up any double spaces that might result
-	$img = preg_replace('/\s+/', ' ', $img);
-	// Add the calculated dimensions
-	$img = str_replace('<img', '<img width="'.intval($width).'" height="'.intval($height).'"', $img);
-    
-	// Set explicit width/height on container to ensure percentage-based text positioning works correctly
-	$out = '<div data-container="txtimg-wrapper" style="position: relative; width: '.intval($width).'px; height: '.intval($height).'px;" class="txtimgwrap element-to-render-as-image">';
-	$out .= '<div class="txtimgwrap" data-container="image" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
+	$out = '<div style="position: relative;" class="txtimgwrap element-to-render-as-image">';
+	$out .= '<div class="txtimgwrap" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
 	
-    while (count($args)>2) {
+	while (count($args)>2) {
 		$text = array_shift($args);
 		$left = array_shift($args);
-        $top = array_shift($args);
-        
-        // Calculate percentage positions
-        $leftPercent = ($width > 0) ? ($left / $width * 100) : 0;
-        $topPercent = ($height > 0) ? ($top / $height * 100) : 0;
-        
-        $hidden = (strpos($text,'[AB')===false)?'aria-hidden=true':'';
-		$out .= "<div $hidden data-container=\"text-description\" style=\"position:absolute;top:{$topPercent}%;left:{$leftPercent}%;\">$text</div>";
-    }
+		$top = array_shift($args);
+		$hidden = (strpos($text,'[AB')===false)?'aria-hidden=true':'';
+		$text = Sanitize::encodeStringForDisplay($text);
+		if($use_percent && $width > 0 && $height > 0) {
+			$topPercent = ($top / $height * 100);
+			$leftPercent = ($left / $width * 100);
+			$out .= "<div $hidden style=\"position:absolute;top:{$topPercent}%;left:{$leftPercent}%;\">$text</div>";
+		} else {
+			$out .= "<div $hidden style=\"position:absolute;top:{$top}px;left:{$left}px;\">$text</div>";
+		}
+	}
 	$out .= '</div>';
 	return $out;
 }

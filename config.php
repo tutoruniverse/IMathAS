@@ -2,10 +2,20 @@
 //IMathAS Math Config File.  Adjust settings here!
 
 //database access settings
-$dbserver = "host.docker.internal";
+$dbserver = "db.gotit-imathas.orb.local";
 $dbname = "imathasdb";
-$dbusername = "root";
-$dbpassword = "123456";
+$dbusername = "imasuser";
+$dbpassword = "my_password";
+
+
+
+$CFG['assess2-use-vue-dev'] = true;
+
+$CFG['assess2-use-vue-dev-address'] = 'http://localhost:8080';
+
+$CFG['use_csrfp'] = false;
+
+
 
 //error reporting level.  Set to 0 for production servers.
 error_reporting(E_ALL & ~E_NOTICE);
@@ -33,7 +43,7 @@ $imasroot = "";
 
 //base site url - use when generating full URLs to site pages.
 $httpmode = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on')
-    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
+	|| (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
 	? 'https://' : 'http://';
 $GLOBALS['basesiteurl'] = $httpmode . Sanitize::domainNameWithPort($_SERVER['HTTP_HOST']) . $imasroot;
 
@@ -73,17 +83,16 @@ $CFG['GEN']['newpasswords'] = 'only';
 //To change loginpage based on domain/url/etc, define $loginpage here
 
 //no need to change anything from here on
-  /* Connecting, selecting database */
-	try {
-	 $DBH = new PDO("mysql:host=$dbserver;dbname=$dbname", $dbusername, $dbpassword);
-	 $DBH->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING );
-	 $GLOBALS["DBH"] = $DBH;
-	} catch(PDOException $e) {
-	 die("<p>Could not connect to database: <b>" . $e->getMessage() . "</b></p></div></body></html>");
-	}
-	$DBH->query("set session sql_mode=''");
-	  unset($dbserver);
-	  unset($dbusername);
-	  unset($dbpassword);
+/* Connecting, selecting database */
+try {
+	$DBH = new PDO("mysql:host=$dbserver;dbname=$dbname", $dbusername, $dbpassword);
+	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
+	$GLOBALS["DBH"] = $DBH;
+} catch (PDOException $e) {
+	die("<p>Could not connect to database: <b>" . $e->getMessage() . "</b></p></div></body></html>");
+}
+$DBH->query("set session sql_mode=''");
 
-?>
+unset($dbserver);
+unset($dbusername);
+unset($dbpassword);

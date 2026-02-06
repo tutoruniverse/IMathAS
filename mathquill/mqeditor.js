@@ -162,15 +162,21 @@ var MQeditor = (function($) {
           span.addClass("disabled");
         } else {
           mqfield = MQ.MathField(span[0], thisMQconfig).config(MQconfig);
+          console.log({thisMQconfig:thisMQconfig, MQconfig:MQconfig})
           attachEditor(span);
           // if original input has input changed programmatically and change
           // event triggered, update mathquill.
           $(el).on('change.mqed', function(e, fromblur) {
+
+              console.log('val', e.value)
             if (!fromblur) {
               var val = el.value;
+              
               if (config.hasOwnProperty('toMQ')) {
                 val = config.toMQ(val, el.id);
+
               }
+              console.log('val', val)
               mqfield.latex(val);
             }
           });
@@ -380,6 +386,8 @@ var MQeditor = (function($) {
    */
   function onMQedit(mf) {
   	var el = mf.el();
+    console.log(el.id, MQconfig)
+    
     positionEditor(el);
     if (config.hasOwnProperty('onResize')) {
         config.onResize(el, config.curlayoutstyle);
@@ -388,8 +396,11 @@ var MQeditor = (function($) {
       var latex = mf.latex();
       if (config.hasOwnProperty('fromMQ')) {
         //convert to input format
+        console.log('pre latex', latex)
         latex = config.fromMQ(latex, el.id);
+
       }
+        console.log('post latex', latex)
   		//document.getElementById(el.id.substring(8)).value = latex;
       $("#"+el.id.substring(8)).val(latex).trigger('input');
       // handle nosolninf, since not traditional input

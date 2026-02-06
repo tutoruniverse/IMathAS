@@ -8,7 +8,7 @@
 
 // handle other instructor previewing course - treat like teacher
 if (isset($instrPreviewId)) {
-  $teacherid=$instrPreviewId;
+  $teacherid = $instrPreviewId;
 }
 
 $isteacher = isset($teacherid);
@@ -37,18 +37,20 @@ if (!$isRealStudent) {
  * @param  array $required  array of required parameter strings
  * @return void
  */
-function check_for_required($method, $required) {
+function check_for_required($method, $required)
+{
   foreach ($required as $r) {
     if (($method == 'POST' && (!isset($_POST[$r]) || $_POST[$r] === '')) ||
       ($method == 'GET' && (!isset($_GET[$r]) || $_GET[$r] === ''))
     ) {
-      echo '{"error": "missing_param", "error_details": "Missing parameter '.sanitize::encodeStringForJavascript($r).'"}';
+      echo '{"error": "missing_param", "error_details": "Missing parameter ' . sanitize::encodeStringForJavascript($r) . '"}';
       exit;
     }
   }
 }
 
-function prepDateDisp(&$out) {
+function prepDateDisp(&$out)
+{
   $tochg = ['startdate', 'enddate', 'original_enddate', 'timelimit_expires', 'timelimit_grace', 'latepass_extendto'];
   foreach ($tochg as $key) {
     if (isset($out[$key])) {
@@ -67,19 +69,33 @@ if (!empty($_POST['practice']) && $_POST['practice'] === 'false') {
   $_POST['practice'] = false;
 }
 
-if ($_SERVER['HTTP_HOST'] == 'localhost') {
+function debug_to_console($data)
+{
+  $output = $data;
+  if (is_array($output))
+    $output = implode(',', $output);
+
+  echo "<script>console.log('Debug Objects: " . $output . "' );</script>";
+}
+
+
+if ((strpos($_SERVER['HTTP_HOST'], 'localhost') !== false)) {
   //to help with development, while vue runs on 8080
   if (!empty($CFG['assess2-use-vue-dev'])) {
-    header('Access-Control-Allow-Origin: '. $CFG['assess2-use-vue-dev-address']);
+
+    header('Access-Control-Allow-Origin: ' . $CFG['assess2-use-vue-dev-address']);
   }
   header("Access-Control-Allow-Credentials: true");
   header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
   header("Access-Control-Allow-Headers: Origin");
 }
 
+
+$current_headers = headers_list();
+error_log("Server: " . $_SERVER['HTTP_HOST'] . "| Sent Headers: " . implode(", ", $current_headers));
 $useeditor = 1;
 
-if (isset($CFG['GEN']['keeplastactionlog']) && isset($_SESSION['loginlog'.$_GET['cid']])) {
+if (isset($CFG['GEN']['keeplastactionlog']) && isset($_SESSION['loginlog' . $_GET['cid']])) {
   $stm = $DBH->prepare("UPDATE imas_login_log SET lastaction=:lastaction WHERE id=:id");
-  $stm->execute(array(':lastaction'=>time(), ':id'=>$_SESSION['loginlog' . $_GET['cid']]));
+  $stm->execute(array(':lastaction' => time(), ':id' => $_SESSION['loginlog' . $_GET['cid']]));
 }

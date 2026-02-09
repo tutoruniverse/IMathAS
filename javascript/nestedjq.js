@@ -3,11 +3,14 @@
 // Author: CrazyDave
 // Website: http://www.clanccc.co.uk/moo/nested.html
 var noblockcookie = false;
+var caneditallnames = caneditallnames || false;
+var hidelinksonchange = hidelinksonchange || true;
 var Nested = function(listid, newoptions) {
 	var options;
 	var list;
 	var haschanged;
 	var ghost;
+	var moved;
 
 	initialize(listid, newoptions);
 
@@ -17,6 +20,7 @@ var Nested = function(listid, newoptions) {
 			ghost: false,
 			childStep: 20, // attempts to become a child if the mouse is moved this number of pixels right
 			handleClass: 'icon',
+			expandBtnClass: 'treehandle',
 			onStart: function() {},
 			onComplete: function() {},
 			onFirstChange: function() {},
@@ -37,12 +41,29 @@ var Nested = function(listid, newoptions) {
 			options.expandKey = 'shift';
 		}
 		list = $('#'+listid);
+		list.attr("role", "tree");
+		
 		options.parentTag = list[0].nodeName;
 		haschanged = false;
-		list.on('mousedown.start', start);
+		moved = false;
+		list.on('mousedown.start touchstart.start', start);
+		list.on('keydown', handleKey);
 		if (options.collapse) {
-			list.on('click.collapse', collapse);
+			list.on('click.collapse touchend.collapse', collapse);
 		}
+		list.on('focusout', function() {
+			// Delay to allow focus to settle
+			requestAnimationFrame(() => {
+				if (!this.contains(document.activeElement) && !list.hasClass("dragactive")) {
+					this.removeAttribute('aria-activedescendant');
+					$(this).find("li.drag").removeClass("drag");
+					list.removeClass('dragactive');
+				}
+			});
+		});
+
+		addsortmarkup(listid);
+		list.children("li").first().attr("tabindex","0");
 		if (options.initialize) options.initialize.call(this);
 	};
 
@@ -52,7 +73,9 @@ var Nested = function(listid, newoptions) {
 			while (el[0].nodeName != options.childTag && !el.hasClass(options.handleClass) && el[0] != list[0]) {
 				el = el.parent();
 			}
-			if (!el.hasClass(options.handleClass)) return true;
+			if (!el.hasClass(options.handleClass)) {
+				return true;
+			}
 		}
 		while (el[0].nodeName != options.childTag && el[0] != list[0]) {
 			el = el.parent();
@@ -72,14 +95,16 @@ var Nested = function(listid, newoptions) {
 			}).appendTo(document.body);
 		}
 		el.depth = getDepth(el);
-		el.moved = false;
-		list.off('mousedown.start');
-		list.on('mousedown.end', {el:el}, end);
-		list.on('mousemove.movement', {el:el}, movement);
+		moved = false;
+		list.off('mousedown.start touchstart.start');
+		list.on('mousedown.end touchstart.end', {el:el}, end);
+		list.on('mousemove.movement touchmove.movement', {el:el}, movement);
 		$(document).on('mouseup.end', {el:el}, end);
+		list.on('touchend.end', {el:el}, end);
 		if (window.ie) { // IE fix to stop selection of text when dragging
 			$(document.body).on('drag.stop', stop).on('selectstart.stop', stop);
 		}
+		list.addClass('dragactive');
 		options.onStart(el);
 		event.stopPropagation();
 		event.preventDefault();
@@ -87,49 +112,186 @@ var Nested = function(listid, newoptions) {
 
 	function collapse(event) {
 		var el = $(event.target);
-		if (options.handleClass) {
-			while (el[0].nodeName != options.childTag && !el.hasClass(options.handleClass) && el[0] != list[0]) {
+		if (options.expandBtnClass) {
+			while (el.length>0 && el[0].nodeName != options.childTag && !el.hasClass(options.expandBtnClass) && el[0] != list[0]) {
 				el = el.parent();
 			}
-			if (!el.hasClass(options.handleClass)) return true;
+			if (!el.hasClass(options.expandBtnClass)) return true;
 		}
+
 		while (el[0].nodeName != options.childTag && el[0] != list[0]) {
 			el = el.parent();
 		}
+		
 		if (el[0] == list[0]) return;
 
-		if (!el.moved) {
-			var sub = el.find(options.parentTag);
-			if (sub) {
-				if (noblockcookie) {
-					if (sub.length == 0 || sub.css('display') == 'none') {
-						sub.css('display', 'block');
-						el.removeClass(options.collapseClass);
-					} else {
-						sub.css('display', 'none');
-						el.addClass(options.collapseClass);
-					}
-				} else {
-					oblist = oblist.split(',');
-					var obn = el.attr("obn");
-					var loc = arraysearch(obn,oblist);
-					if (sub.length == 0 || sub.css('display') == 'none') {
-						sub.css('display', 'block');
-						el.removeClass(options.collapseClass);
-						if (loc==-1) {oblist.push(obn);}
-					} else {
-						sub.css('display', 'none');
-						el.addClass(options.collapseClass);
-						if (loc>-1) {oblist.splice(loc,1);}
-					}
-					oblist = oblist.join(',');
-					document.cookie = 'openblocks-' +cid+'='+ oblist;
-				}
-			}
-		}
+		toggleCollapse(el);
+
 		event.stopPropagation();
 		event.preventDefault();
 	};
+
+	function toggleCollapse(el) {
+		var sub = el.children(options.parentTag);
+		if (sub) {
+			if (noblockcookie) {
+				if (sub.length == 0 || sub.css('display') == 'none') {
+					sub.css('display', 'block');
+					el.removeClass(options.collapseClass);
+					el.attr("aria-expanded", true);
+					el.children("div").children("."+options.expandBtnClass).text("-")
+				} else {
+					sub.css('display', 'none');
+					el.addClass(options.collapseClass);
+					el.attr("aria-expanded", false);
+					el.children("div").children("."+options.expandBtnClass).text("+");
+				}
+			} else {
+				oblist = oblist.split(',');
+				var obn = el.attr("obn");
+				var loc = arraysearch(obn,oblist);
+				if (sub.length == 0 || sub.css('display') == 'none') {
+					sub.css('display', 'block');
+					el.removeClass(options.collapseClass);
+					el.attr("aria-expanded", true);
+					el.children("div").children("."+options.expandBtnClass).text("-");
+					if (loc==-1) {oblist.push(obn);}
+				} else {
+					sub.css('display', 'none');
+					el.addClass(options.collapseClass);
+					el.attr("aria-expanded", false);
+					el.children("div").children("."+options.expandBtnClass).text("+");
+					if (loc>-1) {oblist.splice(loc,1);}
+				}
+				oblist = oblist.join(',');
+				setCookie('openblocks-' +cid, oblist);
+			}
+		}
+	}
+
+	function handleKey(event) {
+		var el = $(event.target);
+		
+		if (el[0].nodeName != options.childTag || el.children("div").children('.'+options.handleClass).length == 0) return;
+
+		/*
+		if (!el.hasClass(options.handleClass)) return;
+
+		while (el[0].nodeName != options.childTag && el[0] != list[0]) {
+			el = el.parent();
+		}
+		if (el[0].nodeName != options.childTag) return true;
+		el = $(el);
+		*/
+		let indrag = el.hasClass('drag');
+
+		if (indrag && options.lock == 'class' && el.hasClass(options.lockClass)) return;
+
+		let madechg = false;
+		if (event.key == 'ArrowDown') {
+			if (el.next('li').length) {
+				if (indrag) {
+					el.insertAfter(el.next('li'));
+					$("#statusmsg").text(_('Item moved to position ') + (el.index()+1));
+					madechg = true;
+				} else {
+					el.attr("tabindex","-1");
+					el.next('li').attr("tabindex","0").focus();
+				}
+			} else if (indrag && el.closest('ul').parent().closest('ul').hasClass('nochildren')) {
+				// special case to provide a way to jump when can't move to parent
+				if (el.closest('ul').closest('li').next('li').find('ul').length) {
+					el.prependTo(el.closest('ul').closest('li').next('li').find('ul').first());
+					madechg = true;
+				}
+			}
+			event.preventDefault();
+		} else if (event.key == 'ArrowUp') {
+			if (el.prev('li').length) {
+				if (indrag) {
+					el.insertBefore(el.prev('li'));
+					$("#statusmsg").text(_('Item moved to position ') + (el.index()+1));
+					madechg = true;
+				} else {
+					el.attr("tabindex","-1");
+					el.prev('li').attr("tabindex","0").focus();
+				}
+			} else if (indrag && el.closest('ul').parent().closest('ul').hasClass('nochildren')) {
+				// special case to provide a way to jump when can't move to parent
+				if (el.closest('ul').closest('li').prev('li').find('ul').length) {
+					el.appendTo(el.closest('ul').closest('li').prev('li').find('ul').first());
+					madechg = true;
+				}
+			}
+			event.preventDefault();
+		} else if (event.key == 'ArrowLeft') {
+			if (indrag) {
+				if (el.closest('ul').closest('li').length && 
+					!el.closest('ul').parent().closest('ul').hasClass('nochildren')
+				) {
+					el.insertAfter(el.closest('ul').closest('li'));
+					$("#statusmsg").text(_('Item moved to parent list position ') + (el.index()+1));
+					madechg = true;	
+				}
+			} else {
+				if (el.children('ul').length && !el.hasClass('nCollapse')) {
+					// left arrow on header of expanded branch; collapse it
+					toggleCollapse(el);
+				} else {
+					el.attr("tabindex","-1");
+					el.closest('ul').closest('li').attr("tabindex","0").focus();
+				}
+			}
+			event.preventDefault();
+		} else if (event.key == 'ArrowRight') {
+			if (indrag) {
+				if (el.prev('li').length && el.prev('li').children('ul').length) {
+					if (el.prev('li').hasClass('nCollapse')) {
+						toggleCollapse(el.prev('li'));
+						//el.prev('li').removeClass('nCollapse').children('ul').show();
+					}
+					$("#statusmsg").text(_('Item moved into child list position') + (el.index()+1));
+					el.appendTo(el.prev('li').children('ul'));
+					madechg = true;
+				} 
+			} else {
+					if (el.hasClass('nCollapse')) {
+						// right arrow on collapsed item; expand it
+						toggleCollapse(el)
+					} else if (el.children('ul').length) {
+						// right arrow on expanded item with children; move into
+						el.attr("tabindex","-1");
+						el.children('ul').children('li').first().attr("tabindex","0").focus();
+					}
+			}
+		} else if (event.key == ' ') {
+			if (!(options.lock == 'class' && el.hasClass(options.lockClass))) {
+				el.toggleClass('drag');
+				list.toggleClass('dragactive');
+				var newstate = (el.attr("aria-selected") !== 'true');
+				el.attr("aria-selected", newstate);
+				if (newstate == true) {
+					$("#statusmsg").text(_('Item Selected') + ' ' + $(el).find(".namewrap,.namewrapnoedit").text());
+				} else {
+					$("#statusmsg").text(_('Item Dropped'));
+				}
+				event.preventDefault();
+			}
+		} else if (event.key == 'Tab') {
+			if (el.hasClass("drag")) {
+				el.removeClass("drag");
+				list.removeClass('dragactive');
+			}
+		}
+
+		if (madechg && !haschanged) {
+			haschanged = true;
+			options.onFirstChange(el);
+		}
+		if (indrag) {
+			$(event.target).focus();
+		}
+	}
 
 	function stop(event) {
 		event.stopPropagation();
@@ -151,7 +313,13 @@ var Nested = function(listid, newoptions) {
 		var dest, move, prev, prevParent;
 		var abort = false;
 		var el = event.data.el;
-		if (options.ghost && el.moved) { // Position the ghost
+		if (event.originalEvent.touches) {
+			var touch = event.originalEvent.changedTouches[0] || event.originalEvent.touches[0];
+			event.pageX = touch.pageX;
+			event.pageY = touch.pageY;
+			event.target = document.elementFromPoint(touch.clientX, touch.clientY);
+		}
+		if (options.ghost && moved) { // Position the ghost
 			ghost.css({
 				'position': 'absolute',
 				'visibility': 'visible',
@@ -165,7 +333,7 @@ var Nested = function(listid, newoptions) {
 		}
 		if (over == list[0]) return;
 		if (event[options.expandKey] && over != el && over.hasClass(options.collapseClass)) {
-			check = $(over).find(options.parentTag);
+			check = $(over).children(options.parentTag);
 			over.removeClass(options.collapseClass);
 			check.css('display', 'block');
 		}
@@ -208,16 +376,15 @@ var Nested = function(listid, newoptions) {
 		if (prev.length > 0) {
 			move = 'after';
 			dest = prev;
-			check = $(dest).find(options.parentTag).filter(':visible');
-			while (check.length>0 && event.pageX > check.offset().left && check.height() > 0) {
-				dest = check.find(options.childTag).last();
-				check = dest.find(options.parentTag);
+			check = $(dest).children(options.parentTag).filter(':visible');
+			while (check.length>0 && event.pageX > check.offset().left && check.height() > 0 && check.children(options.childTag).length > 0) {
+				dest = check.children(options.childTag).last();
+				check = dest.children(options.parentTag);
 			}
-			if (check.length==0 && dest[0]!=el[0] && event.pageX > dest.offset().left+options.childStep && dest[0].tagName == 'LI' && dest[0].className=="blockli") {
+			if (check.children(options.childTag).length==0 && dest[0]!=el[0] && event.pageX > dest.offset().left+options.childStep && dest[0].tagName == 'LI' && !dest.hasClass(options.collapseClass) && dest[0].className.match(/blockli/)) {
 				//document.getElementById("submitnotice").innerHTML = dest.parentNode.tagName + ',' + dest.parentNode.parentNode.tagName;
 				move = 'inside';
-			}
-
+			} 
 		}
 		last = dest.parent().children().last();
 
@@ -234,17 +401,23 @@ var Nested = function(listid, newoptions) {
 			abort += (options.lock == 'depth' && el.depth != getDepth(dest, (move == 'inside')));
 			abort += (options.lock == 'parent' && (move == 'inside' || dest.parent() != el.parent()));
 			//abort += (move=='inside' && dest.parentNode.className != "blockli");
-			abort += (dest.parent().hasClass('nochildren'));
+			abort += (!$.contains(list[0],dest[0]));
+			abort += (move != 'inside' && dest.parent().hasClass('nochildren'));
 			abort += (dest.height() == 0);
-			sub = $(over).find(options.parentTag);
+			sub = $(over).children(options.parentTag);
 			sub = (sub.length>0) ? sub.offset().top : 0;
 			sub = (sub > 0) ? sub-$(over).offset().top : over.offsetHeight;
 			abort += (event.pageY < (sub-el.height())+$(over).offset().top);
+			
 			if (!abort) {
 				if (move == 'inside') {
-					var newsub = $(document.createElement(options.parentTag)).addClass('qview');
-					dest.append(newsub);
-					dest = newsub;
+					if ($(dest).children(options.parentTag).length > 0) {
+						dest = $(dest).children(options.parentTag);
+					} else {
+					    var newsub = $(document.createElement(options.parentTag)).addClass('qview');
+					    dest.append(newsub);
+					    dest = newsub;
+					}
 				}
 				if (move =='inside') {
 					$(dest).append(el);
@@ -254,8 +427,8 @@ var Nested = function(listid, newoptions) {
 					$(el).insertBefore(dest);
 				}
 
-				el.moved = true;
-				if (prevParent.children().length==0) prevParent.remove();
+				moved = true;
+				//if (prevParent.children().length==0) prevParent.remove();
 				if (!haschanged) {
 					haschanged = true;
 					options.onFirstChange(el);
@@ -267,8 +440,8 @@ var Nested = function(listid, newoptions) {
 	};
 
 	function detach() {
-		list.off('mousedown.start');
-		if (options.collapse) list.off('click.collapse');
+		list.off('mousedown.start touchstart.start');
+		if (options.collapse) list.off('click.collapse touchend.collapse');
 	};
 
 	function serialize(listEl) {
@@ -288,12 +461,17 @@ var Nested = function(listid, newoptions) {
 	function end(event) {
 		var el = event.data.el;
 		if (options.ghost) ghost.remove();
-		list.off('mousemove.movement');
+		list.off('mousemove.movement touchmove.movement');
 		$(document).off('mouseup.end');
-		list.off('mousedown.end');
-		list.on('mousedown.start', start);
+		list.off('mousedown.end touchstart.end touchend.end');
+		list.on('mousedown.start touchstart.start', start);
 		options.onComplete(el);
+		list.removeClass('dragactive');
 		if (window.ie) $(document.body).off('drag.stop').off('selectstart.stop');
+		if (!moved) {
+			$(el).attr("tabindex","0").focus();
+		}
+		
 	};
 
 	return {
@@ -336,7 +514,7 @@ function toSimpleJSON(a) {
 	return out;
 }
 
-function submitChanges(format) {
+function submitChanges(format,which) {
 	if (format === 'json') {
 		var params = {
 			checkhash: itemorderhash,
@@ -345,7 +523,9 @@ function submitChanges(format) {
 		var url = AHAHsaveurl;
 		var els = document.getElementsByTagName("input");
 	  for (var i=0; i<els.length; i++) {
-		  if (els[i].type=="hidden" && els[i].value!="") {
+		  if ((els[i].type=="hidden" || els[i].className=="editname") && els[i].value!="" &&
+			(which === 'all' || els[i].hasAttribute('data-initial'))
+		  ) {
 		  	 params[els[i].id.substring(5)] = els[i].value;
 		  } else if (els[i].type=="text" && els[i].className=="outcome") {
 				params[els[i].id] = els[i].value;
@@ -356,7 +536,7 @@ function submitChanges(format) {
 	  var url = AHAHsaveurl;
 	  var els = document.getElementsByTagName("input");
 	  for (var i=0; i<els.length; i++) {
-		  if (els[i].type=="hidden" && els[i].value!="") {
+		  if ((els[i].type=="hidden" || els[i].className=="editname") && els[i].value!="") {
 		  	  params += '&'+els[i].id.substring(5) + '=' + encodeURIComponent(els[i].value);
 		  } else if (els[i].type=="text" && els[i].className=="outcome") {
 			  params += '&'+els[i].id + '=' + encodeURIComponent(els[i].value);
@@ -383,40 +563,61 @@ function submitChanges(format) {
 			window.onbeforeunload = null;
 			setlinksdisp("");
 			document.getElementById("qviewtree").innerHTML = data.substring(p+1);
+			addsortmarkup("qviewtree");
+			$("#qviewtree").removeAttr("aria-activedescendant").children("li").first().attr("tabindex","0");
 			sortIt.haschanged = false;
 		} else if (data.charAt(0)=='2') {
 			document.getElementById('recchg').disabled = true;
 			window.onbeforeunload = null;
 			document.getElementById(target).innerHTML=_("Saved");
+			setlinksdisp("");
+			$("#qviewtree").find("li").attr("tabindex","-1");
+			$("#qviewtree").removeAttr("aria-activedescendant").children("li").first().attr("tabindex","0");
 			sortIt.haschanged = false;
 	  } else {
 			document.getElementById(target).innerHTML=data.substring(2);
 		}
 	})
 	.fail(function(xhr, status, errorThrown) {
-	  document.getElementById(target).innerHTML=" Couldn't save changes:\n"+
-			status + "\n" +req.statusText+
-			"\nError: "+errorThrown
+	  document.getElementById(target).textContent=" Couldn't save changes: "+
+			status + ", " +req.statusText+
+			", Error: "+errorThrown
 	});
 }
 
 function quickviewexpandAll() {
+	jQuery("#qviewtree li.blockli.nCollapse .treehandle").text("-");
+	jQuery("#qviewtree li.blockli.nCollapse .icon").attr("aria-expanded", true);
 	jQuery("#qviewtree li.blockli.nCollapse").removeClass("nCollapse").children("ul").show();
+	
 }
 function quickviewcollapseAll() {
+	jQuery("#qviewtree li.blockli:not(.nCollapse) .treehandle").text("+");
+	jQuery("#qviewtree li.blockli:not(.nCollapse) .icon").attr("aria-expanded", false);
 	jQuery("#qviewtree li.blockli:not(.nCollapse)").addClass("nCollapse").children("ul").hide();
 }
 
 function setlinksdisp(disp) {
-	var el = document.getElementsByTagName("span");
+	/*var el = document.getElementsByTagName("span");
 	for (var i=0; i<el.length; i++) {
 		if (el[i].className=='links') {
 			el[i].style.display = disp;
 		}
 	}
+	*/
+	if (disp == "none" && hidelinksonchange) {
+		$(".links a").addClass("hidden");
+	} else {
+		$(".links").removeClass("hidden");
+	}
 }
 
 function editinplace(el) {
+	if (typeof el == 'string') {
+		el = document.getElementById(el);
+	} else if (el.tagName == 'A') {
+		el = el.previousElementSibling.getElementsByTagName('span')[0];
+	}
 	var inputh = document.getElementById('input'+el.id);
 	if (inputh==null) {
 		var inputh = document.createElement("input");
@@ -427,6 +628,7 @@ function editinplace(el) {
 		inputt.id = 'inputt'+el.id;
 		inputt.type = "text";
 		inputt.size = 60;
+		inputt.onclick = function(e) { e.stopPropagation(); };
 		inputt.onblur = editinplaceun;
 		el.parentNode.insertBefore(inputt,el);
 	} else {
@@ -454,25 +656,88 @@ function editinplaceun() {
 	this.style.display = "none";
 }
 
+function addsortmarkup(baseid) {
+	let base = $("#"+baseid);
+	base.find("li").attr("role", "treeitem").attr("tabindex", "-1").each(function(i,el) {
+		if ($(el).children(".tree-content").length == 0) {
+			$(el).children(":not(ul)").wrapAll('<div class="tree-content"></div>');
+		}
+	});
+	base.find("ul").attr("role", "group");
+	base.find("li.blockli").each(function(i,el) {
+		$(el).attr("aria-expanded", !$(el).hasClass("nCollapsed"));
+	});
+	base.find("li.blockli").each(function(i,el) {
+		let bid = el.id;
+		// if children ul doesn't have id, add markup
+		if (!$(el).children("ul").attr("id")) {
+			$(el).children("ul").attr("id", "sub"+bid);
+			$(el).children("div").children(".icon").before('<span class=treehandle>'+($(el).hasClass("nCollapse") ? '+' : '-')+'</span>');
+		}
+	});
+	base.find(".icon:not(.hashandle)").each(function(i,el) {
+		let lid = $(el).closest("li").attr("id");
+		//$(el).append('<span class="sr-only" id="handle'+lid+'">'+_('Handle')+'</span>');
+		$(el).addClass("hashandle");
+		let next = el.nextElementSibling;
+		if (next.nodeName !== 'INPUT' && !$(el).closest("li").hasClass("locked")) {
+			let refel;
+			if (!next.hasAttribute("id")) {
+				refel = $(next).find("span[id]")[0];
+			} else {
+				refel = next;
+			}
+			if ((!caneditallnames && !$(refel).hasClass("canedit")) || $(refel).hasClass("noedit")) {
+				return;
+			}
+			$(next).addClass("namewrap");
+			$(refel).addClass("item-name").on('mousedown', function(ev) {
+				$("#qviewtree").find("li").attr("tabindex","-1");
+				$(this).closest("li").attr("tabindex","0");
+				let id = 'input' + this.id;
+				requestAnimationFrame(function() {
+					document.getElementById(id).focus();
+				});
+			});
+			let inp = $("<input/>", {
+				type: "text",
+				class: "editname",
+				size: 50,
+				id: "input"+refel.id,
+				"aria-label": _('Item title'),
+				value: refel.innerHTML
+			}).on('focus', function(ev) {
+				this.setAttribute("data-initial", this.value);
+			}).on('blur', function(ev) {
+				let refid = this.id.substr(5);
+				if (this.value != this.getAttribute("data-initial")) {
+					document.getElementById(refid).innerHTML = this.value;
+					document.getElementById('recchg').disabled = false;
+					setlinksdisp("none");
+					window.onbeforeunload = function() {return unsavedmsg;}
+				}
+			});
+			$(el).after(inp);
+		}
+	});
+	base.find("li").on("focus", function() {
+		$("#qviewtree").attr("aria-activedescendant", this.id).find("li").attr("tabindex","-1");
+		$(this).attr("tabindex","0");
+	});
+}
+
 var newblockcnt = 0;
 function addnewblock() {
     $("#qviewtree").prepend(
-        $("<li>", {id: "newblock" + newblockcnt, class: "blockli"}).append(
-            $("<img>", {
-                alt: _("block"),
-                src: blockiconsrc,
-                class: "mida icon"
-            })
-        ).append(" ").append(
-            $("<b>").append(
-                $("<span>", {
-                    text: _("New Block"),
-                    id: "NB" + newblockcnt,
-                    onclick: "editinplace(this)"
-                })
-            )
-        )
+		'<li id=newblock'+newblockcnt+' class=blockli>' +
+		 '<span class=icon>' +
+		 '<img alt="'+_('block')+'" class=mida src="'+blockiconsrc+'"/></span> ' +
+		 '<b><span id="NB'+newblockcnt+'">' + _("New Block") + '</span></b>' +
+		 '<ul class=qview></ul></li>'
     );
-    newblockcnt++;
-    document.getElementById('recchg').disabled = false;
+	addsortmarkup('qviewtree');
+	$("#qviewtree").attr("aria-activedescendant", "").find("li").attr("tabindex","-1");
+	$("#newblock"+newblockcnt).attr("tabindex","0").focus();
+	sortIt.fireEvent('onFirstChange', null);
+	newblockcnt++;
 }

@@ -24,13 +24,14 @@
 	}
 
 	if (!isset($_POST['commentloc'])) {
+		$pagetitle = _('Export Gradebook');
 		require_once "../header.php";
         echo "<div class=breadcrumb>$breadcrumbbase ";
         if (empty($_COOKIE['fromltimenu'])) {
             echo " <a href=\"course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> &gt; ";
         }
         echo " <a href=\"gradebook.php?stu=0&cid=$cid\">Gradebook</a> &gt; Export Gradebook</div>";
-		echo '<div id="headergb-export" class="pagetitle"><h1>Export Gradebook</h1></div>';
+		echo '<div id="headergb-export" class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 
 		echo "<form method=post action=\"gb-export.php?cid=$cid&stu=" . Sanitize::encodeUrlParam($stu) . "&gbmode=" . Sanitize::encodeUrlParam($gbmode);
 		if (isset($_GET['export'])) {
@@ -43,15 +44,55 @@
 			echo "<span class=\"form\">Email Gradebook To:</span><span class=\"formright\"> <input type=text name=\"email\" size=\"30\"/></span> <br class=\"form\" />";
 		}
 
-		echo '<span class="form">Locked students?</span><span class="formright"><input type="radio" name="locked" value="hide" checked="checked"> Hide <input type="radio" name="locked" value="show" > Show </span><br class="form" />';
-		echo '<span class="form">Separate header line for points possible?</span><span class="formright"><input type="radio" name="pointsln" value="0" checked="checked"> No <input type="radio" name="pointsln" value="1"> Yes</span><br class="form" />';
-		echo '<span class="form">Assessment comments:</span><span class="formright"> <input type="radio" name="commentloc" value="-1" checked="checked"> Don\'t include comments <br/>  <input type="radio" name="commentloc" value="1"> Separate set of columns at the end <br/><input type="radio" name="commentloc" value="0"> After each score column</span><br class="form" />';
-		echo '<span class="form">Assessment times:</span><span class="formright"> <input type="radio" name="timestype" value="0" checked="checked"> Don\'t include assessment times <br/>  <input type="radio" name="timestype" value="1"> Include total assessment time <br/><input type="radio" name="timestype" value="2"> Include time in questions</span><br class="form" />';
+		echo '<label class="form" for=locked>Locked students?</label>';
+		echo '<span class="formright"><select id=locked name=locked>
+			<option value="hide" selected>Hide</option>
+			<option value="show">Show</option>
+			</select></span><br class="form" />';
+		
+		echo '<label class="form" for="pointsln">Separate header line for points possible?</label>';
+		echo '<span class="formright"><select id=pointsln name=pointsln>
+			<option value=0 selected>No</option>
+			<option value=1>Yes</option>
+			</select></span><br class="form" />';
+		
+		echo '<label class="form" for="commentloc">Assessment comments:</label>';
+		echo '<span class="formright"><select id=commentloc name=commentloc>
+			<option value="-1" selected>Don\'t include comments</option>
+			<option value=1>Separate set of columns at the end</option>
+			<option value=0>After each score column</option>
+			</select></span><br class="form" />';
+		
+		echo '<label class="form" for="timestype">Assessment times:</label>';
+		echo '<span class="formright"><select id=timestype name=timestype>
+			<option value=0 selected>Don\'t include assessment times</option>
+			<option value=1>Include total assessment time</option>
+			<option value=2>Include time in questions</option>
+			</select></span><br class="form" />';
+        
+		echo '<label class="form" for="lastchanged">Include assessment last changed dates?:</label>';
+		echo '<span class="formright"><select id=lastchanged name=lastchanged>
+			<option value=0 selected>No</option>
+			<option value=1>Yes</option>
+			</select></span><br class="form" />';
 
-		echo '<span class="form">Include last login date?</span><span class="formright"><input type="radio" name="lastlogin" value="0" checked="checked"> No <input type="radio" name="lastlogin" value="1" > Yes </span><br class="form" />';
-		echo '<span class="form">Include total number of logins?</span><span class="formright"><input type="radio" name="logincnt" value="0" checked="checked"> No <input type="radio" name="logincnt" value="1" > Yes </span><br class="form" />';
-		echo '<span class="form">Include email address?</span><span class="formright"><input type="radio" name="emailcol" value="0" checked="checked"> No <input type="radio" name="emailcol" value="1" > Yes </span><br class="form" />';
+		echo '<label class="form" for="lastlogin">Include last login date?</label>';
+		echo '<span class="formright"><select id=lastlogin name=lastlogin>
+			<option value=0 selected>No</option>
+			<option value=1>Yes</option>
+			</select></span><br class="form" />';
 
+		echo '<label class="form" for="logincnt">Include total number of logins?</label>';
+		echo '<span class="formright"><select id=logincnt name=logincnt>
+			<option value=0 selected>No</option>
+			<option value=1>Yes</option>
+			</select></span><br class="form" />';
+
+		echo '<label class="form" for="emailcol">Include email address?</label>';
+		echo '<span class="formright"><select id=emailcol name=emailcol>
+			<option value=0 selected>No</option>
+			<option value=1>Yes</option>
+			</select></span><br class="form" />';
 
 		if (isset($_GET['export'])) {
 			echo '<p><input type=submit name="submit" value="Download Gradebook as CSV" /> <input type=submit name="submit" value="Download Gradebook for Excel" /> <a href="gradebook.php?cid='.$cid.'">Return to gradebook</a></p>';
@@ -81,6 +122,7 @@
     $includeemail = !empty($_POST['emailcol']);
 	$hidelocked = ($_POST['locked']=='hide')?true:false;
 	$includetimes = intval($_POST['timestype']); //1 total time, 2 time on task
+    $includelastchange = $_POST['lastchanged']; //0: no, 1 yes
 
 	$catfilter = -1;
 	$secfilter = -1;
@@ -376,7 +418,7 @@ function gbInstrCatCols(&$gbt, $i, $insdiv='', $enddiv='') {
 	}
 }
 function gbinstrdisp() {
-	global $DBH,$hidenc,$isteacher,$istutor,$cid,$gbmode,$stu,$availshow,$catfilter,$secfilter,$totonleft,$imasroot,$isdiag,$tutorsection,$commentloc,$pointsln,$logincnt,$includetimes;
+	global $DBH,$hidenc,$isteacher,$istutor,$cid,$gbmode,$stu,$availshow,$catfilter,$secfilter,$totonleft,$imasroot,$isdiag,$tutorsection,$commentloc,$pointsln,$logincnt,$includetimes,$includelastchange;
 
 	if ($availshow==4) {
 		$availshow=1;
@@ -457,6 +499,11 @@ function gbinstrdisp() {
 				$pointsrow .= '<th></th>';
 				$n++;
 			}
+            if ($includelastchange && $gbt[0][1][$i][6]==0) {
+                echo '<th>'. $gbt[0][1][$i][0].': Last Changed'.'</th>';
+                $pointsrow .= '<th></th>';
+				$n++;
+            }
 		}
 	}
 	if (!$totonleft && !$hidepast) {
@@ -613,6 +660,14 @@ function gbinstrdisp() {
 					}
 					$n++;
 				}
+                if ($includelastchange>0 && $gbt[0][1][$j][6]==0) {
+                    if (!empty($gbt[$i][1][$j][9])) {
+                        echo '<td>'.date('Y-m-d g:i a', $gbt[$i][1][$j][9]).'</td>';
+                    } else {
+                        echo '<td></td>';
+                    }
+                    $n++;
+                }
 			}
 		}
 		if (!$totonleft && !$hidepast) {

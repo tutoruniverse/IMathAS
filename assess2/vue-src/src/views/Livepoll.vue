@@ -16,11 +16,11 @@
       <div v-if = "isTeacher" id="livepoll_qsettings" style="flex-grow:1">
         <label>
           <input type="checkbox" v-model="showQuestion" />
-          {{ $t('livepoll.show_question') }}
+          {{ $t('livepoll-show_question') }}
         </label>
         <label>
           <input type="checkbox" v-model="showResults" />
-          {{ $t('livepoll.show_results') }}
+          {{ $t('livepoll-show_results') }}
         </label>
         <label>
           <input type="checkbox" v-model="showAnswers" @change="updateShowAnswers"/>
@@ -42,7 +42,7 @@
         {{ $t('question_n', { n: curqn+1 }) }}
       </h2>
     </div>
-    <div class="scrollpane" :aria-label="$t('regions.questions')">
+    <div class="scrollpane" :aria-label="$t('regions-questions')">
       <livepoll-settings
         class = "questionpane"
         v-if = "isTeacher && (curstate === 0 || curqn === -1)"
@@ -51,7 +51,7 @@
         class = "questionpane"
         v-if = "!isTeacher && curstate < 2"
       >
-        {{ $t('livepoll.waiting') }}
+        {{ $t('livepoll-waiting') }}
       </div>
       <question
         v-if = "curqn >= 0 && ((isTeacher && curstate>0) || (!isTeacher && curstate>1))"
@@ -135,9 +135,9 @@ export default {
     },
     showAnswersLabel () {
       if (this.curstate < 3) {
-        return this.$t('livepoll.show_answers_after');
+        return this.$t('livepoll-show_answers_after');
       } else {
-        return this.$t('livepoll.show_answers');
+        return this.$t('livepoll-show_answers');
       }
     }
   },
@@ -152,12 +152,16 @@ export default {
     },
     addResult (data) {
       // add question result data
-      if (!store.livepollResults.hasOwnProperty(this.curqn)) {
-        this.$set(store.livepollResults, this.curqn, {});
-      }
       data.score = JSON.parse(data.score);
       data.ans = JSON.parse(data.ans);
-      this.$set(store.livepollResults[this.curqn], data.user, data);
+      if (!store.livepollResults.hasOwnProperty(this.curqn)) {
+        const newobj = {};
+        newobj[this.curqn] = {};
+        newobj[this.curqn][data.user] = data;
+        store.livepollResults = Object.assign({}, store.livepollResults, newobj);
+      } else {
+        store.livepollResults[this.curqn][data.user] = data;
+      }
     },
     showHandler (data) {
       if (data.action === 'showq') {
@@ -172,22 +176,22 @@ export default {
         } else {
           data.timelimit = 0;
         }
-        this.$set(store.assessInfo, 'livepoll_status', {
+        store.assessInfo['livepoll_status'] = {
           curstate: 2,
           curquestion: parseInt(data.qn) + 1,
           seed: parseInt(data.seed),
           startt: parseInt(data.startt),
           timelimit: parseInt(data.timelimit)
-        });
+        };
       } else {
         // On question stop, server sends as data:
         //  action: newstate, qn: qn
-        this.$set(store.assessInfo, 'livepoll_status',
+        store.assessInfo['livepoll_status'] =
           Object.assign(store.assessInfo.livepoll_status, {
             curquestion: parseInt(data.qn) + 1,
             curstate: parseInt(data.action),
             timelimit: 0
-          }));
+          });
       }
     },
     selectQuestion (dispqn) {
@@ -249,7 +253,9 @@ export default {
         newstate: 1,
         forceregen: 1
       });
-      this.$set(store.livepollResults, this.curqn, {});
+      if (store.livepollResults.hasOwnProperty(this.curqn)) {
+        delete store.livepollResults[this.curqn];
+      }
     },
     updateShowAnswers () {
       // if already showing results, need to call the server with new state

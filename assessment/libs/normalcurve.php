@@ -22,6 +22,36 @@ function normalcurve($mu, $sigma, $a, $b, $axislabel='',$x=null, $dirx='left', $
    if ($a>=$b) { echo 'xmin should be smaller than xmax'; return; }
    if ($y!==null && $dirx==$diry) { echo 'directions should not be equal'; return;}
 
+   if ($_SESSION['graphdisp'] == 0) {
+      $alt = sprintf(_('A bell-shaped curve. '), $mu);
+      if ($axislabel != '') {
+         $alt .= sprintf(_('The horizontal axis is labeled %s. '), $axislabel);
+      }
+      $bn = ceil(($a - $mu)/$sigma - 1e-8);
+      $tn = floor(($b - $mu)/$sigma + 1e-8);
+      $alt .= _('The horizontal axis has tick mark at ');
+      $tm = [];
+      for ($i=$bn;$i<=$tn;$i++) {
+         $tm[] = $mu + $i*$sigma;
+      }
+      $tm[count($tm)-1] = _('and').' '.$tm[count($tm)-1];
+      $alt .= implode(', ', $tm) . '. ';
+
+      $alt .= sprintf(_('The peak of the curve is centered at %d. '), $mu);
+      
+      if ($dirx == 'right' && $diry == 'left') {
+         $alt .= sprintf(_('The area from %d to %d is shaded.'), $x, $y);
+      } else if ($dirx == 'left' && $diry == 'right') {
+         $alt .= sprintf(_('The area left of %d and right of %d is shaded.'), $x, $y);
+      } else if ($dirx == 'left') {
+         $alt .= sprintf(_('The area left of %d is shaded.'), $x);
+      } else if ($dirx == 'right') {
+         $alt .= sprintf(_('The area right of %d is shaded.'), $x);
+      }
+      return $alt;
+   }
+
+   
    $za = ($a-$mu)/$sigma;
    $zb = ($b-$mu)/$sigma;
    if ($x!==null) {
@@ -335,7 +365,7 @@ function normalcurve3($mu, $sigma, $a, $b, $axislabel='',$x=null, $dirx='left', 
    if ($r !== null && $dirr=='left') {
       $py = $coef*exp(-$zr*$zr/2.0);
       $qpts[] = "[$zr,$py]";
-      $qpts[] = "[$zy,0]";
+      $qpts[] = "[$zr,0]";
       $qpts[] = "[$zx,0]";
    }
    if ($r !== null && $dirr=='right') {

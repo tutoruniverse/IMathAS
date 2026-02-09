@@ -15,21 +15,34 @@ if (isset($_POST['mergefrom'])) {
 			$seta[$n - 1] = $aid;
 		}
 	}
+	for ($i=0;$i<count($seta);$i++) {
+		if (!isset($seta[$i])) {
+			echo "Invalid numbering. Make sure numbers are sequential starting at 1 with no duplicates.";
+			exit;
+		}
+	}
 	$fieldstocopy = 'name,summary,intro,startdate,enddate,reviewdate,date_by_lti,LPcutoff,';
 	$fieldstocopy .= 'timelimit,minscore,displaymethod,defpoints,defattempts,deffeedback,';
 	$fieldstocopy .= 'defpenalty,itemorder,shuffle,gbcategory,password,cntingb,showcat,showhints,showtips,';
-	$fieldstocopy .= 'allowlate,exceptionpenalty,noprint,avail,groupmax,isgroup,groupsetid,endmsg,';
+	$fieldstocopy .= 'allowlate,exceptionpenalty,earlybonus,noprint,avail,groupmax,isgroup,groupsetid,endmsg,';
 	$fieldstocopy .= 'deffeedbacktext,eqnhelper,caltag,calrtag,tutoredit,posttoforum,msgtoinstr,';
 	$fieldstocopy .= 'istutorial,viddata,reqscore,reqscoreaid,reqscoretype,ancestors,defoutcome,';
 	$fieldstocopy .= 'posttoforum,ptsposs,extrefs,submitby,showscores,showans,viewingb,scoresingb,';
 	$fieldstocopy .= 'ansingb,defregens,defregenpenalty,ver,keepscore,overtime_grace,overtime_penalty,showwork,autoexcuse';
-	$stm = $DBH->prepare("SELECT $fieldstocopy FROM imas_assessments WHERE id=:id");
-	$stm->execute(array(':id'=>$seta[0]));
+	$stm = $DBH->prepare("SELECT $fieldstocopy FROM imas_assessments WHERE id=:id AND courseid=:cid");
+	$stm->execute(array(':id'=>$seta[0], ':cid'=>$cid));
 	$row = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($row === false) {
+		echo 'Invalid id';
+		exit;
+	}
 	$defpoints = $row['defpoints'];
 	$row['name'] .= ' - merge result';
 	$row['courseid'] = $cid;
-	$fieldlist = implode(',', array_keys($row));
+    if ($row['date_by_lti']>1) {
+        $row['date_by_lti'] = 1;
+    }
+	$fieldlist = implode(',', array_map('Sanitize::simpleString',array_keys($row)));
 	$placeholders = Sanitize::generateQueryPlaceholders($row);
 	$stm = $DBH->prepare("INSERT INTO imas_assessments ($fieldlist) VALUES ($placeholders)");
 	$stm->execute(array_values($row));
@@ -41,10 +54,12 @@ if (isset($_POST['mergefrom'])) {
 	$qcnt = 0;
 
 	for ($i=0;$i<count($seta);$i++) {
-		$stm = $DBH->prepare("SELECT itemorder,intro,name FROM imas_assessments WHERE id=:id");
-		$stm->execute(array(':id'=>$seta[$i]));
-		list($itemorder, $curintro, $thisname) = $stm->fetch(PDO::FETCH_NUM);
-
+		$stm = $DBH->prepare("SELECT itemorder,intro,name,defpoints FROM imas_assessments WHERE id=:id AND courseid=:cid");
+		$stm->execute(array(':id'=>$seta[$i], ':cid'=>$cid));
+		list($itemorder, $curintro, $thisname, $thisdefpoints) = $stm->fetch(PDO::FETCH_NUM);
+		if (empty($itemorder)) {
+			continue;
+		}
 		$thisintroraw = $curintro;
         $thistexts = [];
 
@@ -74,6 +89,9 @@ if (isset($_POST['mergefrom'])) {
 					$stm = $DBH->prepare("SELECT questionsetid,points,attempts,penalty,category,regen,showans,showhints,rubric,fixedseeds,showwork,extracredit FROM imas_questions WHERE id=:id");
 					$stm->execute(array(':id'=>$aitem));
 					$row = $stm->fetch(PDO::FETCH_ASSOC);
+                    if ($row['points'] == 9999 && $thisdefpoints !== $defpoints) {
+                        $row['points'] = $thisdefpoints;
+                    }
 					$query = "INSERT INTO imas_questions (assessmentid,questionsetid,points,attempts,penalty,category,
                         regen,showans,showhints,rubric,fixedseeds,showwork,extracredit) ";
 					$query .= "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -96,6 +114,9 @@ if (isset($_POST['mergefrom'])) {
                         $stm = $DBH->prepare("SELECT questionsetid,points,attempts,penalty,category,regen,showans,showhints,rubric,fixedseeds,showwork,extracredit FROM imas_questions WHERE id=:id");
 						$stm->execute(array(':id'=>$subi));
 						$row = $stm->fetch(PDO::FETCH_ASSOC);
+                        if ($row['points'] == 9999 && $thisdefpoints !== $defpoints) {
+                            $row['points'] = $thisdefpoints;
+                        }
                         $query = "INSERT INTO imas_questions (assessmentid,questionsetid,points,attempts,penalty,category,
                             regen,showans,showhints,rubric,fixedseeds,showwork,extracredit) ";
 					    $query .= "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -188,17 +209,18 @@ if (isset($_POST['mergefrom'])) {
 	echo '<div class="pagetitle"><h1>Merge Assessments</h1></div>';
 
 	echo '<form method="post" action="mergeassess2.php?cid='.$cid.'">';
-	echo '<p><b>Number the assessments you want to merge into a new assessment</b>.  Note that assessment settings and summary will be taken from the first assessment.</p>';
-	echo '<ul>';
+	echo '<p><b>'._('Number the assessments you want to merge into a new assessment, in the order you want them added (1,2,etc.)').'</b>. ';  
+	echo _('Note that assessment settings and summary will be taken from the first assessment.').'</p>';
+	echo '<ul class=nomark>';
 	foreach ($itemsimporder as $item) {
 		if (!isset($itemsassoc[$item])) { continue; }
 		$id = $itemsassoc[$item];
-		echo "<li><input type=\"text\" size=\"2\" name=\"mergefrom[" . Sanitize::onlyInt($id) . "]\" />" . Sanitize::encodeStringForDisplay($assess[$id]) . "</li>";
+		echo "<li><label><input type=\"text\" size=\"2\" name=\"mergefrom[" . Sanitize::onlyInt($id) . "]\" />" . Sanitize::encodeStringForDisplay($assess[$id]) . "</label></li>";
 	}
 	echo '</ul>';
 	echo '<input type="hidden" name="mergetype" value="0"/>';
 
-	echo '<input type="submit" value="Go">';
+	echo '<button type="submit">'._('Go').'</button>';
 	echo '</form>';
 	require_once "../footer.php";
 }

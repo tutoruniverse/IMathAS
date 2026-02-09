@@ -20,8 +20,6 @@ require_once "./AssessInfo.php";
 require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 //validate inputs
 check_for_required('GET', array('aid', 'cid'));
 $cid = Sanitize::onlyInt($_GET['cid']);
@@ -70,10 +68,10 @@ $include_from_assess_info = array(
   'name', 'summary', 'available', 'startdate', 'enddate', 'enddate_in',
   'original_enddate', 'extended_with', 'timelimit', 'timelimit_type', 'points_possible',
   'submitby', 'displaymethod', 'groupmax', 'isgroup', 'showscores', 'viewingb', 'scoresingb',
-  'can_use_latepass', 'allowed_attempts', 'retake_penalty', 'exceptionpenalty',
+  'can_use_latepass', 'allowed_attempts', 'retake_penalty', 'exceptionpenalty', 'earlybonus',
   'timelimit_multiplier', 'latepasses_avail', 'latepass_extendto', 'keepscore',
   'noprint', 'overtime_penalty', 'overtime_grace', 'reqscorename', 'reqscorevalue', 
-  'attemptext', 'showworktype'
+  'attemptext', 'showworktype', 'latepass_enddate', 'latepass_after', 'latepass_reason'
 );
 $assessInfoOut = $assess_info->extractSettings($include_from_assess_info);
 
@@ -129,12 +127,21 @@ $assessInfoOut['has_active_attempt'] = $assess_record->hasActiveAttempt();
 if ($assessInfoOut['timelimit'] > 0 && !empty($assess_info->getSetting('timeext'))) {
     $assessInfoOut['timelimit_ext'] = $assess_info->getSetting('timeext');
     if (!$assessInfoOut['has_active_attempt'] && ($assess_record->getStatus()&64)==64 &&
-      $assessInfoOut['timelimit_ext'] > 0
+      $assessInfoOut['timelimit_ext'] > 0 &&
+      $assessInfoOut['available'] === 'yes'
     ) {
-        // has a previously submitted attempt; mark as active since we have a time 
+        // has a previously submitted attempt; if available, mark as active since we have a time 
         // limit extension available
         $assessInfoOut['has_active_attempt'] = true;
     }
+}
+
+// get earlybonus end time
+if ($assessInfoOut['earlybonus'][0] > 0) {
+  $bonusbase = $assessInfoOut['original_enddate'] ?? $assessInfoOut['enddate'];
+  if ($now < $bonusbase - 3600 * $assessInfoOut['earlybonus'][1]) {
+    $assessInfoOut['earlybonusends'] = strtotime("-" . $assessInfoOut['earlybonus'][1]. ' hours', $bonusbase);
+  }
 }
 
 //get time limit expiration of current attempt, if appropriate
@@ -148,6 +155,13 @@ if ($assessInfoOut['has_active_attempt'] && $assessInfoOut['timelimit'] > 0) {
 // if not available, see if there is an unsubmitted scored attempt
 if ($assessInfoOut['available'] !== 'yes') {
   $assessInfoOut['has_unsubmitted_scored'] = $assess_record->hasUnsubmittedScored();
+  if ($assessInfoOut['has_unsubmitted_scored'] && 
+    $assessInfoOut['available'] === 'practice' &&
+    $assessInfoOut['submitby'] === 'by_assessment'
+  ) {
+    // disable practice while unsubmitted scored attempt exists
+    $assessInfoOut['available'] = 'pastdue';
+  }
 }
 
 //get prev attempt info
@@ -162,7 +176,8 @@ if (!$assessInfoOut['has_active_attempt']) {
   }
 }
 
-$assessInfoOut['showwork_after'] = $assess_record->getShowWorkAfter();
+// get showwork_after, showwork_cutoff (min), showwork_cutoff_in (timestamp)
+getShowWorkAfter($assessInfoOut, $assess_record, $assess_info);
 
 // adjust output if time limit is expired in by_question mode
 if ($assessInfoOut['has_active_attempt'] && $assessInfoOut['timelimit'] > 0 &&
@@ -225,8 +240,12 @@ if (!$canViewAll) {
     }
 }
 
+$assessInfoOut['can_viewingb'] = $assess_info->reshowQuestionsInGb() ? 1 : 0;
+
 // set session expiration time
 $assessInfoOut['session_life'] = $CFG['GEN']['sessionmaxlife'] ?? 432000;
+
+$assessInfoOut['summary'] = filter($assessInfoOut['summary']);
 
 //prep date display
 prepDateDisp($assessInfoOut);

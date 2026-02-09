@@ -1,5 +1,18 @@
 <?php
 
+if ($line['workcutoff'] == 0) {
+    $workcutofftype = 'hr';
+    $workcutoffval = 1;
+} else if ($line['workcutoff'] < 120 && $line['workcutoff']%60 != 0) {
+    $workcutofftype = 'min';
+    $workcutoffval = $line['workcutoff'];
+} else if ($line['workcutoff'] < 48*60 && $line['workcutoff']%1440 != 0) {
+    $workcutofftype = 'hr';
+    $workcutoffval = round($line['workcutoff']/60, 2);
+} else {
+    $workcutofftype = 'day';
+    $workcutoffval = round($line['workcutoff']/1440, 2);
+}
 $vueData = array(
 	'name' => $line['name'],
 	'summary' => $line['summary'],
@@ -34,7 +47,8 @@ $vueData = array(
 	'caltag' => ($line['caltag'] === 'use_name' ? '?' : $line['caltag']),
 	'caltagradio' => ($line['caltag'] === 'use_name' ? 'usename' : 'usetext'),
 	'shuffle' => ($line['shuffle']&(1+16+32)),
-	'noprint' => $line['noprint'] > 0,
+	'noprint' => ($line['noprint']&1) > 0,
+    'lockforassess' => ($line['noprint']&2) > 0,
 	'sameseed' => ($line['shuffle']&2) > 0,
 	'samever' => ($line['shuffle']&4) > 0,
 	'istutorial' => $line['istutorial'] > 0,
@@ -53,6 +67,9 @@ $vueData = array(
 	'showhints' => ($line['showhints']&1) > 0,
     'showwork' => ($line['showwork']&3),
     'showworktype' => ($line['showwork']&4),
+    'doworkcutoff' => ($line['workcutoff'] > 0),
+    'workcutofftype' => $workcutofftype,
+    'workcutoffval' => $workcutoffval,
 	'showextrefs' => ($line['showhints']&2) > 0,
     'showwrittenex' => ($line['showhints']&4) > 0,
 	'msgtoinstr' => $line['msgtoinstr'] > 0,
@@ -70,6 +87,8 @@ $vueData = array(
 	'allowinstraddtutors' => (!isset($CFG['GEN']['allowinstraddtutors']) || $CFG['GEN']['allowinstraddtutors']==true),
 	'tutoredit' => $line['tutoredit'],
 	'exceptionpenalty' => $line['exceptionpenalty'],
+	'earlybonus' => ($line['earlybonus'] % 100),
+	'earlybonushrs' => max(1,floor($line['earlybonus'] / 100)),
 	'defoutcome' => $line['defoutcome'],
 	'outcomeOptions' => $outcomeOptions,
 	'isgroup' => $line['isgroup'],
@@ -91,24 +110,24 @@ $vueData = array(
 // Vue template
 ?>
 <div id="app" class="skipmathrender" v-cloak>
-	<span class=form><?php echo _('Assessment Name');?>:</span>
+	<label for=name class=form><?php echo _('Assessment Name');?>:</label>
 	<span class=formright>
-		<input type=text size=30 name=name v-model="name" required>
+		<input type=text size=30 name=name id=name v-model="name" required>
 	</span><br class=form />
 
-	<?php echo _('Summary');?>:<br/>
+	<label for=summary><?php echo _('Summary');?></label>:<br/>
 	<div class=editor>
 		<textarea cols=50 rows=15 id=summary name=summary v-model="summary" style="width: 100%"></textarea>
 	</div><br class=form />
 
-	<?php echo _('Intro/Instructions');?>:<br/>
+	<label for=intro><?php echo _('Intro/Instructions');?></label>:<br/>
 	<?php if (isset($introconvertmsg)) {echo $introconvertmsg;} ?>
 	<div class=editor>
 		<textarea cols=50 rows=20 id=intro name=intro v-model="intro" style="width: 100%"></textarea>
 	</div><br class=form />
 
-	<span class=form><?php echo _('Show');?>:</span>
-	<span class=formright>
+	<span class=form id=showlabel><?php echo _('Show');?>:</span>
+	<span class=formright role=radiogroup aria-labelledby=showlabel>
 		<label>
 			<input type=radio name="avail" value="0" v-model="avail" />
 			<?php echo _('Hide');?>
@@ -120,8 +139,8 @@ $vueData = array(
 	</span><br class="form"/>
 
 	<div v-show="avail==1 && datesbylti==0">
-		<span class=form><?php echo _('Available After');?>:</span>
-		<span class=formright>
+		<span class=form id=afterlabel><?php echo _('Available After');?>:</span>
+		<span class=formright role=radiogroup aria-labelledby=afterlabel>
 			<label>
 				<input type=radio name="sdatetype" value="0" v-model="sdatetype" />
 				<?php echo _('Available always until end date');?>
@@ -130,14 +149,14 @@ $vueData = array(
 				<input type=radio name="sdatetype" value="sdate" v-model="sdatetype"/>
 				<?php echo _('Available after');?>
 			</label>
-			<input type=text size=10 name="sdate" v-model="sdate">
+			<input type=text size=10 name="sdate" v-model="sdate" aria-label="<?php echo _('show after date');?>">
 			<a href="#" onClick="displayDatePicker('sdate', this); return false">
 			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
-			at <input type=text size=8 name=stime v-model="stime">
+			at <input type=text size=8 name=stime v-model="stime" aria-label="<?php echo _('show after time');?>">
 		</span><br class="form"/>
 
-		<span class=form><?php echo _('Available Until');?>:</span>
-		<span class=formright>
+		<span class=form id=untillabel><?php echo _('Available Until');?>:</span>
+		<span class=formright role=radiogroup aria-labelledby=untillabel>
 			<label>
 				<input type=radio name="edatetype" value="2000000000" v-model="edatetype" />
 				<?php echo _('Available always after start date');?>
@@ -146,10 +165,10 @@ $vueData = array(
 				<input type=radio name="edatetype" value="edate" v-model="edatetype"/>
 				<?php echo _('Due');?>
 			</label>
-			<input type=text size=10 name="edate" v-model="edate">
+			<input type=text size=10 name="edate" v-model="edate" aria-label="<?php echo _('show until date');?>">
 			<a href="#" onClick="displayDatePicker('edate', this, 'sdate', '<?php echo _('Start date');?>'); return false">
 			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
-			<?php echo _('at') ?> <input type=text size=8 name=etime v-model="etime">
+			<?php echo _('at') ?> <input type=text size=8 name=etime v-model="etime" aria-label="<?php echo _('show until time');?>">
 		</span><br class="form"/>
 	</div>
 	<div v-show="avail==1 && datesbylti>0">
@@ -186,7 +205,7 @@ $vueData = array(
 				<?php echo _('Copy Options from');?>:
 			</label>
 			<span class=formright>
-				<select name="copyfrom" v-model="copyfrom">
+				<select name="copyfrom" id="copyfrom" v-model="copyfrom">
 					<option value="0"><?php echo _('None - use settings below');?></option>
 					<option v-for="option in reqscoreOptions" :value="option.value" :key="option.value">
 						{{ option.text }}
@@ -199,18 +218,18 @@ $vueData = array(
 			</span><br class=form />
 		</div>
 		<div v-show="copyfrom > 0">
-			<span class=form>Also copy:</span>
-			<span class=formright>
-				<input type=checkbox name="copysummary" value=1 /> <?php echo _('Summary');?><br/>
-				<input type=checkbox name="copyinstr" value=1 /> <?php echo _('Intro/Instructions');?><br/>
-				<input type=checkbox name="copydates" value=1 /> <?php echo _('Dates');?> <br/>
-				<input type=checkbox name="copyendmsg" value=1 /> <?php echo _('End of Assessment Messages');?>
+			<span class=form id=alsocopylabel>Also copy:</span>
+			<span class=formright role=group aria-labelledby=alsocopylabel>
+				<label><input type=checkbox name="copysummary" value=1 /> <?php echo _('Summary');?></label><br/>
+				<label><input type=checkbox name="copyinstr" value=1 /> <?php echo _('Intro/Instructions');?></label><br/>
+				<label><input type=checkbox name="copydates" value=1 /> <?php echo _('Dates');?></label> <br/>
+				<label><input type=checkbox name="copyendmsg" value=1 /> <?php echo _('End of Assessment Messages');?></label>
 			</span><br class=form />
 		</div>
 		<div v-show="copyfrom == 0">
 			<hr v-if="reqscoreOptions.length > 0" />
 		<div>
-			<a href="#" onclick="groupToggleAll(1);return false;"><?php echo _('Expand All');?></a>
+			<a href="#" onclick="groupToggleAll(1);return false;"><?php echo _('Expand All');?></a>&nbsp;
 	 		<a href="#" onclick="groupToggleAll(0);return false;"><?php echo _('Collapse All');?></a>
 		</div>
 		<div class="block grouptoggle">
@@ -258,14 +277,14 @@ $vueData = array(
 				<span v-if="defregens > 1">
 					<br/>
 					<?php echo _('With a penalty of');?>
-					<input type=number min=0 max=100 size=3 id="defregenpenalty"
+					<label><input type=number min=0 max=100 size=3 id="defregenpenalty"
 						name="defregenpenalty" v-model.number="defregenpenalty" />%
-					<?php echo _('per version');?>
+					<?php echo _('per version');?></label>
 					<span v-show="defregenpenalty>0">
 						<?php echo _('after');?>
-						<input type=number min=1 :max="Math.min(defregens,9)" size=3 id="defregenpenaltyaftern"
+						<label><input type=number min=1 :max="Math.min(defregens,9)" size=3 id="defregenpenaltyaftern"
 							name="defregenpenaltyaftern" v-model.number="defregenpenaltyaftern" />
-						<?php echo _('full-credit versions');?>
+						<?php echo _('full-credit versions');?></label>
 					</span>
 					<br/>
 					<span v-if="subtype == 'by_assessment'">
@@ -292,14 +311,14 @@ $vueData = array(
 				<span v-if="defattempts>1">
 					<br/>
 					<?php echo _('With a penalty of');?>
-					<input type=number min=0 max=100 size=3 id="defattemptpenalty"
+					<label><input type=number min=0 max=100 size=3 id="defattemptpenalty"
 						name="defattemptpenalty" v-model.number="defattemptpenalty" />%
-					<?php echo _('per try');?>
+					<?php echo _('per try');?></label>
 					<span v-show="defattemptpenalty>0">
 						<?php echo _('after');?>
-						<input type=number min=1 :max="defattemptpenalty>0 ? Math.min(defattempts,9) : 9" size=3 id="defattemptpenaltyaftern"
+						<label><input type=number min=1 :max="defattemptpenalty>0 ? Math.min(defattempts,9) : 9" size=3 id="defattemptpenaltyaftern"
 							name="defattemptpenaltyaftern" v-model.number="defattemptpenaltyaftern" />
-						<?php echo _('full-credit tries');?>
+						<?php echo _('full-credit tries');?></label>
 					</span>
 				</span>
 			</span><br class=form />
@@ -409,16 +428,40 @@ $vueData = array(
 					<option value="2"><?php echo _('After assessment');?></option>
 					<option value="3"><?php echo _('During or after assessment');?></option>
                 </select>
-                <br>
-                <label for="showworktype"><?php echo _('Work entry type');?>:</label>
-                <select name="showworktype" id="showworktype" v-model="showworktype">
-                    <option value="0"><?php echo _('Essay');?></option>
-                    <option value="4"><?php echo _('File upload');?></option>
-                </select>
+				<span>
+                    <br>
+                    <label for="showworktype"><?php echo _('Work entry type');?>:</label>
+                    <select name="showworktype" id="showworktype" v-model="showworktype">
+                        <option value="0"><?php echo _('Essay');?></option>
+                        <option value="4"><?php echo _('File upload');?></option>
+                    </select>
+                </span>
+                <span>
+                    <br>
+                    <input type="checkbox" v-model="doworkcutoff" name="doworkcutoff" id="doworkcutoff" value="1"> 
+                    <label for="doworkcutoff"><?php echo _('Add work cutoff') . '. ';  ?></label>
+					<span v-if="showwork < 2" class="small"><?php echo _('(Only applies to individual questions with "show work after" enabled)');?></span>
+                    <span v-if="doworkcutoff">
+						<br/>
+						<label for="workcutoffval"><?php echo _('Work must be added within:') . ' '; ?></label>
+                        <input name="workcutoffval" id="workcutoffval" v-model="workcutoffval" style="width:5.5ch" 
+                            type="number" min="0" :max="workcutofftype=='day'?45:1000"/>
+                        <select name="workcutofftype" id="workcutofftype" v-model="workcutofftype" aria-label="<?php echo _('units for work added within time');?>">
+                            <option value="min"><?php echo _('minutes');?></option>
+                            <option value="hr"><?php echo _('hours');?></option>
+                            <option value="day"><?php echo _('days');?></option>
+                        </select>
+                    </span>
+                </span>
             </span><br class=form />
 
 			<span class=form><?php echo _('Options');?></span>
 			<span class=formright>
+                <label v-if="subtype == 'by_assessment'">
+					<input type="checkbox" value="2" name="lockforassess" v-model="lockforassess" />
+					<?php echo _('Lock student out of the rest of the course until submitted');?>
+                    <br/>
+				</label>
 				<label>
 					<input type="checkbox" value="1" name="noprint" v-model="noprint" />
 					<?php echo _('Make hard to print');?>
@@ -477,10 +520,10 @@ $vueData = array(
 					</label>
 					<span v-show="dolpcutoff">
 						<?php echo _('No extensions past');?>
-						<input type=text size=10 name="lpdate" v-model="lpdate">
+						<input type=text size=10 name="lpdate" v-model="lpdate" aria-label="<?php echo _('latepass cutoff date');?>">
 						<a href="#" onClick="displayDatePicker('lpdate', this); return false">
 						<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></A>
-						at <input type=text size=8 name=lptime v-model="lptime">
+						at <input type=text size=8 name=lptime v-model="lptime" aria-label="<?php echo _('latepass cutoff time');?>">
 					</span>
 				</span>
 			</span><br class=form />
@@ -504,7 +547,7 @@ $vueData = array(
 				</span>
 			</span><br class=form />
 
-			<label class=form><?php echo _('Require Password (blank for none)');?>:</label>
+			<label class=form for=assmpassword><?php echo _('Require Password (blank for none)');?>:</label>
 			<span class=formright>
 				<input :type="revealpw?'text':'password'" name="assmpassword"
 					id="assmpassword" v-model="assmpassword" autocomplete="new-password">
@@ -521,14 +564,14 @@ $vueData = array(
 					<option value="1"><?php echo _('Show greyed until');?></option>
 				</select>
 				<span v-show="reqscoreshowtype > -1">
-					<?php echo _('a score of');?>
-	 				<input type=text size=4 name=reqscore v-model="reqscore" />
-					<select name="reqscorecalctype" v-model="reqscorecalctype">
+					<span id="reqscorelbl1"><?php echo _('a score of');?></span>
+	 				<input type=text size=4 name=reqscore v-model="reqscore" aria-labelledby="reqscoreshowtype reqscorelbl1"/>
+					<select name="reqscorecalctype" v-model="reqscorecalctype" aria-label="<?php echo _('prerequisite score format');?>">
 						<option value="0"><?php echo _('points');?></option>
 						<option value="1"><?php echo _('percent');?></option>
 					</select>
-					<?php echo _('is obtained on');?>
-					<select name="reqscoreaid" v-model="reqscoreaid">
+					<label for=reqscoreaid><?php echo _('is obtained on');?></label>
+					<select name="reqscoreaid" id="reqscoreaid" v-model="reqscoreaid">
 						<option v-for="option in reqscoreOptions" :value="option.value" :key="option.value">
 							{{ option.text }}
 						</option>
@@ -576,7 +619,7 @@ $vueData = array(
                     </span>
 				</label>
 			 	<span v-show="doposttoforum">
-					<?php echo _('to forum');?>
+					<label for=posttoforum><?php echo _('to forum');?></label>
 					<select name="posttoforum" id="posttoforum" v-model="posttoforum">
 						<option v-for="option in forumOptions" :value="option.value" :key="option.value">
 							{{ option.text }}
@@ -634,7 +677,7 @@ $vueData = array(
 			<label for="minscore" class=form><?php echo _('Minimum score to receive credit');?>:</label>
 			<span class=formright>
 				<input type=text size=4 name=minscore id=minscore v-model="minscore">
-				<select name="minscoretype" v-model="minscoretype">
+				<select name="minscoretype" v-model="minscoretype" aria-label="<?php echo _('Minimum score type');?>">
 					<option value="0"><?php echo _('Points');?></option>
 					<option value="1"><?php echo _('Percent');?></option>
 				</select>
@@ -648,8 +691,8 @@ $vueData = array(
 				</label>
 				<span v-show="usedeffb">
 					<br/>
-					<?php echo _('Text');?>:
-					<textarea name="deffb" v-model="deffb" rows="4" cols="60"></textarea>
+					<label for=deffb><?php echo _('Text');?></label>:
+					<textarea name="deffb" id="deffb" v-model="deffb" rows="4" cols="60"></textarea>
 				</span>
 			</span><br class="form" />
 
@@ -669,8 +712,18 @@ $vueData = array(
 				<?php echo _('Penalty for questions done while in exception/LatePass');?>:
 			</label>
 			<span class=formright>
-				<input type=text size=4 name="exceptionpenalty" id="exceptionpenalty"
+				<input type=number size=3 name="exceptionpenalty" id="exceptionpenalty" min=0 max=99
 				 	v-model="exceptionpenalty">%
+			</span><br class=form />
+
+			<label for="earlybonus" class=form>
+				<?php echo _('Bonus for questions done early');?>:
+			</label>
+			<span class=formright>
+				<input type=number size=3 name="earlybonus" id="earlybonus" min=0 max=99
+				 	v-model="earlybonus">% <label><?php echo _('for work done');?>
+				<input type=number size=3 name="earlybonushrs" id="earlybonushrs" min=1 max=654
+					v-model="earlybonushrs"> <?php echo _('hours before the due date'); ?></label>
 			</span><br class=form />
 
 			<label for="defoutcome" class="form"><?php echo _('Default Outcome');?>:</label>
@@ -762,10 +815,10 @@ $vueData = array(
 	</div>
 </div>
 <script type="text/javascript">
-var app = new Vue({
-	el: '#app',
-  data: <?php echo json_encode($vueData, JSON_INVALID_UTF8_IGNORE); ?>,
-	computed: {
+const { createApp } = Vue;
+createApp({
+  data: function() { return <?php echo json_encode($vueData, JSON_INVALID_UTF8_IGNORE); ?>;},
+  computed: {
 		showscoresOptions: function() {
 			var during = {
 				'value': 'during',
@@ -868,6 +921,10 @@ var app = new Vue({
 					'value': 'after_due',
 					'text': '<?php echo _('After the due date');?>'
 				},
+                {
+                    'value': 'after_lp',
+                    'text': '<?php echo _('After Latepass period');?>'
+                },
 				{
 					'value': 'immediately',
 					'text': '<?php echo _('Immediately - they can always view it');?>'
@@ -894,6 +951,7 @@ var app = new Vue({
 			‘after_take’: After an assessment version is done
 			‘after_due’: After the due date
 			‘never’: Never
+			'manual': After manual release by instructor
 			 */
 
 			/*
@@ -911,6 +969,14 @@ var app = new Vue({
 					'value': 'after_due',
 					'text': '<?php echo _('After the due date');?>'
 				},
+                {
+                    'value': 'after_lp',
+                    'text': '<?php echo _('After Latepass period');?>'
+                },
+				{
+                    'value': 'manual',
+                    'text': '<?php echo _('After manually released');?>'
+                },
 				{
 					'value': 'never',
 					'text': '<?php echo _('Never');?>'
@@ -955,15 +1021,27 @@ var app = new Vue({
  				return [];
  			} else {
  				var out = [
- 					{
- 						'value': 'after_due',
- 						'text': '<?php echo _('After the due date');?>'
+                    {
+ 						'value': 'after_lp',
+ 						'text': '<?php echo _('After Latepass period');?>'
  					},
  					{
  						'value': 'never',
  						'text': '<?php echo _('Never');?>'
  					}
  				];
+				if (this.scoresingb === 'manual') {
+					out.splice(1,0,{
+ 						'value': 'manual',
+ 						'text': '<?php echo _('After scores manually released');?>'
+ 					});
+				}
+                if (this.viewingb !== 'after_lp' && this.scoresingb !== 'after_lp') {
+                    out.unshift({
+ 						'value': 'after_due',
+ 						'text': '<?php echo _('After the due date');?>'
+ 					});
+                }
                  if ((this.viewingb === 'after_take' || this.viewingb === 'immediately') && 
                     this.subtype == 'by_assessment'
                  ) {
@@ -1010,5 +1088,5 @@ var app = new Vue({
 			$("#dispdetails").focus();
 		}
 	}
-});
+}).mount('#app');
 </script>

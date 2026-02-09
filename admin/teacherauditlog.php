@@ -51,6 +51,7 @@ function getAllNames($allactions) {
     global $stunames, $offlinenames, $DBH;
     $uids = [];
     foreach ($allactions as $action) {
+        $uids[] = $action['userid'];
         if ($action['action'] == 'Delete Item' || $action['action'] == 'Clear Attempts') {
             $data = json_decode($action['metadata'], true);
             if (isset($data['grades'])) {
@@ -144,11 +145,15 @@ function mapMetadata($action) {
 $overwriteBody = 0;
 $body = "";
 $pagetitle = "Teacher Audit Log";
-$userid = Sanitize::onlyInt($_GET['userid']);
 $cid = Sanitize::courseId($_GET['cid']);
+if (isset($_GET['userid'])) {
+    $uid = Sanitize::onlyInt($_GET['userid']);
+    $curBreadcrumb = "$breadcrumbbase <a href=\"admin2.php\">Admin</a> &gt; <a href=\"userdetails.php?id=$uid\">User Details</a> &gt; ";
+} else {
+    $curBreadcrumb = "$breadcrumbbase ";
+}
 
-$curBreadcrumb = "$breadcrumbbase <a href=\"admin2.php\">Admin</a> &gt; <a href=\"userdetails.php?id=$userid\">User Details</a> ";
-$curBreadcrumb .= "&gt; Teacher Audit Log\n";
+$curBreadcrumb .= "Teacher Audit Log\n";
 
 if (isset($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_assessments WHERE id=?");
@@ -159,10 +164,7 @@ if (isset($_GET['id'])) {
 	}
 }
 
-if ($myrights <75) {
-	$overwriteBody=1;
-	$body = "You need to log in as an admin to access this page";
-} elseif (!(isset($_GET['cid']))) {
+if (!(isset($_GET['cid']))) {
 	$overwriteBody=1;
 	$body = "You need to select the course";
 }
@@ -185,8 +187,21 @@ if ($overwriteBody==1) {
     $stm->execute(array($cid));
     list($coursename, $courseownerid, $coursegroupid) = $stm->fetch(PDO::FETCH_NUM);
 
+    if (empty($courseownerid)) {
+        echo _('Invalid course ID 1');
+        exit;
+    } else if ($myrights < 75 && $courseownerid != $userid) {
+        echo "$courseownerid, $userid";
+        echo _('Invalid course ID 2');
+        exit;
+    } else if ($myrights < 100 && $coursegroupid != $groupid) {
+        echo _('Invalid course ID 3');
+        exit;
+    }
+
+/*
     $query = '(SELECT iu.id,iu.FirstName,iu.LastName FROM imas_users AS iu ';
-    $query .= 'JOIN imas_teachers AS it ON it.userid=iu.id WHERE it.courseid=?) UNION ';
+    $query .= 'JOIN imas_teachers AS it ON it.userid=iu.id WHERE it.courseid=?) UNION ALL ';
     $query .= '(SELECT iu.id,iu.FirstName,iu.LastName FROM imas_users AS iu ';
     $query .= 'JOIN imas_tutors AS it ON it.userid=iu.id WHERE it.courseid=?)';
     $stm = $DBH->prepare($query);
@@ -195,11 +210,13 @@ if ($overwriteBody==1) {
     while($row = $stm->fetch(PDO::FETCH_ASSOC)) {
         $teacherNames[$row['id']] = $row['LastName'].', '.$row['FirstName'];
     }
-
+*/
     echo '<div class=breadcrumb>', $curBreadcrumb, '</div>';
     echo '<div id="headeruserdetail" class="pagetitle"><h1>' . _('Teacher Audit Log') . ': ';
     echo Sanitize::encodeStringForDisplay($coursename);
     echo '</h1></div>';
+
+    echo '<p class="noticetext">'._('Warning: A lot of things in this record are not very human-readable, as they use reference IDs rather than item names.').'</p>';
 
     $teacher_actions = TeacherAuditLog::findActionsByCourse($cid);
     if (empty($teacher_actions)) {
@@ -219,7 +236,7 @@ if ($overwriteBody==1) {
             echo '<tr>';
             echo '<td>' . formatdate($action['created_at']) . '</td>';
             echo "<td><span class='pii-full-name'>";
-						echo Sanitize::encodeStringForDisplay($teacherNames[$action['userid']]);
+						echo Sanitize::encodeStringForDisplay($stunames[$action['userid']]);
 						echo " (" . Sanitize::onlyInt($action['userid']) . ')</span></td>';
             echo '<td>' . Sanitize::encodeStringForDisplay($action['action']) . '</td>';
             echo '<td>' . Sanitize::onlyInt($action['itemid']) . '</td>';

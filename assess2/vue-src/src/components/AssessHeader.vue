@@ -1,6 +1,6 @@
 <template>
   <div id="assess-header" :class="{'assess-header': true, 'headerpane': true, 'practice': ainfo.in_practice}"
-    role="region" :aria-label="$t('regions.aheader')"
+    role="region" :aria-label="$t('regions-aheader')"
   >
     <div style="flex-grow: 1">
       <h1>{{ ainfo.name }}</h1>
@@ -9,8 +9,9 @@
           :class="{practicenotice: ainfo.in_practice}"
         >
           {{ curScorePoints }}
+        </span> <span class="med-left subdued">
+          {{ curAnswered }}
         </span>
-        <span class="med-left subdued">{{ curAnswered }}</span>
       </div>
     </div>
 
@@ -21,20 +22,22 @@
     </timer>
 
     <div class="flexgroup">
+      <span
+        v-if = "saveStatus > 0"
+        :class = "['noticetext', saveStatus === 3 ? 'sr-only' : '']"
+        aria-live = "polite"
+        aria-atomic = "true"
+      >
+        {{ saveStatusMsg }}
+      </span>
       <button
         v-if = "saveStatus === 3"
         class = "secondary"
         @click = "handleSaveWork"
         :disabled = "!canSubmit"
       >
-        {{ $t('header.work_save') }}
+        {{ $t('header-work_save') }}
       </button>
-      <span
-        v-if = "saveStatus === 1 || saveStatus === 2"
-        class = "noticetext"
-      >
-        {{ saveStatus === 1 ? $t('header.work_saving') : $t('header.work_saved') }}
-      </span>
       <button
         v-if = "assessSubmitLabel !== ''"
         :class="{ primary: primarySubmit, secondary: !primarySubmit }"
@@ -49,7 +52,7 @@
       <dropdown
         v-if="ainfo.resources.length > 0"
         id="resource-dropdown"
-        :tip = "$t('header.resources_header')"
+        :tip = "$t('header-resources_header')"
       >
         <template v-slot:button>
           <icons name="file" size="medium"/>
@@ -57,26 +60,28 @@
         <resource-pane />
       </dropdown>
 
-      <tooltip-span v-if = "showPrint" :tip="$t('print.print_version')">
+      <tooltip-span v-if = "showPrint" :tip="$t('print-print_version')" :hasbutton="true">
         <a
           :href="printLink"
           class = "noextlink"
           target = "_blank"
-          :aria-label = "$t('print.print_version')"
+          :aria-label = "$t('print-print_version')"
         >
           <icons name="print" size="medium"/>
         </a>
       </tooltip-span>
 
       <tooltip-span
-        :tip="MQenabled?$t('header.disable_mq'):$t('header.enable_mq')"
+        :tip="$t('header-use_mq')"
         style="display: inline-block"
+        :hasbutton="true"
       >
         <button
           @click="toggleMQuse"
+          role="switch"
           :class="{plain:true, 'switch-toggle':true}"
-          :aria-label="MQenabled?$t('header.disable_mq'):$t('header.enable_mq')"
-          :aria-pressed="MQenabled"
+          :aria-label="$t('header-use_mq')"
+          :aria-checked="MQenabled"
         >
           <icons
             :name="MQenabled ? 'eqned' : 'eqnedoff'"
@@ -90,17 +95,17 @@
         v-if="ainfo.is_lti && ainfo.lti_showmsg"
         :link="msglink"
         icon = "message"
-        label = "lti.msgs"
+        label = "lti-msgs"
         :cnt = "ainfo.lti_msgcnt"
       />
       <badged-icon
         v-if="ainfo.is_lti && ainfo.help_features.forum > 0"
         :link="forumlink"
         icon = "forum"
-        label = "lti.forum"
+        label = "lti-forum"
         :cnt = "ainfo.lti_forumcnt"
       />
-      <lti-menu v-if="ainfo.is_lti" />
+      <lti-menu />
     </div>
 
   </div>
@@ -166,11 +171,11 @@ export default {
       }
       pointsEarned = Math.round(pointsEarned * 1000) / 1000;
       if (this.ainfo.in_practice) {
-        return this.$t('header.practicescore', { pts: pointsEarned, poss: pointsPossible });
+        return this.$t('header-practicescore', { pts: pointsEarned, poss: pointsPossible });
       } else if (this.ainfo.show_scores_during) {
-        return this.$t('header.score', { pts: pointsEarned, poss: pointsPossible });
+        return this.$t('header-score', { pts: pointsEarned, poss: pointsPossible });
       } else {
-        return this.$tc('header.possible', pointsPossible);
+        return this.$t('header-possible', {n: pointsPossible});
       }
     },
     qAttempted () {
@@ -184,15 +189,15 @@ export default {
     },
     curAnswered () {
       const nQuestions = this.ainfo.questions.length;
-      return this.$t('header.answered', { n: this.qAttempted, tot: nQuestions });
+      return this.$t('header-answered', { n: this.qAttempted, tot: nQuestions });
     },
     assessSubmitLabel () {
       if (this.ainfo.submitby === 'by_assessment') {
-        return this.$t('header.assess_submit');
-      } else if (this.hasShowWorkAfter) {
-        return this.$t('work.add');
+        return this.$t('header-assess_submit');
+      } else if (this.hasShowWorkAfter && !this.ainfo.in_practice) {
+        return this.$t('work-add');
       } else if (this.ainfo.showscores === 'during') {
-        return this.$t('header.done');
+        return this.$t('header-done');
       } else {
         return '';
       }
@@ -213,6 +218,20 @@ export default {
       //  return 0;
       // }
     },
+    saveStatusMsg () {
+      if (this.saveStatus === 1) {
+        return this.$t('header-work_saving');
+      } else if (this.saveStatus === 2) {
+        return this.$t('header-work_saved');
+      } else if (this.saveStatus === 3) {
+        // Removed for now. This has the potential to be really annoying
+        // and I don't think it's technically required
+        // return this.$t('header-work_save_avail');
+        return '';
+      } else {
+        return '';
+      }
+    },
     showPrint () {
       return (this.ainfo.noprint !== 1);
     },
@@ -224,6 +243,9 @@ export default {
     },
     hasShowWorkAfter () {
       let hasShowWorkAfter = false;
+      if (store.assessInfo.hasOwnProperty('showwork_cutoff_in') && store.assessInfo.showwork_cutoff_in < 0) {
+        return false;
+      }
       for (let k = 0; k < store.assessInfo.questions.length; k++) {
         if (store.assessInfo.questions[k].showwork & 2) {
           hasShowWorkAfter = true;
@@ -251,7 +273,7 @@ export default {
       if (Object.keys(store.autosaveQueue).length === 0) {
         // nothing to save, so fake it
         store.autoSaving = true;
-        setTimeout(() => { store.autoSaving = false; }, 300);
+        setTimeout(() => { store.autoSaving = false; store.somethingDirty = false; }, 300);
       } else {
         actions.submitAutosave();
       }
@@ -305,7 +327,7 @@ export default {
   background-color: #f99;
   border-radius: 4px;
 }
-.switch-toggle[aria-pressed="true"] .switch-toggle2__ui {
+.switch-toggle[aria-checked="true"] .switch-toggle2__ui {
   background-color: #9f9
 }
 .switch-toggle2__ui:after {
@@ -322,7 +344,7 @@ export default {
   line-height: 10px;
   padding: 1px 2px;
 }
-.switch-toggle[aria-pressed="true"] .switch-toggle2__ui:after {
+.switch-toggle[aria-checked="true"] .switch-toggle2__ui:after {
   content: "On";
   color: #040;
   right: 0;
@@ -383,15 +405,15 @@ export default {
 }
 
 /* change the position of the knob to indicate it has been checked*/
-.switch-toggle[aria-pressed="true"] .switch-toggle__ui:after {
+.switch-toggle[aria-checked="true"] .switch-toggle__ui:after {
   right: 0em;
 }
 
 /* update the color of the "container" to further visually indicate state */
-.switch-toggle[aria-pressed="true"] .switch-toggle__ui:before {
+.switch-toggle[aria-checked="true"] .switch-toggle__ui:before {
   background: #0c0;
 }
-.switch-toggle[aria-pressed="true"] .switch-toggle__ui:after {
+.switch-toggle[aria-checked="true"] .switch-toggle__ui:after {
   background: #090;
 }
 </style>

@@ -23,6 +23,7 @@ function getfilehandlertype($filetype) {
 }
 
 function storecontenttofile($content,$key,$sec="private") {
+	$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 	if (getfilehandlertype('filehandlertype') == 's3') {
 		if ($sec=="public" || $sec=="public-read") {
 			$sec = "public-read";
@@ -37,7 +38,6 @@ function storecontenttofile($content,$key,$sec="private") {
 		}
 	} else {
 		$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/filestore/';
-		$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 		$dir = $base.dirname($key);
 		$fn = basename($key);
 		if (!is_dir($dir)) {
@@ -90,12 +90,25 @@ function relocatefileifneeded($file, $key, $sec="public") {
 	}
 }
 
+function getS3endpoint($key) {
+	if (isset($GLOBALS['CFG']['S3']['altendpoint']) && 
+		!preg_match('/(html|htm|xhtml|xml)$/', $key)
+	) {
+		return 'https://'.$GLOBALS['CFG']['S3']['altendpoint'];
+	}
+	$endpoint = 'https://'.$GLOBALS['AWSbucket'].'.s3';
+	if (isset($GLOBALS['CFG']['S3']['region'])) {
+		$endpoint .= '.' . $GLOBALS['CFG']['S3']['region'];
+	}
+	$endpoint .= '.amazonaws.com';
+	return $endpoint;
+}
 function relocategraphfileifneeded($file, $key) {
 	global $imasroot;
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
 		$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
 		if ($s3->putObjectFile($file,$GLOBALS['AWSbucket'],'gimgs/'.$key,"public-read")) {
-			return 'https://'.$GLOBALS['AWSbucket'].".s3.amazonaws.com/gimgs/$key";;
+			return getS3endpoint($key) . "/gimgs/$key";
 		} else {
 			return false;
 		}
@@ -106,7 +119,7 @@ function relocategraphfileifneeded($file, $key) {
 function getgraphfileurl($key) {
 	global $imasroot;
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
-		return 'https://'.$GLOBALS['AWSbucket'].".s3.amazonaws.com/gimgs/$key";;
+		return getS3endpoint($key) . "/gimgs/$key";
 	} else {
 		return $imasroot.'/filter/graph/imgs/'.$key;
 	}
@@ -124,7 +137,10 @@ function rehostfile($url, $keydir, $sec="public", $prependToFilename="") {
 	$parseurl = parse_url($url);
 	$fn =  Sanitize::sanitizeFilenameAndCheckBlacklist($prependToFilename.basename($parseurl['path']));
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
-		copy($url, $tmpdir.'/'.$fn);
+		$copyres = copy($url, $tmpdir.'/'.$fn);
+        if ($copyres === false) {
+            return false;
+        }
 		if ($sec=="public" || $sec=="public-read") {
 			$sec = "public-read";
 		} else {
@@ -152,12 +168,16 @@ function rehostfile($url, $keydir, $sec="public", $prependToFilename="") {
 		if (!is_dir($dir)) {
 			mkdir_recursive($dir);
 		}
-		copy($url, $dir.'/'.$fn);
+		$copyres = copy($url, $dir.'/'.$fn);
+        if ($copyres === false) {
+            return false;
+        }
 		return $fn;
 	}
 }
 
 function storeuploadedfile($id,$key,$sec="private") {
+	$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 	if (getfilehandlertype('filehandlertype') == 's3') {
 		if ($sec=="public" || $sec=="public-read") {
 			$sec = "public-read";
@@ -166,6 +186,10 @@ function storeuploadedfile($id,$key,$sec="private") {
 		}
 		if (is_uploaded_file($_FILES[$id]['tmp_name'])) {
 			downsizeimage($_FILES[$id]);
+			if (strpos($_FILES[$id]['name'], '.svg') !== false) {
+				require_once __DIR__ . '/svg-sanitizer/svgcleaner.php';
+				sanitizeSvg($_FILES[$id]);
+			}
 			$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
 			// $_FILES[]['tmp_name'] is not user provided. This is safe.
 			if ($s3->putObjectFile(realpath($_FILES[$id]['tmp_name']),$GLOBALS['AWSbucket'],$key,$sec)) {
@@ -179,8 +203,11 @@ function storeuploadedfile($id,$key,$sec="private") {
 	} else {
 		if (is_uploaded_file($_FILES[$id]['tmp_name'])) {
 			downsizeimage($_FILES[$id]);
+			if (strpos($_FILES[$id]['name'], '.svg') !== false) {
+				require_once __DIR__ . '/svg-sanitizer/svgcleaner.php';
+				sanitizeSvg($_FILES[$id]);
+			}
 			$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/filestore/';
-			$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 			$dir = $base.dirname($key);
 			$fn = basename($key);
 			if (!is_dir($dir)) {
@@ -197,8 +224,9 @@ function storeuploadedfile($id,$key,$sec="private") {
 	}
 }
 
-function storeimportfile($id) {
-	$key = uniqid();
+function storeimportfile($id, $ext = '.imas') {
+	$key = uniqid() . $ext;
+	$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
 		$sec = "private";
 		if (is_uploaded_file($_FILES[$id]['tmp_name'])) {
@@ -215,7 +243,6 @@ function storeimportfile($id) {
 	} else {
 		if (is_uploaded_file($_FILES[$id]['tmp_name'])) {
 			$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/admin/import/';
-			$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 			if (move_uploaded_file($_FILES[$id]['tmp_name'], $base.$key)) {
 				return $key;
 			} else {
@@ -228,12 +255,13 @@ function storeimportfile($id) {
 }
 
 function getimportfilepath($key) {
+	$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
 		$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
 		return $s3->queryStringGet($GLOBALS['AWSbucket'],'import/'.$key,7200);
 	} else {
 		$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/admin/import/';
-		return $base . Sanitize::sanitizeFilePathAndCheckBlacklist($key);
+		return $base . $key;
 	}
 }
 function deleteimport($key) {
@@ -242,7 +270,10 @@ function deleteimport($key) {
 		$s3->deleteObject($GLOBALS['AWSbucket'],'import/'.$key);
 	} else {
 		$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/admin/import/';
-		@unlink(realpath($base.$key));
+		$targetPath = realpath($base.$key);
+		if ($targetPath !== false && strpos($targetPath, $base) === 0) {
+			@unlink($targetPath);
+		}
 	}
 }
 
@@ -301,6 +332,7 @@ function downsizeimage($fileinfo) {
 }
 
 function storeuploadedcoursefile($id,$key,$sec="public-read") {
+	$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
 		if ($sec=="public" || $sec=="public-read") {
 			$sec = "public-read";
@@ -327,7 +359,6 @@ function storeuploadedcoursefile($id,$key,$sec="public-read") {
 	} else {
 		if (is_uploaded_file($_FILES[$id]['tmp_name'])) {
 			$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/course/files/';
-			$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 			$dir = $base.dirname($key);
 			$fn = basename($key);
 			$keydir = dirname($key);
@@ -350,6 +381,7 @@ function storeuploadedcoursefile($id,$key,$sec="public-read") {
 	}
 }
 function storeuploadedqimage($id,$key,$sec="public-read") {
+	$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
 		if ($sec=="public" || $sec=="public-read") {
 			$sec = "public-read";
@@ -376,7 +408,6 @@ function storeuploadedqimage($id,$key,$sec="public-read") {
 	} else {
 		if (is_uploaded_file($_FILES[$id]['tmp_name'])) {
 			$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/assessment/qimages/';
-			$key = Sanitize::sanitizeFilePathAndCheckBlacklist($key);
 			$dir = $base.dirname($key);
 			$fn = basename($key);
 			if (!is_dir($dir)) {
@@ -443,14 +474,27 @@ function deleteasidfilesfromstring($str) {
 //need to exclude asid or agroupid we're deleting from
 function deleteasidfilesfromstring2($str,$tosearchby,$val,$aid=null) {
 	global $DBH;
-	if ($tosearchby!='id' && $tosearchby!='agroupid') {return 0;}
-	if (is_array($val)) {
-		$keylist = implode(',', array_map('intval', $val));
-		$searchnot = "$tosearchby NOT IN ($keylist)";
+
+	if ($tosearchby == 'id') {
+		if (is_array($val)) {
+			$keylist = implode(',', array_map('intval', $val));
+			$searchnot = "id NOT IN ($keylist)";
+		} else {
+			$val = intval($val);
+			$searchnot = "id<>$val";
+		}
+	} else if ($tosearchby == 'agroupid') {
+		if (is_array($val)) {
+			$keylist = implode(',', array_map('intval', $val));
+			$searchnot = "agroupid NOT IN ($keylist)";
+		} else {
+			$val = intval($val);
+			$searchnot = "agroupid<>$val";
+		}
 	} else {
-		$val = intval($val);
-		$searchnot = "$tosearchby<>$val";
+		return 0;
 	}
+
 	if ($aid != null) {
 		if (is_array($aid)) {
 			$keylist = implode(',', array_map('intval', $aid));
@@ -523,8 +567,8 @@ function deleteAssess2FilesOnUnenroll($tounenroll, $aids, $groupassess) {
 	$tomaybedel = [];
 	$tolookupaid = [];
 	while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
-		$scoreddata = gzdecode($row['scoreddata']);
-		$practicedata = $row['practicedata']==''?'':gzdecode($row['practicedata']);
+		$scoreddata = Sanitize::gzexpand($row['scoreddata']);
+		$practicedata = $row['practicedata']==''?'':Sanitize::gzexpand($row['practicedata']);
 		preg_match_all('/@FILE:(.+?)@/', $scoreddata.$practicedata, $matches);
 		foreach ($matches[1] as $file) {
 			// if it's a group asssess, we'll look to see if anyone else is using
@@ -547,13 +591,13 @@ function deleteAssess2FilesOnUnenroll($tounenroll, $aids, $groupassess) {
 		// these are the group assessments that had files.
 		// look up other assessment records for same assessment but other students
 		// Remove any tomaybedel files that are used elsewhere
-		$aidlist2 = implode(',', $tolookupaid);
+		$aidlist2 = implode(',', array_map('intval', $tolookupaid));
 		$query = "SELECT assessmentid,scoreddata,practicedata FROM imas_assessment_records ";
 		$query .= "WHERE assessmentid IN ($aidlist2) AND userid NOT IN ($userlist)";
 		$stm = $DBH->query($query);
 		while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
-			$scoreddata = gzdecode($row['scoreddata']);
-			$practicedata = gzdecode($row['practicedata']);
+			$scoreddata = Sanitize::gzexpand($row['scoreddata']);
+			$practicedata = Sanitize::gzexpand($row['practicedata']);
 			preg_match_all('/@FILE:(.+?)@/', $scoreddata.$practicedata, $exmatch);
 			//remove from tolookup list all files found in other sessions
 			$tomaybedel = array_diff($tomaybedel, $exmatch[1]);
@@ -565,17 +609,27 @@ function deleteAssess2FilesOnUnenroll($tounenroll, $aids, $groupassess) {
 	// combine the lists
 	$todel = array_unique(array_merge($todel, $tomaybedel));
 
-	$deled = array();
-
+	//$deled = array();
+	$delcnt = 0;
 	if (getfilehandlertype('filehandlertype') == 's3') {
 		$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
-		foreach($todel as $file) {
+		$todelchunks = array_chunk($todel, 500);
+		foreach ($todelchunks as $todelarr) {
+			$todelarr = array_map(function($item) {
+				return 'adata/' . str_replace('\\/','/',$item);
+			}, $todelarr);
+			if ($s3->deleteObjects($GLOBALS['AWSbucket'], $todelarr)) {
+				$delcnt += count($todelarr);
+			}
+		}
+		/*foreach($todel as $file) {
 			if (in_array($file,$deled)) { continue;}
 			$s3object = "adata/$file";
 			if($s3->deleteObject($GLOBALS['AWSbucket'],$s3object)) {
 				$deled[] = $file;
 			}
 		}
+		*/
 	} else {
 		$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/filestore';
 		foreach($todel as $file) {
@@ -586,23 +640,47 @@ function deleteAssess2FilesOnUnenroll($tounenroll, $aids, $groupassess) {
 			}
 		}
 	}
-	return count($deled);
+	return $delcnt; //count($deled);
 }
 
 function deleteasidfilesbyquery2($tosearchby,$val,$aid=null,$lim=0) {
 	global $DBH;
-	if ($tosearchby!='id' && $tosearchby!='agroupid' && $tosearchby!='userid') {return 0;}
-	$lim = intval($lim);
 
-	if (is_array($val)) {
-		$keylist = implode(',', array_map('intval', $val));
-		$searchwhere = "$tosearchby IN ($keylist)";
-		$searchnot = "$tosearchby NOT IN ($keylist)";
+	$lim = intval($lim);
+	if ($tosearchby == 'id') {
+		if (is_array($val)) {
+			$keylist = implode(',', array_map('intval', $val));
+			$searchwhere = "id IN ($keylist)";
+			$searchnot = "id NOT IN ($keylist)";
+		} else {
+			$val = intval($val);
+			$searchwhere = "id=$val";
+			$searchnot = "id<>$val";
+		}
+	} else if ($tosearchby == 'agroupid') {
+		if (is_array($val)) {
+			$keylist = implode(',', array_map('intval', $val));
+			$searchwhere = "agroupid IN ($keylist)";
+			$searchnot = "agroupid NOT IN ($keylist)";
+		} else {
+			$val = intval($val);
+			$searchwhere = "agroupid=$val";
+			$searchnot = "agroupid<>$val";
+		}
+	} else if ($tosearchby == 'userid') {
+		if (is_array($val)) {
+			$keylist = implode(',', array_map('intval', $val));
+			$searchwhere = "userid IN ($keylist)";
+			$searchnot = "userid NOT IN ($keylist)";
+		} else {
+			$val = intval($val);
+			$searchwhere = "userid=$val";
+			$searchnot = "userid<>$val";
+		}
 	} else {
-		$val = intval($val);
-		$searchwhere = "$tosearchby=$val";
-		$searchnot = "$tosearchby<>$val";
+		return 0;
 	}
+	
 	if ($aid === null && $tosearchby!='userid') {
 		$stm = $DBH->query("SELECT assessmentid FROM imas_assessment_sessions WHERE $searchwhere");
 		$aid = $stm->fetchColumn(0);
@@ -708,6 +786,7 @@ function deleteasidfilesbyquery($wherearr,$lim=0) {
 */
 //delete all assessment files for an assessmentid
 function deleteallaidfiles($aid) {
+	$aid = intval($aid);
 	$delcnt = 0;
 	if (getfilehandlertype('filehandlertype') == 's3') {
 		$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
@@ -858,8 +937,8 @@ function deletecoursefiles($files) {
 }
 
 function deleteqimage($file) {
-	$safeFilename = Sanitize::sanitizeFilenameAndCheckBlacklist($file);
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
+		$safeFilename = preg_replace('/[^\w\.]/','', $file);
 		$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
 		$s3object = "qimages/$safeFilename";
 		if($s3->deleteObject($GLOBALS['AWSbucket'],$s3object)) {
@@ -868,6 +947,7 @@ function deleteqimage($file) {
 			return false;
 		}
 	} else {
+		$safeFilename = Sanitize::sanitizeFilenameAndCheckBlacklist($file);
 		$base = rtrim(dirname(dirname(__FILE__)), '/\\').'/assessment/qimages';
 		if (@unlink($base."/$safeFilename")) {
 			return true;
@@ -939,6 +1019,7 @@ function deleteFilesFromGetBucketCall($s3,$arr) {
 }
 
 function deletealluserfiles($uid) {
+	$uid = intval($uid);
 	$delcnt = 0;
 	if (getfilehandlertype('filehandlertype') == 's3') {
 		$s3 = new S3($GLOBALS['AWSkey'],$GLOBALS['AWSsecret']);
@@ -1028,8 +1109,7 @@ function getuserfileurl($key) {
 	global $urlmode,$imasroot;
 	$key = Sanitize::rawurlencodePath($key);
 	if (getfilehandlertype('filehandlertype') == 's3') {
-		//return $urlmode."s3.amazonaws.com/{$GLOBALS['AWSbucket']}/$key";
-		return 'https://'.$GLOBALS['AWSbucket'].".s3.amazonaws.com/$key";
+		return getS3endpoint($key) . "/$key";
 	} else {
 		return "$imasroot/filestore/$key";
 	}
@@ -1048,7 +1128,7 @@ function getfopenloc($key) {
 	global $urlmode,$imasroot;
 	$key = Sanitize::rawurlencodePath($key);
 	if (getfilehandlertype('filehandlertype') == 's3') {
-		return 'https://'.$GLOBALS['AWSbucket'].".s3.amazonaws.com/$key";
+		return getS3endpoint($key) . "/$key";
 	} else {
 		return "../filestore/$key";
 	}
@@ -1059,8 +1139,7 @@ function getcoursefileurl($key,$abs=false) {
 	if ($st == 'http:/' || $st=='https:') {
 		return $key;
 	} else if (getfilehandlertype('filehandlertypecfiles') == 's3') {
-		//return $urlmode."s3.amazonaws.com/{$GLOBALS['AWSbucket']}/cfiles/$key";
-		return 'https://'.$GLOBALS['AWSbucket'].".s3.amazonaws.com/cfiles/$key";
+		return getS3endpoint($key) . "/cfiles/$key";
 	} else {
 		$key = Sanitize::rawurlencodePath($key);  //shouldn't be needed since filenames sanitized, but better to be safe
 		if ($abs==true) {
@@ -1072,9 +1151,12 @@ function getcoursefileurl($key,$abs=false) {
 }
 function getqimageurl($key,$abs=false) {
 	global $urlmode,$imasroot;
+	if (substr($key,0,4)=='http') {
+		return $key;
+	}
 	$key = Sanitize::rawurlencodePath($key);
 	if (getfilehandlertype('filehandlertypecfiles') == 's3') {
-		return 'https://'.$GLOBALS['AWSbucket'].".s3.amazonaws.com/qimages/$key";
+		return getS3endpoint($key) . "/qimages/$key";
 	} else {
 		if ($abs==true) {
 			return $GLOBALS['basesiteurl'] . "/assessment/qimages/$key";

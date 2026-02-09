@@ -39,9 +39,13 @@ if (!(isset($teacherid))) {
     $curBreadcrumb .= _("Modify Question Settings");
 
     if (!empty($_GET['process'])) {
-        $stm = $DBH->prepare("SELECT itemorder,defpoints,intro FROM imas_assessments WHERE id=:id");
-        $stm->execute(array(':id' => $aid));
+        $stm = $DBH->prepare("SELECT itemorder,defpoints,intro FROM imas_assessments WHERE id=:id AND courseid=:cid");
+        $stm->execute(array(':id' => $aid, ':cid'=>$cid));
         list($itemorder, $defpoints, $intro) = $stm->fetch(PDO::FETCH_NUM);
+        if ($itemorder === null || $itemorder === false) {
+            echo 'Invalid aid';
+            exit;
+        }
         if (isset($_GET['usedef'])) {
             $points = 9999;
             $attempts = 9999;
@@ -69,6 +73,10 @@ if (!(isset($teacherid))) {
             if (trim($_POST['fixedseeds']) == "") {$fixedseeds = null;} else { $fixedseeds = trim($_POST['fixedseeds']);}
             if ($penalty != 9999) {
                 $penalty_aftern = Sanitize::onlyInt($_POST['penalty_aftern']);
+                if ($penalty_aftern > 9) {
+                    echo "after __ tries must be less than 10";
+                    exit;
+                }
                 if ($penalty_aftern > 1 && $attempts > 1) {
                     $penalty = 'S' . $penalty_aftern . $penalty;
                 }
@@ -87,11 +95,22 @@ if (!(isset($teacherid))) {
                 (empty($_POST['showhints4']) ? 0 : 4)
             );
             $extracredit = !empty($_POST['ec']) ? 1 : 0;
+
+            if ($beentaken) {
+                // prevent adding copies if beentaken
+                $_POST['copies'] = 0;
+            }
         }
         if (isset($_GET['id'])) { //already have id - updating
-            $stm = $DBH->prepare("SELECT * FROM imas_questions WHERE id=?");
-            $stm->execute(array($_GET['id']));
+            $stm = $DBH->prepare("SELECT iq.* FROM imas_questions AS iq
+				JOIN imas_assessments AS ia ON iq.assessmentid=ia.id
+				WHERE iq.id=? AND ia.courseid=?");
+			$stm->execute(array($_GET['id'], $cid));
             $old_settings = $stm->fetch(PDO::FETCH_ASSOC);
+            if ($old_settings === false) {
+				echo 'Invalid id';
+				exit;
+			}
             if (isset($_POST['replacementid']) && $_POST['replacementid'] != '' && intval($_POST['replacementid']) != 0) {
                 $query = "UPDATE imas_questions SET points=:points,attempts=:attempts,penalty=:penalty,regen=:regen,showans=:showans,showwork=:showwork,rubric=:rubric,showhints=:showhints,fixedseeds=:fixedseeds";
                 $query .= ',questionsetid=:questionsetid,extracredit=:extracredit WHERE id=:id';
@@ -217,9 +236,15 @@ if (!(isset($teacherid))) {
     } else { //DEFAULT DATA MANIPULATION
 
         if (isset($_GET['id'])) {
-            $stm = $DBH->prepare("SELECT points,attempts,penalty,regen,showans,showwork,rubric,showhints,questionsetid,fixedseeds,extracredit FROM imas_questions WHERE id=:id");
-            $stm->execute(array(':id' => $_GET['id']));
-            $line = $stm->fetch(PDO::FETCH_ASSOC);
+            $stm = $DBH->prepare("SELECT iq.* FROM imas_questions AS iq
+				JOIN imas_assessments AS ia ON iq.assessmentid=ia.id
+				WHERE iq.id=? AND ia.courseid=?");
+			$stm->execute(array($_GET['id'], $cid));
+			$line = $stm->fetch(PDO::FETCH_ASSOC);
+			if ($line === false) {
+				echo 'Invalid id';
+				exit;
+			}
             if ($line['penalty'][0] === 'S') {
                 $penalty_aftern = $line['penalty'][1];
                 $line['penalty'] = substr($line['penalty'], 2);
@@ -277,10 +302,15 @@ if (!(isset($teacherid))) {
         //get defaults
         $query = "SELECT defpoints,defattempts,defpenalty,defregens,";
         $query .= "showans,showwork,submitby,showhints,shuffle FROM imas_assessments ";
-        $query .= "WHERE id=:id";
+        $query .= "WHERE id=:id AND courseid=:cid";
         $stm = $DBH->prepare($query);
-        $stm->execute(array(':id' => $aid));
+        $stm->execute(array(':id' => $aid, ':cid'=>$cid));
         $defaults = $stm->fetch(PDO::FETCH_ASSOC);
+        if ($defaults === false) {
+			echo 'Invalid aid';
+			exit;
+		}
+
         $defaults['showwork'] = ($defaults['showwork'] & 3);
 
         if ($defaults['defpenalty'] === '') { $defaults['defpenalty'] = '0'; }
@@ -370,45 +400,45 @@ echo '<b>' . Sanitize::encodeStringForDisplay($qdescrip) . '</b> ';
 <?php
 if (!isset($_GET['id']) || $beentaken) {
         ?>
-<span class=form><?php echo _("Points for this problem:"); ?></span>
-<span class=formright> <input type=text size=4 name=points value="<?php echo Sanitize::encodeStringForDisplay($line['points']); ?>"><br/><i class="grey"><?php echo _("Default:"); ?> <?php echo Sanitize::encodeStringForDisplay($defaults['defpoints']); ?></i></span><BR class=form>
+<label for=points class=form><?php echo _("Points for this problem:"); ?></label>
+<span class=formright> <input type=text size=4 name=points id=points value="<?php echo Sanitize::encodeStringForDisplay($line['points']); ?>"><br/><i class="grey"><?php echo _("Default:"); ?> <?php echo Sanitize::encodeStringForDisplay($defaults['defpoints']); ?></i></span><BR class=form>
 <?php
 } else {
         echo '<input type="hidden" name="points" value="' . Sanitize::encodeStringForDisplay($line['points']) . '"/>';
     }
     ?>
-<span class=form><?php echo _("Tries allowed on each version of this problem:"); ?></span>
-<span class=formright> <input type=text size=3 name=attempts value="<?php echo Sanitize::encodeStringForDisplay($line['attempts']); ?>">
+<label for=attempts class=form><?php echo _("Tries allowed on each version of this problem:"); ?></label>
+<span class=formright> <input type=text size=3 name=attempts id=attempts value="<?php echo Sanitize::encodeStringForDisplay($line['attempts']); ?>">
   <br/><i class="grey"><?php echo _("Default:"); ?> <?php echo Sanitize::encodeStringForDisplay($defaults['defattempts']); ?></i>
 </span><BR class=form>
 
 <span class=form><?php echo _("Penalty on Tries:"); ?></span>
-<span class=formright><input type=text size=2 name=penalty value="<?php echo Sanitize::encodeStringForDisplay($line['penalty']); ?>">
-  <?php echo sprintf(_('%% per try after %s full-credit tries'),
-        '<input type=text size=1 name="penalty_aftern" value="' . Sanitize::encodeStringForDisplay($penalty_aftern) . '">'); ?>
+<span class=formright><label><input type=text size=2 name=penalty value="<?php echo Sanitize::encodeStringForDisplay($line['penalty']); ?>">
+  <?php echo sprintf(_('%% per try</label> <label>after %s full-credit tries</label>'),
+        '<input type=number min=1 max=9 size=1 name="penalty_aftern" value="' . Sanitize::encodeStringForDisplay($penalty_aftern) . '">'); ?>
    <br/><i class="grey"><?php echo _('Default:'); ?> <?php echo Sanitize::encodeStringForDisplay($defaults['penalty']); ?></i>
 </span><BR class=form>
 <?php
 // TODO: Add regen penalty stuff.  Do we really want to?
     if ($defaults['submitby'] == 'by_question' && $defaults['defregens'] > 1) {
         ?>
-<span class="form"><?php echo _('Allow &quot;Try similar problem&quot;?'); ?></span>
+<label for=allowregen class="form"><?php echo _('Allow &quot;Try similar problem&quot;?'); ?></label>
 <span class=formright>
-    <select name="allowregen">
+    <select name="allowregen" id=allowregen>
      <option value="0" <?php if ($line['regen'] == 0) {echo 'selected="1"';}?>><?php echo _('Use Default'); ?></option>
      <option value="1" <?php if ($line['regen'] > 0) {echo 'selected="1"';}?>><?php echo _('No'); ?></option>
 </select><br/><i class="grey"><?php echo _('Default:'); ?> <?php echo $defaults['defregens']; ?> <?php echo _('versions'); ?></i></span><br class="form"/>
 <?php
 }
     ?>
-<span class=form><?php echo _('Show Answers during Assessment'); ?></span><span class=formright>
-    <select name="showans">
+<label for=showans class=form><?php echo _('Show Answers during Assessment'); ?></label><span class=formright>
+    <select name="showans" id=showans>
      <option value="0" <?php if ($line['showans'] == '0') {echo 'selected="1"';}?>><?php echo _('Use Default'); ?></option>
      <option value="N" <?php if ($line['showans'] == 'N') {echo 'selected="1"';}?>><?php echo _('Never during assessment'); ?></option>
     </select><br/><i class="grey"><?php echo _('Default:'); ?> <?php echo Sanitize::encodeStringForDisplay($defaults['showans']); ?></i></span><br class="form"/>
 
-<span class=form><?php echo _('Provide "Show Work" boxes'); ?></span><span class=formright>
-    <select name="showwork">
+<label for=showwork class=form><?php echo _('Provide "Show Work" boxes'); ?></label><span class=formright>
+    <select name="showwork" id=showwork>
      <option value="-1" <?php if ($line['showwork'] == '-1') {echo 'selected="1"';}?>><?php echo _('Use Default'); ?></option>
      <option value="0" <?php if ($line['showwork'] == '0') {echo 'selected="1"';}?>><?php echo _('No'); ?></option>
      <option value="1" <?php if ($line['showwork'] == '1') {echo 'selected="1"';}?>><?php echo _('During Assessment'); ?></option>
@@ -440,7 +470,7 @@ if (!isset($_GET['id']) || $beentaken) {
     </span>
     <br/><i class="grey"><?php echo _('Default:'); ?> <?php echo $defaults['showhints']; ?></i></span><br class="form"/>
 
-<span class=form><?php echo _('Use Scoring Rubric'); ?></span><span class=formright>
+<label for=rubric class=form><?php echo _('Use Scoring Rubric'); ?></label><span class=formright>
 <?php
 writeHtmlSelect('rubric', $rubric_vals, $rubric_names, $line['rubric']);
     echo " <a href=\"addrubric.php?cid=$cid&amp;id=new&amp;from=modq&amp;aid=" . Sanitize::encodeUrlParam($aid) . "&amp;qid=" . Sanitize::encodeUrlParam($_GET['id'] ?? '') . "\">" . _("Add new rubric") . "</a> ";
@@ -457,9 +487,9 @@ if (!$qingroup) {
 <?php
 }
 if (isset($_GET['qsetid'])) { //adding new question
-        echo "<span class=form>" . _("Number of copies of question to add:") . "</span><span class=formright><input type=text size=4 name=copies value=\"1\"/></span><br class=form />";
+        echo "<label for=copies class=form>" . _("Number of copies of question to add:") . "</label><span class=formright><input type=text size=4 name=copies id=copies value=\"1\"/></span><br class=form />";
     } else if (!$beentaken) {
-        echo "<span class=form>" . _("Number, if any, of additional copies to add to assessment:") . "</span><span class=formright><input type=text size=4 name=copies value=\"0\"/></span><br class=form />";
+        echo "<label for=copies class=form>" . _("Number, if any, of additional copies to add to assessment:") . "</label><span class=formright><input type=text size=4 name=copies id=copies value=\"0\"/></span><br class=form />";
     }
     if ($line['fixedseeds'] == '') {
         echo '<span class="form"><a href="#" onclick="$(this).hide();$(\'.advanced\').show();return false">' . _('Advanced') . '</a></span><br class="form"/>';
@@ -469,7 +499,7 @@ if (isset($_GET['qsetid'])) { //adding new question
         echo 'style="display:none;"';
     }
     echo '>';
-    echo '<span class="form">' . _('Restricted question seed list:') . '</span>';
+    echo '<label for=fixedseeds class="form">' . _('Restricted question seed list:') . '</label>';
     echo '<span class="formright"><input size=30 name="fixedseeds" id="fixedseeds" value="' . $line['fixedseeds'] . '"/></span><br class="form"/>';
     echo '</div>';
     if ($line['fixedseeds'] != '' && isset($_GET['id'])) {
@@ -477,11 +507,11 @@ if (isset($_GET['qsetid'])) { //adding new question
     }
     if (isset($_GET['id'])) {
         echo '<div class="advanced" style="display:none">';
-        echo '<span class="form">' . _('Replace this question with question ID:') . ' ';
+        echo '<label for=replacementid class="form">' . _('Replace this question with question ID:') . ' ';
         if ($beentaken) {
             echo '<br/><span class=noticetext>' . _('WARNING: This is NOT recommended. It will mess up the question for any student who has already attempted it, and any work they have done may look garbled when you view it') . '</span>';
         }
-        echo '</span><span class="formright"><input size="7" name="replacementid"/></span><br class="form"/>';
+        echo '</label><span class="formright"><input size="7" name="replacementid" id="replacementid"/></span><br class="form"/>';
         echo '</div>';
     }
 

@@ -41,7 +41,7 @@ function ahahDone(url, target) {
 
 
     } else {
-      document.getElementById(target).innerHTML=" AHAH Error:\n"+ req.status + "\n" +req.statusText;
+      document.getElementById(target).textContent=" AHAH Error: "+ req.status + ", " +req.statusText;
     }
   }
 }
@@ -67,7 +67,6 @@ function toggleblock(event,bnum,folder) {
       //var butn = document.getElementById('but'+bnum);
       var img = document.getElementById('img'+bnum);
       oblist = oblist.split(',');
-      plblist = plblist.split(',');
       var loc = arraysearch(bnum,oblist);
       if (node.className == 'blockitems') {
           if (arraysearch(bnum,loadedblocks)==-1) {
@@ -75,7 +74,6 @@ function toggleblock(event,bnum,folder) {
 	  }
           node.className = 'hidden';
           node.setAttribute('aria-hidden', true);
-          node.setAttribute('aria-expanded', false);
           $("#blockhead"+bnum+" *[aria-expanded=true]").attr("aria-expanded",false);
           //butn.value = 'Expand';
 	  if (img != null) {
@@ -85,13 +83,10 @@ function toggleblock(event,bnum,folder) {
       } else {
           if (arraysearch(bnum,loadedblocks)==-1) {
 	  	ahah(getbiaddr+folder,'block'+bnum);
-		if (arraysearch(folder,plblist)==-1) {
-			plblist.push(folder);
-		}
+
 	  }
           node.className = 'blockitems';
           node.setAttribute('aria-hidden', false);
-          node.setAttribute('aria-expanded', true);
           $("#blockhead"+bnum+" *[aria-expanded=false]").attr("aria-expanded",true);
           //butn.value = 'Collapse';
 	  if (img != null) {
@@ -100,9 +95,8 @@ function toggleblock(event,bnum,folder) {
           if (loc==-1) {oblist.push(bnum);}
       }
       oblist = oblist.join(',');
-      plblist = plblist.join(',');
-      document.cookie = 'openblocks-' +cid+'='+ oblist;
-      document.cookie = 'prevloadedblocks-'+cid+'='+plblist;
+      setCookie('openblocks-' +cid, oblist);
+      
       if (event.shiftKey && node.className == 'hidden') {
           $("a[id^=blockh]").each(function(i,el) {
           	var id=$(el).attr("id").substr(6);
@@ -122,6 +116,7 @@ function showcalcontents(el) {
 		}
 
 	} else if (caleventsarr[el.id]!=null) {
+		html += '<button class="slim floatright plain" onclick="showcalcontents(1)">'+_('Show all')+'</button>';
 		html += '<div class="caldatebar">'+caleventsarr[el.id].date + '</div>';
 		html += showcalcontentsid(el.id);
 		var mlink = document.getElementById("mcelink");
@@ -145,6 +140,60 @@ function showcalcontents(el) {
 function hidevisualcal() {
 	showcalcontents(1);
 	jQuery("table.cal").toggle();
+}
+
+function setcalview(n, skipfocus) {
+	$("button.calview0").attr("aria-selected",n==0);
+	$("button.calview1").attr("aria-selected",n==1);
+	if (n==0) {
+		$("table.cal").show();
+		$("#agendaheader").hide();
+		$("#caleventslist").empty();
+		if ($("td.today").length > 0) {
+			showcalcontents($("td.today")[0]);
+		}
+		if (!skipfocus) {
+			$("button.calview0").focus();
+		}
+		$(".cala11y").show();
+		setCookie('calview-' +cid, 0);
+	} else if (n==1) {
+		$("table.cal").hide();
+		$("#agendaheader").show();
+		showcalcontents(1);
+		if (!skipfocus) {
+			$("button.calview1").focus();
+		}
+		$(".cala11y").hide();
+		setCookie('calview-' +cid, 1);
+	}
+}
+
+function updatecal(pageshift, start, length) {
+	var url = calcallback; 
+	if (length !== null) {
+		url += '&callength='+length;
+		setCookie('callength'+cid, length);
+	} else {
+		length = document.getElementById("callength").value;
+	}
+	if (start === null && pageshift !== null) {
+		start = curcalstart + pageshift*60*60*24*7*length;
+	}
+	if (start !== null) {
+		url += '&calstart='+start;
+		setCookie('calstart'+cid, start);
+	}
+	url += '&ajax=true';
+	$.get(url, function (data) {
+		$("#calwrap").empty().append(data);
+		if (typeof initcaldragreorder === 'function') {
+			initcaldragreorder();
+		}
+	});
+}
+function changecallength(el) {
+	updatecal(null,null,el.value);
 }
 
 function showcalcontentsid(elid) {
@@ -324,10 +373,6 @@ function showcalcontentsid(elid) {
 jQuery(document).ready(function($) {
 	$(".caldl").attr("title",_("Bring this day to top"));
 });
-
-function changecallength(el) {
-	window.location = calcallback + '&callength=' + el.value;
-}
 
 var playlist = [];
 var curvid = [];

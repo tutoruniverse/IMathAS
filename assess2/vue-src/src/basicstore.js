@@ -1,8 +1,8 @@
-import Vue from 'vue';
+import { reactive, nextTick } from 'vue';
 import Router from './router';
 import { mapInterquestionTexts, mapInterquestionPages } from '@/mixins/maptexts';
 
-export const store = Vue.observable({
+export const store = reactive({
   assessInfo: null,
   APIbase: null,
   aid: null,
@@ -31,6 +31,8 @@ export const store = Vue.observable({
   timelimit_grace_expired: false,
   timelimit_restricted: 0,
   enddate_timer: null,
+  showwork_timer: null,
+  showwork_expired: false,
   show_enddate_dialog: false,
   inPrintView: false,
   enableMQ: true,
@@ -178,6 +180,7 @@ export const actions = {
       });
   },
   loadQuestion (qn, regen, jumptoans, skipdirtycheck) {
+    this.prepForSave('all');
     if (store.inTransit) {
       window.setTimeout(() => this.loadQuestion(qn, regen, jumptoans), 20);
       return;
@@ -203,6 +206,7 @@ export const actions = {
     if (store.assessInfo.preview_all) {
       data.append('preview_all', true);
     }
+
     if (Object.keys(store.autosaveQueue).length > 0) {
       actions.clearAutosaveTimer();
       this.addAutosaveData(data);
@@ -211,7 +215,7 @@ export const actions = {
     window.$.ajax({
       url: store.APIbase + 'loadquestion.php' + store.queryString,
       type: 'POST',
-      dataType: 'json',
+      dataType: 'text',
       data: data,
       processData: false,
       contentType: false,
@@ -221,30 +225,50 @@ export const actions = {
       crossDomain: true
     })
       .done(response => {
-        if (response.hasOwnProperty('error')) {
-          this.handleError(response.error);
-          return;
+        try {
+          var data = JSON.parse(response.trim().replace(/^\uFEFF/, ''));
+          if (data.hasOwnProperty('error')) {
+            this.handleError(data.error);
+            return;
+          } else if (data.hasOwnProperty('warning')) {
+            this.handleError(data.warning);
+          }
+          if (data.saved_autosaves) {
+            this.markAutosavesDone();
+          }
+          delete data.saved_autosaves;
+          if (regen && store.assessInfo.questions[qn].jsparams) {
+            // clear out before overwriting
+            window.imathasAssess.clearparams(store.assessInfo.questions[qn].jsparams);
+          }
+          data = this.processSettings(data);
+          this.copySettings(data);
+        } catch (e) {
+          console.log('Response text:', response);
+          this.handleError('parseerror');
         }
-        if (response.saved_autosaves) {
-          this.markAutosavesDone();
-        }
-        delete response.saved_autosaves;
-        if (regen && store.assessInfo.questions[qn].jsparams) {
-          // clear out before overwriting
-          window.imathasAssess.clearparams(store.assessInfo.questions[qn].jsparams);
-        }
-        response = this.processSettings(response);
-        this.copySettings(response);
       })
       .fail((xhr, textStatus, errorThrown) => {
+        if (textStatus === 'parsererror') {
+          console.log('Response text:', xhr.responseText);
+        }
         this.handleError(textStatus === 'parsererror' ? 'parseerror' : 'noserver');
       })
       .always(response => {
         store.inTransit = false;
       });
   },
+  prepForSave (qns) { // qns is array of ids, or 'all' to callback on all
+    for (let k in window.callbackstack) {
+      k = parseInt(k);
+      if (qns === 'all' || qns.indexOf(k < 1000 ? k : (Math.floor(k / 1000) - 1)) > -1) {
+        window.callbackstack[k](k);
+      }
+    }
+    if (typeof window.tinyMCE !== 'undefined') { window.tinyMCE.triggerSave(); }
+  },
   submitAssessment () {
-    let warnMsg = 'header.confirm_assess_submit';
+    let warnMsg = 'header-confirm_assess_submit';
     if (store.assessInfo.submitby === 'by_assessment') {
       let qAttempted = 0;
       const changedQuestions = this.getChangedQuestions();
@@ -262,7 +286,7 @@ export const actions = {
       }
       const nQuestions = store.assessInfo.questions.length;
       if (qAttempted !== nQuestions) {
-        warnMsg = 'header.confirm_assess_unattempted_submit';
+        warnMsg = 'header-confirm_assess_unattempted_submit';
       }
       store.confirmObj = {
         body: warnMsg,
@@ -308,6 +332,7 @@ export const actions = {
     }
     if (Object.keys(data).length === 0) { // nothing to submit
       store.inTransit = false;
+      store.errorMsg = null;
       if (store.inAssess) {
         Router.push('/summary');
       } else if (store.assessInfo.available === 'yes') {
@@ -328,7 +353,7 @@ export const actions = {
       crossDomain: true
     })
       .done(response => {
-        if (response.hasOwnProperty('error')) {
+        if (response.hasOwnProperty('error') && response.error !== 'workafter_expired') {
           this.handleError(response.error);
           if (response.error === 'already_submitted') {
             response = this.processSettings(response);
@@ -340,7 +365,7 @@ export const actions = {
         }
         // copy into questions for reload later if needed
         for (const qn in store.work) {
-          Vue.set(store.assessInfo.questions[parseInt(qn)], 'work', store.work[qn]);
+          store.assessInfo.questions[parseInt(qn)].work = store.work[qn];
           delete store.work[qn];
         }
 
@@ -370,13 +395,8 @@ export const actions = {
     if (typeof qns !== 'object') {
       qns = [qns];
     }
-    for (let k in window.callbackstack) {
-      k = parseInt(k);
-      if (qns.indexOf(k < 1000 ? k : (Math.floor(k / 1000) - 1)) > -1) {
-        window.callbackstack[k](k);
-      }
-    }
-    if (typeof window.tinyMCE !== 'undefined') { window.tinyMCE.triggerSave(); }
+
+    this.prepForSave(qns);
 
     // figure out non-blank questions to submit
     const lastLoaded = [];
@@ -390,7 +410,6 @@ export const actions = {
       }
       if (store.work[qn] && store.work[qn] !== actions.getInitValue(qn, 'sw' + qn)) {
         changedWork = true;
-        break;
       }
     }
     if (Object.keys(changedQuestions).length === 0 && !changedWork && !endattempt) {
@@ -461,7 +480,7 @@ export const actions = {
         data.append('sw' + qn, store.work[qn]);
       }
       lastLoaded[k] = store.lastLoaded[qn].getTime();
-    };
+    }
     data.append('toscoreqn', JSON.stringify(changedQuestions));
     data.append('timeactive', timeactive.join(','));
     data.append('lastloaded', lastLoaded.join(','));
@@ -548,7 +567,7 @@ export const actions = {
         } else if (qns.length === 1) {
           store.assessInfo.questions[qns[0]].hadSeqNext = hasSeqNext;
           // scroll to score result
-          Vue.nextTick(() => {
+          nextTick(() => {
             var el;
             if (!hasSeqNext) {
               el = document.getElementById('questionwrap' + qns[0]).parentNode.parentNode;
@@ -599,12 +618,12 @@ export const actions = {
     store.somethingDirty = false;
     // this.clearAutosaveTimer()
     if (!store.autosaveQueue.hasOwnProperty(qn)) {
-      Vue.set(store.autosaveQueue, qn, []);
+      store.autosaveQueue[qn] = [];
     }
     if (store.autosaveQueue[qn].indexOf(partnum) === -1) {
       store.autosaveQueue[qn].push(partnum);
     }
-    Vue.set(store.autosaveTimeactive, qn, timeactive);
+    store.autosaveTimeactive[qn] = timeactive;
     if (store.autosaveTimer === null) {
       store.autosaveTimer = window.setTimeout(() => { this.submitAutosave(true); }, 60 * 1000);
     }
@@ -612,7 +631,7 @@ export const actions = {
   clearAutosave (qns) {
     for (const i in qns) {
       if (store.autosaveQueue.hasOwnProperty(qns[i])) {
-        Vue.delete(store.autosaveQueue, qns[i]);
+        delete store.autosaveQueue[qns[i]];
       }
     }
     if (Object.keys(store.autosaveQueue).length === 0) {
@@ -677,7 +696,7 @@ export const actions = {
         }
       });
       lastLoaded[qn] = store.lastLoaded[qn].getTime();
-    };
+    }
     data.append('autosave-tosaveqn', JSON.stringify(tosaveqn));
     data.append('autosave-lastloaded', JSON.stringify(lastLoaded));
     data.append('autosave-verification', JSON.stringify(this.getVerificationData(tosaveqn)));
@@ -714,7 +733,8 @@ export const actions = {
     store.inTransit = true;
     store.autoSaving = true;
 
-    if (typeof window.tinyMCE !== 'undefined') { window.tinyMCE.triggerSave(); }
+    this.prepForSave(Object.keys(store.autosaveQueue));
+
     const data = new FormData();
     this.addAutosaveData(data);
 
@@ -755,6 +775,8 @@ export const actions = {
             this.copySettings(response);
           }
           return;
+        } else if (response.hasOwnProperty('warning')) {
+          this.handleError(response.warning);
         }
         if (response.autosave === 'done') {
           this.markAutosavesDone();
@@ -775,13 +797,21 @@ export const actions = {
     if (store.assessInfo.has_active_attempt) {
       // submit dirty questions and end attempt
       store.errorMsg = 'timesup_submitting';
-      if (typeof window.tinyMCE !== 'undefined') { window.tinyMCE.triggerSave(); }
+      this.prepForSave('all');
       setTimeout(() => {
         const tosub = Object.keys(this.getChangedQuestions());
         this.submitQuestion(tosub, true);
       }, 1000);
     }
     // store.timelimit_expired = true;
+  },
+  handleShowworklimitUp () {
+    if (typeof window.tinyMCE !== 'undefined') { window.tinyMCE.triggerSave(); }
+    store.errorMsg = 'workafter_submitting';
+    store.showwork_expired = true;
+    setTimeout(() => {
+      this.submitWork();
+    }, 1000);
   },
   handleDueDate () { // due date has hit
     actions.submitAutosave();
@@ -974,7 +1004,7 @@ export const actions = {
   },
   setInitValue (qn, fieldname, val) {
     if (!store.initValues.hasOwnProperty(qn)) {
-      Vue.set(store.initValues, qn, {});
+      store.initValues[qn] = {};
     }
     // only record initvalue if we don't already have one
     let pn = 0;
@@ -1129,7 +1159,9 @@ export const actions = {
     }
     try {
       top.updateTRunans(store.aid, status);
-    } catch (e) {}
+    } catch (e) {
+      // empty
+    }
   },
   enableMQ () {
     store.enableMQ = true;
@@ -1157,7 +1189,7 @@ export const actions = {
         ) {
           response.questions[i].category = store.assessInfo.questions[iint].category;
         }
-        Vue.set(store.assessInfo.questions, iint, response.questions[i]);
+        store.assessInfo.questions[iint] = response.questions[i];
       }
       delete response.questions;
     }
@@ -1172,16 +1204,21 @@ export const actions = {
         data.questions[i].canretry = (thisq.try < thisq.tries_max);
         data.questions[i].canretry_primary = data.questions[i].canretry;
         data.questions[i].tries_remaining = thisq.tries_max - thisq.try;
-        if (thisq.hasOwnProperty('parts')) {
+        if (!data.questions[i].did_jump_to_ans && thisq.hasOwnProperty('parts')) {
           let trymin = 1e10;
           let trymax = 0;
           let canretrydet = false;
           for (const pn in thisq.parts) {
             const remaining = thisq.tries_max - thisq.parts[pn].try;
-            if (remaining < trymin) {
+            const parthasnoval = (thisq.hasOwnProperty('answeights') &&
+             parseFloat(thisq.answeights[pn]) === 0) ||
+              (thisq.parts[pn].hasOwnProperty('points_possible') &&
+              parseFloat(thisq.parts[pn].points_possible) === 0);
+            // fixed for if answeights[0] = 0 on first load
+            if (remaining < trymin && (!parthasnoval || (parseInt(pn) === 0 && parseInt(thisq.try) === 0))) {
               trymin = remaining;
             }
-            if (remaining > trymax) {
+            if (remaining > trymax && (!parthasnoval || (parseInt(pn) === 0 && parseInt(thisq.try) === 0))) {
               trymax = remaining;
             }
             if (remaining > 0 &&
@@ -1239,6 +1276,18 @@ export const actions = {
       const dueat = data.enddate_in * 1000;
       data.enddate_local = now + dueat;
       store.enddate_timer = setTimeout(() => { this.handleDueDate(); }, dueat);
+    }
+    if (data.hasOwnProperty('showwork_cutoff_in')) {
+      window.clearTimeout(store.showwork_timer);
+      const now = new Date().getTime();
+      const expires = data.showwork_cutoff_in * 1000;
+      data.showwork_local_cutoff_expires = now + expires;
+      if (expires > 0) {
+        store.showwork_timer = setTimeout(() => { this.handleShowworklimitUp(); }, expires);
+        store.showwork_expired = false;
+      } else {
+        store.showwork_expired = true;
+      }
     }
     if (data.hasOwnProperty('timelimit_expiresin')) {
       window.clearTimeout(store.timelimit_timer);
@@ -1316,6 +1365,9 @@ export const actions = {
       } else if (data.useMQ === false && store.enableMQ) {
         this.disableMQ();
       }
+    }
+    if (data.hasOwnProperty('name')) {
+      window.document.title = data.name;
     }
     return data;
   }

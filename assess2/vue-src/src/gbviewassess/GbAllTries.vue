@@ -2,16 +2,16 @@
   <div ref="trywrap">
     <p>
       <strong v-if="type === 'tries'">
-        {{ $t('gradebook.all_tries') }}
+        {{ $t('gradebook-all_tries') }}
       </strong>
       <strong v-else-if="type === 'autosave'">
-        {{ $t('gradebook.autosaves') }}
+        {{ $t('gradebook-autosaves') }}
       </strong>
     </p>
     <p v-if="type === 'autosave'" class="subdued">
-      {{ $t('gradebook.autosave_info') }}
+      {{ $t('gradebook-autosave_info') }}
       <span v-if="submitby == 'by_assessment'">
-        {{ $t('gradebook.autosave_byassess') }}
+        {{ $t('gradebook-autosave_byassess') }}
       </span>
       <span v-else>
       </span>
@@ -22,11 +22,11 @@
       class="med-below med-left"
     >
       <div v-if="processedTries.length > 1">
-        <strong>{{ $t('gradebook.part_n', {n: index+1}) }}</strong>
+        <strong>{{ $t('gradebook-part_n', {n: index+1}) }}</strong>
       </div>
       <div v-for="(trystr, tryn) in part" :key="tryn">
         <span v-if="type =='tries'">
-          {{ $t('gradebook.try_n', {n: tryn+1}) }}:
+          {{ $t('gradebook-try_n', {n: tryn+1}) }}:
         </span>
         <span v-html="trystr"></span>
       </div>
@@ -87,10 +87,9 @@ export default {
             }
             la = '[[' + la.join('],[') + ']]';
             const id = this.qn + '-' + pn + '-' + tn;
-            if (this.tries[pn][tn][2][0] === null) {
-              this.tries[pn][tn][2][0] = '';
-            }
-            window.canvases['GBR' + id] = this.tries[pn][tn][2].slice();
+            const ref = this.tries[pn][tn][2] || [];
+
+            window.canvases['GBR' + id] = ref.slice();
             window.canvases['GBR' + id].unshift('GBR' + id);
             window.drawla['GBR' + id] = JSON.parse(la);
             window.imathasDraw.initCanvases('GBR' + id);

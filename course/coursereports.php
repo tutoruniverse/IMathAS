@@ -14,9 +14,9 @@ $body = "";
 $pagetitle = "Course Reports";
 $cid = Sanitize::courseId($_GET['cid']);
 
-if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($instrPreviewId)) { // loaded by a NON-teacher
+if (!isset($teacherid) && !isset($tutorid)) { // loaded by a NON-teacher
 	$overwriteBody=1;
-	$body = _("You are not enrolled in this course.  Please return to the <a href=\"../index.php\">Home Page</a> and enroll\n");
+	$body = _("You are not authorized to view this page");
 } else { // PERMISSIONS ARE OK, PROCEED WITH PROCESSING
 
 }
@@ -46,7 +46,9 @@ if ($overwriteBody==1) {
     echo '<li><a href="report-recentchg.php?cid='.$cid.'">'._('Recent Submissions Report').'</a></li>';
     echo '<li><a href="report-brokenq.php?cid='.$cid.'">'._('Broken Questions Report').'</a></li>';
     echo '<li><a href="report-withdrawnq.php?cid='.$cid.'">'._('Withdrawn Questions Report').'</a></li>';
-
+    echo '<li><a href="report-a11y.php?cid='.$cid.'">'._('Accessibility Report').'</a></li>';
+	echo '<li><a href="report-missingwork.php?cid='.$cid.'">'._('Assessments Missing Work Report').'</a></li>';
+    echo '<li><a href="report-ungraded.php?cid='.$cid.'">'._('Assessments To Grade Report').'</a></li>';
 	echo '</ul>';
 
 	echo '<p>&nbsp;</p>';

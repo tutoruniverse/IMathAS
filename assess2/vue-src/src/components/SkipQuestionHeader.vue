@@ -2,7 +2,7 @@
   <div id="skip-question-header">
     <div class="flexrow wrap" style="flex-grow: 1">
       <div id="skip-question-select"
-        role="navigation" :aria-label="$t('regions.qnav')"
+        role="navigation" :aria-label="$t('regions-qnav')"
       >
           <menu-button id="qnav"
             :options = "navOptions"
@@ -22,27 +22,43 @@
 
           <router-link
             :to="'/skip/'+ (dispqn-1)"
-            tag="button"
-            :disabled="qn < (this.hasIntro ? 0 : 1)"
-            class="secondarybtn"
-            id="qprev"
-            :aria-label="$t('previous')"
-            :title="$t('previous')"
             v-if = "showNextPrev"
+            custom
+            v-slot="{ navigate }"
           >
-            <icons name="left"/>
+            <button
+              type="button"
+              @click="navigate"
+              @keypress.enter="navigate"
+              role="link"
+              :disabled="qn < (this.hasIntro ? 0 : 1)"
+              class="secondarybtn"
+              id="qprev"
+              :aria-label="$t('previous')"
+              :title="$t('previous')"
+            >
+              <icons name="left"/>
+            </button>
           </router-link>
           <router-link
             :to="'/skip/' + (dispqn+1)"
-            tag="button"
-            :disabled="qn>=ainfo.questions.length-1"
-            class="secondarybtn"
-            id="qnext"
-            :aria-label="$t('next')"
-            :title="$t('next')"
             v-if = "showNextPrev"
+            custom
+            v-slot="{ navigate }"
           >
-            <icons name="right" />
+            <button
+              type="button"
+              @click="navigate"
+              @keypress.enter="navigate"
+              role="link"
+              :disabled="qn>=ainfo.questions.length-1"
+              class="secondarybtn"
+              id="qnext"
+              :aria-label="$t('next')"
+              :title="$t('next')"
+            >
+              <icons name="right" />
+            </button>
           </router-link>
         </div>
     </div>

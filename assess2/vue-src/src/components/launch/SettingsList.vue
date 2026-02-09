@@ -18,6 +18,10 @@
           <icons name="alert" size="micro" />
           {{ row.alert }}
         </div>
+        <div class="small subdued" v-if="!!row.alert2">
+          <icons name="alert" size="micro" />
+          {{ row.alert2 }}
+        </div>
         <div v-if="!!row.latepass" class="small subdued">
           {{ row.latepass }}
           <button @click="redeemLatePass" class="slim secondary">
@@ -51,7 +55,7 @@ export default {
       if (settings.in_practice) {
         out.push({
           icon: 'alert',
-          str: this.$t('setlist.practice')
+          str: this.$t('setlist-practice')
         });
       } else {
         // points possible
@@ -80,10 +84,10 @@ export default {
       var settings = store.assessInfo;
       var pointsobj = {
         icon: 'square-check',
-        str: this.$t('setlist.points_possible', { pts: settings.points_possible })
+        str: this.$t('setlist-points_possible', { pts: settings.points_possible })
       };
       if (store.assessInfo.hasOwnProperty('excused')) {
-        pointsobj.alert = this.$t('setlist.excused');
+        pointsobj.alert = this.$t('setlist-excused');
       }
       return pointsobj;
     },
@@ -92,26 +96,34 @@ export default {
       var duedate = settings.enddate_disp;
       var dateobj = {
         icon: 'calendar',
-        str: this.$t('setlist.due_at', { date: duedate })
+        str: this.$t('setlist-due_at', { date: duedate })
       };
       if (settings.hasOwnProperty('original_enddate')) {
         var origduedate = settings.original_enddate_disp;
-        dateobj.sub = this.$t('setlist.originally_due', { date: origduedate });
+        dateobj.sub = this.$t('setlist-originally_due', { date: origduedate });
         if (settings.extended_with.type === 'latepass') {
-          dateobj.sub += ' ' + this.$tc('setlist.latepass_used', settings.extended_with.n);
+          dateobj.sub += ' ' + this.$t('setlist-latepass_used', {n: settings.extended_with.n});
         } else {
-          dateobj.sub += ' ' + this.$t('setlist.extension');
+          dateobj.sub += ' ' + this.$t('setlist-extension');
         }
         if (settings.exceptionpenalty > 0) {
-          dateobj.alert = this.$t('setlist.penalty', { p: settings.exceptionpenalty });
+          const now = new Date().getTime();
+          if (settings.original_enddate * 1000 > now) {
+            dateobj.alert2 = this.$t('setlist-penalty_after', { p: settings.exceptionpenalty, date: settings.original_enddate_disp });
+          } else {
+            dateobj.alert2 = this.$t('setlist-penalty', { p: settings.exceptionpenalty });
+          }
         }
       }
+      if (settings.hasOwnProperty('earlybonusends')) {
+        dateobj.alert = this.$t('setlist-earlybonus', { p: settings.earlybonus[0], date: settings.earlybonusends_disp });
+      }
       if (settings.can_use_latepass > 0) {
-        dateobj.latepass = this.$tc('setlist.latepass_needed', settings.can_use_latepass, {
+        dateobj.latepass = this.$t('setlist-latepass_needed', {
           n: settings.can_use_latepass,
           date: settings.latepass_extendto_disp
         });
-        dateobj.latepass_label = this.$tc('closed.use_latepass', settings.can_use_latepass);
+        dateobj.latepass_label = this.$t('closed-use_latepass', {n: settings.can_use_latepass});
       }
       return dateobj;
     },
@@ -123,22 +135,22 @@ export default {
       let altstr = '';
       if (settings.hasOwnProperty('attemptext')) {
         if (settings.prev_attempts.length === 0) {
-          altstr = this.$tc('setlist.take', attemptsLeft);
+          altstr = this.$t('setlist-take', {n: attemptsLeft});
         } else {
-          altstr = this.$tc('setlist.take_more', attemptsLeft);
+          altstr = this.$t('setlist-take_more', {n: attemptsLeft});
         }
         attemptsLeft = Math.max(0, attemptsLeft - settings.attemptext);
       }
 
       if (settings.prev_attempts.length === 0) {
-        attemptsLeftStr = this.$tc('setlist.take', attemptsLeft);
+        attemptsLeftStr = this.$t('setlist-take', {n: attemptsLeft});
       } else {
-        attemptsLeftStr = this.$tc('setlist.take_more', attemptsLeft);
+        attemptsLeftStr = this.$t('setlist-take_more', {n: attemptsLeft});
       }
 
       if (settings.has_active_attempt) {
-        mainstr = this.$t('setlist.attempt_inprogress');
-        substr = this.$t('setlist.cur_attempt_n_of', {
+        mainstr = this.$t('setlist-attempt_inprogress');
+        substr = this.$t('setlist-cur_attempt_n_of', {
           n: settings.prev_attempts.length + 1,
           nmax: settings.allowed_attempts
         });
@@ -148,17 +160,17 @@ export default {
       }
 
       if (settings.keepscore === 'best') {
-        substr += this.$t('setlist.keep_highest');
+        substr += this.$t('setlist-keep_highest');
       } else if (settings.keepscore === 'average') {
-        substr += this.$t('setlist.keep_average');
+        substr += this.$t('setlist-keep_average');
       } else if (settings.keepscore === 'last') {
-        substr += this.$t('setlist.keep_last');
+        substr += this.$t('setlist-keep_last');
       }
 
       const nextAttempt = settings.prev_attempts.length + 1;
       if (nextAttempt > settings.retake_penalty.n && settings.retake_penalty.penalty > 0) {
         const penalty = settings.retake_penalty.penalty * (nextAttempt - settings.retake_penalty.n);
-        alertstr = this.$t('setlist.retake_penalty', { p: penalty });
+        alertstr = this.$t('setlist-retake_penalty', { p: penalty });
       }
 
       return {
@@ -175,14 +187,14 @@ export default {
         icon: 'timer'
       };
       if (settings.has_active_attempt && settings.timelimit_ext && settings.timelimit_ext < 0) {
-        timeobj.str = this.$t('setlist.timelimit_ext_used', {
+        timeobj.str = this.$t('setlist-timelimit_ext_used', {
           n: Math.abs(settings.timelimit_ext)
         });
       } else {
         var mytime = settings.timelimit * settings.timelimit_multiplier;
         if (settings.overtime_grace > 0) {
           timeobj.str = this.$t(
-            settings.overtime_penalty > 0 ? 'setlist.timelimit_wgrace_penalty' : 'setlist.timelimit_wgrace',
+            settings.overtime_penalty > 0 ? 'setlist-timelimit_wgrace_penalty' : 'setlist-timelimit_wgrace',
             {
               time: this.formatTimeLimit(mytime),
               grace: this.formatTimeLimit(settings.overtime_grace * settings.timelimit_multiplier),
@@ -190,15 +202,15 @@ export default {
             }
           );
         } else {
-          timeobj.str = this.$t('setlist.timelimit', { time: this.formatTimeLimit(mytime) });
+          timeobj.str = this.$t('setlist-timelimit', { time: this.formatTimeLimit(mytime) });
         }
         if (store.timelimit_restricted === 1) { // time limit restricted
-          timeobj.altstr = this.$t('setlist.timelimit_restricted', {
+          timeobj.altstr = this.$t('setlist-timelimit_restricted', {
             due: settings.enddate_disp
           });
         } else if (store.timelimit_restricted === 2) { // grace restricted
           timeobj.altstr = this.$t(
-            settings.overtime_penalty > 0 ? 'setlist.timelimit_wgrace_restricted_penalty' : 'setlist.timelimit_wgrace_restricted',
+            settings.overtime_penalty > 0 ? 'setlist-timelimit_wgrace_restricted_penalty' : 'setlist-timelimit_wgrace_restricted',
             {
               time: this.formatTimeLimit(mytime),
               due: settings.enddate_disp,
@@ -207,7 +219,7 @@ export default {
           );
         }
         if (settings.timelimit_multiplier > 1) {
-          timeobj.sub = this.$t('setlist.timelimit_extend', {
+          timeobj.sub = this.$t('setlist-timelimit_extend', {
             time: this.formatTimeLimit(settings.timelimit)
           });
         }
@@ -218,23 +230,23 @@ export default {
           if (settings.overtime_grace > 0 &&
               settings.timelimit_grace > settings.timelimit_expires
           ) {
-            timeobj.alert = this.$t('setlist.time_expires_wgrace', {
+            timeobj.alert = this.$t('setlist-time_expires_wgrace', {
               date: expires,
               grace: settings.timelimit_grace_disp
             });
           } else {
-            timeobj.alert = this.$t('setlist.time_expires', { date: expires });
+            timeobj.alert = this.$t('setlist-time_expires', { date: expires });
           }
         } else if (!store.timelimit_grace_expired) {
-          timeobj.alert = this.$t('setlist.time_grace_expires', {
+          timeobj.alert = this.$t('setlist-time_grace_expires', {
             date: settings.timelimit_expires_disp,
             grace: settings.timelimit_grace_disp
           });
         } else if (settings.timelimit_ext && settings.timelimit_ext > 0) {
-          timeobj.str = this.$t('setlist.timelimit_ext', { n: settings.timelimit_ext });
+          timeobj.str = this.$t('setlist-timelimit_ext', { n: settings.timelimit_ext });
         }
       } else if (settings.timelimit_ext && settings.timelimit_ext > 0) {
-        timeobj.alert = this.$t('setlist.timelimit_ext', { n: settings.timelimit_ext });
+        timeobj.alert = this.$t('setlist-timelimit_ext', { n: settings.timelimit_ext });
       }
       return timeobj;
     },
@@ -244,27 +256,27 @@ export default {
       const sec = time - 60 * min - 3600 * hrs;
       let out = '';
       if (hrs > 0) {
-        out += this.$tc('hours', hrs);
+        out += this.$t('hours', {n: hrs});
       }
       if (min > 0) {
         if (out !== '') { out += ' '; }
-        out += this.$tc('minutes', min);
+        out += this.$t('minutes', {n: min});
       }
       if (sec > 0) {
         if (out !== '') { out += ' '; }
-        out += this.$tc('seconds', sec);
+        out += this.$t('seconds', {n: sec});
       }
       return out;
     },
     redeemLatePass () {
       var settings = store.assessInfo;
       store.confirmObj = {
-        body: this.$tc('closed.latepassn', settings.latepasses_avail) + ' ' +
-          this.$tc('setlist.latepass_needed', settings.can_use_latepass, {
+        body: this.$t('closed-latepassn', {n: settings.latepasses_avail}) + ' ' +
+          this.$t('setlist-latepass_needed', {
             n: settings.can_use_latepass,
             date: settings.latepass_extendto_disp
           }),
-        ok: this.$tc('closed.use_latepass', settings.can_use_latepass),
+        ok: this.$t('closed-use_latepass', {n: settings.can_use_latepass}),
         action: () => actions.redeemLatePass()
       };
     }

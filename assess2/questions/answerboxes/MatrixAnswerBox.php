@@ -55,9 +55,20 @@ class MatrixAnswerBox implements AnswerBox
             $out .= $ansprompt;
         }
         if (!empty($answersize)) {
-            $tip = _('Enter each element of the matrix as  number (like 5, -3, 2.2)');
-            $shorttip = _('Enter an integer or decimal number');
+            if ($anstype === 'complexmatrix') {
+                if (in_array('allowjcomplex', $ansformats)) {
+                    $tip = _('Enter each element of the matrix as a complex number in a+bj form.  Example: -3-4j') . "<br/>";
+                } else {
+                    $tip = _('Enter each element of the matrix as a complex number in a+bi form.  Example: -3-4i') . "<br/>";
+                }
+                $shorttip = _('Enter a complex number');
+            } else {
+                $tip = _('Enter each element of the matrix as number (like 5, -3, 2.2)');
+                $shorttip = _('Enter an integer or decimal number');
+            }
             if ($reqdecimals!=='') {
+                list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
+
                 $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
                 $shorttip .= sprintf(_(", accurate to at least %d decimal places"), $reqdecimals);
             }
@@ -72,15 +83,16 @@ class MatrixAnswerBox implements AnswerBox
             } else {
                 $out .= '<div class="' . $colorbox . '" id="qnwrap' . $qn . '"' . $style . '>';
             }
+            $answersize = explode(",", $answersize);
             $arialabel = $this->answerBoxParams->getQuestionIdentifierString() .
+                ' ' . sprintf(_('matrix entry with %d rows and %d columns'), $answersize[0], $answersize[1]) .
                 (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
             $out .= '<table role="group" aria-label="' . $arialabel . '">';
             if (in_array('det', $dispformats)) {
-                $out .= '<tr><td class="matrixdetleft">&nbsp;</td><td>';
+                $out .= '<tr><td class="matrixdetleft">&nbsp;</td><td style="padding:0px">';
             } else {
-                $out .= '<tr><td class="matrixleft">&nbsp;</td><td>';
+                $out .= '<tr><td class="matrixleft">&nbsp;</td><td style="padding:0px">';
             }
-            $answersize = explode(",", $answersize);
             if (isset($GLOBALS['capturechoices'])) {
                 $GLOBALS['answersize'][$qn] = $answersize;
             }
@@ -88,13 +100,21 @@ class MatrixAnswerBox implements AnswerBox
             $count = 0;
             $las = explode("|", $la);
             $cellcnt = $answersize[0] * $answersize[1];
+            $augcolumn = -1;
+            if (in_array('augmented', $dispformats)) {
+                $augcolumn = $answersize[1] - 1;
+            }
             for ($row = 0; $row < $answersize[0]; $row++) {
                 $out .= "<tr>";
                 for ($col = 0; $col < $answersize[1]; $col++) {
-                    $out .= '<td>';
+                    if ($col == $augcolumn) {
+                        $out .= '<td style="border-left: 1px solid #000">';
+                    } else {
+                        $out .= '<td>';
+                    }
                     $attributes = [
                         'type' => 'text',
-                        'size' => $answerboxsize,
+                        'style' => 'width:'.sizeToCSS($answerboxsize),
                         'name' => "qn$qn-$count",
                         'id' => "qn$qn-$count",
                         'value' => ($las[$count] ?? ''),
@@ -102,8 +122,7 @@ class MatrixAnswerBox implements AnswerBox
                     ];
 
                     $out .= '<input ' .
-                    'aria-label="' . sprintf(_('Cell %d of %d'), $count + 1, $cellcnt) . '" ' .
-                    Sanitize::generateAttributeString($attributes) .
+                        Sanitize::generateAttributeString($attributes) .
                         '" />';
 
                     $out .= "</td>\n";
@@ -117,10 +136,10 @@ class MatrixAnswerBox implements AnswerBox
             } else {
                 $out .= '</td><td class="matrixright">&nbsp;</td></tr></table>';
             }
-            $out .= "<span id=p$qn></span>";
             $out .= "</div>\n";
+            $preview .= "<span id=p$qn></span>";
             $params['matrixsize'] = $answersize;
-            $params['calcformat'] = 'decimal';
+            $params['calcformat'] = $answerformat . ($answerformat == '' ? '' : ',') . 'decimal';
             $params['tip'] = $shorttip;
             $params['longtip'] = $tip;
         } else {
@@ -130,10 +149,19 @@ class MatrixAnswerBox implements AnswerBox
                 $qnref = ($multi - 1) . '-' . ($qn % 1000);
             }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
-            $shorttip = _('Enter a matrix of integer or decimal numbers');
-            // Convert [(2,3,4),(3,4,5)] to latex
-            $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
+            if ($anstype === 'complexmatrix') {
+                if (in_array('allowjcomplex', $ansformats)) {
+                    $tip = _('Enter your answer as a matrix filled with complex numbers in a+bj form, like \\[\\left[\\begin{smallmatrix} 2 & 3+j \\\\ 1-j & j \\end{smallmatrix}\\right]\\]') . "<br/>";
+                } else {
+                    $tip = _('Enter your answer as a matrix filled with complex numbers in a+bi form, like \\[\\left[\\begin{smallmatrix} 2 & 3+i \\\\ 1-i & i \\end{smallmatrix}\\right]\\]') . "<br/>";
+                }
+                $shorttip = _('Enter a matrix of complex numbers');    
+            } else {
+                $shorttip = _('Enter a matrix of integer or decimal numbers');
+                $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
+            }
             if ($reqdecimals !== '') {
+                list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
                 $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
             }
 
@@ -143,7 +171,7 @@ class MatrixAnswerBox implements AnswerBox
             }
             $attributes = [
                 'type' => 'text',
-                'size' => $answerboxsize,
+                'style' => 'width:'.sizeToCSS($answerboxsize),
                 'name' => "qn$qn",
                 'id' => "qn$qn",
                 'value' => $la,
@@ -159,9 +187,11 @@ class MatrixAnswerBox implements AnswerBox
             'class="' . implode(' ', $classes) .
                 '" />';
 
+            $params['calcformat'] = $answerformat;
             if (empty($hidepreview)) {
                 if ($useeqnhelper) {
                     $params['helper'] = 1;
+                    $params['calcformat'] = $answerformat . ($answerformat == '' ? '' : ',') . 'decimal';
                 }
                 $params['preview'] = 1;
                 $preview .= '<button type=button class=btn id="pbtn' . $qn . '">';
@@ -172,12 +202,17 @@ class MatrixAnswerBox implements AnswerBox
             $params['calcformat'] = 'decimal';
         }
 
+        $nosolntype = 0;
         if (in_array('nosoln', $ansformats) || in_array('nosolninf', $ansformats)) {
-            list($out, $answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
+            list($out, $answer, $nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
         }
 
         if ($answer !== '' && !is_array($answer) && !$isConditional) {
-            $sa = '`' . $answer . '`';
+            if ($nosolntype > 0) {
+                $sa = $answer;
+            } else {
+                $sa = '`' . $answer . '`';
+            }
         }
 
         // Done!

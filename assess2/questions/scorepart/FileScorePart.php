@@ -7,6 +7,7 @@ require_once __DIR__ . '/../models/ScorePartResult.php';
 
 use DOMDocument;
 use ZipArchive;
+use Sanitize;
 
 use IMathAS\assess2\questions\models\ScorePartResult;
 use IMathAS\assess2\questions\models\ScoreQuestionParams;
@@ -51,6 +52,7 @@ class FileScorePart implements ScorePart
         if (trim($filename)=='') {
             if (is_string($givenans) && substr($givenans,0,5) === '@FILE') { // has an autosaved file
                 $scorePartResult->setLastAnswerAsGiven($givenans);
+                /*
                 if ($answerformat=='excel') {
                   // TODO if we want to resurrect this
                     $filepath = getasidfilepath(substr($givenans,6,-1));
@@ -77,6 +79,7 @@ class FileScorePart implements ScorePart
                         unlink($filepath);
                     }
                 }
+                */
                 $hasfile = true;
                 if ($scoremethod == 'filesize') {
                     $filesize = getfilesize('adata', 'adata/'.substr($givenans,6,-1));
@@ -93,10 +96,8 @@ class FileScorePart implements ScorePart
             }
         }
         if (!$hasfile) {
-            $extension = strtolower(strrchr($filename,"."));
-            $badextensions = array(".php",".php3",".php4",".php5",".bat",".com",".pl",".p",".exe");
             $scorePartResult->addScoreMessage(sprintf(_('Upload of %s: '), $filename));
-            if (in_array($extension,$badextensions)) {
+            if (Sanitize::isFilenameBlacklisted($filename)) {
                 $scorePartResult->setLastAnswerAsGiven(_('Error - Invalid file type'));
                 $scorePartResult->addScoreMessage(_('Error - Invalid file type'));
                 $scorePartResult->setRawScore(0);
@@ -137,6 +138,7 @@ class FileScorePart implements ScorePart
             }
 
             if (is_uploaded_file($_FILES["qn$qn"]['tmp_name'])) {
+                /*
                 if ($answerformat=='excel') {
                     $zip = new ZipArchive;
                     if ($zip->open($_FILES["qn$qn"]['tmp_name'])) {
@@ -153,7 +155,7 @@ class FileScorePart implements ScorePart
                         return $scorePartResult;
                     }
                 }
-
+                */
                 $s3object = "adata/$s3asid/$filename";
                 if (is_uploaded_file($_FILES["qn$qn"]['tmp_name'])) {
                     $filesize = $_FILES["qn$qn"]['size'];

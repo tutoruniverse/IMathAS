@@ -30,7 +30,11 @@ $now = time();
 $defsdate = tzdate('n/j/Y', $now);
 $defedate = tzdate('n/j/Y', $now+7*24*60*60);
 
-$placeinhead = '<script src="https://cdn.jsdelivr.net/npm/vue@2.5.13/dist/vue.min.js"></script>';
+if (!empty($CFG['GEN']['uselocaljs'])) {
+	$placeinhead = '<script type="text/javascript" src="'.$staticroot.'/javascript/vue3-4-31.min.js"></script>';
+} else {
+    $placeinhead = '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.31/vue.global.prod.min.js" integrity="sha512-Dg9zup8nHc50WBBvFpkEyU0H8QRVZTkiJa/U1a5Pdwf9XdbJj+hZjshorMtLKIg642bh/kb0+EvznGUwq9lQqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
+}
 $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/DatePicker.js\"></script>";
 $placeinhead .= '<style type="text/css">
  [v-cloak] { display: none;}
@@ -84,16 +88,16 @@ echo '<div class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 	<button @click="newRuleSet()">Add Rule Set</button>
 </div>
 <div id="ruleEditor" v-if="activeRuleSet==selectedRuleSet || activeRuleSet==ruleSets.length">
-	<p>Editing rule set <input v-model="curRuleSetName" size=20></p>
+	<p><label>Editing rule set <input v-model="curRuleSetName" size=20></label></p>
 	<div v-if="rulePhrases.length>0">
 		Current rules:
 		<transition-group name="flip-list" tag="ol" id="rulelist">
 			<li v-for="(phrase,index) in rulePhrases" :key="phrase">
 				<span class=rulebtngroup>
-				<button @click="move(index,-1)" title="Up">&uarr;</button>
-				<button @click="move(index,1)" title="Down">&darr;</button>
+				<button @click="move(index,-1)" title="Up" aria-label="Move up">&uarr;</button>
+				<button @click="move(index,1)" title="Down" aria-label="Move down">&darr;</button>
 				<button @click="edit(index)">Edit</button>
-				<button @click="remove(index)" title="Delete">X</button>
+				<button @click="remove(index)" title="Delete" aria-label="Delete">X</button>
 				</span>
 				{{ index==0?"First, ":"Of those remaining, "}} show students
 				{{phrase}}
@@ -101,29 +105,29 @@ echo '<div class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 		</transition-group>
 	</div>
 	<div id="ruleDetails">
-		<p>{{currentRule.editIndex==-1?'New':'Edit'}} rule type:
+		<p><label>{{currentRule.editIndex==-1?'New':'Edit'}} rule type:
 			<select v-model="currentRule.ruleType">
 			<option v-for="(option,index) in ruleTypes" :value="index">{{option}}</option>
-			</select>
+			</select></label>
 		</p>
 		<p v-if="currentRule.ruleType!='none'">Show students who
 			<span v-if="currentRule.ruleType=='score' || currentRule.ruleType=='scores'"> had a score
-				<select v-model="currentRule.abovebelow">
+				<select v-model="currentRule.abovebelow" aria-label="score comparison type">
 					<option v-for="(option,index) in abovebelowTypes" :value="index">{{option}}</option>
 				</select>
-				<input v-model="currentRule.scorebreak" size=2>%
+				<input v-model="currentRule.scorebreak" size=2 aria-label="score value">%
 				<span v-if="currentRule.ruleType=='score'">average on assignments</span>
 				<span v-if="currentRule.ruleType=='scores'">
-					on <select v-model="currentRule.numassn">
+					on <select v-model="currentRule.numassn" aria-label="which assignments">
 						<option v-for="(option,index) in numassnTypes" :value="index">{{option}}</option>
 					</select> assignment(s)
 				</span>
 				that are
-				<select v-model="currentRule.tocnt">
+				<select v-model="currentRule.tocnt" aria-label="assignment status">
 					<option v-for="(option, index) in cntTypes" :value="index">{{option}}</option>
 				</select>
 				in category
-				<select v-model="currentRule.gbcat">
+				<select v-model="currentRule.gbcat" aria-label="gradebook category">
 					<option value="0">Default</option>
 					<option v-for="(option,index) in gbcatTypes" :value="index">{{option}}</option>
 				</select>
@@ -131,20 +135,20 @@ echo '<div class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 			<span v-if="currentRule.ruleType=='start' || currentRule.ruleType=='comp'">
 				<span v-if="currentRule.ruleType=='start'">started</span>
 				<span v-if="currentRule.ruleType=='comp'">completed</span>
-				<select v-model="currentRule.numassn">
+				<select v-model="currentRule.numassn" aria-label="which assignments">
 					<option v-for="(option,index) in numassnTypes" :value="index">{{option}}</option>
 				</select>
 				assignment(s) in category
-				<select v-model="currentRule.gbcat">
+				<select v-model="currentRule.gbcat" aria-label="gradebook category">
 					<option value="-1">all categories</option>
 					<option value="0">Default</option>
 					<option v-for="(option,index) in gbcatTypes" :value="index">{{option}}</option>
 				</select>
 			</span>
 			<span v-if="currentRule.ruleType=='late'"> used at least
-				<input v-model="currentRule.numLP" size=2> LatePass(es)
+				<input v-model="currentRule.numLP" size=2 aria-label="number of latepasses"> LatePass(es)
 				on assignments in category
-				<select v-model="currentRule.gbcat">
+				<select v-model="currentRule.gbcat" aria-label="gradebook category">
 					<option value="-1">all categories</option>
 					<option value="0">Default</option>
 					<option v-for="(option,index) in gbcatTypes" :value="index">{{option}}</option>
@@ -152,11 +156,11 @@ echo '<div class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 			</span>
 			<span v-if="currentRule.ruleType=='close'">
 				started
-				<select v-model="currentRule.numassn">
+				<select v-model="currentRule.numassn" aria-label="which assignments">
 					<option v-for="(option,index) in numassnTypes" :value="index">{{option}}</option>
 				</select>
 				assignment(s) in category
-				<select v-model="currentRule.gbcat">
+				<select v-model="currentRule.gbcat" aria-label="gradebook category">
 					<option value="-1">all categories</option>
 					<option value="0">Default</option>
 					<option v-for="(option,index) in gbcatTypes" :value="index">{{option}}</option>
@@ -164,30 +168,30 @@ echo '<div class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 				within <input v-model="currentRule.closeTime" size=2> hours of the due date
 			</span>
 
-			<select v-model="currentRule.timeframe">
+			<select v-model="currentRule.timeframe" aria-label="timeframe">
 				<option v-for="(option,index) in timeframeTypes" :value="index">{{option}}</option>
 			</select>
 			<span v-if="currentRule.timeframe=='since' || currentRule.timeframe=='between'">
-				<input type=text size=10 name="sdate" id="sdate" v-model="currentRule.sdate">
+				<input type=text size=10 name="sdate" id="sdate" v-model="currentRule.sdate" aria-label="start date">
 				<a href="#" onClick="displayDatePicker('sdate', this); return false">
 				<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
 			</span>
 			<span v-if="currentRule.timeframe=='thisweek' || currentRule.timeframe=='week'">
-				<select v-model="currentRule.dayofweek">
+				<select v-model="currentRule.dayofweek" aria-label="day of week">
 					<option v-for="(option,index) in dayofweekTypes" :value="index">{{option}}</option>
 				</select>
 			</span>
 			<span v-if="currentRule.timeframe=='inlast'">
-				<input v-model="currentRule.inlastDays" size=2> days
+				<input v-model="currentRule.inlastDays" size=2 aria-label="number of dates"> days
 			</span>
 			<span v-if="currentRule.timeframe=='between'">
 				and
-				<input type=text size=10 name="edate" id="edate" v-model="currentRule.edate">
+				<input type=text size=10 name="edate" id="edate" v-model="currentRule.edate" aria-label="end date">
 				<a href="#" onClick="displayDatePicker('edate', this, 'sdate', 'start date'); return false">
 				<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
 			</span>
 			<span v-if="currentRule.timeframe=='due'">
-				<input v-model="currentRule.innextDays" size=2> days
+				<input v-model="currentRule.innextDays" size=2 aria-label="number of dates"> days
 			</span>
 			<br/>
 			<button @click="editRule()" v-if="currentRule.editIndex!=-1">
@@ -246,8 +250,8 @@ echo '<div class="pagetitle"><h1>'.$pagetitle.'</h1></div>';
 </div>
 
 <script type="text/javascript">
-var app = new Vue({
-	el: '#app',
+const { createApp } = Vue;
+createApp({
 	computed: {
 		rulePhrases: function() {
 			var phrases = [];
@@ -319,56 +323,58 @@ var app = new Vue({
 			return out;
 		}
 	},
-	data: {
-		activeRuleSet: -1,
-		selectedRuleSet: 0,
-		editingRuleSet: -1,
-		allRules: [],
-		curRuleSetName: '',
-		ruleSets: <?php echo json_encode($rulesets, JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE); ?>,
-		currentRule: {
-			ruleType: 'none',
-			abovebelow: 0,
-			scorebreak: 75,
-			gbcat: 0,
-			timeframe: 'inlast',
-			inlastDays: 5,
-			innextDays: 1,
-			closeTime: 24,
-			numassn: 1,
-			numLP: 1,
-			dayofweek: 1,
-			tocnt: 0,
-			sdate: '<?php echo $defsdate;?>',
-			edate: '<?php echo $defedate;?>',
-			editIndex: -1
-		},
-		ruleTypes: {
-			'none': _('Select...'),
-			'score': _('Score average'),
-			'scores': _('Scores'),
-			'comp': _('Completion'),
-			'start': _('Starting'),
-			'late': _('LatePass'),
-			'close': _('Last Minute')
-		},
-		abovebelowTypes: ['above','below'],
-		gbcatTypes: <?php echo json_encode($gbcats, JSON_INVALID_UTF8_IGNORE); ?>,
-		timeframeTypes: {
-			'since': _('since'),
-			'between': _('between'),
-			'inlast': _('in the last'),
-			'thisweek': _('this week, since'),
-			'week': _('last week, ending on'),
-			'due': _('due by midnight in')
-		},
-		numassnTypes: ['no','one','all'],
-		cntTypes: ['past due','past due or available','attempted','past due or attempted'],
-		dayofweekTypes: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
-		results: [],
-		showResults: false,
-		resultMessage: '',
-		resultRuleSet: -1
+	data: function () {
+        return {
+            activeRuleSet: -1,
+            selectedRuleSet: 0,
+            editingRuleSet: -1,
+            allRules: [],
+            curRuleSetName: '',
+            ruleSets: <?php echo json_encode($rulesets, JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE); ?>,
+            currentRule: {
+                ruleType: 'none',
+                abovebelow: 0,
+                scorebreak: 75,
+                gbcat: 0,
+                timeframe: 'inlast',
+                inlastDays: 5,
+                innextDays: 1,
+                closeTime: 24,
+                numassn: 1,
+                numLP: 1,
+                dayofweek: 1,
+                tocnt: 0,
+                sdate: '<?php echo $defsdate;?>',
+                edate: '<?php echo $defedate;?>',
+                editIndex: -1
+            },
+            ruleTypes: {
+                'none': _('Select...'),
+                'score': _('Score average'),
+                'scores': _('Scores'),
+                'comp': _('Completion'),
+                'start': _('Starting'),
+                'late': _('LatePass'),
+                'close': _('Last Minute')
+            },
+            abovebelowTypes: ['above','below'],
+            gbcatTypes: <?php echo json_encode($gbcats, JSON_INVALID_UTF8_IGNORE); ?>,
+            timeframeTypes: {
+                'since': _('since'),
+                'between': _('between'),
+                'inlast': _('in the last'),
+                'thisweek': _('this week, since'),
+                'week': _('last week, ending on'),
+                'due': _('due by midnight in')
+            },
+            numassnTypes: ['no','one','all'],
+            cntTypes: ['past due','past due or available','attempted','past due or attempted'],
+            dayofweekTypes: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+            results: [],
+            showResults: false,
+            resultMessage: '',
+            resultRuleSet: -1
+        };
 	},
 	methods: {
 		move: function(index,delta) {
@@ -480,7 +486,7 @@ var app = new Vue({
 			GB_show('Emails', 'viewemails.php?cid='+cid+'&ids='+this.resultsStuList[index], 760,'auto');
 		}
 	}
-});
+}).mount('#app');
 </script>
 
 <?php

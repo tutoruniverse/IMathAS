@@ -35,6 +35,7 @@
    	2: open dot
    tptypes
 	5: line
+	5.1:  dashed line
 	5.2:  ray (no arrow)
 	5.3:  line segment
 	5.4:  vector
@@ -44,6 +45,7 @@
 	6.3: cubic
 	6.5: square root
 	6.6: cube root
+	6.7: three point parab
 	7: circle (only works on square grids)
 	7.2: ellipse
 	7.4: vertical hyperbola
@@ -56,6 +58,7 @@
 	8.6: log (shifted)
 	9: cosine
 	9.1: sine
+	9.2: tangent
    ineqtypes
    	10: linear >= or <=
    	10.2: linear < or >
@@ -98,11 +101,11 @@ var didMultiTouch = false;
 var clickmightbenewcurve = false;
 var hasTouchTimer = null;
 var tpModeN = {
-	"5": 2, "5.2": 2, "5.3": 2, "5.4": 2,
-	"6": 2, "6.1": 2, "6.2": 2, "6.3": 2, "6.5": 2, "6.6": 2,
+	"5": 2, "5.1": 2, "5.2": 2, "5.3": 2, "5.4": 2,
+	"6": 2, "6.1": 2, "6.2": 2, "6.3": 2, "6.5": 2, "6.6": 2, "6.7": 3,
 	"7": 2, "7.2": 2, "7.4": 2, "7.5": 2,
 	"8": 2, "8.2": 2, "8.3": 2, "8.4": 2, "8.5": 3, "8.6": 3,
-	"9": 2, "9.1": 2,
+	"9": 2, "9.1": 2, "9.2": 3,
 	"10": 3, "10.2": 3, "10.3": 3, "10.4": 3};
 var tpHasAsymp = { "7.4": 1, "7.5": 1, "8.2": 1, "8.5": 1, "8.6": 1};
 
@@ -201,6 +204,7 @@ function addA11yTarget(canvdata, thisdrawla, imgpath) {
 	targets[tarnum].pixperx = (imgwidth - 2*imgborder)/(xmax-xmin);
 	targets[tarnum].pixpery = (ymin==ymax)?1:((imgheight - 2*imgborder)/(ymax-ymin));
 	var afgroup;
+	targets[tarnum].isnumberline = (ansformats[0]=="numberline");
 	//massae ansformats array to account for default behaviors
 	if (ansformats[0]=="inequality") {
 		afgroup = ansformats.shift();
@@ -215,11 +219,12 @@ function addA11yTarget(canvdata, thisdrawla, imgpath) {
 			ansformats = ["line","parab","abs","circle","dot"];
 		}
 	} else if (ansformats[0]=="numberline") {
-		afgroup = "basic";
+		afgroup = "numberline";
 		ansformats.shift();
 	} else {
 		afgroup = "basic";
 	}
+
 	targets[tarnum].afgroup = afgroup;
 	var types = {
 		"inequality": {
@@ -238,9 +243,11 @@ function addA11yTarget(canvdata, thisdrawla, imgpath) {
 		},
 		"twopoint": {
 			"line": [{"mode":5, "descr":_("Line"), inN: 2, "input":_("Enter two points on the line")}],
+			"dashedline": [{"mode":5.1, "descr":_("Dashed Line"), inN: 2, "input":_("Enter two points on the dashed line")}],
 			"lineseg": [{"mode":5.3, "descr":_("Line segment"), inN: 2, "input":_("Enter the starting and ending point of the line segment")}],
 			"ray": [{"mode":5.2, "descr":_("Ray"), inN: 2, "input":_("Enter the starting point of the ray and another point on the ray")}],
 			"parab": [{"mode":6, "descr":_("Parabola"), inN: 2, "input":_("Enter the vertex, then another point on the parabola")}],
+			"3pointparab": [{"mode":6.7, "descr":_("Parabola"), inN: 3, "input":_("Enter three points on the parabola")}],
 			"horizparab": [{"mode":6.1, "descr":_("Parabola opening right or left"), inN: 2, "input":_("Enter the vertex, then another point on the parabola")}],
 			"halfparab": [{"mode":6.2, "descr":_("Half Parabola"), inN: 2, "input":_("Enter the vertex, then another point on the half parabola")}],
 			"cubic": [{"mode":6.3, "descr":_("Cubic"), inN: 2, "input":_("Enter the inflection point, then another point on the cubic")}],
@@ -264,6 +271,7 @@ function addA11yTarget(canvdata, thisdrawla, imgpath) {
 				{"mode":9, "descr":_("Cosine"), inN: 2, "input":_("Enter a point at the start of a phase, then a point half a phase further")},
 				{"mode":9.1, "descr":_("Sine"), inN: 2, "input":_("Enter a point at the start of a phase, then a point a quarter phase further")}
 			],
+			"tan": [{"mode":9.2, "descr":_("Tangent"), inN: 3, "input":_("Enter the inflection point of the tangent, then a point on a vertical asymptote, then a point on the graph")}],
 			"vector": [{"mode":5.4, "descr":_("Vector"), inN: 2, "input":_("Enter the starting and ending point of the vector")}],
 		},
 		"basic": {
@@ -274,6 +282,15 @@ function addA11yTarget(canvdata, thisdrawla, imgpath) {
 			"opendot": [{"mode":2, "descr":_("Open dot"), inN: 1, "input":_("Enter the coordinates of the dot")}],
 			"polygon": [{"mode":0, "descr":_("Polygon"), inN: "list", "input":_("Enter a list of points for dots to connect with lines"), "dotline":1}],
 			"closedpolygon": [{"mode":0, "descr":_("Polygon"), inN: "list", "input":_("Enter a list of points for dots to connect with lines"), "dotline":2}],
+		},
+		"numberline": {
+			"lineseg": [
+				{"mode":0.5, "descr":_("Line segment"), inN: 2, "input":_("Enter the starting and ending values of the line segment, separated by a comma")},
+				{"mode":0.8, "descr":_("Ray to the left"), inN: 1, "input":_("Enter the value the ray goes left from")},
+				{"mode":0.9, "descr":_("Ray to the right"), inN: 1, "input":_("Enter the value the ray goes right from")},
+			],
+			"dot": [{"mode":1, "descr":_("Solid dot"), inN: 1, "input":_("Enter the value of the solid dot")}],
+			"opendot": [{"mode":2, "descr":_("Open dot"), inN: 1, "input":_("Enter the value of the open dot")}],
 		}
 	};
 
@@ -386,27 +403,33 @@ function changea11ydraw(tarel, tarnum) {
 	encodea11ydraw();
 }
 function updatea11ydraw(el) {
+	var qn = parseInt($(el).closest('.a11ydraw').attr("id").substring(8));
     var err = 0;
     var elval = el.value.trim();
-    if (elval.charAt(0) != '(' || elval.slice(-1) != ')') {
-        err |= 1;
-    }
-    var pts = elval.slice(1,-1).split(/\)\s*,\s*\(/);
-    var inN = el.getAttribute('data-n');
-    if (inN.match(/\d/) && pts.length != parseInt(inN)) {
-        err |= 2;
-    }
-    for (var i=0; i<pts.length;i++) {
-        var subpts = pts[i].split(/,/);
-        if (subpts.length != 2) {
-            err |= 1;
-        }
-        for (var j=0; j<subpts.length; j++) {
-            if (subpts[j].trim().length == 0) {
-                err |= 1;
-            }
-        }
-    }
+	var pts;
+	if (targets[qn].isnumberline) {
+		pts = elval.split(/\s*,\s*/);
+	} else {
+		if (elval.charAt(0) != '(' || elval.slice(-1) != ')') {
+			err |= 1;
+		}
+		pts = elval.slice(1,-1).split(/\)\s*,\s*\(/);
+		for (var i=0; i<pts.length;i++) {
+			var subpts = pts[i].split(/,/);
+			if (subpts.length != 2) {
+				err |= 1;
+			}
+			for (var j=0; j<subpts.length; j++) {
+				if (subpts[j].trim().length == 0) {
+					err |= 1;
+				}
+			}
+		}
+	}
+	var inN = el.getAttribute('data-n');
+	if (inN.match(/\d/) && pts.length != parseInt(inN)) {
+		err |= 2;
+	}
     if (el.parentNode.parentNode.lastChild.className == 'noticetext') {
         el.parentNode.parentNode.removeChild(el.parentNode.parentNode.lastChild);
     }
@@ -429,7 +452,7 @@ function updatea11ydraw(el) {
         el.removeAttribute('aria-describedby');
         setariastatus("");
     }
-    var qn = parseInt($(el).closest('.a11ydraw').attr("id").substring(8));
+    
 	encodea11ydraw(qn);
 }
 function pixcoordstopointlist(vals,tarnum) {
@@ -472,25 +495,66 @@ function encodea11ydraw(qn) {
             var input = $(el).find("input").val();
             var mode = el.getAttribute('data-mode');
             var expectedn = $(el).find("input").attr('data-n');
+			if (mode == 0.8 || mode == 0.9) {
+				expectedn++; // adjust because we add a second point
+			}
 			saveinput.push("["+mode+',"'+input+'"]');
-			input = input.replace(/[\(\)]/g,'').split(/\s*,\s*/);
 			var outpts = [];
-            var outptsraw = [];
-			for (var i=1;i<input.length;i+=2) {
-				try {
-					input[i-1] = eval(prepWithMath(mathjs(input[i-1])));
-				} catch(e) {
-					input[i-1] = NaN;
+			var outptsraw = [];
+			if (targets[tarnum].isnumberline && !input.match(/\(/)) {
+				// numberline list of values
+				var yorig = thistarg.imgheight - (0 - thistarg.ymin)*thistarg.pixpery - thistarg.imgborder;
+				input = input.split(/\s*,\s*/);
+				for (var i=0;i<input.length;i+=1) {
+					if (input[i] === 'oo') {
+						input[i] = thistarg.xmax;
+					} else if (input[i] === '-oo') {
+						input[i] = thistarg.xmin;
+					} else {
+						try {
+							input[i] = evalMathParser(input[i]);
+						} catch(e) {
+							input[i] = NaN;
+						}
+					}
+					input[i] = (input[i] - thistarg.xmin)*thistarg.pixperx + thistarg.imgborder;
+					if (mode == 0.8 && input.length == 1) { // ray left
+						var leftx = 0;
+						outpts.push(Math.round(leftx)+',' + Math.round(yorig));
+						outptsraw.push([leftx, yorig]);
+					}
+					outpts.push(Math.round(input[i])+',' + Math.round(yorig));
+					outptsraw.push([input[i], yorig]);
+					if (mode == 0.9 && input.length == 1) { // ray right
+						var rightx = thistarg.imgwidth;
+						outpts.push(Math.round(rightx)+',' + Math.round(yorig));
+						outptsraw.push([rightx, yorig]);
+					}
 				}
-				try {
-					input[i] = eval(prepWithMath(mathjs(input[i])));
-				} catch(e) {
-					input[i] = NaN;
+			} else {
+				input = input.replace(/[\(\)]/g,'').split(/\s*,\s*/);
+				for (var i=1;i<input.length;i+=2) {
+					if (input[i-1] === 'oo') {
+						input[i-1] = thistarg.xmax;
+					} else if (input[i-1] === '-oo') {
+						input[i-1] = thistarg.xmin;
+					} else {
+						try {
+							input[i-1] = evalMathParser(input[i-1]);
+						} catch(e) {
+							input[i-1] = NaN;
+						}
+					}
+					try {
+						input[i] = evalMathParser(input[i]);
+					} catch(e) {
+						input[i] = NaN;
+					}
+					input[i-1] = (input[i-1] - thistarg.xmin)*thistarg.pixperx + thistarg.imgborder;
+					input[i] = thistarg.imgheight - (input[i] - thistarg.ymin)*thistarg.pixpery - thistarg.imgborder;
+					outpts.push(Math.round(input[i-1])+','+Math.round(input[i]));
+					outptsraw.push([input[i-1], input[i]]);
 				}
-				input[i-1] = (input[i-1] - thistarg.xmin)*thistarg.pixperx + thistarg.imgborder;
-				input[i] = thistarg.imgheight - (input[i] - thistarg.ymin)*thistarg.pixpery - thistarg.imgborder;
-				outpts.push(Math.round(input[i-1])+','+Math.round(input[i]));
-                outptsraw.push([input[i-1], input[i]]);
 			}
             if (expectedn !== 'list' && expectedn != outpts.length) {
                 return;
@@ -905,7 +969,9 @@ function drawTarget(x,y,skipencode) {
 					}
 					if (Math.abs(x2-tplines[curTarget][i][0][0])<1 || Math.abs(slope)>100) { //vert line
 						//document.getElementById("ans0-0").innerHTML = 'vert';
-						if (tptypes[curTarget][i]==5.2) {
+						if (tptypes[curTarget][i]==5.1) {
+							ctx.dashedLine(tplines[curTarget][i][0][0],0,tplines[curTarget][i][0][0],targets[curTarget].imgheight);
+						} else if (tptypes[curTarget][i]==5.2) {
 							ctx.moveTo(tplines[curTarget][i][0][0],tplines[curTarget][i][0][1]);
 							if (y2>tplines[curTarget][i][0][1]) {
 								ctx.lineTo(tplines[curTarget][i][0][0],targets[curTarget].imgheight);
@@ -923,7 +989,10 @@ function drawTarget(x,y,skipencode) {
 						//document.getElementById("ans0-0").innerHTML = slope;
 						var yleft = tplines[curTarget][i][0][1] - slope*tplines[curTarget][i][0][0];
 						var yright = tplines[curTarget][i][0][1] + slope*(targets[curTarget].imgwidth-tplines[curTarget][i][0][0]);
-						if (tptypes[curTarget][i]==5.2) {
+						if (tptypes[curTarget][i]==5.1) {
+							ctx.dashedLine(tplines[curTarget][i][0][0],tplines[curTarget][i][0][1],targets[curTarget].imgwidth,yright);
+							ctx.dashedLine(tplines[curTarget][i][0][0],tplines[curTarget][i][0][1],0,yleft);
+						} else if (tptypes[curTarget][i]==5.2) {
 							ctx.moveTo(tplines[curTarget][i][0][0],tplines[curTarget][i][0][1]);
 							if (x2>tplines[curTarget][i][0][0]) {
 								ctx.lineTo(targets[curTarget].imgwidth,yright);
@@ -1047,6 +1116,57 @@ function drawTarget(x,y,skipencode) {
 					}
                 }
 			}
+		} else if (tptypes[curTarget][i]==6.7) {//if a 3p parab
+			var y2 = null;
+			var x2 = null;
+			var y3 = null;
+			var x3 = null;
+			if (tplines[curTarget][i].length==3) {
+				x2 = tplines[curTarget][i][1][0];
+				y2 = tplines[curTarget][i][1][1];
+				x3 = tplines[curTarget][i][2][0];
+				y3 = tplines[curTarget][i][2][1];
+			} else if (tplines[curTarget][i].length==2) {
+				x2 = tplines[curTarget][i][1][0];
+				y2 = tplines[curTarget][i][1][1];
+				x3 = x;
+				y3 = y;
+			} else if (curTPcurve==i && x!=null && tplines[curTarget][i].length==1) {
+				x2 = x;
+				y2 = y;
+			}
+			if (x3 != null && x1!=x2 && x2!=x3) {
+				var x1 = tplines[curTarget][i][0][0];
+				var y1 = tplines[curTarget][i][0][1];
+				if (y1==y2 && y3==y2) {
+					ctx.moveTo(0,y3);
+					ctx.lineTo(targets[curTarget].imgwidth,y3);
+				} else {
+					var a = (x1*(y3-y2) + x2*(y1-y3) + x3*(y2-y1))/((x1-x2)*(x1-x3)*(x2-x3));
+					var b = (y2-y1)/(x2-x1) - a*(x1+x2);
+					var c = y1 - a*x1*x1 - b*x1;
+					var h = -b/(2*a);
+					var k  = (4*a*c - b*b)/(4*a);
+					if (a>0) {
+						//crosses at y=imgheight
+						var inta = Math.sqrt((targets[curTarget].imgheight - k)/a)+h;
+						var intb = -1*Math.sqrt((targets[curTarget].imgheight - k)/a)+h;
+						var cnty = k - (targets[curTarget].imgheight - k);
+						var qy = targets[curTarget].imgheight;
+					} else {
+						var inta = Math.sqrt((0 - k)/a)+h;
+						var intb = -1*Math.sqrt((0 - k)/a)+h;
+						var cnty = 2*k;
+						var qy = 0;
+					}
+					var cp1x = inta + 2.0/3.0*(h - inta);
+					var cp1y = qy + 2.0/3.0*(cnty - qy);
+					var cp2x = cp1x + (intb - inta)/3.0;
+					var cp2y = cp1y;
+					ctx.moveTo(inta,qy);
+					ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,intb,qy);
+				}
+			}
 		} else if (tptypes[curTarget][i]==6.5) {//if a tp sqrtt
 			var y2 = null;
 			var x2 = null;
@@ -1149,8 +1269,25 @@ function drawTarget(x,y,skipencode) {
 			}
 			if (x2 != null && (x2!=tplines[curTarget][i][0][0] || y2!=tplines[curTarget][i][0][1])) {
 				if (tptypes[curTarget][i]==7) { //is a tp circle
-					var rad = Math.sqrt((x2-tplines[curTarget][i][0][0])*(x2-tplines[curTarget][i][0][0]) + (y2-tplines[curTarget][i][0][1])*(y2-tplines[curTarget][i][0][1]));
-					ctx.arc(tplines[curTarget][i][0][0],tplines[curTarget][i][0][1],rad,0,2*Math.PI,true);
+                    // old code: required square grid
+					//var rad = Math.sqrt((x2-tplines[curTarget][i][0][0])*(x2-tplines[curTarget][i][0][0]) + (y2-tplines[curTarget][i][0][1])*(y2-tplines[curTarget][i][0][1]));
+					//ctx.arc(tplines[curTarget][i][0][0],tplines[curTarget][i][0][1],rad,0,2*Math.PI,true);
+                    // new code: draw as ellipse
+                    var dx = Math.abs(x2-tplines[curTarget][i][0][0]);
+					var dy = Math.abs(y2-tplines[curTarget][i][0][1]);
+                    // convert to coordinate values to find radius
+                    var dxv = dx / targets[curTarget].pixperx;
+                    var dyv = dy / targets[curTarget].pixpery;
+                    var rad = Math.sqrt(dxv*dxv+dyv*dyv);
+                    ctx.save(); // save state
+					ctx.beginPath();
+                    // scale to grid
+                    var rx = rad*targets[curTarget].pixperx;
+                    var ry = rad*targets[curTarget].pixpery;
+					ctx.translate(tplines[curTarget][i][0][0]-rx, tplines[curTarget][i][0][1]-ry);
+					ctx.scale(rx, ry);
+					ctx.arc(1, 1, 1, 0, 2 * Math.PI, false);
+					ctx.restore(); // restore to original state
 				} else if (tptypes[curTarget][i]==7.2) { //if a tp ellipse
 					var rx = Math.abs(x2-tplines[curTarget][i][0][0]);
 					var ry = Math.abs(y2-tplines[curTarget][i][0][1]);
@@ -1550,6 +1687,86 @@ function drawTarget(x,y,skipencode) {
 					}
 				}
 			}
+		} else if (tptypes[curTarget][i]==9.2) {//if a tp tangent
+			var y2 = null;
+			var x2 = null;
+			var y3 = null;
+			var x3 = null;
+			if (tplines[curTarget][i].length==3) {
+				x2 = tplines[curTarget][i][1][0];
+				y2 = tplines[curTarget][i][1][1];
+				x3 = tplines[curTarget][i][2][0];
+				y3 = tplines[curTarget][i][2][1];
+			} else if (tplines[curTarget][i].length==2) {
+				x2 = tplines[curTarget][i][1][0];
+				y2 = tplines[curTarget][i][1][1];
+				x3 = x;
+				y3 = y;
+			} else if (curTPcurve==i && x!=null && tplines[curTarget][i].length==1) {
+				x2 = x;
+				y2 = y;
+			}
+			var x1 = tplines[curTarget][i][0][0];
+			var y1 = tplines[curTarget][i][0][1];
+			var asymp = [];
+			if (x2 != null && Math.abs(x2-x1)>2) {
+				// draw asymptotes
+				// y = atan(b(x-h))+k    b=pi/period
+				ctx.strokeStyle = asymcolor;
+				var mid = y1;
+				var horizs = x1;
+				var period = 2*Math.round(Math.abs(x2-x1));
+				var n=0;
+				while (x2 + period*n < targets[curTarget].imgwidth) {
+					// draw asymptote
+					ctx.dashedLine(x2 + period*n,0,x2 + period*n,targets[curTarget].imgheight);
+					asymp.push(x2 + period*n);
+					n++;
+				}
+				n=-1;
+				while (x2 + period*n > 0) {
+					// draw asymptote
+					ctx.dashedLine(x2 + period*n,0,x2 + period*n,targets[curTarget].imgheight);
+					asymp.push(x2 + period*n);
+					n--;
+				}
+				ctx.beginPath();
+				ctx.strokeStyle = "rgb(0,0,255)";
+				if (x3 != null && x3!=x2 && x3!=x1 && y3!=y1 && (Math.round(Math.abs(2*(x3-x1)))%period) != 0) {
+					// draw curve
+					// y = atan(b(x-h))+k    b=pi/period
+					var stretch = Math.PI/period;
+					var amp = (y3-y1)/Math.tan(stretch*(x3-x1));
+					
+					asymp.push(targets[curTarget].imgwidth+1);
+					asymp.sort(function(a,b) { return a - b; });
+
+					var leftstart=0, rightend, cury;
+					for (var cursec=0;cursec<asymp.length;cursec++) {
+						rightend = asymp[cursec];
+						if (cursec > 0) {
+							leftstart = asymp[cursec - 1] + 1;
+						}
+						for (var curx=leftstart;curx < rightend;curx += 1) {
+							cury = amp*Math.tan(stretch*(curx - horizs)) + mid;
+							if ((cursec > 0 && curx == leftstart) || 
+								(cursec < asymp.length - 1 && rightend-curx <= 1)
+							) {
+								if (cury > y1 && cury < targets[curTarget].imgheight) {
+									cury = targets[curTarget].imgheight;
+								} else if (cury < y1 && cury > 0) {
+									cury = 0;
+								}
+							}
+							if (curx==leftstart) {
+								ctx.moveTo(curx,cury);
+							} else {
+								ctx.lineTo(curx,cury);
+							}
+						}
+					}
+				}
+			}
 		}
 		ctx.stroke();
 		ctx.beginPath();
@@ -1709,6 +1926,11 @@ function deleteCurve(curveType,num) {
 	}
 	drawTarget();
 }
+function roundToDec(val, dec) {
+    // no reason for any of the values to be anything but integers
+    return Math.round(val);
+    //return Math.round(val*Math.pow(10,dec))/Math.pow(10,dec);
+}
 function encodeDraw() {
 	var out = '';
 	var outline = [];
@@ -1726,7 +1948,7 @@ function encodeDraw() {
 			if (j!=0) {
 				out += ',';
 			}
-			out +=	'('+outline[j][0]+','+outline[j][1]+')';
+			out +=	'('+roundToDec(outline[j][0],4)+','+roundToDec(outline[j][1],4)+')';
 
 		}
 	}
@@ -1735,14 +1957,14 @@ function encodeDraw() {
 		if (i!=0) {
 			out += ',';
 		}
-		out += '('+dots[curTarget][i][0]+','+dots[curTarget][i][1]+')';
+		out += '('+roundToDec(dots[curTarget][i][0],4)+','+roundToDec(dots[curTarget][i][1],4)+')';
 	}
 	out += ';;';
 	for (var i=0; i<odots[curTarget].length; i++) {
 		if (i!=0) {
 			out += ',';
 		}
-		out += '('+odots[curTarget][i][0]+','+odots[curTarget][i][1]+')';
+		out += '('+roundToDec(odots[curTarget][i][0],4)+','+roundToDec(odots[curTarget][i][1],4)+')';
 	}
 	out += ';;';
 	var tplineout = [];
@@ -1751,7 +1973,7 @@ function encodeDraw() {
 		if (tplines[curTarget][i].length==tpModeN[tptypes[curTarget][i]]) {
 			tpoutstr = '('+tptypes[curTarget][i];
 			for (var j=0; j<tplines[curTarget][i].length; j++) {
-				tpoutstr += ','+tplines[curTarget][i][j][0]+','+tplines[curTarget][i][j][1];
+				tpoutstr += ','+roundToDec(tplines[curTarget][i][j][0],4)+','+roundToDec(tplines[curTarget][i][j][1],4);
 			}
 			tplineout.push(tpoutstr + ')');
 		}
@@ -1764,7 +1986,7 @@ function encodeDraw() {
 		//	out += ',';
 		//}
 		if (ineqlines[curTarget][i].length>2) {
-			tpineqout.push('('+ineqtypes[curTarget][i]+','+ineqlines[curTarget][i][0][0]+','+ineqlines[curTarget][i][0][1]+','+ineqlines[curTarget][i][1][0]+','+ineqlines[curTarget][i][1][1]+','+ineqlines[curTarget][i][2][0]+','+ineqlines[curTarget][i][2][1]+')');
+			tpineqout.push('('+ineqtypes[curTarget][i]+','+roundToDec(ineqlines[curTarget][i][0][0],4)+','+roundToDec(ineqlines[curTarget][i][0][1],4)+','+roundToDec(ineqlines[curTarget][i][1][0],4)+','+roundToDec(ineqlines[curTarget][i][1][1],4)+','+roundToDec(ineqlines[curTarget][i][2][0],4)+','+roundToDec(ineqlines[curTarget][i][2][1],4)+')');
 		}
 	}
 	out += tpineqout.join(",");
@@ -2237,6 +2459,7 @@ function drawMouseMove(ev) {
 	var tempTarget = null;
 	clickmightbenewcurve = false;
 	var mousePos = mouseCoords(ev);
+
 	//$(".tips").html("move"+didMultiTouch);
 	//document.getElementById("ans0-0").innerHTML = dragObj + ';' + curTPcurve;
 	//if (curTarget==null) {
@@ -2417,8 +2640,10 @@ function setCursor(cursor, target) {
 	if (targets[target].cursor != cursor) {
 		if (cursor=='move') {
 			targets[target].el.style.cursor = cursor;
-		} else {
-			targets[target].el.style.cursor = 'url('+staticroot+'/img/'+cursor+'.cur), auto';
+		} else if (cursor=='pen') {
+			targets[target].el.style.cursor = 'url('+staticroot+'/img/penup.svg) 0 0, auto';
+		} else if (cursor=='pendown') {
+			targets[target].el.style.cursor = 'url('+staticroot+'/img/pendown.svg) 0 20, auto';
 		}
 		targets[target].cursor = cursor;
 	}
@@ -2494,6 +2719,13 @@ function initCanvases(k) {
 		CanvasRenderingContext2D.prototype.dashedLine = function(x1, y1, x2, y2, dashLen) {
 		    if (dashLen == undefined) dashLen = 10;
 
+			if (y1 < 0 && y1 != y2) {
+				x1 = x1 - y1*(x2-x1)/(y2-y1);
+				y1 = 0;
+			} else if (y1 > targets[curTarget].imgheight && y1 != y2) {
+				x1 = x1 + (targets[curTarget].imgheight - y1)*(x2-x1)/(y2-y1);
+				y1 = targets[curTarget].imgheight;
+			}
 		    this.beginPath();
 		    this.moveTo(x1, y1);
 

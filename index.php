@@ -71,6 +71,7 @@ if ($myrights>15) {
   		thishtml += \' <li><a href="#" onclick="hidefromcourselist(this,\'+cid+\',\\\'teach\\\');return false;">'._('Hide from course list').'</a></li>\';
   		thishtml += \' <li><a href="admin/addremoveteachers.php?from=home&id=\'+cid+\'">'._('Add/remove teachers').'</a></li>\';
   		thishtml += \' <li><a href="admin/transfercourse.php?from=home&id=\'+cid+\'">'._('Transfer ownership').'</a></li>\';
+  		thishtml += \' <li><a href="admin/teacherauditlog.php?from=home&cid=\'+cid+\'">'._('Teacher Activity Log').'</a></li>\';		
   		thishtml += \' <li><a href="admin/forms.php?from=home&action=delete&id=\'+cid+\'">'._('Delete').'</a></li>\';
   		thishtml += \'</ul></div>\';
   		$(el).append(thishtml);
@@ -134,7 +135,7 @@ if ($showmessagesgadget) {
 $page_studentCourseData = array();
 
 // check to see if the user is enrolled as a student
-$query = "SELECT imas_courses.name,imas_courses.id,imas_courses.startdate,imas_courses.enddate,imas_students.hidefromcourselist,";
+$query = "SELECT imas_courses.name,imas_courses.id,imas_courses.startdate,imas_courses.enddate,imas_students.hidefromcourselist,imas_students.locked,";
 $query .= "IF(UNIX_TIMESTAMP()<imas_courses.startdate OR UNIX_TIMESTAMP()>imas_courses.enddate,0,1) as active ";
 $query .= "FROM imas_students,imas_courses ";
 $query .= "WHERE imas_students.courseid=imas_courses.id AND imas_students.userid=:userid ";
@@ -244,10 +245,6 @@ if ($stm->rowCount()==0) {
 $postcidlist = implode(',',$postcheckcids);
 $postthreads = array();
 if ($showpostsgadget && count($postcheckcids)>0) {
-	/*$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime,imas_forums.courseid FROM imas_forum_threads ";
-	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id LEFT JOIN imas_forum_views AS mfv ";
-	$query .= "ON mfv.threadid=imas_forum_threads.id AND mfv.userid='$userid' WHERE imas_forums.courseid IN ($postcidlist) AND imas_forums.grpaid=0 ";
-	$query .= "AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL)) ORDER BY imas_forum_threads.lastposttime DESC";*/
 	$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime,imas_forums.courseid FROM imas_forum_threads ";
 	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id ";
 	$query .= "AND imas_forums.courseid IN ($postcidlist) ";  //is int's from DB - safe
@@ -269,25 +266,15 @@ if ($showpostsgadget && count($postcheckcids)>0) {
 		}
 	}
 } else if (count($postcheckcids)>0) {
-	/*$query = "SELECT courseid,count(*) FROM ";
-	$query .= "(SELECT imas_forums.courseid,imas_forum_threads.id FROM imas_forum_threads ";
-	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id LEFT JOIN imas_forum_views AS mfv ";
-	$query .= "ON mfv.threadid=imas_forum_threads.id AND mfv.userid='$userid' WHERE imas_forums.courseid IN ";
-	$query .= "($postcidlist) AND imas_forums.grpaid=0 ";
-	$query .= "AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL))) AS newitems ";
-	$query .= "GROUP BY courseid";*/
-
 	$now = time();
 	$query = "SELECT imas_forums.courseid, COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
 	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id ";
 	$query .= "AND imas_forums.courseid IN ($postcidlist) ";    //is int's from DB - safe
 	$query .= "LEFT JOIN imas_forum_views as mfv ON mfv.threadid=imas_forum_threads.id AND mfv.userid=:userid ";
 	$query .= "WHERE (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL)) AND imas_forum_threads.lastposttime<:now ";
-	//this is not consistent with above...
-	//$query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=:useridB)) ";
-	$query .= "GROUP BY imas_forums.courseid";
+	$query .= "AND imas_forum_threads.lastposttime>:old GROUP BY imas_forums.courseid";
 	$stm2 = $DBH->prepare($query);
-	$stm2->execute(array(':userid'=>$userid, ':now'=>$now));
+	$stm2->execute(array(':userid'=>$userid, ':now'=>$now, ':old'=>$now - 365*24*60*60));
 	while ($row = $stm2->fetch(PDO::FETCH_NUM)) {
 		$newpostcnt[$row[0]] = $row[1];
 	}
@@ -295,10 +282,6 @@ if ($showpostsgadget && count($postcheckcids)>0) {
 //check for new posts in courses being taken
 $poststucidlist = implode(',',$postcheckstucids);
 if ($showpostsgadget && count($postcheckstucids)>0) {
-	/*$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime,imas_forums.courseid FROM imas_forum_threads ";
-	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id LEFT JOIN imas_forum_views AS mfv ";
-	$query .= "ON mfv.threadid=imas_forum_threads.id AND mfv.userid='$userid' WHERE imas_forums.courseid IN ($postcidlist) AND imas_forums.grpaid=0 ";
-	$query .= "AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL)) ORDER BY imas_forum_threads.lastposttime DESC";*/
 	$now = time();
 	$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime,imas_forums.courseid FROM imas_forum_threads ";
 	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id ";
@@ -324,24 +307,17 @@ if ($showpostsgadget && count($postcheckstucids)>0) {
 	}
 } else if (count($postcheckstucids)>0) {
 	$now = time();
-	/*
-	$query = "SELECT courseid,count(*) FROM ";
-	$query .= "(SELECT imas_forums.courseid,imas_forum_threads.id FROM imas_forum_threads ";
-	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id LEFT JOIN imas_forum_views AS mfv ";
-	$query .= "ON mfv.threadid=imas_forum_threads.id AND mfv.userid='$userid' WHERE imas_forums.courseid IN ";
-	$query .= "($postcidlist) AND imas_forums.grpaid=0 ";
-	$query .= "AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL))) AS newitems ";
-	$query .= "GROUP BY courseid";*/
 	$query = "SELECT imas_forums.courseid, COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
 	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id ";
 	$query .= "AND (imas_forums.avail=2 OR (imas_forums.avail=1 AND imas_forums.startdate<$now && imas_forums.enddate>$now)) ";
 	$query .= "AND imas_forums.courseid IN ($poststucidlist) "; //int's from DB - safe
 	$query .= "LEFT JOIN imas_forum_views as mfv ON mfv.threadid=imas_forum_threads.id AND mfv.userid=:userid ";
-	$query .= "WHERE (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL)) AND imas_forum_threads.lastposttime<:now ";
+	$query .= "WHERE (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL)) ";
+	$query .= "AND imas_forum_threads.lastposttime<:now AND imas_forum_threads.lastposttime>:old ";
 	$query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=:useridB)) ";
 	$query .= "GROUP BY imas_forums.courseid";
 	$stm2 = $DBH->prepare($query);
-	$stm2->execute(array(':userid'=>$userid, ':useridB'=>$userid, ':now'=>$now));
+	$stm2->execute(array(':userid'=>$userid, ':useridB'=>$userid, ':now'=>$now, ':old'=>$now - 365*24*60*60));
 	while ($row = $stm2->fetch(PDO::FETCH_NUM)) {
 		$newpostcnt[$row[0]] = $row[1];
 	}
@@ -367,7 +343,7 @@ if ($myrights==100) {
 	}
 }
 if (!empty($CFG['logquestionerrors']) && $myrights >= 20) {
-    $stm = $DBH->prepare('SELECT count(DISTINCT iqe.qsetid) FROM imas_questionerrors AS iqe JOIN imas_questionset AS iqs ON iqe.qsetid=iqs.id WHERE iqs.ownerid=?');
+    $stm = $DBH->prepare('SELECT count(DISTINCT qsetid) FROM imas_questionerrorlog WHERE ownerid=?');
     $stm->execute([$userid]);
     $qerrcnt = $stm->fetchColumn(0);
 }
@@ -547,10 +523,10 @@ function printCourses($data,$title,$type=null,$hashiddencourses=false) {
 
     echo '<div class="center">';
     if (count($data)>0) {
-        echo '<a class="small" href="admin/modcourseorder.php?type='.$type.'">',_('Change Course Order'),'</a><br/>';
+        echo '<a class="small" href="admin/modcourseorder.php?type='.$type.'">',_('Change Course Order'),'</a>';
     }
     //echo '</div><div class="center">';
-    echo '<a id="unhidelink'.$type.'" '.($hashiddencourses?'':'style="display:none"').' class="small" href="admin/unhidefromcourselist.php?type='.$type.'">',_('View hidden courses'),'</a> ';
+    echo '<span id="unhidelink'.$type.'" '.($hashiddencourses?'':'style="display:none"').'><br><a class="small" href="admin/unhidefromcourselist.php?type='.$type.'">',_('View hidden courses'),'</a></span> ';
     if ($type=='teach' && count($data)>0) {
         echo '<br/><a class="small" href="admin/forms.php?action=findstudent&from=home">',_('Find Student'),'</a> ';
     }
@@ -614,7 +590,11 @@ function printCourseLine($data, $type=null) {
 		echo ' <em style="color:green;">', _('Lockdown'), '</em>';
 	}
 	if ($shownewmsgnote && isset($newmsgcnt[$data['id']]) && $newmsgcnt[$data['id']]>0) {
-		echo ' <a class="noticetext" href="msgs/msglist.php?page=-1&cid='.$data['id'].'">', sprintf(_('Messages (%d)'), $newmsgcnt[$data['id']]), '</a>';
+        if ($type == 'take' && $data['locked'] > 0) {
+		    echo ' <a class="noticetext" href="msgs/msglist.php?page=-1&cid=0&filtercid='.$data['id'].'">', sprintf(_('Messages (%d)'), $newmsgcnt[$data['id']]), '</a>';
+        } else {
+		    echo ' <a class="noticetext" href="msgs/msglist.php?page=-1&cid='.$data['id'].'">', sprintf(_('Messages (%d)'), $newmsgcnt[$data['id']]), '</a>';
+        }
 	}
 	if ($shownewpostnote && isset($newpostcnt[$data['id']]) && $newpostcnt[$data['id']]>0) {
 		printf(' <a class="noticetext" href="forums/newthreads.php?from=home&cid=%d">%s</a>',$data['id'],
@@ -692,7 +672,7 @@ function printPostsGadget() {
 		echo '</div></div>';
 		return;
 	}
-	$threadlist = implode(',',$postthreads);
+	$threadlist = implode(',', array_map('intval', $postthreads));
 	$threaddata = array();
 	$query = "SELECT imas_forum_posts.*,imas_users.LastName,imas_users.FirstName FROM imas_forum_posts,imas_users ";
 	$query .= "WHERE imas_forum_posts.userid=imas_users.id AND imas_forum_posts.id IN ($threadlist)";  //int vals from DB - safe
@@ -704,6 +684,10 @@ function printPostsGadget() {
 	echo '<table class="gb" id="newpostlist"><thead><tr><th>', _('Thread'), '</th><th>', _('Started By'), '</th><th>', _('Course'), '</th><th>', _('Last Post'), '</th></tr></thead>';
 	echo '<tbody>';
 	foreach ($page_newpostlist as $line) {
+		if (!isset($threaddata[$line['threadid']])) { 
+			// might happen if user was deleted?
+			continue; 
+		}
 		echo '<tr>';
 		$subject = $threaddata[$line['threadid']]['subject'];
 		if (trim($subject)=='') {

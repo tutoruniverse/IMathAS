@@ -13,7 +13,7 @@ if (!$isteacher) {
 	echo "This page not available to students";
 	exit;
 }
-$doemail = $dopts = $doptpts = $doraw = $doptraw = $doba = $dobca = $dola = false;
+$doemail = $dopts = $doptpts = $doraw = $doptraw = $doba = $dobca = $dola = $doqsid = $includelocked = false;
 if (isset($_POST['options'])) {
 	//ready to output
 	$outcol = 0;
@@ -25,6 +25,8 @@ if (isset($_POST['options'])) {
 	if (isset($_POST['ba'])) { $doba = true; $outcol++;}
 	if (isset($_POST['bca'])) { $dobca = true; $outcol++;}
 	if (isset($_POST['la'])) { $dola = true; $outcol++;}
+    if (isset($_POST['qsid'])) { $doqsid = true;}
+	if (isset($_POST['includelocked'])) { $includelocked = true;}
 
 	//get assessment info
 	$assess_info = new AssessInfo($DBH, $aid, $cid, false);
@@ -46,6 +48,9 @@ if (isset($_POST['options'])) {
 	}
 
 	$query = "SELECT COUNT(imas_users.id) FROM imas_users,imas_students WHERE imas_users.id=imas_students.userid ";
+	if (!$includelocked) {
+		$query .= "AND imas_students.locked=0 ";
+	}
 	$query .= "AND imas_students.courseid=:courseid AND imas_students.section IS NOT NULL";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':courseid'=>$cid));
@@ -59,9 +64,11 @@ if (isset($_POST['options'])) {
 	//create headers
 	$gb[0][0] = "Name";
 	$gb[1][0] = "";
+    if ($doqsid) { $gb[2][0] = '';}
 	if ($hassection) {
 		$gb[0][1] = "Section";
 		$gb[1][1] = "";
+        if ($doqsid) { $gb[2][1] = '';}
 		$initoffset = 2;
 	} else {
 		$initoffset = 1;
@@ -69,6 +76,7 @@ if (isset($_POST['options'])) {
     if ($doemail) {
         $gb[0][$initoffset] = "Email";
         $gb[1][$initoffset] = "";
+        if ($doqsid) { $gb[2][$initoffset] = '';}
         $initoffset++;
     }
 
@@ -112,11 +120,20 @@ if (isset($_POST['options'])) {
 			$gb[1][$initoffset + $outcol*$k + $offset] = "Last Answer";
 			$offset++;
 		}
+        if ($doqsid) { 
+            $qsid = $assess_info->getQuestionSetting($q, 'questionsetid');
+            for ($i=0; $i<$offset; $i++) {
+                $gb[2][$initoffset + $outcol*$k + $i] = $qsid;
+            }
+        }
 	}
 
 	//create row headers
 	$query = "SELECT iu.id,iu.FirstName,iu.LastName,imas_students.section,iu.email FROM imas_users AS iu JOIN ";
 	$query .= "imas_students ON iu.id=imas_students.userid WHERE imas_students.courseid=:courseid ";
+	if (!$includelocked) {
+		$query .= "AND imas_students.locked=0 ";
+	}
 	if ($hassection) {
 		$query .= "ORDER BY imas_students.section,iu.LastName, iu.FirstName";
 	} else {
@@ -124,7 +141,7 @@ if (isset($_POST['options'])) {
 	}
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':courseid'=>$cid));
-	$r = 2;
+	$r = ($doqsid ? 3 : 2);
 	$sturow = array();
 	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 		$gb[$r] = array_fill(0,count($gb[0]),'');
@@ -144,6 +161,9 @@ if (isset($_POST['options'])) {
                 JOIN imas_students ON imas_students.userid = iar.userid
               WHERE iar.assessmentid = :assessmentid
                 AND imas_students.courseid = :courseid";
+	if (!$includelocked) {
+		$query .= " AND imas_students.locked=0";
+	} 
     $stm = $DBH->prepare($query);
     $stm->execute(array(':courseid'=>$cid, ':assessmentid'=>$aid));
     while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
@@ -264,15 +284,22 @@ if (isset($_POST['options'])) {
 	echo '<div id="headergb-aidexport" class="pagetitle"><h1>Assessment Results Export</h1></div>';
 
 	echo "<form method=\"post\" action=\"gb-aidexport2.php?aid=$aid&cid=$cid\">";
-	echo 'What do you want to include in the export:<br/>';
-	echo '<input type="checkbox" name="pts" value="1"/> Points earned<br/>';
-    echo '<input type="checkbox" name="ptpts" value="1"/> Multipart broken-down Points earned<br/>';
-    echo '<input type="checkbox" name="raw" value="1"/> Raw score<br/>';
-	echo '<input type="checkbox" name="ptraw" value="1"/> Multipart broken-down raw score<br/>';
-	echo '<input type="checkbox" name="ba" value="1"/> Scored Attempt<br/>';
-	echo '<input type="checkbox" name="bca" value="1"/> Correct Answers for Scored Attempt<br/>';
-    echo '<input type="checkbox" name="email" value="1"/> Email Addresses<br/>';
-	echo '<input type="submit" name="options" value="Export" />';
+	echo '<p>What do you want to include in the export:</p>';
+	echo '<ul class=nomark>';
+	echo '<li><label><input type="checkbox" name="pts" value="1"/> Points earned</label></li>';
+    echo '<li><label><input type="checkbox" name="ptpts" value="1"/> Multipart broken-down Points earned</label></li>';
+    echo '<li><label><input type="checkbox" name="raw" value="1"/> Raw score</label></li>';
+	echo '<li><label><input type="checkbox" name="ptraw" value="1"/> Multipart broken-down raw score</label></li>';
+	echo '<li><label><input type="checkbox" name="ba" value="1"/> Scored Attempt</label></li>';
+	echo '<li><label><input type="checkbox" name="bca" value="1"/> Correct Answers for Scored Attempt</label></li>';
+    echo '<li><label><input type="checkbox" name="email" value="1"/> Email Addresses</label></li>';
+    echo '<li><label><input type="checkbox" name="qsid" value="1"/> Question ID as third header row</label></li>';
+	echo '</ul>';
+	echo '<p>Who do you want to include in the export:</p>';
+	echo '<ul class=nomark>';
+	echo '<li><label><input type="checkbox" name="includelocked" value="1"/> Include locked students</label></li>';
+	echo '</ul>';
+	echo '<p><input type="submit" name="options" value="Export" /></p>';
 	echo '<p>Export will be a commas separated values (.CSV) file, which can be opened in Excel</p>';
 	//echo '<p class="red"><b>Note</b>: Attempt information from shuffled multiple choice, multiple answer, and matching questions will NOT be correct</p>';
 	echo '</form>';

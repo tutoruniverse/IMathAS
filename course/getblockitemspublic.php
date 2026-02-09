@@ -38,7 +38,7 @@
 			break;
         }
 		$backtrack[] = array($items[$blocktree[$i]-1]['name'],implode('-',array_slice($blocktree,0,$i+1)));
-		if ($items[$blocktree[$i]-1]['public']==1) {
+		if (!empty($items[$blocktree[$i]-1]['public'])) {
 			$blockispublic = true;
 		}
 		if (!isset($teacherid) && $items[$blocktree[$i]-1]['avail']<2 && $items[$blocktree[$i]-1]['SH'][0]!='S' &&($now<$items[$blocktree[$i]-1]['startdate'] || $now>$items[$blocktree[$i]-1]['enddate'] || $items[$blocktree[$i]-1]['avail']=='0')) {
@@ -58,7 +58,7 @@
 
    $openblocks = Array(0);
    if (isset($_COOKIE['openblocks-'.$cid]) && $_COOKIE['openblocks-'.$cid]!='') {$openblocks = explode(',',$_COOKIE['openblocks-'.$cid]);}
-   if (isset($_COOKIE['prevloadedblocks-'.$cid]) && $_COOKIE['prevloadedblocks-'.$cid]!='') {$prevloadedblocks = explode(',',$_COOKIE['prevloadedblocks-'.$cid]);} else {$prevloadedblocks = array();}
+   if (!empty($_SESSION['prevloadedblocks-'.$cid])) {$prevloadedblocks = $_SESSION['prevloadedblocks-'.$cid];} else {$prevloadedblocks = array();}
    if (in_array($_GET['folder'],$prevloadedblocks)) { $firstload = false;} else {$firstload = true;}
 
    //$oblist = implode(',',$openblocks);
@@ -73,7 +73,7 @@
 
    }
    if ($firstload) {
-	   echo "<script>document.cookie = 'openblocks-$cid=' + oblist;</script>\n";
+	   echo "<script>setCookie('openblocks-$cid', oblist);</script>\n";
    }
    function tzdate($string,$time) {
 	  global $tzoffset;

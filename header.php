@@ -15,7 +15,6 @@ if (isset($CFG['hooks']['header'])) {
 ?>
 <head>
 <title><?php echo $installname; if (isset($pagetitle)) { echo " - $pagetitle";}?></title>
-<meta http-equiv="X-UA-Compatible" content="IE=7, IE=Edge" />
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <?php
@@ -29,13 +28,10 @@ if (empty($_SESSION['tzoffset']) && !empty($CFG['static_server'])) {
     echo '<script src="'.$CFG['static_server'].'/javascript/staticcheck.js"></script>';
 }
 ?>
-<link rel="stylesheet" href="<?php echo $staticroot . "/imascore.css?ver=020123";?>" type="text/css" />
+<link rel="stylesheet" href="<?php echo $staticroot . "/imascore.css?ver=012426";?>" type="text/css" />
 <?php
 $isfw = false;
 if (isset($coursetheme)) {
-	if (isset($flexwidth) || isset($usefullwidth)) {
-		$coursetheme = str_replace(array('_fw1920','_fw1000','_fw'),'',$coursetheme);
-	}
 	if (strpos($coursetheme,'_fw1920')!==false) {
 		$isfw = 1920;
 		$coursetheme = str_replace('_fw1920','',$coursetheme);
@@ -45,30 +41,28 @@ if (isset($coursetheme)) {
 	}
 } 
 if (isset($CFG['GEN']['favicon'])) {
-	echo '<link rel="shortcut icon" href="'.$CFG['GEN']['favicon'].'" />';
+	echo '<link rel="icon" sizes="32x32" href="'.$CFG['GEN']['favicon'].'" />';
 } else {
-	echo '<link rel="shortcut icon" href="/favicon.ico" />';
+	echo '<link rel="icon" sizes="32x32" href="/favicon.ico" />';
 }
+if (isset($CFG['GEN']['svgfavicon'])) {
+	echo '<link rel="icon" sizes="any" type="image/svg+xml" href="'.$CFG['GEN']['svgfavicon'].'" />';
+}
+if (isset($CFG['GEN']['96icon'])) {
+	echo '<link rel="icon" sizes="96x96" href="'.$CFG['GEN']['96icon'].'" />';
+} 
 if (isset($CFG['GEN']['appleicon'])) {
 	echo '<link rel="apple-touch-icon" href="'.$CFG['GEN']['appleicon'].'" />';
+}
+
+if (isset($CFG['GEN']['webmanifest'])) {
+	echo '<link rel="manifest" href="'.$CFG['GEN']['webmanifest'].'" />';
 }
 if (!empty($CFG['use_csrfp']) && class_exists('csrfProtector')) {
 	echo csrfProtector::output_header_code();
 }
 ?>
 
-<!--[if lte IE 6]>
-<style>
-div { zoom: 1; }
-.clearlooks2, .clearlooks2 div { zoom: normal;}
-.clear { line-height: 0;}
-#GB_overlay, #GB_window {
- position: absolute;
- top: expression(0+((e=document.documentElement.scrollTop)?e:document.body.scrollTop)+'px');
- left: expression(0+((e=document.documentElement.scrollLeft)?e:document.body.scrollLeft)+'px');}
-}
-</style>
-<![endif]-->
 <style type="text/css" media="print">
 div.breadcrumb { display:none;}
 #headerlogo { display:none;}
@@ -76,9 +70,15 @@ div.breadcrumb { display:none;}
 <script type="text/javascript">
 var imasroot = '<?php echo $imasroot; ?>'; var cid = <?php echo (isset($cid) && is_numeric($cid))?$cid:0; ?>;
 var staticroot = '<?php echo $staticroot; ?>';
+<?php if (!empty($CFG['nocommathousandsseparator'])) { echo 'var commasep = false;'; } ?>
+<?php if (isset($CFG['S3']['altendpoint'])) { echo 'var altfilesendpoint = "'.Sanitize::encodeStringForDisplay($CFG['S3']['altendpoint']).'";';} ?>
 </script>
-<script type="text/javascript" src="<?php echo $staticroot;?>/javascript/general.js?v=092823"></script>
+<script type="text/javascript" src="<?php echo $staticroot;?>/javascript/general.js?v=012626"></script>
 <?php
+// override allowedImgDomains if set in config
+if (isset($CFG['GEN']['allowedImgDomains'])) {
+	echo '<script>allowedImgDomains = ' . $CFG['GEN']['allowedImgDomains'] . ';</script>';
+}
 //$_SESSION['mathdisp'] = 3;
 //
 if (isset($CFG['locale'])) {
@@ -93,143 +93,48 @@ if (isset($ispublic) && $ispublic && !isset($_SESSION['mathdisp'])) {
 	$_SESSION['graphdisp'] = 1;
 }
 
+if ((isset($useeditor) && $_SESSION['useed']==1) || // using editor
+	(isset($_SESSION['mathdisp']) && $_SESSION['mathdisp']==6) // katex
+) {
+	echo '<script type="text/javascript">var AMTcgiloc = "'.$mathimgurl.'";';
+	if (!empty($CFG['GEN']['mathcgisvg'])) {
+		echo 'var AMTcgilocUseSVG = true;';
+	}
+	if (isset($_SESSION['mathdisp']) && $_SESSION['mathdisp']==2 && $mathdarkbg) {
+		echo 'var mathbg = "dark";';
+	}
+	echo '</script>';
+	echo "<script src=\"$staticroot/javascript/ASCIIMathTeXImg_min.js?ver=111923\" type=\"text/javascript\"></script>\n";
+}
 if (!isset($_SESSION['mathdisp'])) {
 	echo '<script type="text/javascript">var AMnoMathML = true;var ASnoSVG = true;var AMisGecko = 0;var AMnoTeX = false;var mathRenderer="none";</script>';
-} else if ($_SESSION['mathdisp']==1 || $_SESSION['mathdisp']==3) {
-	//merged, eliminating original AsciiMath display; MathJax only now
-	if (isset($useeditor) && $_SESSION['useed']==1) {
-		echo '<script type="text/javascript">var AMTcgiloc = "'.$mathimgurl.'";</script>';
-		echo "<script src=\"$staticroot/javascript/ASCIIMathTeXImg_min.js?ver=012923\" type=\"text/javascript\"></script>\n";
-    }
-    if (isset($_SESSION['ltiitemtype'])) {
-        echo '<script type="text/x-mathjax-config">
-            MathJax.Hub.Queue(function () {
-                sendLTIresizemsg();
-            });
-            MathJax.Hub.Register.MessageHook("End Process", sendLTIresizemsg);
-            </script>';
-    }
-    //Contrib not hosted in CDN yet
-	echo '<script type="text/x-mathjax-config">
-        MathJax.Hub.Config({"messageStyle": "none", asciimath2jax: {ignoreClass:"skipmathrender"}});
-        MathJax.Ajax.config.path["Local"] = "'.$staticroot.'/javascript/mathjax";
-        MathJax.Hub.config.extensions.push("[Local]/InputToDataAttrCDN.js");
-        MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
-            var AM = MathJax.InputJax.AsciiMath.AM;
-            AM.newsymbol({input: "o-", tag:"mo", output:"\u2296", ttype:AM.TOKEN.CONST});
-            AM.newsymbol({input: "ominus", tag:"mo", output:"\u2296", ttype:AM.TOKEN.CONST});
-            AM.newsymbol({input: "rightleftharpoons", tag:"mo", output:"\u21CC", ttype:AM.TOKEN.CONST});
-            AM.newsymbol({input: "hbar", tag:"mi", output:"\u210F", ttype:AM.TOKEN.CONST});
-        });
-        </script>';
-    if (!empty($CFG['GEN']['uselocaljs'])) {
-        echo '<script type="text/javascript" async src="'.$staticroot.'/mathjax/MathJax.js?config=AM_CHTML-full"></script>';
-    } else {
-		echo '<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=AM_CHTML-full"></script>';
-    }
-    echo '<script type="text/javascript">noMathRender = false; var usingASCIIMath = true; var AMnoMathML = true; var MathJaxCompatible = true;var mathRenderer="MathJax";
-        function rendermathnode(node,callback) {
-            if (window.MathJax) {
-                MathJax.Hub.Queue(["Typeset", MathJax.Hub, node]);
-                if (typeof callback == "function") {
-                    MathJax.Hub.Queue(callback);
-                }
-            } else {
-                setTimeout(function() {rendermathnode(node, callback);}, 100);
-            }
-        }</script>';
-
-    echo '<style type="text/css">span.AM { font-size: 105%;} .mq-editable-field.mq-math-mode var { font-style: normal;}</style>';
-} else if ($_SESSION['mathdisp']==7 || $_SESSION['mathdisp']==8) { // mathjax 3
-    if (isset($useeditor) && $_SESSION['useed']==1) {
-		echo '<script type="text/javascript">var AMTcgiloc = "'.$mathimgurl.'";</script>';
-		echo "<script src=\"$staticroot/javascript/ASCIIMathTeXImg_min.js?ver=012923\" type=\"text/javascript\"></script>\n";
-    }
-    // for autoload of a11y extension, add "a11y/semantic-enrich" to load, and put in options enrichSpeech: "shallow",
-    echo '<script>
-    window.MathJax = {
-      loader: {
-        load: ["input/asciimath", "output/chtml", "ui/menu"'.
-            (($_SESSION['mathdisp']==8) ? ',"a11y/semantic-enrich"' : '')
-        .']
-      },
-      options: {
-        ignoreHtmlClass: "skipmathrender",'.
-        (($_SESSION['mathdisp']==8) ? 'sre:{speech:"shallow"},' : '')
-        .'renderActions: {
-            addattr: [150,
-                function (doc) {for (math of doc.math) {MathJax.config.addDataAttr(math, doc)}},
-                function (math, doc) {MathJax.config.addDataAttr(math, doc)}
-            ]
-        }
-      },
-      addDataAttr: function (math, doc) {
-        math.typesetRoot.setAttribute("data-asciimath", math.math);
-      },
-      startup: {
-          ready: function() {
-            var AM = MathJax.InputJax.AsciiMath.AM;
-            AM.newsymbol({input: "o-", tag:"mo", output:"\u2296", ttype:AM.TOKEN.CONST});
-            AM.newsymbol({input: "ominus", tag:"mo", output:"\u2296", ttype:AM.TOKEN.CONST});
-            AM.newsymbol({input: "rightleftharpoons", tag:"mo", output:"\u21CC", ttype:AM.TOKEN.CONST});
-            AM.newsymbol({input: "hbar", tag:"mi", output:"\u210F", ttype:AM.TOKEN.CONST});
-            MathJax.startup.defaultReady();
-          }
-       }
-    };
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/startup.js" id="MathJax-script"></script>';
-    echo '<script type="text/javascript">noMathRender = false; var usingASCIIMath = true; var AMnoMathML = true; var MathJaxCompatible = true;var mathRenderer="MathJax";
-		function rendermathnode(node,callback) {
-			if (window.MathJax && window.MathJax.typesetPromise) {
-                if (typeof callback != "function") {
-					callback = function () {};
-				}
-                MathJax.typesetClear([node]);
-                MathJax.typesetPromise([node]).then(callback);
-			} else {
-				setTimeout(function() {rendermathnode(node, callback);}, 100);
-			}
-        }</script>';
-    if (isset($_SESSION['ltiitemtype'])) {
-        echo '<script type="text/javascript">
-            MathJax.startup.promise = MathJax.startup.promise.then(sendLTIresizemsg);
-            </script>';
-    }
-	echo '<style type="text/css">span.AM { font-size: 105%;} </style>';
-} else if ($_SESSION['mathdisp']==6) {
-	//Katex experimental
-	echo '<script type="text/javascript">var AMTcgiloc = "'.$mathimgurl.'";</script>';
-	echo "<script src=\"$staticroot/javascript/ASCIIMathTeXImg_min.js?ver=012923\" type=\"text/javascript\"></script>\n";
-
-	if (!empty($CFG['GEN']['uselocaljs'])) {
-		echo '<script src="'.$staticroot.'/katex/katex.min.js"></script>';
-		echo '<link rel="stylesheet" href="'.$staticroot.'/katex/katex.min.css" />';
-		//echo '<script type="text/javascript" async src="'.$imasroot.'/mathjax/MathJax.js?config=AM_CHTML-full"></script>';
-	} else {
-		echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.css" integrity="sha256-tVkQ3/3zHAr/iep04F8LJwgzNzJ2NzX8oHqg71BvzYU=" crossorigin="anonymous">';
-		echo '<script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js" integrity="sha256-6xggdIcWFnTnFwh8MX2xSsGmLa2uzMuAJJnOFzv+tzk=" crossorigin="anonymous"></script>';
-		//echo '<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=AM_CHTML-full"></script>';
-	}
-	echo '<script type="text/javascript" src="'.$staticroot.'/katex/auto-render.js?v=073119"></script>';
+} else if ($_SESSION['mathdisp']==6) { // Katex
+	echo '<script src="'.$staticroot.'/katex/katex.min.js"></script>';
+	echo '<link rel="stylesheet" href="'.$staticroot.'/katex/katex.min.css" />';
+	echo '<script type="text/javascript" src="'.$staticroot.'/katex/auto-render.js?v=111025"></script>';
 	echo '<script type="text/javascript">setupKatexAutoRender();</script>';
 	echo '<script type="text/javascript">noMathRender = false; var usingASCIIMath = true; var AMnoMathML = true; var MathJaxCompatible = true; var mathRenderer = "Katex";</script>';
 	//echo '<style type="text/css">span.AM { font-size: 105%;}</style>';
-} else if ($_SESSION['mathdisp']==2 && isset($useeditor) && $_SESSION['useed']==1) {
-	//these scripts are used by the editor to make image-based math work in the editor
-	echo '<script type="text/javascript">var AMTcgiloc = "'.$mathimgurl.'";';
-	if ($mathdarkbg) {echo 'var mathbg = "dark";';}
-	echo '</script>';
-	echo "<script src=\"$staticroot/javascript/ASCIIMathTeXImg_min.js?ver=012923\" type=\"text/javascript\"></script>\n";
-	echo "<script type=\"text/javascript\">var usingASCIIMath = false; var AMnoMathML=true; var MathJaxCompatible = false; var mathRenderer=\"Image\"; function rendermathnode(el,callback) {AMprocessNode(el); if(typeof callback=='function'){callback();}}</script>";
 } else if ($_SESSION['mathdisp']==2) {
 	echo "<script type=\"text/javascript\">var usingASCIIMath = false; var AMnoMathML=true; var MathJaxCompatible = false; var mathRenderer=\"Image\";function rendermathnode(el,callback) {AMprocessNode(el);} if(typeof callback=='function'){callback();}</script>";
-} else if ($_SESSION['mathdisp']==0) {
+} else if ($_SESSION['mathdisp'] == 8) { // mathjax 3
+	echo '<script>var mathjaxdisp = 8;</script>'; 
+    echo "<script src=\"$staticroot/javascript/mathjaxconfig.js?ver=020426\" type=\"text/javascript\"></script>\n";
+    echo '<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/startup.js" id="MathJax-script"></script>';
+	echo '<style type="text/css">span.AM { font-size: 105%;} </style>';
+} else if ($_SESSION['mathdisp'] > 0) { // mathjax
+	echo '<script>var mathjaxdisp = 9;</script>'; // default MJ 4
+	echo '<script nomodule>mathjaxdisp = 8;</script>'; // fallback to MJ 3 for old browsers
+    echo "<script src=\"$staticroot/javascript/mathjaxconfig.js?ver=020426\" type=\"text/javascript\"></script>\n";
+    echo '<script type="module" src="https://cdn.jsdelivr.net/npm/mathjax@4/startup.js" id="MathJax-script"></script>
+		<script nomodule src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/startup.js" id="MathJax-script-fb"></script>';
+	echo '<style type="text/css">span.AM { font-size: 105%;} </style>';
+} else if ($_SESSION['mathdisp']==0) { // none
 	echo "<script type=\"text/javascript\">var usingASCIIMath = false; var AMnoMathML=true; var MathJaxCompatible = false; var mathRenderer=\"none\";function rendermathnode(el,callback) {if(typeof callback=='function'){callback();}}</script>";
 }
-echo "<script src=\"$staticroot/javascript/mathjs.js?v=20230729\" type=\"text/javascript\"></script>\n";
+echo "<script src=\"$staticroot/javascript/mathparser_min.js?v=100125\" type=\"text/javascript\"></script>\n";
 if (isset($_SESSION['graphdisp']) && $_SESSION['graphdisp']==1) {
-	echo "<script src=\"$staticroot/javascript/ASCIIsvg_min.js?ver=110123\" type=\"text/javascript\"></script>\n";
+	echo "<script src=\"$staticroot/javascript/ASCIIsvg_min.js?v=122025\" type=\"text/javascript\"></script>\n";
 	echo "<script type=\"text/javascript\">var usingASCIISvg = true;</script>";
 	//echo "<script src=\"$imasroot/course/editor/plugins/AsciiSvg/ASCIIsvgAddon.js\" type=\"text/javascript\"></script>\n";
 } else if (isset($_SESSION['graphdisp'])) {
@@ -238,8 +143,7 @@ if (isset($_SESSION['graphdisp']) && $_SESSION['graphdisp']==1) {
 
 
 if (isset($useeditor) && $_SESSION['useed']==1) {
-    echo '<script type="text/javascript" src="'.$staticroot.'/tinymce4/tinymce_bundled.min.js?v=062821"></script>';
-    //echo '<script type="text/javascript" src="'.$imasroot.'/tinymce4/tinymce.js?v=062821"></script>';
+    echo '<script type="text/javascript" src="'.$staticroot.'/tinymce8/tinymce.min.js?v=073125" referrerpolicy="origin" crossorigin="anonymous"></script>';
 
 	echo "\n";
 	echo '<script type="text/javascript">';
@@ -250,14 +154,13 @@ if (isset($useeditor) && $_SESSION['useed']==1) {
 	} else {
 		echo 'var filePickerCallBackFunc = null;';
 	}
-	if ($useeditor!="noinit") {
+	if ($useeditor!="noinit" && $useeditor != "review" && $useeditor != "reviewifneeded") {
 		echo 'initeditor("exact","'.$useeditor.'");';
 	}
 	echo '</script>';
 }
-if ((isset($useeditor) && $_SESSION['useed']==1) || isset($loadiconfont)) {
+if (isset($loadiconfont)) {
 	echo '<link rel="stylesheet" href="'.$staticroot . '/iconfonts/imathasfont.css?v=013118" type="text/css" />';
-	echo '<!--[if lte IE 7]><link rel="stylesheet" href="'.$staticroot . '/iconfonts/imathasfontie7.css?v=013118" type="text/css" /><![endif]-->';
 }
 if (isset($placeinhead)) {
 	echo $placeinhead;
@@ -270,7 +173,7 @@ if (function_exists('insertIntoHead')) {
     insertIntoHead();
 }
 if (isset($coursetheme)) {
-	echo '<link rel="stylesheet" href="'. $staticroot . "/themes/$coursetheme?v=042217\" type=\"text/css\" />";
+	echo '<link rel="stylesheet" href="'. $staticroot . "/themes/$coursetheme?v=081225\" type=\"text/css\" />";
 }
 echo '<link rel="stylesheet" href="'. $staticroot . '/handheld.css?v=071320" media="only screen and (max-width:480px)"/>';
 if (isset($CFG['GEN']['translatewidgetID'])) {
@@ -287,12 +190,18 @@ if (isset($_SESSION['ltiitemtype'])) {
 }
 echo "</head>\n";
 if ($isfw!==false) {
-	echo "<body class=\"fw$isfw\">\n";
+	if (!empty($flexwidth) || !empty($usefullwidth)) {
+		echo "<body data-fw=\"fw$isfw\" class=\"notfw\">\n";
+	} else {
+		echo "<body class=\"fw$isfw\">\n";
+	}
 } else {
 	echo "<body class=\"notfw\">\n";
 }
-
 echo '<div class="mainbody">';
+if (empty($noskipnavlink)) {
+	echo '<a href="#" id="pageskipnav" class="sr-only">'._('Skip Navigation').'</a>';
+}
 
 $insertinheaderwrapper = ' '; //"<h1>$coursename</h1>";
 if (isset($insertinheaderwrapper)) {
@@ -346,7 +255,9 @@ if (!empty($cid) && !isset($flexwidth) && !isset($hideAllHeaderNav) && !isset($n
 		echo "<li><a {$a['cal']} href=\"$imasroot/course/showcalendar.php?cid=$cid\">",_('Calendar'),"</a></li>\n";
 	}
 
-	echo "<li><a {$a['gb']} href=\"$imasroot/course/gradebook.php?cid=$cid\">",_('Gradebook'),"</a></li>"; //Gradebook
+    if (isset($coursetoolset) && ($coursetoolset&4)==0) {
+	    echo "<li><a {$a['gb']} href=\"$imasroot/course/gradebook.php?cid=$cid\">",_('Gradebook'),"</a></li>"; //Gradebook
+    }
 
 	if (!isset($haslogout)) { //Log out
 		echo "<li><a href=\"$imasroot/actions.php?action=logout\">",_('Log Out'),"</a></li>";
@@ -371,20 +282,9 @@ require_once "$curdir/filter/filter.php";
 if (!isset($nologo) && !empty($smallheaderlogo)) {
 	echo '<div id="headerlogo" class="hideinmobile" ';
 	if (isset($myrights) && $myrights>10 && !$ispublic && !isset($_SESSION['ltiitemtype'])) {
-		echo 'onclick="mopen(\'homemenu\',';
-		if (isset($cid) && is_numeric($cid)) {
-			echo $cid;
-		} else {
-			echo 0;
-		}
-		echo ')" onmouseout="mclosetime()"';
+		echo 'onclick="GB_show(\''._('My Classes').'\',\''.$imasroot.'/gethomemenu.php\',800,\'auto\',true);"';
 	}
 	echo '>'.$smallheaderlogo.'</div>';
-	if (isset($myrights) && $myrights>10 && !$ispublic && !isset($_SESSION['ltiitemtype'])) {
-		echo '<div id="homemenu" class="ddmenu" onmouseover="mcancelclosetime()" onmouseout="mclosetime()">';
-		echo '</div>';
-	}
-
 }
 
 ?>

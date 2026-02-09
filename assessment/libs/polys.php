@@ -8,7 +8,7 @@ if(!is_array($allowedmacros)) {
 	$allowedmacros = array();
 }
 
-array_push($allowedmacros,"formpoly","formpolyfromroots","writepoly","addpolys","subtpolys","multpolys","scalepoly","roundpoly","quadroot","getcoef","polypower","checkpolypowerorder","derivepoly","polys_getdegree");
+array_push($allowedmacros,"formpoly","formpolyfromroots","writepoly","writepolyfrac","addpolys","subtpolys","multpolys","divpolys","scalepoly","roundpoly","quadroot","getcoef","polypower","checkpolypowerorder","derivepoly","polys_getdegree","describepoly","describerational");
 
 
 //formpoly(coefficients,powers or degree)
@@ -77,12 +77,16 @@ function formpolyfromroots($a,$roots,$mult=1) {
 	return $outpoly;
 }
 
+function writepolyfrac($poly,$var="x",$sz=false) {
+	return writepoly($poly,$var,$sz,true);
+}
+
 //writepoly(poly,[var,showzeros])
 //Creates a display form for polynomial object
 //poly: polynomial object, created with formpoly
 //var: input variable.  Defaults to x
 //showzeros:  optional, defaults to false.  If true, shows zero coefficients
-function writepoly($poly,$var="x",$sz=false) {
+function writepoly($poly,$var="x",$sz=false,$tofrac=false) {
 	$po = '';
     $first = true;
     foreach ($poly as $p) {
@@ -99,7 +103,11 @@ function writepoly($poly,$var="x",$sz=false) {
 			}
 		}
 		if (abs($p[0])!=1 || $p[1]==0) {
-			$po .= abs($p[0]);
+			if ($tofrac) {
+				$po .= decimaltofraction(abs($p[0]));
+			} else {
+				$po .= abs($p[0]);
+			}
 		}
 		if ($p[1]>1) {
 			$po .= " $var^". $p[1];
@@ -196,6 +204,68 @@ function multpolys($p1,$p2) {
 		$i++;
 	}
 	return $po;
+}
+
+//divpolys(poly1,poly2)
+//Divides polynomials: poly1/poly2
+//Returns an array with two elements: quotient and remainder
+function divpolys($p1,$p2) {
+    // Convert input polys to associative arrays keyed by degree => coef
+    $r = array();
+    for ($i=0;$i<count($p1);$i++) {
+        $r[$p1[$i][1]] = $p1[$i][0]*1;
+    }
+    $d = array();
+    for ($i=0;$i<count($p2);$i++) {
+		$d[$p2[$i][1]] = $p2[$i][0]*1;
+    }
+
+    // remove tiny near-zero coefficients
+    foreach ($r as $deg=>$coef) {
+        if (abs($coef) < 1e-12) { unset($r[$deg]); }
+    }
+    foreach ($d as $deg=>$coef) {
+        if (abs($coef) < 1e-12) { unset($d[$deg]); }
+    }
+
+    // division by zero: return empty quotient and original as remainder
+    if (count($d) == 0) {
+        return array(array(), $p1);
+    }
+
+    krsort($r); krsort($d);
+
+    $quot = array();
+    $maxdeg_d = max(array_keys($d));
+    $lead_d = $d[$maxdeg_d];
+
+    while (count($r)>0) {
+        $maxdeg_r = max(array_keys($r));
+        if ($maxdeg_r < $maxdeg_d) { break; }
+        $lead_r = $r[$maxdeg_r];
+        $qcoef = $lead_r / $lead_d;
+        $qdeg = $maxdeg_r - $maxdeg_d;
+        if (isset($quot[$qdeg])) { $quot[$qdeg] += $qcoef; } else { $quot[$qdeg] = $qcoef; }
+
+        // subtract qcoef * x^qdeg * d from r
+        foreach ($d as $deg=>$coef) {
+            $td = $deg + $qdeg;
+            if (isset($r[$td])) { $r[$td] -= $qcoef * $coef; }
+            else { $r[$td] = -1 * $qcoef * $coef; }
+            if (abs($r[$td]) < 1e-12) { unset($r[$td]); }
+        }
+    }
+
+    // format quotient and remainder into polynomial objects (arrays of [coef,deg])
+    krsort($quot);
+    $qarr = array(); $i = 0;
+    foreach ($quot as $deg=>$coef) { $qarr[$i][0] = $coef; $qarr[$i][1] = $deg; $i++; }
+
+    krsort($r);
+    $rarr = array(); $i = 0;
+    foreach ($r as $deg=>$coef) { $rarr[$i][0] = $coef; $rarr[$i][1] = $deg; $i++; }
+
+    return array($qarr,$rarr);
 }
 
 //scalepoly(poly,c)
@@ -307,5 +377,145 @@ function derivepoly($p) {
     }
 	return $out;
 }
+/*
+*   $eqn: string equation
+*	$xints: array of x-intercepts
+*	$vas: array of vertical asymptotes; empty array for none
+* 	$ha: horizontal asymptote. value, or null if none
+* 	$invar: input variable, default x
+* 	$outvar: output variable, default y
+* 	$other: array of other features, each of form [xval, 'description'] or 'description'
+* 		ex: [[3, 'local minimum'], 'slant asysmptote of y=3x+1']
+*		if xval is given, it will calculate the y and generate "description at (xval,yval)"
+*/
+function describerational($eqn, $xints, $vas, $ha, $invar="x", $outvar="y", $other=[]) {
+	if (!is_array($xints)) {
+		echo "describerations: xints must be array";
+		return '';
+	}
+	if (!is_array($vas)) {
+		echo "describerations: vas must be array";
+		return '';
+	}
+	if (!is_string($invar)) { 
+		echo "input var must be string";
+		return '';
+	}
+	if (!is_string($outvar)) { 
+		echo "output var must be string";
+		return '';
+	}
+	$func = makeMathFunction($eqn, $invar, [], '', true);
+    if ($func === false) {
+		return 'invalid function';
+		return '';
+	}
+	$critical = [];
+	$final = [];
+	foreach ($xints as $xi) {
+		$critical[] = [$xi, 'xint'];
+	}
+	foreach ($vas as $va) {
+		$critical[] = [$va, 'va'];
+	}
+	foreach ($other as $ot) {
+		if (is_array($ot)) {
+			$critical[] = [$ot[0], 'other', $ot[1]];
+		} else {
+			$final[] = $ot;
+		}
+	}
+	if (!in_array(0, $xints) && !in_array(0, $vas) && !in_array(0, $other)) {
+		$critical[] = [0, 'yint'];
+	}
+	usort($critical, function($a,$b) { return $a[0] <=> $b[0];});
+	if (count($vas)==0) {
+		$alt = _('Polynomial function. ');
+	} else {
+		$alt = _('Rational function. ');
+	}
+	$left = null;
+	$cnt = count($critical);
+	$donepoint = false;
+	for ($i=0;$i<$cnt;$i++) {
+		if ($left === null) {
+			$left = round($func([$invar=> $critical[$i][0] - 1]),4);
+			if ($ha===null) {
+				$dir = ($left>0)?_('infinity'):_('negative infinity');
+			} else {
+				$dir = $ha;
+			}
+			$alt .= sprintf(_('As %s approaches negative infinity, %s approaches %s. '),
+				$invar, $outvar, $dir);
+		}
+		if ($critical[$i][1]=='yint') {
+			$right = round($func([$invar=>0]),4);
+			$alt .= sprintf(_('%s-intercept at %s. '),
+				$outvar, $right);
+			$donepoint = true;
+		} else if ($critical[$i][1]=='other') {
+			$right = $func([$invar=>$critical[$i][0]]);
+			$alt .= sprintf(_('%s at (%s,%s). '),
+				$critical[$i][2], $critical[$i][0], $right);
+		} else {
+			$rightx = $critical[$i][0]+1;
+			if (isset($critical[$i+1])) {
+				$rightx = min($rightx, ($critical[$i][0]+$critical[$i+1][0])/2);
+			}
+			$right = round($func([$invar=>$rightx]),4);
+			if ($rightx >= 0 && !$donepoint) {
+				$alt .= sprintf(_('Graph passes through the point (%s,%s). '),
+					$rightx, $right);
+				$donepoint = true;
+			}
+			if ($critical[$i][1]=='xint') {
+				if (sign($left)==sign($right)) {
+					$alt .= sprintf(_('%s-intercept at %s where the graph touches the axis and changes direction. '),
+						$invar, $critical[$i][0]);
+				} else {
+					$alt .= sprintf(_('%s-intercept at %s where the graph passes through the axis. '),
+						$invar, $critical[$i][0]);
+				}
+			} else if ($critical[$i][1]=='va') {
+				if (sign($left)==sign($right)) {
+					$alt .= sprintf(_('As %s approaches %s from both sides, %s approaches %s. '),
+						$invar, $critical[$i][0], $outvar,
+						($left>0)?_('infinity'):_('negative infinity')
+					);
+				} else {
+					$alt .= sprintf(_('As %s approaches %s from the left, %s approaches %s. '),
+						$invar, $critical[$i][0], $outvar,
+						($left>0)?_('infinity'):_('negative infinity')
+					);
+					$alt .= sprintf(_('As %s approaches %s from the right, %s approaches %s. '),
+						$invar, $critical[$i][0], $outvar,
+						($right>0)?_('infinity'):_('negative infinity')
+					);
+				}
+			}
+		}
+		if ($i==$cnt-1) {
+			if ($ha===null) {
+				$dir = ($right>0)?_('infinity'):_('negative infinity');
+			} else {
+				$dir = $ha;
+			}
+			$alt .= sprintf(_('As %s approaches infinity, %s approaches %s.'),
+				$invar, $outvar, $dir);
+		}
+		$left = $right;
+	}
+	foreach ($final as $f) {
+		$alt .= ' '.$f.'.';
+	}
+	return $alt;
+}
 
+function describepoly($eqn, $xints, $invar="x", $outvar="y", $other=[]) {
+	if (!is_array($xints)) {
+		echo "describepoly: xints must be array";
+		return '';
+	}
+	return describerational($eqn, $xints, [], null, $invar, $outvar, $other);
+}
 ?>

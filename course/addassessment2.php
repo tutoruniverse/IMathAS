@@ -109,6 +109,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
                 array('grades' => $grades)
             );
         }
+        // clear any locks
+        $stm = $DBH->prepare("UPDATE imas_students SET lockaid=0 WHERE courseid=? and lockaid=?");
+        $stm->execute([$cid, $assessmentId]);
 
         $stm = $DBH->prepare("DELETE FROM imas_livepoll_status WHERE assessmentid=:assessmentid");
         $stm->execute(array(':assessmentid' => $assessmentId));
@@ -165,23 +168,28 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		}
     require_once "../includes/parsedatetime.php";
 		$toset['avail'] = Sanitize::onlyInt($_POST['avail']);
+		if ($toset['avail'] == 1 && $dates_by_lti == 0) {
+			if ($_POST['sdatetype']=='0') {
+				$toset['startdate'] = 0;
+			} else {
+				$toset['startdate'] = parsedatetime($_POST['sdate'],$_POST['stime'],0);
+			}
+			if ($_POST['edatetype']=='2000000000') {
+				$toset['enddate'] = 2000000000;
+			} else {
+				$toset['enddate'] = parsedatetime($_POST['edate'],$_POST['etime'],2000000000);
+			}
+		} else {
+			// set some default values which won't matter to prevent undefined errors
+			$toset['startdate'] = 0;
+			$toset['enddate'] = time();
+		}
 
-    if ($_POST['sdatetype']=='0') {
-      $toset['startdate'] = 0;
-    } else {
-      $toset['startdate'] = parsedatetime($_POST['sdate'],$_POST['stime'],0);
-    }
-    if ($_POST['edatetype']=='2000000000') {
-      $toset['enddate'] = 2000000000;
-    } else {
-      $toset['enddate'] = parsedatetime($_POST['edate'],$_POST['etime'],2000000000);
-    }
-
-    if (empty($_POST['allowpractice']) || $toset['enddate'] == 2000000000) {
-      $toset['reviewdate'] = 0;
-    } else {
-      $toset['reviewdate'] = 2000000000;
-    }
+		if (empty($_POST['allowpractice']) || $toset['enddate'] == 2000000000) {
+			$toset['reviewdate'] = 0;
+		} else {
+			$toset['reviewdate'] = 2000000000;
+		}
 
 		// Core options
 		if (!empty($_POST['copyfrom'])) { // copy options from another assessment
@@ -192,8 +200,8 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 									'timelimit','overtime_grace','overtime_penalty','password',
 									'reqscore','reqscoretype','reqscoreaid','showhints',
 									'msgtoinstr','eqnhelper','posttoforum','extrefs','showtips',
-									'cntingb','minscore','deffeedbacktext','tutoredit','exceptionpenalty',
-									'defoutcome','isgroup','groupsetid','groupmax','showwork');
+									'cntingb','minscore','deffeedbacktext','tutoredit','exceptionpenalty','earlybonus',
+									'defoutcome','isgroup','groupsetid','groupmax','showwork','workcutoff');
 			$fieldlist = implode(',', $fields);
 			$stm = $DBH->prepare("SELECT $fieldlist FROM imas_assessments WHERE id=:id AND courseid=:cid");
 			$stm->execute(array(':id'=>intval($_POST['copyfrom']), ':cid'=>$cid));
@@ -283,39 +291,55 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			if (isset($_POST['samever'])) { $toset['shuffle'] += 4;}
 			$toset['istutorial'] = empty($_POST['istutorial']) ? 0 : 1;
 			$toset['noprint'] = empty($_POST['noprint']) ? 0 : 1;
+            if (!empty($_POST['lockforassess']) && $_POST['subtype'] == 'by_assessment') {
+                $toset['noprint'] += 2;
+            } 
 			$toset['showcat'] = empty($_POST['showcat']) ? 0 : 1;
-			$toset['showwork'] = Sanitize::onlyInt($_POST['showwork']) + Sanitize::onlyInt($_POST['showworktype']);
+			$toset['showwork'] = Sanitize::onlyInt($_POST['showwork']);
+            if (isset($_POST['showworktype'])) {
+                $toset['showwork'] += Sanitize::onlyInt($_POST['showworktype']);
+            }
+            if (!empty($_POST['doworkcutoff'])) {
+                $toset['workcutoff'] = Sanitize::onlyInt($_POST['workcutoffval']);
+                if ($_POST['workcutofftype'] == 'hr') {
+                    $toset['workcutoff'] *= 60;
+                } else if ($_POST['workcutofftype'] == 'day') {
+                    $toset['workcutoff'] *= 60*24;
+                } 
+            } else {
+                $toset['workcutoff'] = 0;
+            }
 
 			// time limit and access control
 			$toset['allowlate'] = Sanitize::onlyInt($_POST['allowlate']);
-	    if (isset($_POST['latepassafterdue']) && $toset['allowlate']>0) {
-	      $toset['allowlate'] += 10;
-	    }
+            if (isset($_POST['latepassafterdue']) && $toset['allowlate']>0) {
+            $toset['allowlate'] += 10;
+            }
 
-	    if (isset($_POST['dolpcutoff']) && trim($_POST['lpdate']) != '' && trim($_POST['lptime']) != '') {
-	    	$toset['LPcutoff'] = parsedatetime($_POST['lpdate'],$_POST['lptime'],0);
-	    	if (tzdate("m/d/Y",$GLOBALS['courseenddate']) == tzdate("m/d/Y", $toset['LPcutoff']) ||
-					$toset['LPcutoff'] < $toset['enddate']
-				) {
-	    		$toset['LPcutoff'] = 0; //don't really set if it matches course end date or is before
-	    	}
-	    } else {
-	    	$toset['LPcutoff'] = 0;
-	    }
+            if (isset($_POST['dolpcutoff']) && trim($_POST['lpdate']) != '' && trim($_POST['lptime']) != '') {
+                $toset['LPcutoff'] = parsedatetime($_POST['lpdate'],$_POST['lptime'],0);
+                if (tzdate("m/d/Y",$GLOBALS['courseenddate']) == tzdate("m/d/Y", $toset['LPcutoff']) ||
+                        $toset['LPcutoff'] < $toset['enddate']
+                    ) {
+                    $toset['LPcutoff'] = 0; //don't really set if it matches course end date or is before
+                }
+            } else {
+                $toset['LPcutoff'] = 0;
+            }
 
 			$toset['timelimit'] = -1*round(Sanitize::onlyFloat($_POST['timelimit'])*60);
 			$toset['overtime_grace'] = 0;
 			$toset['overtime_penalty'] = 0;
-	    if (isset($_POST['allowovertime']) && $_POST['overtimegrace'] > 0) {
-	        $toset['timelimit'] = -1*$toset['timelimit'];
-					$toset['overtime_grace'] = round(Sanitize::onlyFloat($_POST['overtimegrace'])*60);
-					$toset['overtime_penalty'] = Sanitize::onlyInt($_POST['overtimepenalty']);
-	    }
+            if (isset($_POST['allowovertime']) && $_POST['overtimegrace'] > 0) {
+                $toset['timelimit'] = -1*$toset['timelimit'];
+                $toset['overtime_grace'] = round(Sanitize::onlyFloat($_POST['overtimegrace'])*60);
+                $toset['overtime_penalty'] = Sanitize::onlyInt($_POST['overtimepenalty']);
+            }
 
 			$toset['password'] = trim(Sanitize::stripHtmlTags($_POST['assmpassword']));
 
 			$toset['reqscore'] = Sanitize::onlyInt($_POST['reqscore']);
-			if ($_POST['reqscoreshowtype']==-1 || $toset['reqscore']==0) {
+			if ($_POST['reqscoreshowtype']==-1 || $toset['reqscore']==0 || !isset($_POST['reqscoreaid'])) {
 				$toset['reqscore'] = 0;
 				$toset['reqscoretype'] = 0;
 				$toset['reqscoreaid'] = 0;
@@ -380,6 +404,11 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$toset['exceptionpenalty'] = Sanitize::onlyInt($_POST['exceptionpenalty']);
 			$toset['defoutcome'] = Sanitize::onlyInt($_POST['defoutcome']);
 
+			$toset['earlybonus'] = 0;
+			if ($_POST['earlybonus'] > 0) {
+				$toset['earlybonus'] = 100 * intval($_POST['earlybonushrs']) + intval($_POST['earlybonus']);
+			}
+
 			// group assessmentid
 	    $toset['isgroup'] = Sanitize::onlyInt($_POST['isgroup']);
 			if ($toset['isgroup'] > 0) {
@@ -396,7 +425,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 
     //is updating, switching from nongroup to group, and not creating new groupset, check if groups and asids already exist
     //if so, cannot handle
-    $updategroupset='';
+    $updategroupset=false;
     if (isset($_GET['id']) && $toset['isgroup']>0 && $toset['groupsetid']>0) {
       $isok = true;
       $stm = $DBH->prepare("SELECT isgroup FROM imas_assessments WHERE id=:id");
@@ -413,7 +442,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
             exit;
         }
       }
-      $updategroupset = $toset['groupsetid'];
+      $updategroupset = true;
     }
 
     if ($toset['isgroup']>0 && isset($_POST['groupsetid']) && $toset['groupsetid']==0) {
@@ -421,8 +450,12 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
         $stm = $DBH->prepare("INSERT INTO imas_stugroupset (courseid,name) VALUES (:courseid, :name)");
         $stm->execute(array(':courseid'=>$cid, ':name'=>'Group set for '.$toset['name']));
       	$toset['groupsetid'] = $DBH->lastInsertId();
-        $updategroupset = $toset['groupsetid'];
+        $updategroupset = true;
     }
+	if ($toset['isgroup']==0) { 
+		// make sure groupset is updated if isgroup is set to 0
+		$updategroupset = true;
+	}
 
 		if (isset($_GET['id'])) {  //already have id; update
 			$stm = $DBH->prepare("SELECT * FROM imas_assessments WHERE id=:id");
@@ -442,10 +475,10 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
         $toset['intro'] = json_encode($introjson);
       }
 
-			if ($updategroupset == '') { // don't change group
+			if (!$updategroupset) { // don't change group
 				unset($toset['groupsetid']);
 			}
-			if ($dates_by_lti>0) { // don't change dates
+			if ($dates_by_lti>0 || $toset['avail'] == 0) { // don't change dates
 				unset($toset['startdate']);
 				unset($toset['enddate']);
 			}
@@ -533,6 +566,12 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 
             // update "show work after" status flags
             AssessHelpers::updateShowWorkStatus($assessmentId, $toset['showwork'], $toset['submitby']);
+
+            if (($toset['noprint']&2) === 0) {
+                // no lock: clear any existing locks
+                $stm = $DBH->prepare("UPDATE imas_students SET lockaid=0 WHERE courseid=? AND lockaid=?");
+                $stm->execute([$cid, $assessmentId]);
+            }
             
 			$DBH->commit();
 			$rqp = Sanitize::randomQueryStringParam();
@@ -627,6 +666,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
           }
       } else {  //INITIAL LOAD IN ADD MODE
           //set defaults
+		  $line = [];
           $line['name'] = "";
           $line['summary'] = "";
           $line['intro'] = "";
@@ -655,6 +695,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 					$line['shuffle'] = isset($CFG['AMS']['shuffle'])?$CFG['AMS']['shuffle']:0;
 					$line['noprint'] = isset($CFG['AMS']['noprint'])?$CFG['AMS']['noprint']:0;
 					$line['showwork'] = isset($CFG['AMS']['showwork'])?$CFG['AMS']['showwork']:0;
+                    $line['workcutoff'] = isset($CFG['AMS']['workcutoff'])?$CFG['AMS']['workcutoff']:0;
           $line['istutorial'] = 0;
 					$line['allowlate'] = isset($CFG['AMS']['allowlate'])?$CFG['AMS']['allowlate']:11;
           $line['LPcutoff'] = 0;
@@ -673,6 +714,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
           $deffb = _("This assessment contains items that are not automatically graded.  Your grade may be inaccurate until your instructor grades these items.");
 					$line['tutoredit'] = isset($CFG['AMS']['tutoredit'])?$CFG['AMS']['tutoredit']:0;
 					$line['exceptionpenalty'] = isset($CFG['AMS']['exceptionpenalty'])?$CFG['AMS']['exceptionpenalty']:0;
+					$line['earlybonus'] = isset($CFG['AMS']['earlybonux'])?$CFG['AMS']['earlybonus']:0;
 					$line['defoutcome'] = 0;
 					$line['isgroup'] = isset($CFG['AMS']['isgroup'])?$CFG['AMS']['isgroup']:0;
 					$line['groupmax'] = isset($CFG['AMS']['groupmax'])?$CFG['AMS']['groupmax']:6;
@@ -749,23 +791,25 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
           $skippenalty=10;
       } else
 			*/
-            if ($line['defpenalty'] === '') {
-                $line['defpenalty'] = '0';
-            }
-			if (is_string($line['defpenalty']) && $line['defpenalty'][0]==='S') {
-				$defattemptpenalty = substr($line['defpenalty'],2);
-				$defattemptpenalty_aftern = $line['defpenalty'][1];
+	  if ($line['defpenalty'] === '') {
+		$line['defpenalty'] = '0';
+	  }
+	  if (is_string($line['defpenalty']) && $line['defpenalty'][0]==='S') {
+		$defattemptpenalty = substr($line['defpenalty'],2);
+		$defattemptpenalty_aftern = $line['defpenalty'][1];
       } else {
         $defattemptpenalty = $line['defpenalty'];
-				$defattemptpenalty_aftern = 1;
+		$defattemptpenalty_aftern = 1;
       }
-      if ($line['defpenalty'] === '') { $line['defpenalty'] = '0'; }
-			if (is_string($line['defpenalty']) && $line['defregenpenalty'][0]==='S') {
-				$defregenpenalty = substr($line['defregenpenalty'],2);
-				$defregenpenalty_aftern = $line['defregenpenalty'][1];
+      if ($line['defregenpenalty'] === '') { 
+		$line['defregenpenalty'] = '0'; 
+	  }
+	  if (is_string($line['defregenpenalty']) && $line['defregenpenalty'][0]==='S') {
+		$defregenpenalty = substr($line['defregenpenalty'],2);
+		$defregenpenalty_aftern = $line['defregenpenalty'][1];
       } else {
         $defregenpenalty = $line['defregenpenalty'];
-				$defregenpenalty_aftern = 1;
+		$defregenpenalty_aftern = 1;
       }
       if ($line['reqscoreaid']==0) {
       	$reqscoredisptype=-1;
@@ -899,12 +943,19 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 
  /******* begin html output ********/
 $placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/DatePicker.js?v=080818\"></script>";
-// $placeinhead .= '<script src="https://cdn.jsdelivr.net/npm/vue"></script>';
 if (!empty($CFG['GEN']['uselocaljs'])) {
-	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/vue2-6-14.min.js"></script>';
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/vue3-4-31.min.js"></script>';
 } else {
-	$placeinhead .= '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js"></script>';
+    $placeinhead .= '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.31/vue.global.prod.min.js" integrity="sha512-Dg9zup8nHc50WBBvFpkEyU0H8QRVZTkiJa/U1a5Pdwf9XdbJj+hZjshorMtLKIg642bh/kb0+EvznGUwq9lQqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
 }
+$placeinhead .= '<script>
+function showinvalid() {
+	document.getElementById("addform").reportValidity();
+	$("form :invalid").each(function(index,el) {
+		$(el).closest(".blockitems:not(:visible)").show().prev().trigger("click");
+	});
+}
+</script>';
 
  require_once "../header.php";
 
@@ -921,20 +972,30 @@ if ($overwriteBody==1) {
 
 	<?php
 	if (isset($_GET['id'])) {
-		printf('<div class="cp"><a href="addquestions2.php?aid=%d&amp;cid=%s" onclick="return confirm(\''
+		echo '<div class="cp"><span class="column">';
+		printf('<a href="addquestions2.php?aid=%d&amp;cid=%s" onclick="return confirm(\''
             . _('This will discard any changes you have made on this page').'\');">'
-            . _('Add/Remove Questions').'</a></div>', Sanitize::onlyInt($_GET['id']), $cid);
+            . _('Add/Remove Questions').'</a>', Sanitize::onlyInt($_GET['id']), $cid);
+		echo '</span>';
+		if ($line['password'] !== '') {
+			echo '<span class="column">';
+			printf('<a href="assessonetime.php?aid=%d&amp;cid=%s" onclick="return confirm(\''
+				. _('This will discard any changes you have made on this page').'\');">'
+				. _('One-time Passwords').'</a>', Sanitize::onlyInt($_GET['id']), $cid);
+			echo '</span>';
+		}
+		echo '<br class=clear /></div>';
 	}
 	?>
 	<?php echo $page_isTakenMsg ?>
 
-	<form method=post action="<?php echo $page_formActionTag ?>">
+	<form method=post id="addform" action="<?php echo $page_formActionTag ?>">
 
 	<?php
 		require_once "addassessment2form.php";
 	?>
 
-	<div class=submit><input type=submit value="<?php echo $savetitle;?>"></div>
+	<div class=submit><input type=submit onclick="showinvalid()" value="<?php echo $savetitle;?>"></div>
 	</form>
 	<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>
 <?php

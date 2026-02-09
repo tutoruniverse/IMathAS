@@ -6,9 +6,9 @@
       <p>{{ closedMessage }}</p>
 
       <p v-if="showTutorLinks">
-        {{ $t('launch.gblinks') }}:
-        <a :href="settings.tutor_gblinks[0]" target="_blank">{{ $t('launch.scorelist') }}</a> &nbsp;
-        <a :href="settings.tutor_gblinks[1]" target="_blank">{{ $t('launch.itemanalysis') }}</a>
+        {{ $t('launch-gblinks') }}:
+        <a :href="settings.tutor_gblinks[0]" target="_blank">{{ $t('launch-scorelist') }}</a> &nbsp;
+        <a :href="settings.tutor_gblinks[1]" target="_blank">{{ $t('launch-itemanalysis') }}</a>
       </p>
 
       <p v-if = "hasActive">
@@ -19,47 +19,53 @@
           class="primary"
           @click="endAssess"
         >
-          {{ $t('closed.submit_now') }}
+          {{ $t('closed-submit_now') }}
         </button>
       </p>
       <p v-else-if="canAddWork">
-        {{ $t('work.add_prev') }}<br/>
+        {{ $t('work-add_prev') }}<br/>
         <button
           type="button"
           class="secondary"
           @click="$router.push('/showwork')"
         >
-          {{ $t('work.add') }}
+          {{ $t('work-add') }}
         </button>
       </p>
 
       <p v-if="settings.can_use_latepass > 0 && showLatePassOffer">
-        {{ $tc('closed.latepassn', settings.latepasses_avail) }}
+        {{ $t('closed-latepassn', {n: settings.latepasses_avail}) }}
         <br/>
         {{ latepassExtendMsg }}
       </p>
+      <p v-if="settings.can_use_latepass == 0 && settings.latepass_reason > 1 && showLatePassOffer">
+        {{  $t('latepass-reason' + settings.latepass_reason) }}
+        <span v-if = "settings.latepass_reason == 6">
+          {{ $t('closed-latepassn', {n: settings.latepasses_avail}) }}
+        </span>
+      </p>
 
       <p v-if="settings.available === 'practice' && settings.can_use_latepass === 0">
-        {{ $t('closed.practice_no_latepass') }}
+        {{ $t('closed-practice_no_latepass') }}
       </p>
       <p v-else-if="settings.available === 'practice' && settings.can_use_latepass > 0">
-        {{ $t('closed.practice_w_latepass') }}
+        {{ $t('closed-practice_w_latepass') }}
         <br/>
         <icons name="alert" size="micro" />
-        {{ $t('closed.will_block_latepass') }}
+        {{ $t('closed-will_block_latepass') }}
         <span v-if="settings.hasOwnProperty('excused')">
           <br />
           <icons name="alert" size="micro" />
-          {{ $t('setlist.excused') }}
+          {{ $t('setlist-excused') }}
         </span>
       </p>
 
       <p v-if="canViewScored">
-        {{ $t('closed.can_view_scored') }}
+        {{ $t('closed-can_view_scored') }}
         <span v-if="settings.can_use_latepass > 0">
           <br/>
           <icons name="alert" size="micro" />
-          {{ $t('closed.will_block_latepass') }}
+          {{ $t('closed-will_block_latepass') }}
         </span>
       </p>
 
@@ -76,7 +82,7 @@
           class = "secondarybtn"
           @click = "handleViewScored"
         >
-          {{ $t('closed.view_scored') }}
+          {{ $t('closed-view_scored') }}
         </button>
         <button
           v-if = "secondaryButton != ''"
@@ -88,37 +94,37 @@
       </p>
 
       <p v-if = "canViewAll && showReset">
-        {{ $t('launch.resetmsg') }}
+        {{ $t('launch-resetmsg') }}
         <br/>
         <button
           type="button"
           class="primary"
           @click="doReset"
         >
-          {{ $t('launch.doreset') }}
+          {{ $t('launch-doreset') }}
         </button>
       </p>
       <p v-if = "canViewAll">
-        {{ $t('closed.teacher_preview') }}
+        {{ $t('closed-teacher_preview') }}
         <br/>
         <button
           class = "primary"
           @click = "teacherPreview"
         >
-          {{ $t('closed.teacher_preview_button') }}
+          {{ $t('closed-teacher_preview_button') }}
         </button>
         <button
           class = "secondary"
           @click = "teacherPreviewAll"
         >
-          {{ $t('closed.teacher_previewall_button') }}
+          {{ $t('closed-teacher_previewall_button') }}
         </button>
       </p>
 
     </div>
     <div v-if="settings.hasOwnProperty('prev_attempts') && settings.prev_attempts.length > 0" >
       <summary-gb-score />
-      <previous-attempts :caption = "$t('prev.scored_attempts')" />
+      <previous-attempts :caption = "$t('prev-scored_attempts')" />
     </div>
   </div>
 </template>
@@ -144,26 +150,26 @@ export default {
     closedMessage () {
       if (this.settings.available === 'hidden') {
         // hard hidden
-        return this.$t('closed.hidden');
+        return this.$t('closed-hidden');
       } else if (this.settings.available === 'notyet') {
         // not yet available
-        return this.$t('closed.notyet', {
+        return this.$t('closed-notyet', {
           sd: this.settings.startdate_disp,
           ed: this.settings.enddate_disp
         });
       } else if (this.settings.available === 'practice' || this.settings.available === 'pastdue') {
         // past due
-        return this.$t('closed.pastdue', { ed: this.settings.enddate_disp });
+        return this.$t('closed-pastdue', { ed: this.settings.enddate_disp });
       } else if (this.settings.available === 'needprereq') {
-        return this.$t('closed.needprereq') + ' ' +
-          this.$t('closed.prereqreq', {
+        return this.$t('closed-needprereq') + ' ' +
+          this.$t('closed-prereqreq', {
             score: this.settings.reqscorevalue,
             name: this.settings.reqscorename
           });
       } else if (this.settings.hasOwnProperty('pasttime')) {
-        return this.$t('closed.pasttime');
+        return this.$t('closed-pasttime');
       } else if (this.settings.has_active_attempt === false && this.settings.can_retake === false) {
-        return this.$t('closed.no_attempts');
+        return this.$t('closed-no_attempts');
       }
       return '';
     },
@@ -177,12 +183,12 @@ export default {
       if (this.settings.hasOwnProperty('timelimit_expiresin')) {
         const expires = this.settings.timelimit_expiresin * 1000;
         if (expires < 0) {
-          return this.$t('closed.unsubmitted_overtime');
+          return this.$t('closed-unsubmitted_overtime');
         } else {
-          return this.$t('closed.unsubmitted_pastdue');
+          return this.$t('closed-unsubmitted_pastdue');
         }
       } else {
-        return this.$t('closed.unsubmitted_pastdue');
+        return this.$t('closed-unsubmitted_pastdue');
       }
     },
     showLatePassOffer () {
@@ -190,7 +196,7 @@ export default {
         !this.settings.hasOwnProperty('pasttime'));
     },
     latepassExtendMsg () {
-      return this.$tc('closed.latepass_needed', this.settings.can_use_latepass, {
+      return this.$t('closed-latepass_needed', {
         n: this.settings.can_use_latepass,
         date: this.settings.latepass_extendto_disp
       });
@@ -208,11 +214,11 @@ export default {
     },
     primaryButton () {
       if (this.primaryAction === 'latepass') {
-        return this.$tc('closed.use_latepass', this.settings.can_use_latepass);
+        return this.$t('closed-use_latepass', {n: this.settings.can_use_latepass});
       } else if (this.primaryAction === 'practice') {
-        return this.$t('closed.do_practice');
+        return this.$t('closed-do_practice');
       } else if (this.primaryAction === 'exit') {
-        return this.$t('closed.exit');
+        return this.$t('closed-exit');
       } else {
         return '';
       }
@@ -232,9 +238,9 @@ export default {
     secondaryButton () {
       // Practice is secondary if we can use latepass
       if (this.secondaryAction === 'practice') {
-        return this.$t('closed.do_practice');
+        return this.$t('closed-do_practice');
       } else if (this.secondaryAction === 'exit') {
-        return this.$t('closed.exit');
+        return this.$t('closed-exit');
       } else {
         return '';
       }
@@ -242,7 +248,7 @@ export default {
     canViewScored () {
       return (
         !this.canViewAll &&
-        this.settings.viewingb !== 'never' &&
+        this.settings.can_viewingb === 1 &&
         this.settings.prev_attempts.length > 0 &&
         (this.settings.available === 'practice' || this.settings.available === 'pastdue')
       );
@@ -262,7 +268,9 @@ export default {
       );
     },
     canAddWork () {
-      return (store.assessInfo.showwork_after);
+      return (store.assessInfo.showwork_after && !store.showwork_expired &&
+        (!store.assessInfo.has_active_attempt || store.assessInfo.submitby === 'by_question')
+      );
     },
     showTutorLinks () {
       return store.assessInfo.hasOwnProperty('tutor_gblinks');
@@ -275,7 +283,7 @@ export default {
         window.location = store.APIbase + 'gbviewassess.php?cid=' + store.cid + '&aid=' + store.aid + '&uid=' + store.uid;
       } else {
         store.confirmObj = {
-          body: 'closed.confirm',
+          body: 'closed-confirm',
           action: () => {
             window.location = store.APIbase + 'gbviewassess.php?cid=' + store.cid + '&aid=' + store.aid + '&uid=' + store.uid;
           }
@@ -302,7 +310,7 @@ export default {
         actions.startAssess(true, '', []);
       } else if (this.secondaryAction === 'practice') {
         store.confirmObj = {
-          body: 'closed.confirm',
+          body: 'closed-confirm',
           action: () => { actions.startAssess(true, '', []); }
         };
       } else if (this.secondaryAction === 'exit') {

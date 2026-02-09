@@ -2,14 +2,17 @@
   <div class="pane-body">
     <table class="scorelist med-below">
       <caption>{{ caption }}</caption>
-      <tr>
-        <th>
-          {{ $t('prev.date') }}
-        </th>
-        <th v-if="prevAttempts[0].hasOwnProperty('score')">
-          {{ $t('prev.score') }}
-        </th>
-      </tr>
+      <thead>
+        <tr>
+          <th>
+            {{ $t('prev-date') }}
+          </th>
+          <th v-if="prevAttempts[0].hasOwnProperty('score')">
+            {{ $t('prev-score') }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
       <tr
         v-for="(prev,index) in prevAttempts"
         :key = "index"
@@ -21,9 +24,10 @@
           {{ Math.round(1000*prev.score/totPoss)/ 10 }}%
         </td>
       </tr>
+      </tbody>
     </table>
     <p v-if="showGbLink">
-      <a :href="gbUrl">{{ $t('prev.viewingb') }}</a>
+      <a :href="gbUrl">{{ $t('prev-viewingb') }}</a>
     </p>
   </div>
 </template>

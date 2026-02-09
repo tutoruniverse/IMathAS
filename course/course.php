@@ -11,12 +11,18 @@ require_once "../includes/calendardisp.php";
 
 /*** pre-html data manipulation, including function code *******/
 function buildBlockLeftNav($items, $parent, &$blocklist) {
+    global $studentinfo;
 	$now = time();
 	foreach ($items as $k=>$item) {
 		if (is_array($item)) {
 			if (!empty($item['innav'])) {
 				if (($item['avail']==2 || ($item['avail']==1 && $item['startdate']<$now && $item['enddate']>$now)) ||
 				    ($item['SH'][0]=='S' && $item['avail']>0)) {
+                    if (!empty($studentinfo) && isset($item['grouplimit']) && count($item['grouplimit']) > 0) {
+                        if (!in_array(strtolower('s-' . $studentinfo['section']), array_map('strtolower', $item['grouplimit']))) {
+                            continue;
+                        }
+                    }
 					$blocklist[] = array($item['name'], $parent.'-'.($k+1), $item['SH'][1]);
 				}
 			}
@@ -36,7 +42,7 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 } else { // PERMISSIONS ARE OK, PROCEED WITH PROCESSING
 	$cid = Sanitize::courseId($_GET['cid']);
     if (!empty($_COOKIE['fromltimenu'])) {
-        setcookie('fromltimenu', '', time()-3600);
+        setsecurecookie('fromltimenu', '', time()-3600, false);
     }
 	if (isset($teacherid) && isset($_SESSION['sessiontestid']) && !isset($_SESSION['actas']) && $_SESSION['courseid']==$cid) {
 		//clean up coming out of an assessment
@@ -246,9 +252,15 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 	//$jsAddress2 = $GLOBALS['basesiteurl'] . "/course";
 
 	$openblocks = Array(0);
-	$prevloadedblocks = array(0);
-	if (isset($_COOKIE['openblocks-'.$cid]) && $_COOKIE['openblocks-'.$cid]!='') {$openblocks = explode(',',$_COOKIE['openblocks-'.$cid]); $firstload=false;} else {$firstload=true;}
-	if (isset($_COOKIE['prevloadedblocks-'.$cid]) && $_COOKIE['prevloadedblocks-'.$cid]!='') {$prevloadedblocks = explode(',',$_COOKIE['prevloadedblocks-'.$cid]);}
+	$prevloadedblocks = array();
+	$firstload = false;
+	if (isset($_COOKIE['openblocks-'.$cid]) && $_COOKIE['openblocks-'.$cid]!='') {$openblocks = explode(',',$_COOKIE['openblocks-'.$cid]);} 
+	if (!empty($_SESSION['prevloadedblocks-'.$cid])) {$prevloadedblocks = $_SESSION['prevloadedblocks-'.$cid];}
+	if (!in_array($_GET['folder'], $prevloadedblocks)) {
+		$firstload = true;
+		$prevloadedblocks[] = Sanitize::simpleString($_GET['folder']);
+	} 
+
 	$plblist = implode(',',$prevloadedblocks);
 	$oblist = implode(',',$openblocks);
 
@@ -328,7 +340,7 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 	$query .= "AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL))) AS newitems ";
 	*/
 	$now = time();
-	$query = "SELECT imas_forum_threads.forumid, COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
+	$query = "SELECT imas_forums.id, COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
 	$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id AND imas_forums.courseid=:courseid ";
 	if (!isset($teacherid)) {
 		$query .= "AND (imas_forums.avail=2 OR (imas_forums.avail=1 AND imas_forums.startdate<$now && imas_forums.enddate>$now)) ";
@@ -338,7 +350,7 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 	if (!isset($teacherid)) {
 		$query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=:userid2)) ";
 	}
-	$query .= "GROUP BY imas_forum_threads.forumid";
+	$query .= "GROUP BY imas_forums.id";
 	$stm = $DBH->prepare($query);
 	if (!isset($teacherid)) {
 		$stm->execute(array(':now'=>$now, ':courseid'=>$cid, ':userid'=>$userid, ':userid2'=>$userid));
@@ -375,7 +387,7 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 	}
 }
 
-$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/course.js?v=011823\"></script>";
+$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/course.js?v=081325\"></script>";
 if (isset($tutorid) && isset($_SESSION['ltiitemtype']) && $_SESSION['ltiitemtype']==3) {
 	$placeinhead .= '<script type="text/javascript">$(function(){$(".instrdates").hide();});</script>';
 }
@@ -395,14 +407,6 @@ if ($overwriteBody==1) {
 	if (isset($teacherid)) {
  ?>
 	<script type="text/javascript">
-		//function moveitem(from,blk) {
-		//	var to = document.getElementById(blk+'-'+from).value;
-        //
-		//	if (to != from) {
-		//		var toopen = '<?php //echo $jsAddress1 ?>//&block=' + blk + '&from=' + from + '&to=' + to;
-		//		window.location = toopen;
-		//	}
-		//}
 		function moveDialog(block,item) {
 			GB_show(_("Move Item"), imasroot+"/course/moveitem.php?cid="+cid+"&item="+item+"&block="+block, 600, "auto", true, '', null, {'label':_('Move'),'func':'moveitem'});
 			return false;
@@ -436,8 +440,8 @@ if ($overwriteBody==1) {
 	if (isset($CFG['GEN']['courseinclude'])) {
 		require_once $CFG['GEN']['courseinclude'];
 		if ($firstload) {
-			echo "<script>document.cookie = 'openblocks-$cid=' + oblist;\n";
-			echo "document.cookie = 'loadedblocks-$cid=0';</script>\n";
+			echo "<script>setCookie('openblocks-$cid', oblist);</script>\n";
+			$_SESSION['prevloadedblocks-'.$cid] = $prevloadedblocks;
 		}
 		require_once "../footer.php";
 		exit;
@@ -445,7 +449,9 @@ if ($overwriteBody==1) {
 ?>
 	<div class=breadcrumb>
 		<?php
-		if (isset($CFG['GEN']['logopad'])) {
+		if (empty($smallheaderlogo)) {
+			echo '<span class="floatright hideinmobile">';
+		} else if (isset($CFG['GEN']['logopad'])) {
 			echo '<span class="padright hideinmobile" style="padding-right:'.$CFG['GEN']['logopad'].'">';
 		} else {
 			echo '<span class="padright hideinmobile">';
@@ -454,9 +460,9 @@ if ($overwriteBody==1) {
 			echo '<span class="noticetext">', _('Instructor Preview'), '</span> ';
 		}
 		if (isset($_SESSION['ltiitemtype'])) {
-			echo "<a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\" title=\""._('User Preferences')."\" aria-label=\""._('Edit User Preferences')."\">";
+			echo "<a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\" title=\""._('User Preferences')."\">";
 			echo "<span id=\"myname\" class=\"pii-full-name\">".Sanitize::encodeStringForDisplay($userfullname)."</span>";
-			echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.png\" alt=\"\"/></a>";
+			echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.png\" alt=\""._('User Preferences')."\"/></a>";
 		} else {
 			echo '<span class="pii-full-name">'.Sanitize::encodeStringForDisplay($userfullname).'</span>';
 		}
@@ -511,11 +517,12 @@ if ($overwriteBody==1) {
 		echo '<a href="showcalendar.php?cid=' . $cid . '">' . _('Calendar') . '</a><br/>';
 		echo '<a href="coursemap.php?cid=' . $cid . '">' . _('Course Map') . '</a><br/>';
 		echo '<a href="#" class="togglecontrol" aria-controls="navtoolmore">' . _('More...') . '</a>';
-	  echo '<span id="navtoolmore" style="display:none">';
+	  	echo '<span id="navtoolmore" style="display:none">';
 		echo '<br/>&nbsp;<a href="coursereports.php?cid=' . $cid . '">' . _('Reports') . '</a><br/>';
 		echo '&nbsp;<a href="managestugrps.php?cid=' . $cid . '">' . _('Groups') . '</a><br/>';
 		echo '&nbsp;<a href="addoutcomes.php?cid=' . $cid . '">' . _('Outcomes') . '</a><br/>';
-		echo '&nbsp;<a href="addrubric.php?cid=' . $cid . '">' . _('Rubrics') . '</a>';
+		echo '&nbsp;<a href="addrubric.php?cid=' . $cid . '">' . _('Rubrics') . '</a><br/>';
+		echo '&nbsp;<a href="mergeassess2.php?cid=' . $cid . '">' . _('Merge Assessments') . '</a><br/>';
 		echo '</span>';
 		echo '</p>';
 	}
@@ -592,11 +599,16 @@ if ($overwriteBody==1) {
 		}
 		echo '<a href="coursemap.php?cid='.$cid.'">'._('Course Map').'</a>';
 		echo '</p>';
+        if (($toolset&4)==0) {
+            echo '<p><a href="gradebook.php?cid='. $cid .'" class="essen">' . _('Gradebook') . '</a> ';
+            if (($coursenewflag&1)==1) {
+                echo '<span class="noticetext">', _('New'), '</span>';
+            }
+            echo '</p>';
+        }
 	?>
 
-			<p>
-			<a href="gradebook.php?cid=<?php echo $cid ?>" class="essen"><?php echo _('Gradebook'); ?></a> <?php if (($coursenewflag&1)==1) {echo '<span class="noticetext">', _('New'), '</span>';}?>
-			</p>
+			
 	<?php
 		if (count($stuLeftNavBlocks)>0) {
 			echo '<p class=leftnavp><b>'._('Quick Links').'</b>';
@@ -635,16 +647,18 @@ if ($overwriteBody==1) {
 
 
 	   if ($quickview=='on' && isset($teacherid)) {
-		   echo '<style type="text/css">.drag {color:red; background-color:#fcc;} .icon {cursor: pointer;}</style>';
+		   echo '<style type="text/css">.drag {color:red; background-color:#fcc;} .icon {cursor: pointer;} span.icon { padding:0;}</style>';
 		   echo "<script>var AHAHsaveurl = '$imasroot/course/savequickreorder.php?cid=$cid';";
 		   echo 'var unsavedmsg = "'._("You have unrecorded changes.  Are you sure you want to abandon your changes?").'";';
 		   echo 'var itemorderhash="'.md5(serialize($items)).'";';
            echo 'var blockiconsrc="'.$staticroot.'/img/'.$CFG['CPS']['miniicons']['folder'].'";';
+		   echo 'var caneditallnames=true;';
 		   echo "</script>";
-		   echo "<script src=\"$staticroot/javascript/nestedjq.js?v=011522\"></script>";
+		   echo "<script src=\"$staticroot/javascript/nestedjq.js?v=112525\"></script>";
 		   echo '<p><button type="button" onclick="quickviewexpandAll()">'._("Expand All").'</button> ';
 		   echo '<button type="button" onclick="quickviewcollapseAll()">'._("Collapse All").'</button> ';
 		   echo '<button type="button" onclick="addnewblock()">'._("Add Block").'</button></p>';
+		   echo '<div class="sr-only" tabindex=0 onfocus="this.className=\'\'">'._('Keyboard instructions: In the tree, use arrow keys to move within the tree. On an item, press Tab to edit the title and access links. To rearrange, press Space to select the item, then use the arrow keys to rearrange the item up or down, left to move out of a branch, right to move into a branch when positioned below it. Press Space again to deselect.').'</div>';
 		   echo '<ul id=qviewtree class=qview>';
 		   quickview($items,0);
 		   echo '</ul>';
@@ -671,8 +685,8 @@ if ($overwriteBody==1) {
    echo "</div>"; //centercontent
 
    if ($firstload) {
-		echo "<script>document.cookie = 'openblocks-$cid=' + oblist;\n";
-		echo "document.cookie = 'loadedblocks-$cid=0';</script>\n";
+		echo "<script>setCookie('openblocks-$cid', oblist);</script>\n";
+		$_SESSION['prevloadedblocks-'.$cid] = $prevloadedblocks;
    }
 }
 
@@ -727,10 +741,10 @@ function makeTopMenu() {
 		echo '<span class="showinmobile"><b>'._('Quick Rearrange.'), "</b> <a href=\"course.php?cid=$cid&quickview=off\">", _('Back to regular view'), "</a>.</span> ";
 
 		if (isset($CFG['CPS']['miniicons'])) {
-			echo _('Use icons to drag-and-drop order.'),' ',_('Click the icon next to a block to expand or collapse it. Click an item title to edit it in place.'), '  <input type="button" id="recchg" disabled="disabled" value="', _('Save Changes'), '" onclick="submitChanges(\'json\')"/>';
+			echo _('Use icons to drag-and-drop order.'),' ',_('Click the [+] or [-] next to a block to expand or collapse it. Click a title to edit in place. Hover-over or click on an element to show links (when there are not unsaved changes).'), '  <input type="button" id="recchg" disabled="disabled" value="', _('Save Changes'), '" onclick="submitChanges(\'json\',\'changed\')"/>';
 
 		} else {
-			echo _('Use colored boxes to drag-and-drop order.'),' ',_('Click the B next to a block to expand or collapse it. Click an item title to edit it in place.'), '  <input type="button" id="recchg" disabled="disabled" value="', _('Save Changes'), '" onclick="submitChanges(\'json\')"/>';
+			echo _('Use colored boxes to drag-and-drop order.'),' ',_('Click the [+] or [-] next to a block to expand or collapse it. Click a title to edit in place. Hover-over or click on an element to show links.'), '  <input type="button" id="recchg" disabled="disabled" value="', _('Save Changes'), '" onclick="submitChanges(\'json\')"/>';
 		}
 		 echo '<span id="submitnotice" class=noticetext></span>';
 		 echo '<div class="clear"></div>';

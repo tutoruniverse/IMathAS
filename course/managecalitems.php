@@ -26,16 +26,19 @@ if (isset($_POST['submit'])) {
 			$stm->execute(array(':id'=>$id, ':courseid'=>$cid));
 		}
 	}
-
+	$err = '';
 	//update the rest
 	if (isset($_POST['tag']) && count($_POST['tag'])>0) {
 		foreach ($_POST['tag'] as $id=>$tag) {
 			$date = $_POST['date'.$id];
-			preg_match('/(\d+)\s*\/(\d+)\s*\/(\d+)/',$date,$dmatches);
-			$date = mktime(12,0,0,$dmatches[1],$dmatches[2],$dmatches[3]);
-			$stm = $DBH->prepare("UPDATE imas_calitems SET date=:date,tag=:tag,title=:title WHERE id=:id");
-			$stm->execute(array(':date'=>$date, ':tag'=>Sanitize::stripHtmlTags($tag),
-				':title'=>Sanitize::stripHtmlTags($_POST['txt'][$id]), ':id'=>$id));
+			if (preg_match('/(\d+)\s*\/(\d+)\s*\/(\d+)/',$date,$dmatches)) {
+				$date = mktime(12,0,0,$dmatches[1],$dmatches[2],$dmatches[3]);
+				$stm = $DBH->prepare("UPDATE imas_calitems SET date=:date,tag=:tag,title=:title WHERE id=:id AND courseid=:courseid");
+				$stm->execute(array(':date'=>$date, ':tag'=>Sanitize::stripHtmlTags($tag),
+					':title'=>Sanitize::stripHtmlTags($_POST['txt'][$id]), ':id'=>$id, ':courseid'=>$cid));
+			} else {
+				$err .= sprintf(_('Error parsing date "%s"; no change made. '), Sanitize::encodeStringForDisplay($date));
+			}
 		}
 	}
 
@@ -44,27 +47,36 @@ if (isset($_POST['submit'])) {
 	while (isset($_POST['datenew-'.$newcnt])) {
 		if (trim($_POST['tagnew-'.$newcnt])!='' && (trim($_POST['txtnew-'.$newcnt])!='' || $_POST['tagnew-'.$newcnt] != '!')) {
 			$date = $_POST['datenew-'.$newcnt];
-			preg_match('/(\d+)\s*\/(\d+)\s*\/(\d+)/',$date,$dmatches);
-            $datenew = mktime(12,0,0,$dmatches[1],$dmatches[2],$dmatches[3]);
-            $dayofweek = date('w', $datenew);
-            $tag = Sanitize::stripHtmlTags($_POST['tagnew-'.$newcnt]);
-            $title = Sanitize::stripHtmlTags($_POST['txtnew-'.$newcnt]);
-            $qarr = [$cid, $datenew, $tag, $title];
-            if (!empty($_POST['repeat'.$newcnt])) {
-                foreach ($_POST['repeat'.$newcnt] as $daytorepeat) {
-                    $dayoffset = ($daytorepeat - $dayofweek + 7)%7;
-                    for ($i=($dayoffset==0)?1:0;$i<$_POST['repeatN'.$newcnt];$i++) {
-                        $date = strtotime("+$dayoffset days +$i weeks", $datenew);
-                        array_push($qarr, $cid, $date, $tag, $title);
-                    }
-                }
-            }
-            $ph = Sanitize::generateQueryPlaceholdersGrouped($qarr, 4);
-            $stm = $DBH->prepare("INSERT INTO imas_calitems (courseid,date,tag,title) VALUES $ph");
-            $stm->execute($qarr);
-
+			if (preg_match('/(\d+)\s*\/(\d+)\s*\/(\d+)/',$date,$dmatches)) {
+				$datenew = mktime(12,0,0,$dmatches[1],$dmatches[2],$dmatches[3]);
+				$dayofweek = date('w', $datenew);
+				$tag = Sanitize::stripHtmlTags($_POST['tagnew-'.$newcnt]);
+				$title = Sanitize::stripHtmlTags($_POST['txtnew-'.$newcnt]);
+				$qarr = [$cid, $datenew, $tag, $title];
+				if (!empty($_POST['repeat'.$newcnt])) {
+					foreach ($_POST['repeat'.$newcnt] as $daytorepeat) {
+						$dayoffset = ($daytorepeat - $dayofweek + 7)%7;
+						for ($i=($dayoffset==0)?1:0;$i<$_POST['repeatN'.$newcnt];$i++) {
+							$date = strtotime("+$dayoffset days +$i weeks", $datenew);
+							array_push($qarr, $cid, $date, $tag, $title);
+						}
+					}
+				}
+				$ph = Sanitize::generateQueryPlaceholdersGrouped($qarr, 4);
+				$stm = $DBH->prepare("INSERT INTO imas_calitems (courseid,date,tag,title) VALUES $ph");
+				$stm->execute($qarr);
+			}  else {
+				$err .= sprintf(_('Error parsing date "%s"; new item skipped. '), Sanitize::encodeStringForDisplay($date));
+			}
 		}
 		$newcnt++;
+	}
+	if ($err !== '') {
+		require_once '../header.php';
+		echo '<p>'.$err.'</p>';
+		echo '<p><a href="managecalitems.php?cid='.$cid.'">Back</a></p>';
+		require_once '../footer.php';
+		exit;
 	}
 	if ($_POST['submit']=='Save') {
 		if ($from=='cp') {
@@ -85,23 +97,30 @@ $placeinhead .= '<script type="text/javascript">
 		window.onbeforeunload = null;
 		return true;
 	});
+	function togglerepeat(el) {
+		let newstate = (el.getAttribute("aria-expanded") == "false");
+		$(el).next().toggle(newstate);
+		el.setAttribute("aria-expanded", newstate);
+	}
 	var nextnewcnt = 0;
 	function addnewevent(date) {
-		var html = "<tr><td><input type=text size=10 id=\"datenew-"+nextnewcnt+"\" name=\"datenew-"+nextnewcnt+"\"> ";
+		var html = "<tr><td><span id=\"ne"+nextnewcnt+"\" class=\"sr-only\">New event "+(nextnewcnt+1)+"</span>";
+		html += "<input type=text size=10 id=\"datenew-"+nextnewcnt+"\" name=\"datenew-"+nextnewcnt+"\" aria-labelledby=\"ne"+nextnewcnt+"\"> ";
 		html += "<a href=\"#\" onClick=\"displayDatePicker(\'datenew-"+nextnewcnt+"\', this); return false\"><img src=\"'.$staticroot.'/img/cal.gif\" alt=\"Calendar\"/></a></td>";
-		html += "<td><input name=\"tagnew-"+nextnewcnt+"\" id=\"tagnew-"+nextnewcnt+"\" type=text size=8 /></td>";
-        html += "<td><input name=\"txtnew-"+nextnewcnt+"\" id=\"txtnew-"+nextnewcnt+"\" type=text size=80 />";
-        html += "<button type=\"button\" onclick=\"$(\'#repeat"+nextnewcnt+"\').toggle()\">'._('Repeat').'</button>";
+		html += "<td><input name=\"tagnew-"+nextnewcnt+"\" id=\"tagnew-"+nextnewcnt+"\" type=text size=8  aria-labelledby=\"ne"+nextnewcnt+"\"/></td>";
+        html += "<td><input name=\"txtnew-"+nextnewcnt+"\" id=\"txtnew-"+nextnewcnt+"\" type=text size=80  aria-labelledby=\"ne"+nextnewcnt+"\"/>";
+        html += "<button type=\"button\" onclick=\"togglerepeat(this)\" aria-controls=\"repeat"+nextnewcnt+"\" aria-expanded=\"false\">'._('Repeat').'</button>";
         html += "<span id=\"repeat"+nextnewcnt+"\" style=\"display:none\"><br/>'._('Repeat every').'"
-          + "<label><input type=\"checkbox\" value=\"1\" name=\"repeat"+nextnewcnt+"[]\">'._('M').'</label> "
-          + "<label><input type=\"checkbox\" value=\"2\" name=\"repeat"+nextnewcnt+"[]\">'._('T').'</label> "
-          + "<label><input type=\"checkbox\" value=\"3\" name=\"repeat"+nextnewcnt+"[]\">'._('W').'</label> "
-          + "<label><input type=\"checkbox\" value=\"4\" name=\"repeat"+nextnewcnt+"[]\">'._('Th').'</label> "
-          + "<label><input type=\"checkbox\" value=\"5\" name=\"repeat"+nextnewcnt+"[]\">'._('F').'</label> "
-          + "<label><input type=\"checkbox\" value=\"6\" name=\"repeat"+nextnewcnt+"[]\">'._('Sa').'</label> "
-          + "<label><input type=\"checkbox\" value=\"0\" name=\"repeat"+nextnewcnt+"[]\">'._('Su').'</label> "
-          + "'._('for').' <input size=2 name=\"repeatN"+nextnewcnt+"\" value=1> '._('weeks').'</span></td></tr>";
+          + "<input type=\"checkbox\" value=\"1\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Monday').'\">'._('M').' "
+          + "<input type=\"checkbox\" value=\"2\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Tuesday').'\">'._('T').' "
+          + "<input type=\"checkbox\" value=\"3\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Wednesday').'\">'._('W').' "
+          + "<input type=\"checkbox\" value=\"4\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Thursday').'\">'._('Th').' "
+          + "<input type=\"checkbox\" value=\"5\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Friday').'\">'._('F').' "
+          + "<input type=\"checkbox\" value=\"6\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Saturday').'\">'._('Sa').' "
+          + "<input type=\"checkbox\" value=\"0\" name=\"repeat"+nextnewcnt+"[]\" aria-label=\"'._('Sunday').'\">'._('Su').' "
+          + "'._('for').' <label><input size=2 name=\"repeatN"+nextnewcnt+"\" value=1> '._('weeks').'</label></span></td></tr>";
         $("#newEventsTable tbody").append(html);
+		$("#datenew-"+nextnewcnt).focus();
         if (typeof date != "undefined") {
             $("#datenew-"+nextnewcnt).val(date);
             $("#tagnew-"+nextnewcnt).val("!");
@@ -144,22 +163,23 @@ $stm->execute(array(':courseid'=>$cid));
 <table class="gb">
 <caption class="sr-only">Calendar Events</caption>
 <thead>
-<tr><th>Delete?</th><th>Date</th><th>Tag</th><th>Event Details</th></tr>
+<tr><th>Date</th><th>Tag</th><th>Event Details</th><th>Delete?</th></tr>
 </thead>
 <tbody>
 <?php
 $cnt = 0;
 while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-	echo '<tr>';
-	echo '<td><input type=checkbox name="del['.Sanitize::onlyInt($row[0]).']" /></td>';
-	$date = tzdate("m/d/Y",$row[1]);
-	echo "<td><input type=text size=10 id=\"date" . Sanitize::onlyInt($row[0]) . "\" name=\"date".Sanitize::onlyInt($row[0])."\" value=\"";
-	echo Sanitize::encodeStringForDisplay($date) . "\" oninput=\"txtchg()\" /> ";
-	echo "<a href=\"#\" onClick=\"displayDatePicker('date".Sanitize::onlyInt($row[0])."', this); return false\"><img src=\"$staticroot/img/cal.gif\" alt=\"Calendar\"/></a></td>";
 	$cnt++;
-	echo '<td><input name="tag['.Sanitize::onlyInt($row[0]).']" type=text size=8 value="'.Sanitize::encodeStringForDisplay($row[3]).'" oninput="txtchg()" /></td>';
-	echo '<td><input name="txt['.Sanitize::onlyInt($row[0]).']" type=text size=80 value="'.Sanitize::encodeStringForDisplay($row[2]).'" oninput="txtchg()" /></td>';
-	echo '<tr/>';
+	echo '<tr>';
+	$date = tzdate("m/d/Y",$row[1]);
+	echo "<td><span id=\"ee$cnt\" class=\"sr-only\">".sprintf('Event %d', $cnt).'</span>';
+	echo "<input type=text size=10 id=\"date" . Sanitize::onlyInt($row[0]) . "\" name=\"date".Sanitize::onlyInt($row[0])."\" value=\"";
+	echo Sanitize::encodeStringForDisplay($date) . "\" oninput=\"txtchg()\" aria-labelledby=\"ee". $cnt . "\" /> ";
+	echo "<a href=\"#\" onClick=\"displayDatePicker('date".Sanitize::onlyInt($row[0])."', this); return false\"><img src=\"$staticroot/img/cal.gif\" alt=\"Calendar\"/></a></td>";
+	echo '<td><input name="tag['.Sanitize::onlyInt($row[0]).']" type=text size=8 value="'.Sanitize::encodeStringForDisplay($row[3]).'" oninput="txtchg()" aria-labelledby="ee'.$cnt.'"/></td>';
+	echo '<td><input name="txt['.Sanitize::onlyInt($row[0]).']" type=text size=80 value="'.Sanitize::encodeStringForDisplay($row[2]).'" oninput="txtchg()" aria-labelledby="ee'.$cnt.'"/></td>';
+	echo '<td><input type=checkbox name="del['.Sanitize::onlyInt($row[0]).']" aria-labelledby="ee'.$cnt.'"/></td>';
+	echo '</tr>';
 }
 echo '</tbody></table>';
 echo '<p><button type="submit" name="submit" value="Save">'._('Save Changes').'</button></p>';
@@ -177,7 +197,7 @@ if (isset($_GET['addto'])) {
 } else  {
 	$date = tzdate("m/d/Y",$now);
 }
-echo '<script>$(function() { addnewevent("'.$date.'");});</script>';
+echo '<script>$(function() { addnewevent("'.Sanitize::encodeStringForDisplay($date).'");});</script>';
 /*echo '<tr>';
 //echo '<td></td>';
 echo "<td><input type=text size=10 id=\"datenew-0\" name=\"datenew-0\" value=\"$date\" oninput=\"txtchg()\"/> ";

@@ -73,13 +73,8 @@
    
    $openblocks = Array(0);
    if (isset($_COOKIE['openblocks-'.$cid]) && $_COOKIE['openblocks-'.$cid]!='') {$openblocks = explode(',',$_COOKIE['openblocks-'.$cid]);}
-   if (isset($_COOKIE['prevloadedblocks-'.$cid]) && $_COOKIE['prevloadedblocks-'.$cid]!='') {$prevloadedblocks = explode(',',$_COOKIE['prevloadedblocks-'.$cid]);} else {$prevloadedblocks = array();}
+   if (!empty($_SESSION['prevloadedblocks-'.$cid])) {$prevloadedblocks = $_SESSION['prevloadedblocks-'.$cid];} else {$prevloadedblocks = array();}
    if (in_array($_GET['folder'],$prevloadedblocks)) { $firstload = false;} else {$firstload = true;}
-
-   //$oblist = implode(',',$openblocks);
-   //echo "<script>\n";
-   //echo "  oblist += ',$oblist';\n";
-   //echo "</script>\n";
 
 
    //get latepasses
@@ -93,14 +88,14 @@
    }
 
    //get new forum posts info
-   	$query = "SELECT imas_forum_threads.forumid, COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
+   	$query = "SELECT imas_forums.id, COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
 	  $query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id AND imas_forums.courseid=:courseid ";
 	  $query .= "LEFT JOIN imas_forum_views as mfv ON mfv.threadid=imas_forum_threads.id AND mfv.userid=:userid ";
 	  $query .= "WHERE imas_forum_threads.lastposttime<:now AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL)) ";
     if (!isset($teacherid)) {
 		  $query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=:userid2)) ";
     }
-	  $query .= "GROUP BY imas_forum_threads.forumid";
+	  $query .= "GROUP BY imas_forums.id";
   	$stm = $DBH->prepare($query);
   	if (!isset($teacherid)) {
       $stm->execute(array(':now'=>$now, ':courseid'=>$cid, ':userid'=>$userid, ':userid2'=>$userid));
@@ -129,7 +124,7 @@
 
 
    if ($firstload) {
-	   echo "<script>document.cookie = 'openblocks-$cid=' + oblist;</script>\n";
+	   echo "<script>setCookie('openblocks-$cid', oblist);</script>\n";
    }
    if (isset($tutorid) && isset($_SESSION['ltiitemtype']) && $_SESSION['ltiitemtype']==3) {
 	echo '<script type="text/javascript">$(".instrdates").hide();</script>';

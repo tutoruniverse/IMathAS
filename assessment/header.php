@@ -98,19 +98,18 @@ if (!empty($CFG['use_csrfp']) && class_exists('csrfProtector')) {
 	echo csrfProtector::output_header_code();
 }
 
-echo '<script src="' . $staticroot . '/javascript/assessment_min.js?v=110223" type="text/javascript"></script>';
+echo '<script src="' . $staticroot . '/javascript/assessment_min.js?v=082525" type="text/javascript"></script>';
 
-
-//assessment_min.js bundles: general.js, mathjs.js, AMhelpers.js, confirmsubmit.js, drawing.js, and eqntips.js
+//assessment_min.js bundles: general.js, mathparser.js, AMhelpers.js, confirmsubmit.js, drawing.js, and eqntips.js
 /*
 echo '<script src="' . $imasroot . '/javascript/general.js?v=042220" type="text/javascript"></script>';
-echo '<script src="' . $imasroot . '/javascript/mathjs.js?v=20230729" type="text/javascript"></script>';
+echo '<script src="' . $imasroot . '/javascript/mathparser.js?v=081925" type="text/javascript"></script>';
 echo '<script src="' . $imasroot . '/javascript/AMhelpers.js?v=060920" type="text/javascript"></script>';
 echo '<script src="' . $imasroot . '/javascript/confirmsubmit.js?v=031018" type="text/javascript"></script>';
 echo '<script src="' . $imasroot . '/javascript/drawing.js?v=042920" type="text/javascript"></script>';
 echo '<script src="' . $imasroot . '/javascript/eqntips.js?v=082616" type="text/javascript"></script>';
-
 */
+
 
 if (isset($_SESSION['ltiitemtype']) && ($_SESSION['mathdisp']==1 || $_SESSION['mathdisp']==3)) {
 	echo '<script type="text/x-mathjax-config">
@@ -130,7 +129,7 @@ if (!isset($_SESSION['mathdisp'])) {
 		echo '<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=AM_CHTML-full"></script>';
 	}
 	echo "<script src=\"$staticroot/javascript/mathgraphcheck.js?v=021215\" type=\"text/javascript\"></script>\n";
-} else if ($_SESSION['mathdisp']==1 || $_SESSION['mathdisp']==3 || $_SESSION['mathdisp']==7 || $_SESSION['mathdisp']==8) {
+} else if ($_SESSION['mathdisp']==1 || $_SESSION['mathdisp']==3 || $_SESSION['mathdisp']==7 || $_SESSION['mathdisp']==8 || $_SESSION['mathdisp']==9) {
 	echo '<script type="text/javascript">var AMTcgiloc = "'.$mathimgurl.'";</script>';
 	echo "<script src=\"$staticroot/javascript/ASCIIMathTeXImg_min.js?ver=100418\" type=\"text/javascript\"></script>\n";
 	echo '<script type="text/x-mathjax-config">
@@ -188,34 +187,12 @@ if (!isset($_SESSION['mathdisp'])) {
 if (isset($_SESSION['graphdisp']) && $_SESSION['graphdisp']==0) {
     echo "<script type=\"text/javascript\">var usingASCIISvg = false;</script>";
 } else {
-	echo "<script src=\"$staticroot/javascript/ASCIIsvg_min.js?v=052520\" type=\"text/javascript\"></script>\n";
+	echo "<script src=\"$staticroot/javascript/ASCIIsvg_min.js?v=122025\" type=\"text/javascript\"></script>\n";
 	echo "<script type=\"text/javascript\">var usingASCIISvg = true;</script>";
 }
-?>
-<!--[if lte IE 6]>
-<style type="text/css">
-div { zoom: 1; }
-.clear { line-height: 0;}
-#mqarea { height: 2em;}
-#GB_overlay, #GB_window {
- position: absolute;
- top: expression(0+((e=document.documentElement.scrollTop)?e:document.body.scrollTop)+'px');
- left: expression(0+((e=document.documentElement.scrollLeft)?e:document.body.scrollLeft)+'px');}
-}
-</style>
-<![endif]-->
-<!--[if lt IE 9]>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
-<script type="text/javascript" src="<?php echo $staticroot;?>/javascript/excanvas_min.js?v=120811"></script>
-<![endif]-->
-
-
-
-<?php
 
 if (isset($useeditor) && !empty($_SESSION['useed'])) {
-	echo '<script type="text/javascript" src="'.$staticroot.'/tinymce4/tinymce_bundled.min.js?v=051919"></script>';
-	//echo '<script type="text/javascript" src="'.$imasroot.'/tinymce4/tinymce.min.js?v=082716"></script>';
+	echo '<script type="text/javascript" src="'.$staticroot.'/tinymce8/tinymce.min.js?v=073125"></script>';
 	echo "\n";
 	echo '<script type="text/javascript">';
 	echo 'var usingTinymceEditor = true;';
@@ -231,9 +208,8 @@ if (isset($useeditor) && !empty($_SESSION['useed'])) {
 } else {
 	echo '<script type="text/javascript">var usingTinymceEditor = false;</script>';
 }
-if ((isset($useeditor) && $_SESSION['useed']==1) || isset($loadiconfont)) {
+if (isset($loadiconfont)) {
 	echo '<link rel="stylesheet" href="'.$staticroot . '/iconfonts/imathasfont.css?v=013118" type="text/css" />';
-	echo '<!--[if lte IE 7]><link rel="stylesheet" href="'.$staticroot . '/iconfonts/imathasfontie7.css?v=013118" type="text/css" /><![endif]-->';
 }
 if (!isset($useeqnhelper)) { $useeqnhelper = 0; }
 
@@ -244,15 +220,6 @@ if ($useeqnhelper==1 || $useeqnhelper==2) {
 
 } else if ($useeqnhelper==3 || $useeqnhelper==4) {
 	echo "<link rel=\"stylesheet\" href=\"$staticroot/assessment/mathquill.css?v=062416\" type=\"text/css\" />";
-	if (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE')!==false) {
-		echo '<!--[if lte IE 7]><style style="text/css">
-			.mathquill-editable.empty { width: 0.5em; }
-			.mathquill-rendered-math .numerator.empty, .mathquill-rendered-math .empty { padding: 0 0.25e  m;}
-			.mathquill-rendered-math sup { line-height: .8em; }
-			.mathquill-rendered-math .numerator {float: left; padding: 0;}
-			.mathquill-rendered-math .denominator { clear: both;width: auto;float: left;}
-			</style><![endif]-->';
-	}
 	//This bundles mathquill.js, mathquilled.js, and AMtoMQ.js
 	echo "<script type=\"text/javascript\" src=\"$staticroot/javascript/MQbundle_min.js?v=021920\"></script>";
 	echo '<style type="text/css"> div.question input.btn { margin-left: 10px; } </style>';
@@ -297,7 +264,7 @@ if (isset($CFG['GEN']['headerinclude']) && !isset($flexwidth) && !isset($hideAll
 	require_once "$curdir/../{$CFG['GEN']['headerinclude']}";
 }
 
-if (isset($cid) && !isset($flexwidth) && !isset($hideAllHeaderNav) && !$isdiag && (!isset($_SESSION['intreereader']) || $_SESSION['intreereader']==false)) {
+if (isset($cid) && !isset($flexwidth) && !isset($hideAllHeaderNav) && empty($isdiag) && (!isset($_SESSION['intreereader']) || $_SESSION['intreereader']==false)) {
 	echo '<div id="navlistcont" role="navigation" aria-label="'._('Course Navigation').'">';
 	echo '<ul id="navlist">';
 

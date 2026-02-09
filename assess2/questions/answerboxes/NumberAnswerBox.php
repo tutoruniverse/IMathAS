@@ -66,7 +66,9 @@ class NumberAnswerBox implements AnswerBox
             $leftb = '';
             $rightb = '';
         }
+        $hasUnits = false;
         if (in_array('units', $ansformats)) {
+            $hasUnits = true;
             if (in_array('list', $ansformats) || in_array('exactlist', $ansformats) || in_array('orderedlist', $ansformats)) {
                 if (in_array('integer', $ansformats)) {
                     $tip = _('Enter your answer as a list of integers with units, separated with commas. Example: -4 cm, 3 m') . "<br/>";
@@ -114,10 +116,16 @@ class NumberAnswerBox implements AnswerBox
         }
         if ($reqdecimals !== '') {
             list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
-            if ($exactreqdec) {
+            if ($exactreqdec == 2) {
+                $tip .= "<br/>" . sprintf(_('Your answer should be rounded to %d decimal places.'), $reqdecimals);
+                $shorttip .= sprintf(_(", rounded to %d decimal places"), $reqdecimals);
+            } else if ($exactreqdec) {
                 $exactdec = true;
                 $tip .= "<br/>" . sprintf(_('Your answer should include exactly %d decimal places.'), $reqdecimals);
                 $shorttip .= sprintf(_(", with %d decimal places"), $reqdecimals);
+            } else if ($reqdecoffset > 0) {
+                $tip .= "<br/>" . sprintf(_('Your answer should have between %d and %d decimal places.'), $reqdecimals, $reqdecimals + $reqdecoffset);
+                $shorttip .= sprintf(_(', with %d - %d decimal places'), $reqdecimals, $reqdecimals + $reqdecoffset);
             } else {
                 $tip .= "<br/>" . sprintf(_('Your answer should be accurate to at least %d decimal places.'), $reqdecimals);
                 $shorttip .= sprintf(_(", accurate to at least %d decimal places"), $reqdecimals);
@@ -145,19 +153,24 @@ class NumberAnswerBox implements AnswerBox
         foreach ($ansarr as $i=>$anans) {
             $ansors = explode(' or ', $anans);
             foreach ($ansors as $k=>$ans) {
+                $unitstr = '';
+                if ($hasUnits && preg_match('/^(\-?\d*(\.\d*)?([eE]\-?\d+)?)\s*(\D.*|$)/',$ans, $matches)) {
+                    $unitstr = ' ' . $matches[4];
+                    $ans = $matches[1];  
+                }
                 if (!is_numeric($ans)) { continue; } // skip interval $answers and such
                 if ($reqdecimals !== '' && $exactreqdec) {
-                    $ansors[$k] = prettyreal($ans, $reqdecimals);
+                    $ansors[$k] = prettyreal($ans, $reqdecimals) . $unitstr;
                 } else if ($reqsigfigs !== '') {
                     if ($exactsigfig) {
-                        $ansors[$k] = prettysigfig($ans, $reqsigfigs);
+                        $ansors[$k] = prettysigfig($ans, $reqsigfigs) . $unitstr;
                     } else if ($reqsigfigoffset > 0) {
                     } else {
                         if ($ans != 0) {
                             $v = -1 * floor(-log10(abs($ans)) - 1e-12) - $reqsigfigs;
                         }
                         if ($ans != 0 && $v < 0 && strlen($ans) - strpos($ans, '.') - 1 + $v < 0) {
-                            $ansors[$k] = prettysigfig($ans, $reqsigfigs);
+                            $ansors[$k] = prettysigfig($ans, $reqsigfigs) . $unitstr;
                         }
                     }
                 }
@@ -172,7 +185,7 @@ class NumberAnswerBox implements AnswerBox
         }
         $attributes = [
             'type' => 'text',
-            'size' => $answerboxsize,
+            'style' => 'width:'.sizeToCSS($answerboxsize),
             'name' => "qn$qn",
             'id' => "qn$qn",
             'value' => $la,
@@ -217,7 +230,7 @@ class NumberAnswerBox implements AnswerBox
         }
 
         if (in_array('nosoln', $ansformats) || in_array('nosolninf', $ansformats)) {
-            list($out, $answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt ?? '', $colorbox);
+            list($out, $answer, $nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt ?? '', $colorbox);
             $answer = str_replace('"', '', $answer);
         }
         if ($answer !== '' && !is_array($answer) && !$isConditional) {

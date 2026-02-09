@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
     <title>sagecell help</title>
+    <link rel="stylesheet" href="help.css?v=112325" type="text/css" />
 </head><body>
 <h1>Macro Library sagecell</h1>
 <p>Sagecell integration documentation, Version 1.0, Jan 2018</p>
@@ -17,6 +18,14 @@ starting/default Sage code inside of it. Like this:</p>
 &lt;pre class="converttosagecell"&gt;
   x = var('x')
   integral(sin(x), x)
+&lt;/pre&gt;
+</pre>
+
+<p>You can limit the sagecell to a single language by adding <code>data-lang="language"</code> to the <code>pre</code> tag.  Like this:</p>
+
+<pre>
+&lt;pre class="converttosagecell" data-lang="python"&gt;
+  print("Hello, World!")
 &lt;/pre&gt;
 </pre>
 

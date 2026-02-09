@@ -40,11 +40,15 @@ if (!(isset($teacherid))) {
 
 	$cid = Sanitize::courseId($_GET['cid']);
 
-	if (isset($_POST['sdate'])) {
+	if (isset($_POST['sdate']) && !empty($_POST['aid'])) {
 
-		$stm = $DBH->prepare("SELECT startdate,enddate FROM imas_assessments WHERE id=:id");
-		$stm->execute(array(':id'=>Sanitize::onlyInt($_POST['aid'])));
+		$stm = $DBH->prepare("SELECT startdate,enddate FROM imas_assessments WHERE id=:id AND courseid=:cid");
+		$stm->execute(array(':id'=>Sanitize::onlyInt($_POST['aid']), ':cid'=>$cid));
 		$basedate = $stm->fetchColumn(intval($_POST['base']));
+		if ($basedate === false) {
+			echo 'Invalid aid';
+			exit;
+		}
 		preg_match('/(\d+)\s*\/(\d+)\s*\/(\d+)/',$_POST['sdate'],$dmatches);
 		$newstamp = mktime(date('G',$basedate),date('i',$basedate),0,$dmatches[1],$dmatches[2],$dmatches[3]);
 		$shift = $newstamp-$basedate;
@@ -131,6 +135,19 @@ if (!(isset($teacherid))) {
 			$upd->execute(array($row['startdate'], $row['enddate'], $row['postby'], $row['replyby'], $row['id']));
 		}
 
+		$upd = $DBH->prepare("UPDATE imas_forum_posts SET postdate=?,replyby=? WHERE id=?");
+		$stm = $DBH->prepare("SELECT ifp.id,ifp.postdate,ifp.replyby FROM imas_forum_posts AS ifp JOIN imas_forums AS ifs ON ifs.id=ifp.forumid WHERE ifp.posttype>0 AND ifs.courseid=?");
+		$stm->execute(array($cid));
+		while ($row=$stm->fetch(PDO::FETCH_ASSOC)) {
+			if ($row['postdate']>0) {
+				$row['postdate'] = strtotime($shiftstring, $row['postdate']);
+			}
+			if (is_numeric($row['replyby']) && $row['replyby']>0 && $row['replyby']<2000000000) {
+				$row['replyby'] = strtotime($shiftstring, $row['replyby']);
+			}
+			$upd->execute(array($row['postdate'], $row['replyby'], $row['id']));
+		}
+
 
 		//update Calendar items
 		$upd = $DBH->prepare("UPDATE imas_calitems SET date=? WHERE id=?");
@@ -190,18 +207,18 @@ if ($overwriteBody==1) {
 		dates for a new term in one action.
 	</p>
 	<form method=post action="timeshift.php?cid=<?php echo $cid ?>">
-		<span class=form>Select an assessment to base the change on</span>
+		<label for=aid class=form>Select an assessment to base the change on</label>
 		<span class=formright>
 			<?php writeHtmlSelect ("aid",$page_assessmentList['val'],$page_assessmentList['label'],null,null,null,$actions=" id=aid "); ?>
 		</span><br class=form>
-		<span class=form>Change dates based on this assessment's:</span>
-		<span class=formright>
-			<input type=radio id=base name=base value=0 >Available After date<br/>
-			<input type=radio id=base name=base value=1 checked=1>Available Until date (Due date) <br/>
+		<span id="lbase" class=form>Change dates based on this assessment's:</span>
+		<span class=formright role=radiogroup aria-labelledby="lbase">
+			<label><input type=radio id=base name=base value=0 >Available After date</label><br/>
+			<label><input type=radio id=base name=base value=1 checked=1>Available Until date (Due date)</label> <br/>
 		</span><br class=form>
-		<span class=form>Change date to:</span>
+		<label for=sdate class=form>Change date to:</label>
 		<span class=formright>
-			<input type=text size=10 name="sdate" value="<?php echo $sdate ?>">
+			<input type=text size=10 name="sdate" id="sdate" value="<?php echo $sdate ?>">
 			<a href="#" onClick="displayDatePicker('sdate', this); return false">
 			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/>
 			</a>

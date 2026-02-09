@@ -28,7 +28,7 @@ if (!(isset($teacherid))) {
 	$cid = Sanitize::courseId($_GET['cid']);
 	if (isset($_POST['filekey'])) {
 		//already uploaded file, ready for official upload
-    $filekey = Sanitize::simplestring($_POST['filekey']);
+    $filekey = Sanitize::simpleASCII($_POST['filekey']);
     $uploadfile = getimportfilepath($filekey);
 
 		$stm = $DBH->prepare("SELECT imas_users.id,imas_users.SID FROM imas_users JOIN imas_students ON imas_students.userid=imas_users.id WHERE imas_students.courseid=:courseid");
@@ -36,7 +36,7 @@ if (!(isset($teacherid))) {
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 			$useridarr[$row[1]] = $row[0];
 		}
-		$coltoadd = $_POST['addcol'];
+		$coltoadd = array_map('intval', $_POST['addcol']);
 		require_once "../includes/parsedatetime.php";
 		if ($_POST['sdatetype']=='0') {
 			$showdate = 0;
@@ -46,7 +46,6 @@ if (!(isset($teacherid))) {
 		$gradestodel = array();
         $gbitemid = array();
 		foreach ($coltoadd as $col) {
-            $col = intval($col);
 			if (trim($_POST["colname$col"])=='') {continue;}
 			$name = trim($_POST["colname$col"]);
 			$pts = intval($_POST["colpts$col"]);
@@ -76,10 +75,10 @@ if (!(isset($teacherid))) {
 		if (count($gbitemid)>0) {
 			$handle = fopen_utf8($uploadfile,'r');
 			for ($i = 0; $i<$_POST['headerrows']; $i++) {
-				$line = fgetcsv($handle,4096);
+				$line = fgetcsv($handle,4096, ',', '"', '');
 			}
 			$sidcol = $_POST['sidcol'] - 1;
-			while ($line = fgetcsv($handle, 4096)) { //for each student
+			while ($line = fgetcsv($handle, 4096, ',', '"', '')) { //for each student
 				if ($line[$sidcol]=='' || !isset($useridarr[$line[$sidcol]])) {
 					//echo "breaking 1";
 					//print_r($line);
@@ -133,7 +132,7 @@ if (!(isset($teacherid))) {
 		exit;
 	} else if (isset($_FILES['userfile']['name']) && $_FILES['userfile']['name']!='') {
 		//upload file
-    if ($filekey = storeimportfile('userfile')) {
+    if ($filekey = storeimportfile('userfile', '.csv')) {
       $page_fileHiddenInput = "<input type=hidden name=\"filekey\" value=\"".Sanitize::encodeStringForDisplay($filekey)."\" />\n";
     } else {
       echo "<p>Error uploading file!</p>\n";
@@ -143,11 +142,11 @@ if (!(isset($teacherid))) {
     $uploadfile = getimportfilepath($filekey);
 		//parse out header info
 		$handle = fopen_utf8($uploadfile,'r');
-		$hrow = fgetcsv($handle,4096);
+		$hrow = fgetcsv($handle,4096, ',', '"', '');
 		$columndata = array();
 		$names = array();
 		if ($_POST['headerrows']==2) {
-			$srow = fgetcsv($handle,4096);
+			$srow = fgetcsv($handle,4096, ',', '"', '');
 		}
 		fclose($handle);
 		for ($i=0; $i<count($hrow); $i++) {
@@ -225,19 +224,23 @@ if ($overwriteBody==1) {
 		$stime = tzdate("g:i a",time());
 	?>
 
-		<span class=form>Username is in column:</span>
-		<span class=formright><input type=text name="sidcol" size=4 value="<?php echo $usernamecol+1; ?>"></span><br class=form />
-		<span class=form>Show grade to students after:</span><span class=formright><input type=radio name="sdatetype" value="0" <?php if ($showdate=='0') {echo "checked=1";}?>/> Always<br/>
-		<input type=radio name="sdatetype" value="sdate" <?php if ($showdate!='0') {echo "checked=1";}?>/><input type=text size=10 name=sdate value="<?php echo $sdate;?>">
-		<a href="#" onClick="displayDatePicker('sdate', this); return false"><img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></A>
-		at <input type=text size=10 name=stime value="<?php echo $stime;?>"></span><BR class=form>
+		<label for="sidcol" class=form>Username is in column:</label>
+		<span class=formright><input type=text name="sidcol" id=sidcol size=4 value="<?php echo $usernamecol+1; ?>"></span><br class=form />
+
+		<span class=form id="showlbl">Show grade to students after:</span>
+		<span class=formright role=group aria-labelledby="showlbl">
+			<label><input type=radio name="sdatetype" value="0" <?php if ($showdate=='0') {echo "checked=1";}?>/> Always</label><br/>
+			<input type=radio name="sdatetype" value="sdate" <?php if ($showdate!='0') {echo "checked=1";}?> aria-label="Date" />
+			<input type=text size=10 name=sdate value="<?php echo $sdate;?>" aria-label="show after date">
+			<a href="#" onClick="displayDatePicker('sdate', this); return false"><img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></A>
+			at <input type=text size=10 name=stime value="<?php echo $stime;?>" aria-label="show after time"></span><BR class=form>
 
 		<p>Check: <a href="#" onclick="return chkAllNone('qform','addcol[]',true)">All</a> <a href="#" onclick="return chkAllNone('qform','addcol[]',false)">None</a></p>
 
 		<table class="gb">
         <caption class="sr-only">Grades to import</caption>
 		<thead>
-		  <tr><th>In column</th><th>Load this?</th><th>Overwrite?</th><th>Name</th><th>Points</th><th>Count?</th><th>Gradebook Category</th><th>Feedback in column<br/>(blank for none)</th></tr>
+		  <tr><th>In column</th><th>Name</th><th>Import this?</th><th>Overwrite?</th><th>Points</th><th>Count?</th><th>Gradebook Category</th><th>Feedback in column<br/>(blank for none)</th></tr>
 		</thead>
 		<tbody>
 	<?php
@@ -250,24 +253,26 @@ if ($overwriteBody==1) {
 			}
 		}
 		foreach ($columndata as $col=>$data) {
-			echo '<tr><td>'.($col+1).'</td>';
-			echo '<td><input type="checkbox" name="addcol[]" value="'.$col.'" /></td>';
-			echo '<td><select name="coloverwrite'.$col.'"><option value="0" ';
+			$col = intval($col);
+			echo '<tr><td id="lbl'.$col.'"><span class="sr-only">Column</span> '.(intval($col)+1).'</td>';
+			echo '<td><input type="text" size="20" name="colname'.Sanitize::onlyInt($col).'" value="'.Sanitize::encodeStringForDisplay($data[0]).'" aria-labelledby="lbl'.$col.'"/></td>';
+
+			echo '<td><input type="checkbox" name="addcol[]" value="'.$col.'" aria-labelledby="lbl'.$col.'" /></td>';
+			echo '<td><select name="coloverwrite'.Sanitize::onlyInt($col).'" aria-labelledby="lbl'.$col.'"><option value="0" ';
 			if ($data[3]==0) {echo 'selected="selected"';}
 			echo '>Add as new item</option>';
 			if ($data[3]>0) {
 				echo '<option value="'.Sanitize::encodeStringForDisplay($data[3]).'" selected="selected">Overwrite existing scores</option>';
 			}
 			echo '</select></td>';
-			echo '<td><input type="text" size="20" name="colname'.$col.'" value="'.Sanitize::encodeStringForDisplay($data[0]).'" /></td>';
-			echo '<td><input type="text" size="3" name="colpts'.$col.'"  value="'.Sanitize::encodeStringForDisplay($data[1]).'" /></td>';
-			echo '<td><select name="colcnt'.$col.'">';
+			echo '<td><input type="text" size="3" name="colpts'.Sanitize::onlyInt($col).'"  value="'.Sanitize::encodeStringForDisplay($data[1]).'" aria-labelledby="lbl'.$col.'"/></td>';
+			echo '<td><select name="colcnt'.Sanitize::onlyInt($col).'" aria-labelledby="lbl'.$col.'">';
 			echo '<option value="1" selected="selected">Count in gradebook</option>';
 			echo '<option value="0">Don\'t count and hide from students</option>';
 			echo '<option value="3">Don\'t count in grade total</option>';
 			echo '<option value="2">Count as extra credit</option></select></td>';
-			echo '<td><select name="colgbcat'.$col.'">'.$gbcatoptions.'</select></td>';
-			echo '<td><input type="text" size="3" name="colfeedback'.$col.'"  value="'.Sanitize::encodeStringForDisplay($data[2]>-1?$data[2]+1:'').'" /></td>';
+			echo '<td><select name="colgbcat'.Sanitize::onlyInt($col).'" aria-labelledby="lbl'.$col.'">'.$gbcatoptions.'</select></td>';
+			echo '<td><input type="text" size="3" name="colfeedback'.Sanitize::onlyInt($col).'"  value="'.Sanitize::encodeStringForDisplay($data[2]>-1?$data[2]+1:'').'" aria-labelledby="lbl'.$col.'" /></td>';
 			echo '</tr>';
 		}
 		echo '</tbody></table>';
@@ -280,15 +285,15 @@ if ($overwriteBody==1) {
 		the students' usernames.  If you are including feedback as well as grades, upload will be much easier if the
 		feedback is in the column immediately following the scores, and if the column header contains the word Comment or Feedback</p>
 		<p>
-		<span class=form>Import File: </span>
+		<label for=userfile class=form>Import File: </label>
 		<span class=formright>
 			<input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
-			<input name="userfile" type="file" />
+			<input name="userfile" id=userfile type="file" />
 		</span><br class=form />
-		<span class=form>File contains a header row:</span>
-		<span class=formright>
-			<input type=radio name="headerrows" value="1" checked="checked">Yes, one<br/>
-			<input type=radio name="headerrows"  value="2">Yes, with second for points possible
+		<span class=form id="rowlbl">File contains a header row:</span>
+		<span class=formright role=group aria-labelledby="rowlbl">
+			<label><input type=radio name="headerrows" value="1" checked="checked">Yes, one</label><br/>
+			<label><input type=radio name="headerrows"  value="2">Yes, with second for points possible</label>
 		</span><br class=form />
 		<div class=submit><input type=submit value="Continue"></div>
 		</p>

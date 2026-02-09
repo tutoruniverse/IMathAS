@@ -14,9 +14,10 @@ if (!isset($studentid) && !isset($tutorid) && !isset($teacherid)) {
 
 $id = Sanitize::onlyInt($_GET['id']);
 $type = Sanitize::simpleString($_GET['type']);
+$now = time();
 
 if ($type=='A') {
-	$query = "SELECT ia.name,ias.feedback FROM imas_assessment_sessions AS ias ";
+	$query = "SELECT ia.name,ia.id,ias.feedback FROM imas_assessment_sessions AS ias ";
 	$query .= "JOIN imas_assessments AS ia ON ia.id=ias.assessmentid ";
 	$query .= "WHERE ias.id=? AND ia.courseid=? ";
 	$qarr = array($id, $cid);
@@ -27,7 +28,18 @@ if ($type=='A') {
 	$stm = $DBH->prepare($query);
 	$stm->execute($qarr);
 
-	list($aname, $origfeedback) = $stm->fetch(PDO::FETCH_NUM);
+	list($aname, $aid,$origfeedback) = $stm->fetch(PDO::FETCH_NUM);
+	if ($aname === false || $aname === null) {
+		echo 'Invalid aid';
+		exit;
+	}
+
+	if (isset($studentid)) {
+		$query = "INSERT INTO imas_content_track (userid,courseid,type,typeid,viewtime) VALUES ";
+		$query .= "(:userid, :courseid, :type, :typeid, :viewtime)";
+		$stm = $DBH->prepare($query);
+		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':type'=>'gbviewfb', ':typeid'=>$aid, ':viewtime'=>$now));
+	}
 
 	echo '<h1>'.sprintf(_('Feedback on %s'), Sanitize::encodeStringForDisplay($aname)).'</h1>';
 	$feedback = json_decode($origfeedback, true);
@@ -61,7 +73,19 @@ if ($type=='A') {
 	$stm->execute(array($id, $uid, $cid));
 
 	list($aname, $submitby, $deffb, $scoreddata) = $stm->fetch(PDO::FETCH_NUM);
-	$scoreddata = json_decode(gzdecode($scoreddata), true);
+	if ($aname === false || $aname === null) {
+		echo 'Invalid aid';
+		exit;
+	}
+
+	if (isset($studentid)) {
+		$query = "INSERT INTO imas_content_track (userid,courseid,type,typeid,viewtime) VALUES ";
+		$query .= "(:userid, :courseid, :type, :typeid, :viewtime)";
+		$stm = $DBH->prepare($query);
+		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':type'=>'gbviewfb', ':typeid'=>$id, ':viewtime'=>$now));
+	}
+
+	$scoreddata = json_decode(Sanitize::gzexpand($scoreddata), true);
 	$by_question = ($submitby == 'by_question');
 
 	echo '<h1>'.sprintf(_('Feedback on %s'), Sanitize::encodeStringForDisplay($aname)).'</h1>';
@@ -104,10 +128,10 @@ if ($type=='A') {
 	}
 } else if ($type=='O' || $type=='E') {
 	if ($type=='O') {
-		$query = "SELECT igi.name,ig.feedback FROM imas_gbitems AS igi ";
+		$query = "SELECT igi.name,igi.id,ig.feedback FROM imas_gbitems AS igi ";
 		$query .= "JOIN imas_grades AS ig ON igi.id=ig.gradetypeid AND ig.gradetype='offline' ";
 	} else if ($type=='E') {
-		$query = "SELECT igi.name,ig.feedback FROM imas_linkedtext AS igi ";
+		$query = "SELECT igi.name,igi.id,ig.feedback FROM imas_linkedtext AS igi ";
 		$query .= "JOIN imas_grades AS ig ON igi.id=ig.gradetypeid AND ig.gradetype='exttool' ";
 	}
 	$query .= "WHERE ig.id=? AND igi.courseid=? ";
@@ -119,7 +143,18 @@ if ($type=='A') {
 	$stm = $DBH->prepare($query);
 	$stm->execute($qarr);
 
-	list($aname, $feedback) = $stm->fetch(PDO::FETCH_NUM);
+	list($aname, $typeid, $feedback) = $stm->fetch(PDO::FETCH_NUM);
+	if ($aname === false || $aname === null) {
+		echo 'Invalid aid';
+		exit;
+	}
+
+	if (isset($studentid)) {
+		$query = "INSERT INTO imas_content_track (userid,courseid,type,typeid,viewtime) VALUES ";
+		$query .= "(:userid, :courseid, :type, :typeid, :viewtime)";
+		$stm = $DBH->prepare($query);
+		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':type'=>($type=='O'?'ogviewfb':'liviewfb'), ':typeid'=>$typeid, ':viewtime'=>$now));
+	}
 	echo '<h1>'.sprintf(_('Feedback on %s'), Sanitize::encodeStringForDisplay($aname)).'</h1>';
 	echo '<div class="fbbox">'.Sanitize::outgoingHtml($feedback).'</div>';
 }

@@ -54,8 +54,8 @@ if (isset($_POST['clearall'])) {
 	}
 
 	$data = serialize($data);
-	$stm = $DBH->prepare("UPDATE imas_assessments SET viddata=:viddata WHERE id=:id");
-	$stm->execute(array(':viddata'=>$data, ':id'=>$aid));
+	$stm = $DBH->prepare("UPDATE imas_assessments SET viddata=:viddata WHERE id=:id AND courseid=:courseid");
+	$stm->execute(array(':viddata'=>$data, ':id'=>$aid, ':courseid'=>$cid));
 
 	header('Location: ' . $GLOBALS['basesiteurl'] . "/course/$addqpage?cid=$cid&aid=$aid&r=" .Sanitize::randomQueryStringParam());
 	exit;
@@ -63,13 +63,18 @@ if (isset($_POST['clearall'])) {
 
 
 //start display
+$pagetitle = _("Video Navigation and Question Cues");
 require_once "../header.php";
 
 echo "<div class=breadcrumb>$breadcrumbbase <a href=\"course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> ";
 echo "&gt; <a href=\"$addqpage?cid=$cid&aid=$aid\">"._("Add/Remove Questions")."</a> &gt; "._("Video Navigation")."</div>\n";
-$stm = $DBH->prepare("SELECT itemorder,viddata FROM imas_assessments WHERE id=:id");
+$stm = $DBH->prepare("SELECT itemorder,viddata,courseid FROM imas_assessments WHERE id=:id");
 $stm->execute(array(':id'=>$aid));
 $row = $stm->fetch(PDO::FETCH_NUM);
+if ($row[2] !== $cid) {
+	echo "Invalid ID";
+	exit;
+}
 $qorder = explode(',',$row[0]);
 $viddata = $row[1];
 $qidbynum = array();
@@ -149,7 +154,7 @@ if ($viddata != '') {
 	$followupenddtime = array();
 	$hasfollowup = array();
 	$showlink = array();
-	$finalsegtitle;
+	$finalsegtitle = '';
 	for ($i=0;$i<$n;$i++) {
 		$title[$i] = $data[$i][0];
 		if (count($data[$i])==1) {
@@ -184,6 +189,7 @@ if ($viddata != '') {
 	$showlink = array_fill(0, $n, true);
 	$finalsegtitle = '';
 	$vidid = '';
+	$vidar = "16:9";
 	$aspectRatio = 16/9;
 
 }
@@ -211,6 +217,10 @@ function validatevidform(el) {
 		} else if (els[i].name.match(/vidid/)) {
 			if (els[i].value=="") {
 				alert("<?php echo _("Please provide a video ID"); ?>");
+				els[i].focus();
+				return false;
+			} else if (!els[i].value.match(/^[a-zA-Z0-9_-]{11}$/)) {
+				alert("<?php echo _("Please provide a valid 11 character video ID"); ?>");
 				els[i].focus();
 				return false;
 			}
@@ -290,10 +300,14 @@ function fixVideoId(origid) {
 			vidid = origid.split('v=')[1].split(/[#&]/)[0];
 		}
 	} else if (origid.match(/youtu\.be/)) {
-		vidid = origid.split('.be/')[1].split(/[#&]/)[0];
+		vidid = origid.split('.be/')[1].split(/[#&\?]/)[0];
 	}
 	if (vidid != origid) {
 		document.getElementById("vidid").value = vidid;
+	}
+	if (!vidid.match(/^[a-zA-Z0-9_-]{11}$/)) {
+		alert("<?php echo _("Please provide a valid 11 character video ID"); ?>");
+		return '';
 	}
 	return vidid;
 }
@@ -344,8 +358,8 @@ function addsegat(n) {
 	newins.innerHTML = '<a href="#" onclick="addsegat('+(curnumseg+1)+'); return false;"><?php echo _('Add video segment break'); ?></a>';
 	insat.parentNode.insertBefore(newins, insat);
 
-	var html = '<?php echo _('Segment title:'); ?> <input type="text" size="20" name="segtitle'+curnumseg+'" value=""/> ';
-	html += '<?php echo _('Ends at:'); ?> <input type="text" size="4" name="segend'+curnumseg+'" id="segend'+curnumseg+'"  value=""/> ';
+	var html = '<label><?php echo _('Segment title:'); ?> <input type="text" size="20" name="segtitle'+curnumseg+'" value=""/></label> ';
+	html += '<label><?php echo _('Ends at:'); ?> <input type="text" size="4" name="segend'+curnumseg+'" id="segend'+curnumseg+'"  value=""/></label> ';
 	html += '<input type="button" value="<?php echo _('grab'); ?>" onclick="grabcurvidtime('+curnumseg+',0);"/>';
 	html += ' <a href="#" onclick="return deleteseg(this);">[<?php echo _('Delete');?>]</a>';
 
@@ -391,16 +405,16 @@ echo '<script type="text/javascript">var curnumseg = '.$n.';</script>';
 
 <h1><?php echo _("Video Navigation and Question Cues"); ?></h1>
 <div style="float:right;"><div id="player" style="width: 453px; height: <?php echo ceil(453/$aspectRatio);?>px;"></div></div>
-<p><?php echo _("This page allows you to setup your assessment to be cued to a video.  For each question, give a title to the video segment that leads up to that question, and select the time when that segment ends and the question should show.  You can grab this from the playing video, type the time in min:sec form.  Make sure all times are at least one second before the end of the video."); ?></p>
+<p><?php echo _("This page allows you to setup your assessment to be cued to a video.  For each question, give a title to the video segment that leads up to that question, and select the time when that segment ends and the question should show.  You can grab this from the playing video, or type the time in min:sec form.  Make sure all times are at least one second before the end of the video."); ?></p>
 
 <p><?php echo _("If your video contains a followup segment to a question (such as a solution), you can indicate this and specify when the followup ends.  The next segment will then start from the end of this followup."); ?></p>
 
 <form method="post" style="clear:both;" onsubmit="return validatevidform(this);">
 
-<p>YouTube video ID: <input type="text" name="vidid" id="vidid" value="<?php echo Sanitize::encodeStringForDisplay($vidid); ?>"/>
+<p><label>YouTube video ID: <input type="text" name="vidid" id="vidid" value="<?php echo Sanitize::encodeStringForDisplay($vidid); ?>"/></label>
 <button type="button" onclick="loadnewvideo()"><?php echo _("Load Video"); ?></button></p>
 <p>
-	<?php echo _('Video Aspect Ratio:'); ?>
+	<label for=vidar><?php echo _('Video Aspect Ratio:'); ?></label>
 	<select name="vidar" id="vidar" onchange="updateAR()">
 <?php
 	$ratios = array("16:9", "4:3", "3:2");
@@ -419,31 +433,31 @@ for ($i=0;$i<$n;$i++) {
 
 	if (isset($qn[$i])) {
 		echo '<div class="vidsegblock">';
-		echo _('Segment title:').' <input type="text" size="20" name="segtitle'.$i.'" value="' . Sanitize::encodeStringForDisplay($title[$i]) . '"/> ';
-		echo _('Ends at:').' <input type="text" size="4" name="segend'.$i.'" id="segend' . $i . '" value="' . Sanitize::encodeStringForDisplay($endtime[$i]) . '"/> ';
+		echo _('Segment that leads to Question ') . (Sanitize::onlyInt($qn[$i]) + 1) . ': ' . Sanitize::encodeStringForDisplay($qtitle[$qidbynum[$qn[$i]]]) . '<br/>';
+		echo '<label>'._('Segment title:').' <input type="text" size="20" name="segtitle'.$i.'" value="' . Sanitize::encodeStringForDisplay($title[$i]) . '"/></label> ';
+		echo '<label>'._('Ends at:').' <input type="text" size="4" name="segend'.$i.'" id="segend' . $i . '" value="' . Sanitize::encodeStringForDisplay($endtime[$i]) . '"/></label> ';
 		echo '<input type="button" value="'._('grab').'" onclick="grabcurvidtime('.$i.',0);"/> ';
-		echo _('Question ') . (Sanitize::onlyInt($qn[$i]) + 1) . ': ' . Sanitize::encodeStringForDisplay($qtitle[$qidbynum[$qn[$i]]]);
 		echo '<input type="hidden" name="qn'.$i.'" value="' . Sanitize::encodeStringForDisplay($qn[$i]) . '"/>';
 		echo '<br/>';
-		echo _('Has followup?').' <input type="checkbox" name="hasfollowup'.$i.'" value="1" ';
+		echo '<label><input type="checkbox" name="hasfollowup'.$i.'" value="1" ';
 		if (!empty($hasfollowup[$i])) {
-			echo 'checked="checked" onclick="updatefollowup('.$i.',this);" /> <span id="followupspan'.$i.'">';
+			echo 'checked="checked" onclick="updatefollowup('.$i.',this);" /> '._('Has followup?').'</label> <span id="followupspan'.$i.'">';
 		} else {
-			echo ' onclick="updatefollowup('.$i.',this);" /> <span id="followupspan'.$i.'" style="display:none;">';
+			echo ' onclick="updatefollowup('.$i.',this);" /> '._('Has followup?').'</label> <span id="followupspan'.$i.'" style="display:none;">';
 		}
-		echo _('Followup title:').' <input type="text" size="20" name="followuptitle'.$i.'" value="' . Sanitize::encodeStringForDisplay($followuptitle[$i]) . '"/> ';
-		echo _('Ends at:').' <input type="text" size="4" name="followupend'.$i.'" id="followupend'.$i.'" value="' . Sanitize::encodeStringForDisplay($followupendtime[$i]) . '"/> ';
+		echo '<label>'._('Followup title:').' <input type="text" size="20" name="followuptitle'.$i.'" value="' . Sanitize::encodeStringForDisplay($followuptitle[$i] ?? '') . '"/></label> ';
+		echo '<label>'._('Ends at:').' <input type="text" size="4" name="followupend'.$i.'" id="followupend'.$i.'" value="' . Sanitize::encodeStringForDisplay($followupendtime[$i] ?? '') . '"/></label> ';
 		echo '<input type="button" value="'._('grab').'" onclick="grabcurvidtime('.$i.',1);"/> ';
-		echo _('Show link in navigation?').' <input type="checkbox" name="showlink'.$i.'" value="1" ';
+		echo '<label><input type="checkbox" name="showlink'.$i.'" value="1" ';
 		if (!empty($showlink[$i])) {
 			echo 'checked="checked"';
 		}
-		echo '/></span>';
+		echo '/> ' . _('Show link in navigation?') . '</label></span>';
 		echo '</div>';
 	} else {
 		echo '<div class="vidsegblock">';
-		echo _('Segment title:').' <input type="text" size="20" name="segtitle'.$i.'" value="' . Sanitize::encodeStringForDisplay($title[$i]) . '"/> ';
-		echo _('Ends at:').' <input type="text" size="4" name="segend'.$i.'" id="segend'.$i.'" value="' . Sanitize::encodeStringForDisplay($endtime[$i]) . '"/> ';
+		echo '<label>'._('Segment title:').' <input type="text" size="20" name="segtitle'.$i.'" value="' . Sanitize::encodeStringForDisplay($title[$i]) . '"/></label> ';
+		echo '<label>'._('Ends at:').' <input type="text" size="4" name="segend'.$i.'" id="segend'.$i.'" value="' . Sanitize::encodeStringForDisplay($endtime[$i]) . '"/></label> ';
 		echo '<input type="button" value="'._('grab').'" onclick="grabcurvidtime('.$i.',0);"/> <a href="#" onclick="return deleteseg(this);">[Delete]</a></div>';
 	}
 }
@@ -451,7 +465,7 @@ echo '<div class="insblock" id="insat' . $n . '">';
 echo '<a href="#" onclick="addsegat(' . $n . '); return false;">'._('Add video segment break').'</a></div>';
 
 echo '<div class="vidsegblock">';
-echo _('Remainder of video segment title (if any):').' <input type="text" size="20" name="finalseg" value="' . Sanitize::encodeStringForDisplay($finalsegtitle) . '"/></div>';
+echo '<label>'._('Remainder of video segment title (if any):').' <input type="text" size="20" name="finalseg" value="' . Sanitize::encodeStringForDisplay($finalsegtitle) . '"/></label></div>';
 echo '<p><button type="submit">'._('Submit').'</button></p>';
 echo '<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>';
 echo '<p><button type="submit" name="clearall" value=1 onclick="return confirm(\'Are you SURE? This will delete ALL defined cues.\')">Reset All Cues</button></p>';

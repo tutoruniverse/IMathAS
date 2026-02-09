@@ -3,19 +3,18 @@
     v-if = "qn === -1 || showNav"
   >
     <button
-      v-if="qn === -1 && cue === -1"
+      v-if="qn === -1 && !playing"
       @click = "startVid"
       class = "primary"
     >
-      {{ $t('videocued.start') }}
+      {{ $t('videocued-start') }}
     </button>
-
     <button
       v-if = "qn > -1 && hasNextVid"
       @click = "nextVidLink"
       :class="{'primary': status !== 'correct' || !showSkip}"
     >
-      {{ $t('videocued.continue', {'title': nextVidTitle}) }}
+      {{ $t('videocued-continue', {'title': nextVidTitle}) }}
     </button>
 
     <button
@@ -23,7 +22,7 @@
       @click = "skipLink"
       class="primary"
     >
-      {{ $t('videocued.skipto', {'title': skipTitle}) }}
+      {{ $t('videocued-skipto', {'title': skipTitle}) }}
     </button>
   </div>
 </template>
@@ -33,7 +32,7 @@ import { store } from '../basicstore';
 
 export default {
   name: 'VideocuedResultNav',
-  props: ['qn', 'cue'],
+  props: ['qn', 'cue', 'playing'],
   computed: {
     qdata () {
       return store.assessInfo.questions[this.qn];
@@ -69,6 +68,9 @@ export default {
         : 'nextseg';
     },
     hasNextVid () {
+      if (store.assessInfo.videocues[this.cue].hasOwnProperty('followuptitle')) {
+        this.$emit('addfollowup', this.cue);
+      }
       return (this.nextVidType === 'followup' ||
         store.assessInfo.videocues.hasOwnProperty(this.cue + 1)
       );
@@ -102,7 +104,7 @@ export default {
       }
     },
     startVid () {
-      this.$emit('jumpto', 0, 'v');
+      this.$emit('jumpto', this.cue === -1 ? 0 : this.cue, 'rv');
     }
   }
 };

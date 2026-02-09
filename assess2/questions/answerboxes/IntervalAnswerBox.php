@@ -84,6 +84,7 @@ class IntervalAnswerBox implements AnswerBox
                 $tip .= _('Use oo to enter Infinity.');
             }
             if ($reqdecimals !== '') {
+                list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
                 $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
             }
             $shorttip = _('Enter an interval using interval notation');
@@ -117,7 +118,7 @@ class IntervalAnswerBox implements AnswerBox
         }
         $attributes = [
             'type' => 'text',
-            'size' => $answerboxsize,
+            'style' => 'width:'.sizeToCSS($answerboxsize),
             'name' => "qn$qn",
             'id' => "qn$qn",
             'value' => $la,
@@ -150,7 +151,7 @@ class IntervalAnswerBox implements AnswerBox
         $preview .= "<span id=p$qn></span> ";
 
         if (in_array('nosoln', $ansformats)) {
-            list($out, $answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox, 'interval');
+            list($out, $answer, $nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox, 'interval');
             $answer = str_replace('"', '', $answer);
         }
         if ($answer !== '' && !is_array($answer) && !$isConditional) {

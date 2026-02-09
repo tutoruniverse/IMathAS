@@ -7,6 +7,7 @@
 require_once __DIR__."/../includes/ltioutcomes.php";
 require_once __DIR__.'/AssessInfo.php';
 require_once __DIR__.'/AssessRecord.php';
+require_once __DIR__.'/../includes/TeacherAuditLog.php';
 
 class AssessHelpers
 {
@@ -21,7 +22,7 @@ class AssessHelpers
    * @param  bool $transaction  Whether to wrap in a transaction
    */
   public static function retotalAll($cid, $aid, $updateLTI=true, $forceresend=false, $convertsubmitby='',$transaction=true) {
-    global $DBH;
+    global $DBH, $latepasshrs, $courseenddate;
     // Re-total any student attempts on this assessment
       //need to re-score assessment attempts based on withdrawal
     if ($transaction) {
@@ -34,14 +35,12 @@ class AssessHelpers
         $timelimitmults[$row['userid']] = $row['timelimitmult'];
     }
     $stm = $DBH->prepare("SELECT imas_exceptions.* FROM imas_exceptions JOIN imas_assessment_records AS iar 
-        ON imas_exceptions.userid=iar.userid AND imas_exceptions.assessmentid=iar.assessmentid WHERE
-        iar.assessmentid=?");
+        ON imas_exceptions.userid=iar.userid AND imas_exceptions.assessmentid=iar.assessmentid 
+        AND imas_exceptions.itemtype='A' WHERE iar.assessmentid=?");
     $stm->execute(array($aid));
     $exceptions = [];
     while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
-        $exceptions[$row['userid']] = array($row['startdate'],$row['enddate'],
-            $row['islatepass'],$row['is_lti'],$row['exceptionpenalty'],
-            $row['waivereqscore'],$row['timeext'],$row['attemptext']);
+        $exceptions[$row['userid']] = $row;
     }
   	$stm = $DBH->prepare("SELECT * FROM imas_assessment_records WHERE assessmentid=? FOR UPDATE");
   	$stm->execute(array($aid));
@@ -56,7 +55,7 @@ class AssessHelpers
             $assess_info->setException(
                 $row['userid'],
                 isset($exceptions[$row['userid']]) ? $exceptions[$row['userid']] : false,
-                true
+                true, 0, $latepasshrs, $courseenddate
             );
             $assess_info->applyTimelimitMultiplier($timelimitmults[$row['userid']]);
   			$assess_record = new AssessRecord($DBH, $assess_info, false);
@@ -94,7 +93,7 @@ class AssessHelpers
    * @param  int $uid   The user ID 
    */
   public static function retotalOne($cid, $aid, $uid) {
-    global $DBH;
+    global $DBH, $latepasshrs, $courseenddate;
     // Re-total any student attempts on this assessment
       //need to re-score assessment attempts based on withdrawal
     $DBH->beginTransaction();
@@ -106,7 +105,7 @@ class AssessHelpers
   	$stm->execute(array($aid, $uid));
   	if ($stm->rowCount() > 0) {
   		$assess_info = new AssessInfo($DBH, $aid, $cid, false);
-        $assess_info->loadException($uid, true);
+        $assess_info->loadException($uid, true, 0, $latepasshrs, $courseenddate);
         $assess_info->applyTimelimitMultiplier($timelimitmult);
         $assess_info->loadQuestionSettings('all', false, false);
         $submitby = $assess_info->getSetting('submitby');
@@ -139,7 +138,7 @@ class AssessHelpers
    * @return int      The number of assessments submitted
    */
   public static function submitAllUnsumitted($cid, $aid) {
-    global $DBH;
+    global $DBH, $latepasshrs, $courseenddate;
     // load settings
     $assess_info = new AssessInfo($DBH, $aid, $cid, false);
 
@@ -163,7 +162,7 @@ class AssessHelpers
       $assess_record->parseData();
 
       // need to check if assessment is still available for student
-      $assess_info->loadException($line['userid'], true);
+      $assess_info->loadException($line['userid'], true, 0, $latepasshrs, $courseenddate);
       if ($assess_info->getSetting('available') === 'yes') {
         // skip if still available to student and no time limit or not expired
         if (abs($assess_info->getSetting('timelimit')) > 0) {
@@ -200,6 +199,71 @@ class AssessHelpers
       }
     }
     $DBH->commit();
+    return $cnt;
+  }
+
+  /**
+   * Manually Release all grades
+   * @param  int $cid   The course ID
+   * @param  int $aid   The assessment ID
+   * @param  array|string $stus  array of userids to update, or 'all' for all
+   * @param  bool $release  true to release, false to un-release
+   * @return int      The number of assessments changed
+   */
+  public static function manuallyReleaseAll($cid, $aid, $stus, $release) {
+    global $DBH;
+    // load settings
+    $assess_info = new AssessInfo($DBH, $aid, $cid, false);
+
+    // this only makes sense for manual scoresingb
+    if ($assess_info->getSetting('scoresingb') !== 'manual') {
+      return 0;
+    }
+    if (is_array($stus) && count($stus) === 0) {
+      return 0;
+    }
+
+    $DBH->beginTransaction();
+    if ($stus === 'all') {
+      $stm = $DBH->prepare("SELECT * FROM imas_assessment_records WHERE assessmentid=? FOR UPDATE");
+      $stm->execute(array($aid));
+    } else {
+      $ph = Sanitize::generateQueryPlaceholders($stus);
+      $stm = $DBH->prepare("SELECT * FROM imas_assessment_records WHERE userid IN ($ph) AND assessmentid=? FOR UPDATE");
+      $stm->execute([...$stus, $aid]);
+    }
+
+    $cnt = 0;
+    $changes = [];
+    while($line=$stm->fetch(PDO::FETCH_ASSOC)) {
+      $GLOBALS['assessver'] = $line['ver'];
+
+      $assess_record = new AssessRecord($DBH, $assess_info, false);
+      $assess_record->setRecord($line);
+      $assess_record->parseData();
+
+      $alreadyreleased = (($assess_record->getstatus2()&1)==1);
+
+      if ($alreadyreleased !== $release) { // if changing status
+        $assess_record->setManuallyReleased($release);
+        $assess_record->saveRecord();
+        $changes[] = $line['userid'];
+        // update LTI grade
+        $assess_record->updateLTIscore(true, false);
+        $cnt++;
+      }
+    }
+    $DBH->commit();
+    if (!empty($changes)) {
+      TeacherAuditLog::addTracking(
+        $cid,
+        "Change Grades",
+        $aid,
+        array(
+          'mass_manual_release'=>['to'=>$release?1:0, 'stus'=>$changes]
+        )
+      );
+    }
     return $cnt;
   }
 

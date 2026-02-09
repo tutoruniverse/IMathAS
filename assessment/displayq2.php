@@ -609,16 +609,17 @@ function displayq($qnidx,$qidx,$seed,$doshowans,$showhints,$attemptn,$returnqtxt
 					strpos($extrefpt[1],'vimeo.com/')!==false
 				) {
 					$extrefpt[1] = $GLOBALS['basesiteurl'] . "/assessment/watchvid.php?url=" . Sanitize::encodeUrlParam($extrefpt[1]);
-					echo formpopup($extrefpt[0],$extrefpt[1],$vidextrefwidth,$vidextrefheight,"button",true,"video",$qref);
+					echo formpopup(Sanitize::encodeStringForDisplay($extrefpt[0]),$extrefpt[1],$vidextrefwidth,$vidextrefheight,"button",true,"video",$qref,true);
 				} else if ($extrefpt[0]=='read') {
-					echo formpopup("Read",$extrefpt[1],$extrefwidth,$extrefheight,"button",true,"text",$qref);
+					echo formpopup("Read",$extrefpt[1],$extrefwidth,$extrefheight,"button",true,"text",$qref,true);
 				} else {
-					echo formpopup($extrefpt[0],$extrefpt[1],$extrefwidth,$extrefheight,"button",true,"text",$qref);
+					echo formpopup(Sanitize::encodeStringForDisplay($extrefpt[0]),$extrefpt[1],$extrefwidth,$extrefheight,"button",true,"text",$qref,true);
 				}
 			}
 		}
 		if (($qdata['solutionopts']&2)==2 && $qdata['solution']!='') {
-			$addr = $GLOBALS['basesiteurl'] . "/assessment/showsoln.php?id=".$qidx.'&sig='.md5($qidx.$_SESSION['secsalt']);
+			$sig = hash_hmac('sha256', $qidx, $_SESSION['secsalt']);
+            $addr = $GLOBALS['basesiteurl'] . "/assessment/showsoln.php?id=" . $qidx . '&sig=' . urlencode($sig);
 			$addr .= '&t='.($qdata['solutionopts']&1).'&cid='.$GLOBALS['cid'];
 			if ($GLOBALS['cid']=='embedq' && isset($GLOBALS['theme'])) {
 				$addr .= '&theme='.Sanitize::encodeUrlParam($GLOBALS['theme']);
@@ -3321,7 +3322,7 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
             } else {
                 $bge = '';
             }
-			$out .= "<script type=\"text/javascript\">canvases[$qn] = [$qn,'$bge',{$settings[0]},{$settings[1]},{$settings[2]},{$settings[3]},5,{$settings[6]},{$settings[7]},$def,$dotline,$locky,$snaptogrid];";
+			$out .= "<script type=\"text/javascript\">canvases[$qn] = [$qn,'$bge',{$settings[0]},{$settings[1]},{$settings[2]},{$settings[3]},5,{$settings[6]},{$settings[7]},$def,$dotline,$locky,$snaptogrid,''];";
 			if (isset($GLOBALS['capturedrawinit'])) {
 				if (!isset($GLOBALS['drawinitdata'])) {
 					$GLOBALS['drawinitdata'] = array();
@@ -5845,6 +5846,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 						$y3p = $ytopix($y3);
 						$func = makepretty(substr($function[0],2));
 						$func = makeMathFunction($func, 'y');
+						if ($func === false) { continue; }
 						$Lx1p = $xtopix(@$func(['y'=>$y1]));
 						$Lx2p = $xtopix(@$func(['y'=>$y2]));
 						$Lx3p = $xtopix(@$func(['y'=>$y3]));
@@ -5889,6 +5891,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 					}
 				} else if (count($function)==3) { //line segment or ray
 					$func = makeMathFunction(makepretty($function[0]), 'x');
+					if ($func === false) { continue; }
 					if ($function[1]=='-oo') { //ray to left
 						$y1p = $ytopix($func(['x'=>floatval($function[2])-1]));
 						$y2p = $ytopix($func(['x'=>floatval($function[2])]));
@@ -5909,7 +5912,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 					}
 				} else {
 					$func = makeMathFunction(makepretty($function[0]), 'x');
-
+					if ($func === false) { continue; }
 					$y1 = @$func(['x'=>$x1]);
 					$y2 = @$func(['x'=>$x2]);
 					$y3 = @$func(['x'=>$x3]);
@@ -5946,6 +5949,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 										}
 									}
 									$inlogfunc = makeMathFunction(makepretty($loginside), 'x');
+									if ($inlogfunc === false) { continue; }
 									//We're going to assume inside is linear
 									//Calculate (0,y0), (1,y1).  m=(y1-y0), y=(y1-y0)x+y0
 									//solve for when this is =0
@@ -6035,6 +6039,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 						if ($nested==0) {
 							$infunc = makepretty(substr($function[0],$p+5,$i-$p-5));
 							$infunc = makeMathFunction($infunc, 'x');
+							if ($infunc === false) { continue; }
 							$y0 = $infunc(['x'=>0]);
 							$y1 = $infunc(['x'=>1]);
 							$xint = -$y0/($y1-$y0);
@@ -6058,6 +6063,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 						if ($nested==0) {
 							$infunc = makepretty(substr($function[0],$p+4,$i-$p-4));
 							$infunc = makeMathFunction($infunc, 'x');
+							if ($infunc === false) { continue; }
 							$y0 = $infunc(['x'=>0]);
 							$y1 = $infunc(['x'=>1]);
 							$period = 2*M_PI/($y1-$y0); //slope of inside function
@@ -6841,6 +6847,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 				} else {
 					$func = makepretty(substr($function[0],$c));
 					$func = makeMathFunction($func, 'x');
+					if ($func === false) { continue; }
 					$y1 = $func(['x'=>$x1]);
 					$y2 = $func(['x'=>$x2]);
 					$y3 = $func(['x'=>$x3]);
@@ -7147,7 +7154,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 				}
 				$anslines[$key] = array();
 				$func = makeMathFunction(makepretty($function[0]), 'x');
-
+				if ($func === false) { continue; }
 				if (!isset($function[1])) {
 					$function[1] = $settings[0];
 				}
@@ -7396,7 +7403,8 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 				}
 			}
 			if ($found) {
-				$GLOBALS['partlastanswer'] = '@FILE:'.$_POST["lf$qn"].'@';
+				$GLOBALS['partlastanswer'] = '@FILE:'.Sanitize::simpleASCII($_POST["lf$qn"]).'@';
+				/*
 				if ($answerformat=='excel') {
 					$zip = new ZipArchive;
 					if ($zip->open(getasidfilepath($_POST["lf$qn"]))) {
@@ -7408,6 +7416,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 						return 0;
 					}
 				}
+				*/
 				$hasfile = true;
 			} else {
 				$GLOBALS['partlastanswer'] = '';
@@ -7479,6 +7488,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 			}
 
 			if (is_uploaded_file($_FILES["qn$qn"]['tmp_name'])) {
+				/*
 				if ($answerformat=='excel') {
 					$zip = new ZipArchive;
 					if ($zip->open($_FILES["qn$qn"]['tmp_name'])) {
@@ -7494,6 +7504,7 @@ function scorepart($anstype,$qn,$givenans,$options,$multi) {
 						return 0;
 					}
 				}
+				*/
 
 				$s3object = "adata/$s3asid/$filename";
 				if (storeuploadedfile("qn$qn",$s3object)) {
@@ -7706,338 +7717,6 @@ function isNaN( $var ) {
 
 function ltrimzero($v,$k) {
 	return ltrim($v, ' 0');
-}
-function checkreqtimes($tocheck,$rtimes) {
-	global $mathfuncs, $myrights;
-	if ($rtimes=='') {return 1;}
-	if ($tocheck=='DNE' || $tocheck=='oo' || $tocheck=='+oo' || $tocheck=='-oo') {
-		return 1;
-	}
-	$cleanans = preg_replace('/[^\w\*\/\+\-\(\)\[\],\.\^=\|]+/','',$tocheck);
-
-	//if entry used pow or exp, we want to replace them with their asciimath symbols for requiretimes purposes
-	$cleanans = str_replace("pow","^",$cleanans);
-	$cleanans = str_replace("exp","e",$cleanans);
-	$cleanans = preg_replace('/\^\((-?[\d\.]+)\)([^\d]|$)/','^$1$2', $cleanans);
-
-	if (is_numeric($cleanans) && $cleanans>0 && $cleanans<1) {
-		$cleanans = ltrim($cleanans,'0');
-	}
-	$ignore_case = true;
-	if ($rtimes != '') {
-		$list = array_map('trim',explode(",",$rtimes));
-		for ($i=0;$i < count($list);$i+=2) {
-			if ($list[$i]=='') {continue;}
-			if (!isset($list[$i+1]) ||
-			   (strlen($list[$i+1])<2 && $list[$i]!='ignore_case' && $list[$i]!='ignore_commas' && $list[$i]!='ignore_symbol')) {
-				if ($myrights>10) {
-					echo "Invalid requiretimes - check format";
-				}
-				continue;
-			}
-			$list[$i+1] = trim($list[$i+1]);
-			if ($list[$i]=='ignore_case') {
-				$ignore_case = ($list[$i+1]==='1' || $list[$i+1]==='true' || $list[$i+1]==='=1');
-				continue;
-			} else if ($list[$i]=='ignore_commas') {
-				if ($list[$i+1]==='1' || $list[$i+1]==='true' || $list[$i+1]==='=1') {
-					$cleanans = str_replace(',','',$cleanans);
-				}
-				continue;
-			} else if ($list[$i]=='ignore_symbol') {
-				$cleanans = str_replace($list[$i+1],'',$cleanans);
-				continue;
-			}
-			$comp = substr($list[$i+1],0,1);
-			if (substr($list[$i+1],1,1)==='=') { //<=, >=, ==, !=
-				if ($comp=='<' || $comp=='>') {
-					$comp .= '=';
-				}
-				$num = intval(substr($list[$i+1],2));
-			} else {
-				$num = intval(substr($list[$i+1],1));
-			}
-            $grouptocheck = array_map('trim', explode('||',$list[$i]));
-			$okingroup = false;
-			foreach ($grouptocheck as $lookfor) {
-				if ($lookfor=='#') {
-					$nummatch = preg_match_all('/[\d\.]+/',$cleanans,$m);
-				} else if ($lookfor[0]=='#') {
-					if (!isset($all_numbers)) {
-						preg_match_all('/[\d\.]+/',$cleanans,$matches);
-						$all_numbers = $matches[0];
-						array_walk($all_numbers, 'ltrimzero');
-					}
-					$lookfor = ltrim(str_replace(array('-', ' '),'',substr($lookfor,1)), ' 0');
-					$nummatch = count(array_keys($all_numbers,$lookfor));
-				} else if (strlen($lookfor)>6 && substr($lookfor,0,6)=='regex:') {
-					$regex = str_replace('/','\\/',substr($lookfor,6));
-					$nummatch = preg_match_all('/'.$regex.'/'.($ignore_case?'i':''),$cleanans,$m);
-				} else {
-					if ($ignore_case || in_array($lookfor, $mathfuncs)) {
-                        $nummatch = substr_count(strtolower($cleanans),strtolower($lookfor));
-					} else {
-						$nummatch = substr_count($cleanans,$lookfor);
-                    }
-				}
-
-				if ($comp == "=") {
-					if ($nummatch==$num) {
-						$okingroup = true;
-						break;
-					}
-				} else if ($comp == "<") {
-					if ($nummatch<$num) {
-						$okingroup = true;
-						break;
-					}
-				} else if ($comp == "<=") {
-					if ($nummatch<=$num) {
-						$okingroup = true;
-						break;
-					}
-				} else if ($comp == ">") {
-					if ($nummatch>$num) {
-						$okingroup = true;
-						break;
-					}
-				} else if ($comp == ">=") {
-					if ($nummatch>=$num) {
-						$okingroup = true;
-						break;
-					}
-				} else if ($comp == "!") {
-					if ($nummatch!=$num) {
-						$okingroup = true;
-						break;
-					}
-				} else if ($myrights>10) {
-					echo "Invalid requiretimes - check format";
-				}
-			}
-			if (!$okingroup) {
-				return 0;
-			}
-		}
-	}
-	return 1;
-}
-
-
-//parses complex numbers.  Can handle anything, but only with
-//one i in it.
-function parsecomplex($v) {
-	$v = str_replace(' ','',$v);
-	$v = str_replace(array('sin','pi'),array('s$n','p$'),$v);
-	$v = preg_replace('/\((\d+\*?i|i)\)\/(\d+)/','$1/$2',$v);
-	$len = strlen($v);
-	//preg_match_all('/(\bi|i\b)/',$v,$matches,PREG_OFFSET_CAPTURE);
-	//if (count($matches[0])>1) {
-	if (substr_count($v,'i')>1) {
-		return _('error - more than 1 i in expression');
-	} else {
-		//$p = $matches[0][0][1];
-		$p = strpos($v,'i');
-		if ($p===false) {
-			$real = $v;
-			$imag = 0;
-		} else {
-			//look left
-			$nd = 0;
-			for ($L=$p-1;$L>0;$L--) {
-				$c = $v[$L];
-				if ($c==')') {
-					$nd++;
-				} else if ($c=='(') {
-					$nd--;
-				} else if (($c=='+' || $c=='-') && $nd==0) {
-					break;
-				}
-			}
-			if ($L<0) {$L=0;}
-			if ($nd != 0) {
-				return _('error - invalid form');
-			}
-			//look right
-			$nd = 0;
-
-			for ($R=$p+1;$R<$len;$R++) {
-				$c = $v[$R];
-				if ($c=='(') {
-					$nd++;
-				} else if ($c==')') {
-					$nd--;
-				} else if (($c=='+' || $c=='-') && $nd==0) {
-					break;
-				}
-			}
-			if ($nd != 0) {
-				return _('error - invalid form');
-			}
-			//which is bigger?
-			if ($p-$L>0 && $R-$p>0 && ($R==$len || $L==0)) {
-				//return _('error - invalid form');
-				if ($R==$len) {// real + AiB
-					$real = substr($v,0,$L);
-					$imag = substr($v,$L,$p-$L);
-					$imag .= '*'.substr($v,$p+1+($v[$p+1]=='*'?1:0),$R-$p-1);
-				} else if ($L==0) { //AiB + real
-					$real = substr($v,$R);
-					$imag = substr($v,0,$p);
-					$imag .= '*'.substr($v,$p+1+($v[$p+1]=='*'?1:0),$R-$p-1);
-				} else {
-					return _('error - invalid form');
-				}
-				$imag = str_replace('-*','-1*',$imag);
-				$imag = str_replace('+*','+1*',$imag);
-			} else if ($p-$L>1) {
-				$imag = substr($v,$L,$p-$L);
-				$real = substr($v,0,$L) . substr($v,$p+1);
-			} else if ($R-$p>1) {
-				if ($p>0) {
-					if ($v[$p-1]!='+' && $v[$p-1]!='-') {
-						return _('error - invalid form');
-					}
-					$imag = $v[$p-1].substr($v,$p+1+($v[$p+1]=='*'?1:0),$R-$p-1);
-					$real = substr($v,0,$p-1) . substr($v,$R);
-				} else {
-					$imag = substr($v,$p+1,$R-$p-1);
-					$real = substr($v,0,$p) . substr($v,$R);
-				}
-			} else { //i or +i or -i or 3i  (one digit)
-				if ($v[$L]=='+') {
-					$imag = 1;
-				} else if ($v[$L]=='-') {
-					$imag = -1;
-				} else if ($p==0) {
-					$imag = 1;
-				} else {
-					$imag = $v[$L];
-				}
-				$real = ($p>0?substr($v,0,$L):'') . substr($v,$p+1);
-			}
-			if ($real=='') {
-				$real = 0;
-			}
-			if ($imag[0]=='/') {
-				$imag = '1'.$imag;
-			} else if (($imag[0]=='+' || $imag[0]=='-') && $imag[1]=='/') {
-				$imag = $imag[0].'1'.substr($imag,1);
-			}
-			$imag = str_replace('*/','/',$imag);
-			if (substr($imag,-1)=='*') {
-				$imag = substr($imag,0,-1);
-			}
-		}
-		$real = str_replace(array('s$n','p$'),array('sin','pi'),$real);
-		$imag = str_replace(array('s$n','p$'),array('sin','pi'),$imag);
-		return array($real,$imag);
-	}
-}
-
-
-//checks the format of a value
-//tocheck:  string to check
-//ansformats:  array of answer formats.  Currently supports:
-//   fraction, reducedfraction, fracordec, notrig, nolongdec, scinot, mixednumber, nodecimal
-//returns:  false: bad format, true: good format
-function checkanswerformat($tocheck,$ansformats) {
-	$tocheck = trim($tocheck);
-	$tocheck = str_replace(',','',$tocheck);
-	if (!is_array($ansformats)) {$ansformats = explode(',',$ansformats);}
-	if (strtoupper($tocheck)=='DNE' || $tocheck=='oo' || $tocheck=='+oo' || $tocheck=='-oo') {
-		return true;
-	}
-	if (in_array("allowmixed",$ansformats) && preg_match('/^\s*(\-?\s*\d+)\s*(_|\s)\s*(\d+)\s*\/\s*(\d+)\s*$/',$tocheck,$mnmatches)) {
-		//rewrite mixed number as an improper fraction
-		$num = str_replace(' ','',$mnmatches[1])*$mnmatches[4] + $mnmatches[3]*1;
-		$tocheck = $num.'/'.$mnmatches[4];
-	}
-
-	if (in_array("fraction",$ansformats) || in_array("reducedfraction",$ansformats) || in_array("fracordec",$ansformats)) {
-		$tocheck = preg_replace('/\s/','',$tocheck);
-		if (!preg_match('/^\(?\-?\s*\(?\d+\)?\/\(?\d+\)?$/',$tocheck) && !preg_match('/^\(?\d+\)?\/\(?\-?\d+\)?$/',$tocheck) && !preg_match('/^\s*?\-?\s*\d+\s*$/',$tocheck) && (!in_array("fracordec",$ansformats) || !preg_match('/^\s*?\-?\s*\d*?\.\d*?\s*$/',$tocheck))) {
-			return false;
-		} else {
-			if (in_array("reducedfraction",$ansformats) && strpos($tocheck,'/')!==false) {
-				$tocheck = str_replace(array('(',')'),'',$tocheck);
-				$tmpa = explode("/",$tocheck);
-				if (gcd(abs($tmpa[0]),abs($tmpa[1]))!=1 || $tmpa[1]==1) {
-					return false;
-				}
-			}
-		}
-	}
-	if (in_array("notrig",$ansformats)) {
-		if (preg_match('/(sin|cos|tan|cot|csc|sec)/i',$tocheck)) {
-			return false;
-		}
-	}
-	if (in_array("nolongdec",$ansformats)) {
-		if (preg_match('/\.\d{6}/',$tocheck)) {
-			return false;
-		}
-	}
-	if (in_array("decimal", $ansformats)) {
-		$totest = str_replace(' ','',$tocheck);
-		if (!is_numeric($totest) || !preg_match('/^\-?[\d\.]+$/',$totest)) {
-			return false;
-		}
-	}
-	if (in_array("scinotordec",$ansformats)) {
-		$totest = str_replace(' ','',$tocheck);
-		if (!is_numeric($totest) && !preg_match('/^\-?[1-9](\.\d*)?(\*|x|X|×|✕)10\^(\(?\-?\d+\)?)$/',$totest)) {
-			return false;
-		}
-	}
-	if (in_array("scinot",$ansformats)) {
-		$totest = str_replace(' ','',$tocheck);
-		if (!preg_match('/^\-?[1-9](\.\d*)?(\*|x|X|×|✕)10\^(\(?\-?\d+\)?)$/',$totest)) {
-			return false;
-		}
-	}
-
-	if (in_array("mixednumber",$ansformats) || in_array("sloppymixednumber",$ansformats) || in_array("mixednumberorimproper",$ansformats)) {
-		if (preg_match('/^\(?\-?\s*\(?\d+\)?\/\(?\d+\)?$/',$tocheck) || preg_match('/^\(?\d+\)?\/\(?\-?\d+\)?$/',$tocheck)) { //fraction
-			$tmpa = explode("/",str_replace(array(' ','(',')'),'',$tocheck));
-			if (in_array("mixednumber",$ansformats)) {
-				if (!in_array("allowunreduced",$ansformats) && ((gcd(abs($tmpa[0]),abs($tmpa[1]))!=1) || abs($tmpa[0])>=abs($tmpa[1]))) {
-					return false;
-				}
-			} else if (in_array("mixednumberorimproper",$ansformats)) {
-				if (!in_array("allowunreduced",$ansformats) && ((gcd(abs($tmpa[0]),abs($tmpa[1]))!=1))) {
-					return false;
-				}
-			}
-		} else if (preg_match('/^\s*\-?\s*\d+\s*(_|\s)\s*\(?(\d+)\)?\s*\/\s*\(?(\d+)\)?\s*$/',$tocheck,$mnmatches)) { //mixed number
-			if (in_array("mixednumber",$ansformats)) {
-				if ($mnmatches[2]>=$mnmatches[3] || (!in_array("allowunreduced",$ansformats) && gcd($mnmatches[2],$mnmatches[3])!=1)) {
-					return false;
-				}
-			} else if (in_array("mixednumberorimproper",$ansformats)) {
-				if ((!in_array("allowunreduced",$ansformats) && gcd($mnmatches[2],$mnmatches[3])!=1) || $mnmatches[2]>=$mnmatches[3])  {
-					return false;
-				}
-			}
-		} else if (preg_match('/^\s*\-?\s*\d+\s*$/',$tocheck)) { //integer
-
-		} else { //not a valid format
-			return false;
-		}
-	}
-
-	if (in_array("nodecimal",$ansformats)) {
-		if (strpos($tocheck,'.')!==false) {
-			return false;
-		}
-		if (strpos($tocheck,'E-')!==false) {
-			return false;
-		}
-		if (preg_match('/10\^\(?\-/',$tocheck)) {
-			return false;
-		}
-	}
-	return true;
 }
 
 function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$doshort=false) {
@@ -8261,15 +7940,52 @@ function rawscoretocolor($sc,$aw) {
 }
 
 function normalizemathunicode($str) {
-	$str = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/', '', $str);
-	$str = str_replace(array('‒','–','—','―','−'),'-',$str);
-	$str = str_replace(array('⁄','∕','⁄ ','÷'),'/',$str);
-	$str = str_replace(array('（','）','∞','∪','≤','≥','⋅','·'), array('(',')','oo','U','<=','>=','*','*'), $str);
-	//these are the slim vector unicodes: u2329 and u232a
-	$str = str_replace(array('⟨','⟩'), array('<','>'), $str);
-	$str = str_replace(array('²','³','₀','₁','₂','₃'), array('^2','^3','_0','_1','_2','_3'), $str);
-	$str = str_replace(array('√','∛'),array('sqrt','root(3)'), $str);
-	$str = preg_replace('/\b(OO|infty)\b/i','oo', $str);
+    $str = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/', '', $str);
+    $str = str_replace(array('‒','–','—','―','−'),'-',$str);
+    $str = str_replace(array('⁄','∕','⁄ ','÷'),'/',$str);
+    $str = str_replace(array('（','）','∞','∪','≤','≥','⋅','·'), array('(',')','oo','U','<=','>=','*','*'), $str);
+    //these are the slim vector unicodes: u2329 and u232a
+    $str = str_replace(array('⟨','⟩'), array('<','>'), $str);
+    $str = str_replace(['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'], ['^0','^1','^2','^3','^4','^5','^6','^7','^8','^9'], $str);
+    $str = str_replace(array('₀','₁','₂','₃'), array('_0','_1','_2','_3'), $str);
+    $str = str_replace(array('√','∛','°'),array('sqrt','root(3)','degree'), $str);
+    $greekLetters = array(
+        'Α' => 'Alpha',   'α' => 'alpha',
+        'Β' => 'Beta',    'β' => 'beta',
+        'Γ' => 'Gamma',   'γ' => 'gamma',
+        'Δ' => 'Delta',   'δ' => 'delta',
+        'Ε' => 'Epsilon', 'ε' => 'epsilon',
+        'Ζ' => 'Zeta',    'ζ' => 'zeta',
+        'Η' => 'Eta',     'η' => 'eta',
+        'Θ' => 'Theta',   'θ' => 'theta',
+        'Ι' => 'Iota',    'ι' => 'iota',
+        'Κ' => 'Kappa',   'κ' => 'kappa',
+        'Λ' => 'Lambda',  'λ' => 'lambda',
+        'Μ' => 'Mu',      'μ' => 'mu',
+        'Ν' => 'Nu',      'ν' => 'nu',
+        'Ξ' => 'Xi',      'ξ' => 'xi',
+        'Ο' => 'Omicron', 'ο' => 'omicron',
+        'Π' => 'Pi',      'π' => 'pi',
+        'Ρ' => 'Rho',     'ρ' => 'rho',
+        'Σ' => 'Sigma',   'σ' => 'sigma',
+        'Τ' => 'Tau',     'τ' => 'tau',
+        'Υ' => 'Upsilon', 'υ' => 'upsilon',
+        'Φ' => 'Phi',     'φ' => 'phi',
+        'Χ' => 'Chi',     'χ' => 'chi',
+        'Ψ' => 'Psi',     'ψ' => 'psi',
+        'Ω' => 'Omega',   'ω' => 'omega'
+    );
+    $str = str_replace(array_keys($greekLetters), array_values($greekLetters), $str);
+
+    $str = preg_replace('/\b(OO|infty)\b/i','oo', $str);
+    $str = str_replace('&ZeroWidthSpace;', '', $str);
+    if (strtoupper(trim($str))==='DNE') {
+        $str = 'DNE';
+    }
+    // truncate excessively long answer
+    if (strlen($str)>8000) {
+        $str = substr($str,0,8000);
+    }
 	return $str;
 }
 

@@ -11,7 +11,8 @@
 	if (isset($studentid) && !isset($_SESSION['stuview'])) {
 		$exceptionfuncs = new ExceptionFuncs($userid, $cid, true, $studentinfo['latepasses'], $latepasshrs);
 	} else {
-		$exceptionfuncs = new ExceptionFuncs($userid, $cid, false);
+		echo 'Only true students can redeem latepasses';
+		exit;
 	}
 
 	if (isset($_REQUEST['from'])) {
@@ -39,11 +40,11 @@
 		echo "Un-use LatePass</div>";
 		$stm = $DBH->prepare("SELECT enddate,islatepass FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
-		if ($stm->rowCount()==0) {
+		$row = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($row === false) {
 			echo '<p>Invalid</p>';
 		} else {
-			$row = $stm->fetch(PDO::FETCH_NUM);
-			if ($row[1]==0) {
+			if ($row['islatepass']==0) {
 				echo '<p>Invalid</p>';
 			} else {
 				$now = time();
@@ -51,26 +52,26 @@
 				$stm->execute(array(':id'=>$aid));
 				$enddate = $stm->fetchColumn(0);
 				//if it's past original due date and latepass is for less than latepasshrs past now, too late
-				if ($now > $enddate && $row[0] < strtotime("+".$latepasshrs." hours", $now)) {
+				if ($now > $enddate && $row['enddate'] < strtotime("+".$latepasshrs." hours", $now)) {
 					echo '<p>Too late to un-use this LatePass</p>';
 				} else {
 					if ($now < $enddate) { //before enddate, return all latepasses
-						$maxLP = max(0,floor(($row[0]-$enddate)/($latepasshrs*3600)+.05));
-						$n = min($maxLP,$row[1]);
+						$maxLP = max(0,floor(($row['enddate']-$enddate)/($latepasshrs*3600)+.05));
+						$n = min($maxLP,$row['islatepass']);
 						$stm = $DBH->prepare("DELETE FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 						$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
 					} else { //figure how many are unused
-						$n = floor(($row[0] - $now)/($latepasshrs*60*60) + .05);
+						$n = floor(($row['enddate'] - $now)/($latepasshrs*60*60) + .05);
 						$tothrs = $n*$latepasshrs;
-						$newend = strtotime("-".$tothrs." hours", $row[0]);
+						$newend = strtotime("-".$tothrs." hours", $row['enddate']);
 						//$newend = $row[0] - $n*$latepasshrs*60*60;
-						if ($row[1]>$n) {
+						if ($row['islatepass']>$n) {
 							$stm = $DBH->prepare("UPDATE imas_exceptions SET islatepass=islatepass-:n,enddate=:enddate WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 							$stm->execute(array(':enddate'=>$newend, ':userid'=>$userid, ':assessmentid'=>$aid, ':n'=>$n));
 						} else {
 							$stm = $DBH->prepare("DELETE FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 							$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
-							$n = $row[1];
+							$n = $row['islatepass'];
 						}
 					}
 					printf("<p>Returning %d LatePass", Sanitize::onlyInt($n));
@@ -94,9 +95,13 @@
 
 	} else if (isset($_POST['confirm'])) {
 		//$addtime = $latepasshrs*60*60;
-		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,LPcutoff FROM imas_assessments WHERE id=:id");
-		$stm->execute(array(':id'=>$aid));
+		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,LPcutoff FROM imas_assessments WHERE id=:id AND courseid=:cid");
+		$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
 		list($allowlate,$enddate,$startdate,$LPcutoff) =$stm->fetch(PDO::FETCH_NUM);
+		if ($enddate === null || $enddate === false) {
+			echo 'Invalid aid';
+			exit;
+		}
 		if ($LPcutoff<$enddate) {
 			$LPcutoff = 0;  //ignore nonsensical values
 		}
@@ -109,15 +114,15 @@
 			$useexception = false;
 			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
 		} else {
-			$r = $stm->fetch(PDO::FETCH_NUM);
+			$r = $stm->fetch(PDO::FETCH_ASSOC);
 			list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($r, array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
 			if ($useexception) {
-				if (!empty($r[3])) { //is_lti - use count in exception
-					$usedlatepasses = $r[2];
+				if (!empty($r['is_lti'])) { //is_lti - use count in exception
+					$usedlatepasses = $r['islatepass'];
 				} else {
-				$usedlatepasses = min(max(0,round(($r[1] - $enddate)/($latepasshrs*3600))), $r[2]);
+					$usedlatepasses = min(max(0,round(($r['enddate'] - $enddate)/($latepasshrs*3600))), $r['islatepass']);
 				}
-				$thised = $r[1];
+				$thised = $r['enddate'];
 			} else {
 				$usedlatepasses = 0;
 				$thised = $enddate;
@@ -140,8 +145,14 @@
 					$enddate = min($enddate, $LPcutoff);
 				}
 				if ($hasexception) { //already have exception
-					$stm = $DBH->prepare("UPDATE imas_exceptions SET enddate=:enddate,islatepass=islatepass+:lps WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
-					$stm->execute(array(':lps'=>$LPneeded, ':userid'=>$userid, ':assessmentid'=>$aid, ':enddate'=>$enddate));
+					if ($r['startdate'] == $r['enddate']) {
+						// since date-ignored type exception, need to set startdate too
+						$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,islatepass=islatepass+:lps WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+						$stm->execute(array(':lps'=>$LPneeded, ':userid'=>$userid, ':assessmentid'=>$aid, ':startdate'=>$startdate, ':enddate'=>$enddate));
+					} else {
+						$stm = $DBH->prepare("UPDATE imas_exceptions SET enddate=:enddate,islatepass=islatepass+:lps WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+						$stm->execute(array(':lps'=>$LPneeded, ':userid'=>$userid, ':assessmentid'=>$aid, ':enddate'=>$enddate));
+					}
 				} else {
 					$stm = $DBH->prepare("INSERT INTO imas_exceptions (userid,assessmentid,startdate,enddate,islatepass,itemtype) VALUES (:userid, :assessmentid, :startdate, :enddate, :islatepass, :itemtype)");
 					$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid, ':startdate'=>$startdate, ':enddate'=>$enddate, ':islatepass'=>$LPneeded, ':itemtype'=>'A'));
@@ -176,9 +187,13 @@
 		//$curBreadcrumb = "$breadcrumbbase <a href=\"course.php?cid=$cid\"> $coursename</a>\n";
 		//$curBreadcrumb .= " Redeem LatePass\n";
 		//echo "<div class=\"breadcrumb\">$curBreadcrumb</div>";
-		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,timelimit,LPcutoff,ver FROM imas_assessments WHERE id=:id");
-		$stm->execute(array(':id'=>$aid));
+		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,timelimit,LPcutoff,ver FROM imas_assessments WHERE id=:id AND courseid=:cid");
+		$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
 		list($allowlate,$enddate,$startdate,$timelimit,$LPcutoff,$aVer) =$stm->fetch(PDO::FETCH_NUM);
+		if ($enddate === null || $enddate === false) {
+			echo 'Invalid aid';
+			exit;
+		}
 		if ($LPcutoff<$enddate) {
 			$LPcutoff = 0;  //ignore nonsensical values
 		}
@@ -190,15 +205,15 @@
 			$thised = $enddate;
 			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
 		} else {
-			$r = $stm->fetch(PDO::FETCH_NUM);
+			$r = $stm->fetch(PDO::FETCH_ASSOC);
 			list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($r, array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
 			if ($useexception) {
-				if (!empty($r[3])) { //is_lti - use count in exception
-					$usedlatepasses = $r[2];
+				if (!empty($r['is_lti'])) { //is_lti - use count in exception
+					$usedlatepasses = $r['islatepass'];
 				} else {
-				$usedlatepasses = min(max(0,round(($r[1] - $enddate)/($latepasshrs*3600))), $r[2]);
+					$usedlatepasses = min(max(0,round(($r['enddate'] - $enddate)/($latepasshrs*3600))), $r['islatepass']);
 				}
-				$thised = $r[1];
+				$thised = $r['enddate'];
 			} else {
 				$usedlatepasses = 0;
 				$thised = $enddate;

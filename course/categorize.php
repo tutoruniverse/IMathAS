@@ -14,6 +14,13 @@
         $addq = 'addquestions';
         $from = 'from=addq';
     }
+	$stm = $DBH->prepare("SELECT itemorder,courseid FROM imas_assessments WHERE id=:id");
+	$stm->execute(array(':id'=>$aid));
+	list($assessitemorder, $sourcecid) = $stm->fetch(PDO::FETCH_NUM);
+	if ($sourcecid !== $cid) {
+		echo "Invalid aid";
+		exit;
+	}
 
 	if (isset($_GET['record'])) {
 
@@ -121,17 +128,17 @@ END;
 	}
 
 	$outcomes = array();
-	function flattenarr($ar) {
-		global $outcomes;
-		foreach ($ar as $v) {
-			if (is_array($v)) { //outcome group
-				$outcomes[] = array($v['name'], 1);
-				flattenarr($v['outcomes']);
-			} else {
-				$outcomes[] = array($v, 0);
-			}
-		}
-	}
+	function flattenarr($ar, $deftype = 0) {
+        global $outcomes;
+        foreach ($ar as $v) {
+            if (is_array($v)) { //outcome group
+                $outcomes[] = array($v['name'], 1);
+                flattenarr($v['outcomes'], 2);
+            } else {
+                $outcomes[] = array($v, $deftype);
+            }
+        }
+    }
 	flattenarr($outcomearr);
 	$query = "SELECT imas_questions.id,imas_libraries.id,imas_libraries.name FROM imas_questions,imas_library_items,imas_libraries ";
 	$query .= "WHERE imas_questions.assessmentid=:assessmentid AND imas_questions.questionsetid=imas_library_items.qsetid AND ";
@@ -145,26 +152,7 @@ END;
 		$libnames[$row[1]] = $row[2];
 	}
 
-	//add assessment names as options
-	//find the names of assessments these questionsetids appear in
-	$query = "SELECT DISTINCT imas_questions.questionsetid AS qsetid,imas_assessments.id AS aid,imas_assessments.name ";
-	$query .= "FROM imas_questions INNER JOIN imas_assessments ";
-	$query .= "ON imas_questions.assessmentid=imas_assessments.id ";
-	$query .= "AND imas_questions.questionsetid = ANY (SELECT imas_questions.questionsetid FROM imas_questions WHERE imas_questions.assessmentid=:assessmentid) ";
-	$query .= "AND imas_assessments.courseid=:courseid ";
-	$query .= "ORDER BY aid";
-	$stm = $DBH->prepare($query);
-	$stm->execute(array(':assessmentid'=>$aid, ':courseid'=>$cid));
-	$assessmentnames = array();
-	$qsetidassessment = array();
-	while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
-		//store the relevent assessment names
-		$assessmentnames[$row['aid']] = $row['name'];
-		if ($row['aid']!=$aid) {
-			//remember this other assignment which uses this same questionsetid
-				$qsetidassessment[$row['qsetid']][] = $row['aid'];
-		}
-	}
+	// get questions in assessment
 	$query = "SELECT iq.id,iqs.id AS qsetid,iq.category,iqs.description FROM imas_questions AS iq,imas_questionset as iqs";
 	$query .= " WHERE iq.questionsetid=iqs.id AND iq.assessmentid=:assessmentid";
 	$stm = $DBH->prepare($query);
@@ -182,10 +170,30 @@ END;
 			$extracats[] = $line['category'];
 		}
 	}
-	$stm = $DBH->prepare("SELECT itemorder FROM imas_assessments WHERE id=:id");
-	$stm->execute(array(':id'=>$aid));
-	$row = $stm->fetch(PDO::FETCH_NUM);
-	$itemarrinit = explode(',',$row[0]);
+
+	$qsetidlist = implode(',', array_map('intval', array_values(array_unique($qsetids))));
+	//add assessment names as options
+	//find the names of assessments these questionsetids appear in
+	$query = "SELECT DISTINCT imas_questions.questionsetid AS qsetid,imas_assessments.id AS aid,imas_assessments.name ";
+	$query .= "FROM imas_questions INNER JOIN imas_assessments ";
+	$query .= "ON imas_questions.assessmentid=imas_assessments.id ";
+	$query .= "AND imas_questions.questionsetid IN ($qsetidlist) ";
+	$query .= "AND imas_assessments.courseid=:courseid ";
+	$query .= "ORDER BY aid";
+	$stm = $DBH->prepare($query);
+	$stm->execute(array(':courseid'=>$cid));
+	$assessmentnames = array();
+	$qsetidassessment = array();
+	while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+		//store the relevent assessment names
+		$assessmentnames[$row['aid']] = $row['name'];
+		if ($row['aid']!=$aid) {
+			//remember this other assignment which uses this same questionsetid
+				$qsetidassessment[$row['qsetid']][] = $row['aid'];
+		}
+	}
+	
+	$itemarrinit = explode(',',$assessitemorder);
 	$itemarr = array();
 	$itemnum = array();
 	foreach ($itemarrinit as $k=>$v) {
@@ -209,11 +217,11 @@ END;
 
 	foreach($itemarr as $qid) {
         if (!isset($qsetids[$qid])) { continue; }
-		echo "<tr><td><input type=\"checkbox\" id=\"c".Sanitize::onlyInt($qid)."\" value=\"" . Sanitize::encodeStringForDisplay($qsetids[$qid]) . "\"/></td>";
-		echo "<td>Q" . Sanitize::encodeStringForDisplay($itemnum[$qid]) . '</td><td>';
+		echo "<tr><td><input type=\"checkbox\" id=\"c".Sanitize::onlyInt($qid)."\" value=\"" . Sanitize::encodeStringForDisplay($qsetids[$qid]) . "\" aria-labelledby=\"qd".Sanitize::onlyInt($qid)."\"/></td>";
+		echo "<td>Q" . Sanitize::encodeStringForDisplay($itemnum[$qid]) . '</td><td id="qd'.Sanitize::onlyInt($qid).'">';
 		echo Sanitize::encodeStringForDisplay($descriptions[$qid]) . "</td>";
 		printf("<td><input type=button value=\""._("Preview")."\" onClick=\"previewq('selform', %d, %d);\"/></td>", Sanitize::onlyInt($qid), Sanitize::onlyInt($qsetids[$qid]));
-		echo "<td><select id=\"".Sanitize::onlyInt($qid)."\" name=\"" . Sanitize::onlyInt($qid) . "\" class=\"qsel\">";
+		echo "<td><select id=\"".Sanitize::onlyInt($qid)."\" name=\"" . Sanitize::onlyInt($qid) . "\" class=\"qsel\" aria-labelledby=\"qd".Sanitize::onlyInt($qid)."\">";
 		echo "<option value=\"0\" ";
 		if ($category[$qid] == 0) { echo "selected=1";}
 		echo ">"._("Uncategorized or Default")."</option>\n";
@@ -228,6 +236,7 @@ END;
 				echo '<optgroup label="'.Sanitize::encodeStringForDisplay($oc[0]).'">';
 				$ingrp = true;
 			} else {
+                if ($ingrp && $oc[1]==0) { echo '</optgroup>';}
 				echo '<option value="' . Sanitize::encodeStringForDisplay($oc[0]) . '" ';
 				if ($category[$qid] == $oc[0]) { echo "selected=1"; $issel = true;}
 				echo '>' . Sanitize::encodeStringForDisplay($outcomenames[$oc[0]]) . '</option>';
@@ -282,13 +291,13 @@ END;
 		echo '</select> <input type="button" value="Assign" onclick="massassign()"/></p>';
 
 	}
-echo "<p>"._("Select first listed")." <select id=\"label\">\n";
+echo "<p><label>"._("Select first listed")." <select id=\"label\">\n";
 echo "<option value=\""._("Libraries")."\">"._("Libraries")."</option>";
 echo "<option value=\""._("Assessments")."\">"._("Assessments")."</option>";
 echo "</select>\n";
-echo _("for all uncategorized questions").": <input type=button value=\""._("Quick Pick")."\" label=\"XXX\" onclick=\"quickpick()\"></p>\n";
+echo _("for all uncategorized questions")."</label>: <input type=button value=\""._("Quick Pick")."\" label=\"XXX\" onclick=\"quickpick()\"></p>\n";
 
-	echo "<p>"._("Add new category to lists").": <input type=text id=\"newcat\" size=40> ";
+	echo "<p><label for=newcat>"._("Add new category to lists")."</label>: <input type=text id=\"newcat\" size=40> ";
 	echo "<input type=button value=\""._("Add Category")."\" onclick=\"addcategory()\"></p>\n";
 	echo '<p><input type=submit value="'._('Record Categorizations').'"> '._('and return to the Add/Remove Questions page').'.  <input type="button" class="secondarybtn" value="'._('Reset').'" onclick="resetcat()"/></p>';
 	echo "</form>\n";

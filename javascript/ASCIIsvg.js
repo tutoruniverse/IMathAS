@@ -80,7 +80,7 @@ function prepWithMath(str) {
   // avoid double-prep cased by script wrap of prepWithMath followed by
   // secondary after prepWithMath
   str = str.replace(/Ma(t|\(t\)\*)h\./g,'');
-	str = str.replace(/\b(abs|acos|asin|atan|ceil|floor|cos|sin|tan|sqrt|exp|max|min|pow)\(/g, 'Math.$1(');
+	str = str.replace(/\b(abs|acos|asin|atan|ceil|floor|sign|cos|sin|tan|sqrt|exp|max|min|pow)\(/g, 'Math.$1(');
 	str = str.replace(/\(E\)/g,'(Math.E)');
 	str = str.replace(/\((PI|pi)\)/g,'(Math.PI)');
 	return str;
@@ -121,13 +121,7 @@ function isSVGavailable() {
     	    //IE9+ can do SVG
 	    return null;
     } else {
-	    try	{
-	      var oSVG=eval("new ActiveXObject('Adobe.SVGCtl.3');");
-		return null;
-	    } catch (e) {
-
-		return 1;
-	    }
+		  return 1;
     }
   } else return 1;
 }
@@ -397,11 +391,22 @@ function initPicture(x_min,x_max,y_min,y_max) {
       svgpicture = qnode;
 
       if (picture.getAttribute("alt") != '' && picture.getAttribute("alt") != null) {
+        var srdiv = document.getElementById(picid+"-srlabel");
+        if (!srdiv) {
+          srdiv = document.createElement("div");
+          srdiv.id = picid+"-srlabel";
+          srdiv.classList = "sr-only";
+          svgpicture.after(srdiv);
+        }
+        srdiv.innerText = picture.getAttribute("alt");
+        svgpicture.setAttribute("aria-hidden", true);
+        /*
         var title = document.createElement("title");
         svgpicture.appendChild(title);
         title.innerText = picture.getAttribute("alt");
         title.id = picid+"-label";
         svgpicture.setAttribute("aria-labelledby", picid+"-label");
+        */
       }
 
       doc = document;
@@ -477,10 +482,14 @@ function initPicture(x_min,x_max,y_min,y_max) {
  node.setAttribute("y","0");
  node.setAttribute("width",width);
  node.setAttribute("height",height);
- node.setAttribute("style","stroke-width:1;fill:white");
+ node.setAttribute("fill","white");
  svgpicture.appendChild(node);
 }
 
+function setBackgroundColor(color) {
+    var bgrect = svgpicture.getElementsByTagName("rect")[0];
+    bgrect.setAttribute("fill", color);
+}
 function setStrokeFill(node) {
   node.setAttribute("stroke-width", strokewidth);
   if (strokedasharray!=null)
@@ -499,7 +508,7 @@ function line(p,q,id) { // segment connecting points p,q (coordinates in units)
   if (id!=null) node = doc.getElementById(id);
   if (node==null) {
     node = myCreateElementSVG("path");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
   }
   node.setAttribute("d","M"+(p[0]*xunitlength+origin[0])+","+
@@ -520,7 +529,7 @@ function path(plist,id,c) {
   if (id!=null) node = doc.getElementById(id);
   if (node==null) {
     node = myCreateElementSVG("path");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
   }
   if (typeof plist == "string") st = plist;
@@ -551,7 +560,7 @@ function circle(center,radius,id) { // coordinates in units
   if (id!=null) node = doc.getElementById(id);
   if (node==null) {
     node = myCreateElementSVG("circle");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
   }
 
@@ -576,7 +585,7 @@ function sector(center,radius,startang,endang,id) {
 	if (id!=null) node = doc.getElementById(id);
 	if (node==null) {
 		node = myCreateElementSVG("path");
-		node.setAttribute("id", id);
+		if (id!=null) node.setAttribute("id", id);
 		svgpicture.appendChild(node);
 	}
 	var arctype = 0;
@@ -619,7 +628,7 @@ function arc(start,end,radius,id) { // coordinates in units
   }
   if (node==null) {
     node = myCreateElementSVG("path");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
   }
   node.setAttribute("d","M"+(start[0]*xunitlength+origin[0])+","+
@@ -647,7 +656,7 @@ function ellipse(center,rx,ry,id) { // coordinates in units
   if (id!=null) node = doc.getElementById(id);
   if (node==null) {
     node = myCreateElementSVG("ellipse");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
   }
   node.setAttribute("cx",center[0]*xunitlength+origin[0]);
@@ -663,7 +672,7 @@ function rect(p,q,id,rx,ry) { // opposite corners in units, rounded by radii
   if (id!=null) node = doc.getElementById(id);
   if (node==null) {
     node = myCreateElementSVG("rect");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
   }
   node.setAttribute("x",Math.min(p[0],q[0])*xunitlength+origin[0]);
@@ -739,7 +748,7 @@ function textabs(p,st,pos,angle,id,fontsty) {
   if (id!=null) node = doc.getElementById(id);
   if (node==null) {
     node = myCreateElementSVG("text");
-    node.setAttribute("id", id);
+    if (id!=null) node.setAttribute("id", id);
     svgpicture.appendChild(node);
     node.appendChild(doc.createTextNode(st));
   }
@@ -802,7 +811,7 @@ function dot(center, typ, label, pos, id) {
   if (typ=="+" || typ=="-" || typ=="|") {
     if (node==null) {
       node = myCreateElementSVG("path");
-      node.setAttribute("id", id);
+      if (id!=null) node.setAttribute("id", id);
       svgpicture.appendChild(node);
     }
     if (typ=="+") {
@@ -822,7 +831,7 @@ function dot(center, typ, label, pos, id) {
   } else {
     if (node==null) {
       node = myCreateElementSVG("circle");
-      node.setAttribute("id", id);
+      if (id!=null) node.setAttribute("id", id);
       svgpicture.appendChild(node);
     }
     node.setAttribute("cx",cx);
@@ -966,47 +975,49 @@ function axes(dx,dy,labels,gdx,gdy,dox,doy,smallticks) {
   ticklength = fontsize/4;
   if (xgrid!=null) gdx = xgrid;
   if (ygrid!=null) gdy = ygrid;
-  if (gdx!=null && gdx>0) {
-    if (smallticks!=null && smallticks==1) {
-    	  var gridymin = origin[1] + .7*ticklength;
-	  var gridymax = origin[1] - .7*ticklength;
-	  var gridxmin = origin[0] - .7*ticklength;
-	  var gridxmax = origin[0] + .7*ticklength;
-    } else {
-	  var gridymin = winymin;
-	  var gridymax = winymax;
-	  var gridxmin = winxmin;
-	  var gridxmax = winxmax;
-    }
+  
+  if (smallticks!=null && smallticks==1) {
+    var gridymin = height - origin[1] + .7*ticklength;
+    var gridymax = height - origin[1] - .7*ticklength;
+    var gridxmin = origin[0] - .7*ticklength;
+    var gridxmax = origin[0] + .7*ticklength;
+  } else {
+    var gridymin = winymin;
+    var gridymax = winymax;
+    var gridxmin = winxmin;
+    var gridxmax = winxmax;
+  }
 
-    gdx = (typeof gdx=="string"?dx:gdx*xunitlength);
-    gdy = (gdy==null?dy:gdy*yunitlength);
+  gdx = (typeof gdx=="string"?dx:gdx*xunitlength);
+  gdy = (typeof gdy=="string"?dy:gdy*yunitlength);
+    
+  st="";
+  if (dox && gdx !== null && gdx>0) {
+    for (x = origin[0]; x<=winxmax; x = x+gdx)
+      if (x>=winxmin) st += " M"+x+","+gridymin+" "+x+","+(fqonlyy?height-origin[1]:gridymax);
+    if (!fqonlyx) {
+      for (x = origin[0]-gdx; x>=winxmin; x = x-gdx)
+        if (x<=winxmax) st += " M"+x+","+gridymin+" "+x+","+(fqonlyy?height-origin[1]:gridymax);
+    }
+  }
+
+  if (doy && gdy !== null && gdy>0) {
+    if (!fqonlyy) {
+      for (y = height-origin[1]; y<=winymax; y = y+gdy)
+        if (y>=winymin) st += " M"+(fqonlyx?origin[0]:gridxmin)+","+y+" "+gridxmax+","+y;
+    }
+    for (y = height-origin[1]-gdy; y>=winymin; y = y-gdy)
+      if (y<=winymax) st += " M"+(fqonlyx?origin[0]:gridxmin)+","+y+" "+gridxmax+","+y;
+  }
+  if (st !== '') {
     pnode = myCreateElementSVG("path");
-    st="";
-    if (dox && gdx>0) {
-	    for (x = origin[0]; x<=winxmax; x = x+gdx)
-	      if (x>=winxmin) st += " M"+x+","+gridymin+" "+x+","+(fqonlyy?height-origin[1]:gridymax);
-	    if (!fqonlyx) {
-	    	    for (x = origin[0]-gdx; x>=winxmin; x = x-gdx)
-	    	    	    if (x<=winxmax) st += " M"+x+","+gridymin+" "+x+","+(fqonlyy?height-origin[1]:gridymax);
-	    }
-    }
-
-    if (doy && gdy>0) {
-	    if (!fqonlyy) {
-	      for (y = height-origin[1]; y<=winymax; y = y+gdy)
-	        if (y>=winymin) st += " M"+(fqonlyx?origin[0]:gridxmin)+","+y+" "+gridxmax+","+y;
-	    }
-	    for (y = height-origin[1]-gdy; y>=winymin; y = y-gdy)
-	        if (y<=winymax) st += " M"+(fqonlyx?origin[0]:gridxmin)+","+y+" "+gridxmax+","+y;
-    }
     pnode.setAttribute("d",st);
     pnode.setAttribute("stroke-width", .5);
     pnode.setAttribute("stroke", gridstroke);
     pnode.setAttribute("fill", fill);
     svgpicture.appendChild(pnode);
   }
-  pnode = myCreateElementSVG("path");
+  
   st="";
   
   if (dox && ymin < 1e-8 && ymax > -1e-8) {
@@ -1065,18 +1076,22 @@ function axes(dx,dy,labels,gdx,gdy,dox,doy,smallticks) {
 	    }
     }
   }
-  pnode.setAttribute("d",st);
-  pnode.setAttribute("stroke-width", .5);
-  pnode.setAttribute("stroke", axesstroke);
-  pnode.setAttribute("fill", fill);
-  svgpicture.appendChild(pnode);
+  if (st !== '') {
+    pnode = myCreateElementSVG("path");
+    pnode.setAttribute("d",st);
+    pnode.setAttribute("stroke-width", .5);
+    pnode.setAttribute("stroke", axesstroke);
+    pnode.setAttribute("fill", fill);
+    svgpicture.appendChild(pnode);
+  }
 }
 
 
 function slopefield(fun,dx,dy) {
   var g = fun;
-  if (typeof fun=="string")
-    eval("g = function(x,y){ return "+prepWithMath(mathjs(fun,"x|y"))+" }");
+  if (typeof fun=="string") {
+    g = makeMathFunction(g.replace(/Math\./g,''), 'x|y');
+  }
   var gxy,x,y,u,v,dz;
   if (dx==null) dx=1;
   if (dy==null) dy=1;
@@ -1085,7 +1100,7 @@ function slopefield(fun,dx,dy) {
   var y_min = dy*Math.ceil(ymin/dy);
   for (x = x_min; x <= xmax; x += dx)
     for (y = y_min; y <= ymax; y += dy) {
-      gxy = g(x,y);
+      gxy = g({x:x,y:y});
       if (!isNaN(gxy)) {
         if (Math.abs(gxy)=="Infinity") {u = 0; v = dz;}
         else {u = dz/Math.sqrt(1+gxy*gxy); v = gxy*u;}
@@ -1101,7 +1116,7 @@ function drawPictures() {
 
 function prepmath(str) {
     if (str === 'null') { return 'null';}
-    return prepWithMath(mathjs(str));
+    return evalMathParser(str);
 }
 
 //ShortScript format:
@@ -1308,13 +1323,15 @@ function drawPics(base) {
 //added min/max type:  0:nothing, 1:arrow, 2:open dot, 3:closed dot
 function plot(fun,x_min,x_max,points,id,min_type,max_type) {
   var pth = [];
-  var f = function(x) { return x }, g = fun;
+  var f = function(obj) { return obj.t }, g = fun;
   var name = null;
-  if (typeof fun=="string")
-    eval("g = function(x){ return "+prepWithMath(mathjs(fun,"x"))+" }");
+  var isParam = (typeof fun=="object");
+  if (typeof fun=="string") {
+    g = makeMathFunction(fun.replace(/Math\./g,''), 'x');
+  }
   else if (typeof fun=="object") {
-    eval("f = function(t){ return "+prepWithMath(mathjs(fun[0],"t"))+" }");
-    eval("g = function(t){ return "+prepWithMath(mathjs(fun[1],"t"))+" }");
+    f = makeMathFunction(fun[0].replace(/Math\./g,''), 't');
+    g = makeMathFunction(fun[1].replace(/Math\./g,''), 't');
   }
   if (typeof x_min=="string") { name = x_min; x_min = xmin }
   else name = id;
@@ -1325,15 +1342,15 @@ function plot(fun,x_min,x_max,points,id,min_type,max_type) {
   var inc = max-min-0.000001*(max-min);
   inc = (points==null?inc/200:inc/points);
   var gt;
-//alert(typeof g(min))
+
   for (var t = min; t <= max; t += inc) {
-    gt = g(t);
+    gt = isParam ? g({t:t}) : g({x:t});
     if (!(isNaN(gt)||Math.abs(gt)=="Infinity")) {
 	    if ((pth.length > 0) && (Math.abs(gt-pth[pth.length-1][1]) > (ymax-ymin))) {
 		    if (pth.length > 1)  path(pth,name);
 		    pth.length=0;
 	    } else {
-		    pth[pth.length] = [f(t), gt];
+		    pth[pth.length] = [f({t:t}), gt];
 	    }
     }
   }

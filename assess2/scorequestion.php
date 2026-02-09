@@ -25,13 +25,11 @@ require_once "./AssessInfo.php";
 require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 
-//error_reporting(E_ALL);
-
-header('Content-Type: application/json; charset=utf-8');
-
 // validate inputs
 check_for_required('GET', array('aid', 'cid'));
-check_for_required('POST', array('lastloaded'));
+if (empty($_POST['endattempt'])) { // skip check for endattempt, as may be no questions changed
+    check_for_required('POST', array('lastloaded'));
+}
 $cid = Sanitize::onlyInt($_GET['cid']);
 $aid = Sanitize::onlyInt($_GET['aid']);
 if ($isActualTeacher && isset($_GET['uid'])) {
@@ -50,7 +48,7 @@ if (!isset($_POST['toscoreqn']) || $_POST['toscoreqn'] == -1 || $_POST['toscoreq
   $verification = array();
 } else {
   $qnstoscore = json_decode($_POST['toscoreqn'], true);
-  $qns = array_keys($qnstoscore);
+  $qns = array_map('Sanitize::onlyInt',array_keys($qnstoscore));
   $lastloaded = array_map('Sanitize::onlyInt', explode(',', $_POST['lastloaded']));
   $timeactive = array_map('Sanitize::onlyInt', explode(',', $_POST['timeactive']));
   $verification = json_decode($_POST['verification'], true);
@@ -61,7 +59,7 @@ $now = time();
 
 // load settings
 $assess_info = new AssessInfo($DBH, $aid, $cid, false);
-$assess_info->loadException($uid, $isstudent);
+$assess_info->loadException($uid, $isstudent, $studentinfo['latepasses'] , $latepasshrs, $courseenddate);
 if ($isstudent) {
   $assess_info->applyTimelimitMultiplier($studentinfo['timelimitmult']);
 }
@@ -169,6 +167,8 @@ if ($assessInfoOut['has_active_attempt'] && $assessInfoOut['timelimit'] > 0) {
   $assessInfoOut['timelimit_gracein'] = max($assess_record->getTimeLimitGrace() - $now, 0);
 }
 
+$submission = false;
+
 if (count($qns) > 0) {
   // get current question version ids
   list($qids, $toloadqids) = $assess_record->getQuestionIds($qns);
@@ -235,7 +235,7 @@ if (count($qns) > 0) {
   // If it's full test, we'll score time at the assessment attempt level
   if ($assess_info->getSetting('displaymethod') === 'full') {
     $minloaded = round(max($lastloaded)/1000); // front end sends milliseconds
-    if ($minloaded > 0) {
+    if ($minloaded > 0 && $minloaded < $now) {
       $assess_record->addTotalAttemptTime($now - $minloaded);
     }
   }
@@ -289,7 +289,7 @@ if (!empty($_POST['autosave-tosaveqn'])) {
 
 
 if ($end_attempt) {
-  $assess_record->scoreAutosaves();
+  $assess_record->scoreAutosaves($submission);
   // sets assessment attempt as submitted and updates status
   $assess_record->setStatus(false, true);
   // Recalculate scores based on submitted assessment.
@@ -352,11 +352,11 @@ if ($end_attempt) {
       $toSign = $aid.$qn.$uid.$rawscores.$lastAnswer;
       $now = time();
       if (isset($CFG['GEN']['livepollpassword'])) {
-        $livepollsig = base64_encode(sha1($toSign . $CFG['GEN']['livepollpassword'] . $now, true));
+        $livepollsig = base64_encode(hash('sha256',$toSign . $CFG['GEN']['livepollpassword'] . $now, true));
       }
       $qs = Sanitize::generateQueryStringFromMap(array(
         'aid' => $aid,
-        'qn' => $qn,
+        'qn' => Sanitize::onlyInt($qn),
         'user' => $uid,
         'score' => $rawscores,
         'la' => $lastAnswer,
@@ -386,6 +386,9 @@ $assess_record->saveRecord();
 if (($assessInfoOut['submitby'] == 'by_question' && !$in_practice) || $end_attempt) {
     $assess_record->updateLTIscore($end_attempt, true);
 }
+
+// get showwork_after, showwork_cutoff (min), showwork_cutoff_in (timestamp)
+getShowWorkAfter($assessInfoOut, $assess_record, $assess_info);
 
 //prep date display
 prepDateDisp($assessInfoOut);

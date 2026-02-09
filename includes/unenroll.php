@@ -26,8 +26,8 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 			$threads[] = $rw2[0];
 		}
 	}
-	$threadlist = implode(',',$threads);
-	$forumlist = implode(',',$forums);
+	$threadlist = implode(',', array_map('intval', $threads));
+	$forumlist = implode(',', array_map('intval', $forums));
 
 	$assesses = array();
 	$groupassess = array();
@@ -38,7 +38,7 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 			$groupassess[] = $row[0];
 		}
 	}
-	$aidlist =  implode(',',$assesses);
+	$aidlist =  implode(',', array_map('intval', $assesses));
 
 	$wikis = array();
 	$grpwikis = array();
@@ -49,22 +49,22 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 			$grpwikis[] = $row[0];
 		}
 	}
-	$wikilist =  implode(',',$wikis);
-	$grpwikilist = implode(',',$grpwikis);
+	$wikilist =  implode(',', array_map('intval', $wikis));
+	$grpwikilist = implode(',', array_map('intval', $grpwikis));
 
 	$drills = array();
 	$stm = $DBH->query("SELECT id FROM imas_drillassess WHERE courseid=$cid");
 	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 		$drills[] = $row[0];
 	}
-	$drilllist =  implode(',',$drills);
+	$drilllist =  implode(',', array_map('intval', $drills));
 
 	$exttools = array();
 	$stm = $DBH->query("SELECT id FROM imas_linkedtext WHERE courseid=$cid AND points>0");
 	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 		$exttools[] = $row[0];
 	}
-	$exttoolslist =  implode(',',$exttools);
+	$exttoolslist =  implode(',', array_map('intval', $exttools));
 
 	$stugroups = array();
 	$stm = $DBH->query("SELECT imas_stugroups.id FROM imas_stugroups JOIN imas_stugroupset ON imas_stugroups.groupsetid=imas_stugroupset.id WHERE imas_stugroupset.courseid=$cid");
@@ -76,6 +76,13 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 	if ($withwithdrawn=='remove' || $usereplaceby) {
 		require_once "$curdir/updateassess.php";
 	}
+	// validate tounenroll
+	if (!empty($tounenroll) && count($tounenroll)>0) {
+        $stulist = implode(',', array_map('intval', $tounenroll));
+		$stm = $DBH->prepare("SELECT userid FROM imas_students WHERE userid IN ($stulist) AND courseid=?");
+		$stm->execute([$cid]);
+		$tounenroll = $stm->fetchAll(PDO::FETCH_COLUMN, 0);
+	}
 	if (!empty($tounenroll) && count($tounenroll)>0) {
         $stulist = implode(',', array_map('intval', $tounenroll));
 
@@ -84,7 +91,7 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 			$gbitems[] = $row[0];
 		}
-		$gblist = implode(',',$gbitems);
+		$gblist = implode(',', array_map('intval', $gbitems));
 		//new
 		$grades = array();
 		if (count($assesses)>0) {
@@ -159,7 +166,7 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 		}
 
 		if (count($stugroups)>0) {
-			$stugrouplist = implode(',',$stugroups);
+			$stugrouplist = implode(',', array_map('intval', $stugroups));
 			$query = "DELETE FROM imas_stugroupmembers WHERE userid IN ($stulist) AND stugroupid IN ($stugrouplist)";
 			$DBH->query($query); //values already sanitized
 		}
@@ -224,6 +231,7 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 					$sets = [];
 					foreach ($row as $k=>$v) {
 						if ($k !== 'id') {
+							$k = Sanitize::simpleString($k);
 							$sets[] = "$k=:$k";
 						}
 					}
@@ -243,6 +251,7 @@ function unenrollstu($cid,$tounenroll,$delforum=false,$deloffline=false,$withwit
 						$sets = [];
 						foreach ($qrow as $k=>$v) {
 							if ($k !== 'id') {
+								$k = Sanitize::simpleString($k);
 								$sets[] = "$k=:$k";
 							}
 						}

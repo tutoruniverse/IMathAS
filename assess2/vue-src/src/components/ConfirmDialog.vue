@@ -16,7 +16,7 @@
             {{ confirmBody }}
           </p>
           <div class="flexrow flexright">
-            <button @click="doOk" class="primary">
+            <button @click="doOk" class="primary" key="okbtn">
               {{ okMessage }}
             </button>
             <button
@@ -49,10 +49,10 @@ export default {
       return this.$t(this.data.body);
     },
     okMessage () {
-      return this.$t(this.data.ok ? this.data.ok : 'confirm.ok');
+      return this.$t(this.data.ok ? this.data.ok : 'confirm-ok');
     },
     cancelMessage () {
-      return this.$t(this.data.cancel ? this.data.cancel : 'confirm.cancel');
+      return this.$t(this.data.cancel ? this.data.cancel : 'confirm-cancel');
     }
   },
   methods: {
@@ -82,7 +82,7 @@ export default {
       this.$refs.dialog.style.top = Math.max(20, lastHeight - this.$refs.dialog.offsetHeight) + 'px';
     }
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.$(document).off('keyup.dialog');
     this.dialog.destroy();
   }

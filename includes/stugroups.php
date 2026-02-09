@@ -31,7 +31,7 @@ function deletegroup($grpid,$delposts=true) {
 		$stm = $DBH->query("SELECT id FROM imas_forum_threads WHERE stugroupid=$grpid"); //sanitized above - no need for prepared
 		$todel = array();
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-			$todel[] = $row[0];
+			$todel[] = intval($row[0]);
 		}
 		if (count($todel)>0) {
 			$dellist = implode(',',$todel);  //known to be safe INTs
@@ -93,6 +93,26 @@ function removegroupmember($grpid, $uid) {
 	if (isset($GLOBALS['CFG']['log'])) {
 		$query = "INSERT INTO imas_log (time,log) VALUES ($now,'deleting $uid from $grpid')";
 		$stm = $DBH->query($query); //sanitized above - no need for prepared
+	}
+}
+
+function checkGroupSetIDinCourse($grpsetid,$cid) {
+	global $DBH;
+	$stm = $DBH->prepare("SELECT courseid FROM imas_stugroupset WHERE id=?");
+	$stm->execute([$grpsetid]);
+	if ($stm->fetchColumn(0) !== $cid) {
+		echo 'Invalid grpsetid';
+		exit;
+	}
+}
+function checkGroupIDinCourse($grpid,$cid) {
+	global $DBH;
+	$stm = $DBH->prepare("SELECT gset.courseid FROM imas_stugroupset AS gset JOIN
+		imas_stugroups AS grp ON grp.groupsetid=gset.id WHERE grp.id=?");
+	$stm->execute([$grpid]);
+	if ($stm->fetchColumn(0) !== $cid) {
+		echo 'Invalid grpid';
+		exit;
 	}
 }
 

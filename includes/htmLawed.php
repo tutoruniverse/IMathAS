@@ -56,11 +56,11 @@ function myhtmLawed($t, $NC=1, $NS='') {
 	$C = array(
 		'elements'=>'*-script-form',
 		'direct_list_nest'=>1,
-		'deny_attribute'=>'on*',
+		'deny_attribute'=>'id,on*',
 		'cdata'=>0,
 		'comment'=>1
 		);
-	$S = "embed=sscr,script";
+	$S = "embed=sscr";
 	if (is_array($NC)) { //overwrite or append new config
 		foreach ($NC as $k=>$v) {
 			$C[$k] = $v;

@@ -32,6 +32,7 @@ $allowedmacros[] = "jsxPolar";
 $allowedmacros[] = "jsxText";
 $allowedmacros[] = "jsxCircle";
 $allowedmacros[] = "jsxLine";
+$allowedmacros[] = "jsxImage";
 $allowedmacros[] = "jsxSegment";
 $allowedmacros[] = "jsxRay";
 $allowedmacros[] = "jsxVector";
@@ -48,7 +49,10 @@ $allowedmacros[] = "jsxUnsuspendUpdate";
 $allowedmacros[] = "jsxSetChild";
 
 function jsx_getlibrarylink() {
-	return "//cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraphcore.js";
+	return "https://cdn.jsdelivr.net/npm/jsxgraph@1.11.1/distrib/jsxgraphcore.js";
+}
+function jsx_getcsslink() {
+	return "https://cdn.jsdelivr.net/npm/jsxgraph@1.11.1/distrib/jsxgraph.min.css";
 }
 
 function jsx_idlen() {
@@ -100,7 +104,7 @@ function jsxObject (&$board, $param, $ops=array()) {
 			$out .= ";";
 		}
 		
-		$out .= jsx_setlabel($id, $label);
+		//$out .= jsx_setlabel($id, $label);
 		
 		// Append new output string to the board string
 		$board = substr_replace($board, $out, strpos($board, "/*INSERTHERE*/"), 0);
@@ -153,6 +157,8 @@ function jsxSlider (&$board, $param, $ops=array()) {
 		$max = is_numeric($param[1]) ? $param[1] : 10;
 		$step = is_numeric($param[2]) ? $param[2] : 1;
 		$defaultval = isset($param[3]) ? $param[3] : ($min + $max) / 2;
+
+		$fixedout = max(jsx_getdecimalplaces($min), jsx_getdecimalplaces($max), jsx_getdecimalplaces($step));
 		
 		// Parameters:
 		//  label, color, default value, showLabel, LabelSize, decimals, position,
@@ -165,7 +171,7 @@ function jsxSlider (&$board, $param, $ops=array()) {
 		$fontsize = !empty($ops['fontsize']) ? $ops['fontsize'] : 16;
 		$fontcolor = !empty($ops['fontcolor']) ? $ops['fontcolor'] : $color;
 		$name = !empty($ops['name']) ? $ops['name'] : '';
-		$decimals = !empty($ops['decimals']) ? $ops['decimals'] : 0;
+		$decimals = !empty($ops['decimals']) ? $ops['decimals'] : $fixedout;
 		
 		if (!isset($ops['position'])) {
 			
@@ -208,7 +214,8 @@ function jsxSlider (&$board, $param, $ops=array()) {
 				highline: { highlight: false, strokeColor: '{$color}' },
 				strokeColor: '{$color}',
 				name: '{$name}',
-				label: { color:'{$fontcolor}', fontSize: {$fontsize}, useMathJax: true, highlight: false }
+				label: { color:'{$fontcolor}', fontSize: {$fontsize}, useMathJax: true, highlight: false },
+				tabindex: 0
 			})";
 			
 		// Set any remaining paramenters specified by user
@@ -224,7 +231,9 @@ function jsxSlider (&$board, $param, $ops=array()) {
 			}
 			
 			// Add event listener
-			$out .= ".on('up',function() { $('#qn{$box}, #tc{$box}').val(this.Value().toFixed(8));	});";
+			$out .= ';';
+			$out .= "board_{$boardID}.on('update', function () { if (this.initSetupDone){ $('#qn{$box}, #tc{$box}').val($id.Value().toFixed($fixedout)).trigger('change'); }});";
+			
 			$out .= jsx_getcolorinterval($boardID, $box, $id, "slider", [$min, $max]); 
 	
 		} else {
@@ -266,12 +275,16 @@ function jsxPoint(&$board, $param, $ops=array()) {
 		$snapSizeX = isset($ops['xsnapsize']) ? $ops['xsnapsize'] : 1;
 		$snapSizeY = isset($ops['ysnapsize']) ? $ops['ysnapsize'] : 1;
 		$trace = isset($ops['trace']) ? jsx_getbool($ops['trace']) : 'false';
-		
+		$tabindex = ($fixed === 'false') ? 0 : -1;
+
 		if ((isset($ops['xsnapsize'])) || (isset($ops['ysnapsize']))) {
 			$snapToGrid = 'true';
 		} else {
 			$snapToGrid = 'false';
 		}
+
+		$fixedx = isset($ops['xsnapsize']) ? jsx_getdecimalplaces($snapSizeX) : 4;
+		$fixedy = isset($ops['ysnapsize']) ? jsx_getdecimalplaces($snapSizeY) : 4;
 			
 		// Start making the point
 		$out = "window.{$id} = board_{$boardID}.create('point', ".jsx_pointToJS($param).",";
@@ -291,7 +304,8 @@ function jsxPoint(&$board, $param, $ops=array()) {
 			visible: {$visible},
 			snapSizeX: {$snapSizeX},
 			snapSizeY: {$snapSizeY},
-			snapToGrid: {$snapToGrid}
+			snapToGrid: {$snapToGrid},
+			tabindex: {$tabindex}
 		})";
 		
 		// Set any remaining paramenters specified by user
@@ -305,10 +319,11 @@ function jsxPoint(&$board, $param, $ops=array()) {
 			} else {
 				$box = $ops['answerbox'][0] * 1000 + $ops['answerbox'][1];
 			}
-
-			$answerfill = "'(' + this.X().toFixed(4) + ',' + this.Y().toFixed(4) + ')'";
 			
-			$out .= ".on('up', function() {	$('#qn{$box}, #tc{$box}').val({$answerfill}); } );";  
+			$out .= ';';
+			$answerfill = "'(' + $id.X().toFixed($fixedx) + ',' + $id.Y().toFixed($fixedy) + ')'";
+			$out .= "board_{$boardID}.on('update', function () { if (this.initSetupDone){ $('#qn{$box}, #tc{$box}').val($answerfill).trigger('change'); }});";
+
 			$out .= jsx_getcolorinterval($boardID, $box, $id, "point");
 				
 		} else {
@@ -319,7 +334,7 @@ function jsxPoint(&$board, $param, $ops=array()) {
 		
 	} else {
 		echo "Eek! parameters for a point must include the board to place it on
-			  and the coordinates as an array.<br>";
+			  and the coordinates as an array. ";
 	}
 	
 	// Append new output string to the board string
@@ -358,12 +373,16 @@ function jsxGlider (&$board, $param, $ops=array()) {
 		$snapSizeX = isset($ops['xsnapsize']) ? $ops['xsnapsize'] : 1;
 		$snapSizeY = isset($ops['ysnapsize']) ? $ops['ysnapsize'] : 1;
 		$trace = isset($ops['trace']) ? jsx_getbool($ops['trace']) : 'false';
-		
+		$tabindex = ($fixed === 'false') ? 0 : -1;
+
 		if ((isset($ops['xsnapsize'])) || (isset($ops['ysnapsize']))) {
 			$snapToGrid = 'true';
 		} else {
 			$snapToGrid = 'false';
 		}
+
+		$fixedx = isset($ops['xsnapsize']) ? jsx_getdecimalplaces($snapSizeX) : 4;
+		$fixedy = isset($ops['ysnapsize']) ? jsx_getdecimalplaces($snapSizeY) : 4;
 
 		// Begin object creation
 		$out = "window.{$id} = board_{$boardID}.create('glider', [";
@@ -384,7 +403,8 @@ function jsxGlider (&$board, $param, $ops=array()) {
             label: { color: '{$fontcolor}', fontSize: {$fontsize}, useMathJax: true, highlight: false },
 			snapSizeX: {$snapSizeX},
 			snapSizeY: {$snapSizeY},
-			snapToGrid: {$snapToGrid}
+			snapToGrid: {$snapToGrid},
+			tabindex: {$tabindex}
         })";
 		
 		if (isset($ops['attributes'])) { 
@@ -400,8 +420,9 @@ function jsxGlider (&$board, $param, $ops=array()) {
 				$box = $ops['answerbox'][0] * 1000 + $ops['answerbox'][1];
 			}
 
-			$answerfill = "'(' + this.X().toFixed(4) + ',' + this.Y().toFixed(4) + ')'";		
-			$out .= ".on('up', function() {	$('#qn{$box}, #tc{$box}').val({$answerfill}); } );";
+			$out .= ';';
+			$answerfill = "'(' + $id.X().toFixed($fixedx) + ',' + $id.Y().toFixed($fixedy) + ')'";
+			$out .= "board_{$boardID}.on('update', function () { if (this.initSetupDone){ $('#qn{$box}, #tc{$box}').val($answerfill).trigger('change'); }});";
 					
 			$out .= jsx_getcolorinterval($boardID, $box, $id, "point"); 
 				
@@ -472,9 +493,10 @@ function jsxIntersection(&$board, $param, $ops=array()) {
 				$box = $ops['answerbox'][0] * 1000 + $ops['answerbox'][1];
 			}
 
-			$answerfill = "'(' + this.X().toFixed(4) + ',' + this.Y().toFixed(4) + ')'";
-			
-			$out .= ".on('up', function() {	$('#qn{$box}, #tc{$box}').val({$answerfill}); } );";  
+			$out .= ';';
+			$answerfill = "'(' + $id.X().toFixed(4) + ',' + $id.Y().toFixed(4) + ')'";
+			$out .= "board_{$boardID}.on('update', function () { if (this.initSetupDone){ $('#qn{$box}, #tc{$box}').val($answerfill).trigger('change'); }});";
+
 			$out .= jsx_getcolorinterval($boardID, $box, $id, "point");
 				
 		} else {
@@ -485,7 +507,7 @@ function jsxIntersection(&$board, $param, $ops=array()) {
 		
 	} else {
 		echo "Eek! parameters for an intersection must include the board to place it on
-			  and two parameters that are either circles or lines to intersect.<br>";
+			  and two parameters that are either circles or lines to intersect. ";
 	}
 	
 	// Append new output string to the board string
@@ -742,6 +764,79 @@ function jsxLine (&$board, $param, $ops=array()) {
 		
 	} else {
 		echo "Eek! Invalid parameters for JSX Line. Start point and end point expected.";
+	}
+}  
+
+###########################################################################
+##
+## Function to draw an image on a JSX board
+##
+###########################################################################
+
+function jsxImage (&$board, $param, $ops=array()) {
+
+	$id = "image_".uniqid();
+	$boardID = jsx_getboardname($board);
+	$inputerror = false;
+
+	// Validate input values
+
+	if (!is_array($param) || count($param) != 3) {
+		$inputerror = true;
+	} else {
+		if (!is_string($param[0]) || !is_jsxpoint($param[1]) || !is_jsxpoint($param[2])) {
+            $inputerror = true;
+        }
+        if (substr($param[0],0,4) === '<img') {
+            $param[0] = preg_replace('/^.*src="(.*?)".*$/', '$1', $param[0]);
+        }
+        if (substr($param[0],0,4) !== 'http') {
+            $inputerror = true;
+        }
+	}
+
+	if (!$inputerror) {
+
+		// Set default values
+		$highlight = isset($ops['highlight']) ? jsx_getbool($ops['highlight']) : 'false';
+		$fixed = isset($ops['fixed']) ? jsx_getbool($ops['fixed']) : 'true';
+		$haslabel = isset($ops['label']) ? 'true' : 'false';
+		$label = isset($ops['label']) ? $ops['label'] : '';
+        $fontsize = isset($ops['fontsize']) ? $ops['fontsize'] : 16;
+		$fontcolor = isset($ops['fontcolor']) ? $ops['fontcolor'] : 'black';
+		$visible = isset($ops['visible']) ? jsx_getbool($ops['visible']) : 'true';
+
+		// Begin object creation
+
+		$out = "window.{$id} = board_{$boardID}.create('image', ['";
+        $out .= Sanitize::encodeStringForJavascript($param[0])."', ";
+		$out .= jsx_pointToJS($param[1]).", ";
+		$out .= jsx_pointToJS($param[2])."],";
+
+		// Set attributes 
+		
+		$out .= "{
+            highlight: {$highlight},
+            fixed: {$fixed},
+			withLabel: {$haslabel},
+			label: { color:'{$fontcolor}', fontSize: {$fontsize}, highlight: false },
+			visible: {$visible}
+		})";
+		
+		if (isset($ops['attributes'])) { 
+			$out .= ".setAttribute({$ops['attributes']});";
+		} else {
+			$out .= ";";
+		}
+
+		$out .= jsx_setlabel($id, $label);	
+
+		// Append new output string to the board string
+		$board = substr_replace($board, $out, strpos($board, "/*INSERTHERE*/"), 0);
+		return $id;
+		
+	} else {
+		echo "Eek! Invalid parameters for JSX Image. URL, corner point, and dimensions expected.";
 	}
 }  
 
@@ -1502,7 +1597,7 @@ function jsxParametric (&$board, $param, $ops=array()) {
         })";
 		
 		if (isset($ops['attributes'])) {
-			$out .= ".setAttribute({$ops['attributes']})";
+			$out .= ".setAttribute({$ops['attributes']});";
 		} else {
 			$out .= ";";
 		}
@@ -1608,6 +1703,60 @@ function jsxBoard($type, $ops=array()) {
 		$board = jsx_creategeometryboard($id, $ops);
 	}
 
+	$updatescript = "
+		
+		for (let i=0; i<board_$id.colorinit.length; i++) {
+			board_$id.suspendUpdate();
+			let box = board_$id.colorinit[i][0];
+			let obj = board_$id.colorinit[i][1];
+			let type = board_$id.colorinit[i][2];
+			let param = board_$id.colorinit[i][3];
+			if ($('#qn' + box)[0]) {
+				if ($('#qn' + box + ', #tc' + box).is('.ansgrn')) {
+					// if already red or yellow, make yellow, else make green
+					if ($('#jxgboard_{$id}').is('.ansred,.ansyel,.ansnoans')) {
+						$('#jxgboard_{$id}').removeClass('ansred').removeClass('ansnoans').addClass('ansyel');
+					} else {
+					 	$('#jxgboard_{$id}').addClass('ansgrn');
+					}
+				} else if ($('#qn' + box).is('.ansred')) {
+					// if already grn or yellow, make yellow, else make red
+					if ($('#jxgboard_{$id}').is('.ansgrn,.ansyel')) {
+						$('#jxgboard_{$id}').removeClass('ansgrn').addClass('ansyel');
+					} else {
+					 	$('#jxgboard_{$id}').addClass('ansred');
+					}
+				} else if ($('#qn' + box).is('.ansyel')) {
+					$('#jxgboard_{$id}').removeClass('ansgrn').removeClass('ansred').removeClass('ansnoans').addClass('ansyel');
+				} else {
+					if ($('#jxgboard_{$id}').is('.ansgrn,.ansyel')) {
+						$('#jxgboard_{$id}').removeClass('ansgrn').addClass('ansyel');
+					} else {
+						$('#jxgboard_{$id}').addClass('ansnoans');
+					}
+				}
+				/* Pull in answer from answerbox if possible */
+				if ($('#qn' + box)[0] && $('#qn' + box).val() !== '') {
+					if (type == 'point') {
+						let coords = $('#qn'+box).val();
+						coords = coords.substring(1, coords.length - 1);
+						coords = coords.split(',');
+						window[obj].setPosition(JXG.COORDS_BY_USER, [parseFloat(coords[0]),parseFloat(coords[1])]);
+					} else if (type == 'slider') {
+						let min = param[0];
+						let max = param[1];
+						var tc = $('#qn'+box).val();
+						window[obj].setGliderPosition(((tc)-(min))/((max)-(min)));
+					}
+				}
+			} 
+			board_$id.unsuspendUpdate();
+		}
+		board_$id.fullUpdate();";	
+
+
+	$board = str_replace("/*INSERTHERE*/", "board_$id.colorinit=[];/*INSERTHERE*/;$updatescript;board_$id.initSetupDone=true;", $board);
+
 	return $board;
 	
 }
@@ -1616,7 +1765,12 @@ function jsxBoard($type, $ops=array()) {
 function jsx_getscript () {
 	
 	if (isset($GLOBALS['assessUIver']) && $GLOBALS['assessUIver'] > 1) {
-		return '<script type="text/javascript" src="https:'.jsx_getlibrarylink().'"></script>';	
+		return '<script type="text/javascript" src="'.jsx_getlibrarylink().'"></script>' .
+            '<script type="text/javascript">
+            if ($("head").find("link[href*=jsxgraph]").length == 0) {
+                $("<link/>", {rel: "stylesheet", href: "'.jsx_getcsslink().'"}).appendTo("head");
+            }
+            </script>';	
 	} else {
 		return 
 			'<script type="text/javascript">if (typeof JXG === "undefined" && typeof JXGscriptloaded === "undefined") {
@@ -1738,8 +1892,7 @@ function jsx_creategeometryboard($label, $ops) {
             enabled: {$pan},
             needshift: false
         },
-        title: '$title',
-        description: '$description'
+        title: '$title $description'
     });";
 
 	$boardinit = jsx_setupboard($label, $width, $height, $centered);
@@ -1807,8 +1960,7 @@ function jsx_createrectangularboard ($label, $ops = array()) {
 				enabled: {$pan},
 				needshift: false
 			 },
-             title: '$title',
-             description: '$description'
+             title: '$title $description'
            });";
 
 	$out .= "var xTicks{$label}, yTicks{$label};";
@@ -1934,8 +2086,7 @@ function jsx_createpolarboard ($label, $ops=array()) {
 				enabled: {$pan},
 				needshift: false
 			},
-            title: '$title',
-            description: '$description'
+            title: '$title $description'
 		});
 	";
 
@@ -2483,44 +2634,20 @@ function jsx_setlabel($id, $label) {
 // button was pressed by the user.
 
 function jsx_getcolorinterval($boardID, $box, $obj, $type, $param = array()) {
-
-	if ($type == "point") {
-		$reposition_obj = 
-			"var coords = $('#qn{$box}').val();
-			coords = coords.substring(1, coords.length - 2);
-			coords = coords.split(',');
-			{$obj}.setPosition(JXG.COORDS_BY_USER, [parseFloat(coords[0]),parseFloat(coords[1])]);";
-			
-	} else if ($type == "slider") {
-		
-		$min = $param[0];
-		$max = $param[1];
-		$reposition_obj = 
-			"var tc = $('#qn{$box}').val();
-			{$obj}.setGliderPosition(((tc)-({$min}))/(({$max})-({$min})));";
-	}
-
-	$out = 
-		"var colorInterval{$boardID}_{$box} = setInterval(function() {  
-			if ($('#qn{$box}')[0] || $('#qn{$box}')[0]) {
-				if ($('#qn{$box}, #tc{$box}').is('.ansgrn')) {
-					$('#jxgboard_{$boardID}').css('border', '1px solid #0f0');
-				} else if ($('#qn{$box}, #tc{$box}').is('.ansred') || $('#qn{$box}, #tc{$box}').is('.ansyel')) {
-					$('#jxgboard_{$boardID}').css('border','1px solid #f00');
-				}
-				/* Pull in answer from answerbox is possible */
-				if ($('#qn{$box}')[0] && $('#qn{$box}').val() !== '') {
-					{$reposition_obj}
-					board_{$boardID}.fullUpdate();
-				} else if ($('#tc{$box}')[0] && $('#tc{$box}').val() !== '') {
-					{$reposition_obj}
-					board_{$boardID}.fullUpdate();
-				}
-				clearInterval(colorInterval{$boardID}_{$box});
-			}
-		}, 300);";
-		
+	$out = "board_{$boardID}.colorinit.push(['$box','$obj','$type',".json_encode($param)."]);";
 	return $out;
 }
 
+// get number of decimal places
+function jsx_getdecimalplaces($n) {
+  $n = (string) $n;
+  $n = trim($n);
+  $n = rtrim($n, '0');
+  $dp = strpos($n, '.');
+  if ($dp === false) { 
+    return 0;
+  } else {
+    return (strlen($n) - $dp - 1);
+  }
+}
 ?>

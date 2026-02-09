@@ -17,6 +17,7 @@ requires PHP 7.4+, and MySQL 5.6+.  PHP has the following recommended or require
 - pdo_mysql (required)
 - gettext (required)
 - gd with freetype (recommended) for image creation
+- zip (recommended) necessary for course export packages
 - curl (recommended) necessary for LTI grade passback
 - openssl (recommended) necessary for LTI 1.3 services
 
@@ -58,14 +59,21 @@ These are all added to the `config.php` by the install script.
 -   `$sendfrom`: An email address to send confirmation and notification emails from.
 -   `$imasroot`: The web root of the imathas install.  An empty string if installed at the web root, or something like `'/imathas'` if installed in a directory.
 -   `$mathimgurl`: An absolute path or full url to a [Mimetex](http://www.forkosh.com/mimetex.html) installation, for math image fallback
+-   `$CFG['GEN']['mathcgisvg']`: Set to true if you change $mathimgurl to something that returns svgs instead of images, like [this option](https://github.com/drlippman/IMathAS-Extras/tree/master/mathsvg)
 -   `$colorshift`: Whether icons should change colors as due date approaches. I thought this was cute, but others might find it annoying.
 -   `$smallheaderlogo`: Text or an HTML image tag for a small (120 x 80) logo to display at the top right of course pages.
 -   `$allownongrouplibs`: Whether non-admins should be allowed to create non-group libraries. On a single-school install, set to true; for larger installs that plan to use the Groups features, set to false.
 -   `$allowcourseimport`: Whether anyone should be able to import/export questions and libraries from the course page. Intended for easy sharing between systems, but the course page is cleaner if turned off.
 -   `$enablebasiclti`: Set to true to enable use of IMathAS as an LTI producer (tool).
 -   `$AWSkey, $AWSsecret, $AWSbucket`: To allow students and teachers to upload files through the text editor, and to enable file upload questions, this specifies an Amazon S3 key, secret, and bucket to use for file storage. If not specified, local storage will be used instead.
-- `$CFG['GEN']['newpasswords']`:  all new installations should set this to `'only'` to use good-quality password security.  It can be set to `'transition'` for very old systems to transition to the new storage.  If omitted the system will use md5 for passwords, which is highly discouraged.
-- `$CFG['MySQL_ver']`: Set to your MySQL version, as a simple decimal with major version only, like 5.6, 8.0, or 8.1. Only necessary if you're using 8+.
+- `$CFG['GEN']['newpasswords']`:  this is now obsolete.  The system now only supports this mode by default.
+- `$CFG['MySQL_ver']`: Set to your MySQL version, as a simple decimal with major version only, like 5.6, 8.0, or 8.1. Only necessary if you're using 8+. If upgrading from 5.x to 8,
+make sure you also edit your config.php and make sure the PDO connection includes a charset.  If it doesn't already, you'll want to add <code>;charset=latin1</code> to 
+the connection string (after the host= and dbname= portions) to ensure the encoding remains
+the same as the 5.x default after upgrade.  If on a new install, it's better to use <code>;charset=utf8mb4</code>.
+- `$CFG['YouTubeAPIKey']`: To get caption detection on videos attached to questions to work, set this to your YouTube Data API v3 key, obtained from Google Cloud Platform.
+    - To get accessibility reports to process queued caption lookups, the `/util/queuecaptiondata.php` script needs to be called regularly, probably once a day right before midnight Pacific time.  If running on a single server, you can set this up as a cron job.  Alternatively, you could define `$CFG['video']['authcode']` and make a scheduled web call to  `/util/queuecaptiondata.php?authcode=####` using the code you define. 
+    - You can define `$CFG['video']['maxpull']` to control the max number of API calls made by queue.
 
 ### System Defaults
 
@@ -89,8 +97,11 @@ Many system defaults can be adjusted using config changes.
 -  `$CFG['use_csrfp']`: Set this to true to enable cross-site request forgery protection.
 - File Storage:  By default, all user-uploaded files are stored on the webserver.  The system supports using Amazon S3 for file storage instead.  To use S3:
     - Set `$AWSkey`, `$AWSsecret`, `$AWSbucket` to your AWS key, secret, and bucket name respectively.  
-    - `$GLOBALS['CFG']['GEN']['AWSforcoursefiles']`:   If the variables above are set, by default S3 will be used only for user uploads through the text editor, and local storage will still be used for course files and question images.  Set this option to true to also use S3 for these types of files.
+    - Set `$CFG['S3']['endpoint']` and `$CFG['S3']['region']`, and optionally `$CFG['S3']['useSSL']`
+    - `$CFG['GEN']['AWSforcoursefiles']`:   If the variables above are set, by default S3 will be used only for user uploads through the text editor, and local storage will still be used for course files and question images.  Set this option to true to also use S3 for these types of files.
 - `$CFG['GEN']['noFileBrowser']`: Set this to true to prevent the use of the file and image uploads through the text editor.  Do not define this to allow use of the file browser.
+- `$CFG['GEN']['filewhitelist']`: An array of extensions, like `['.png', '.pdf', ...]` to allow within file uploads.
+  This will override the default blacklist.
 - `$CFG['GEN']['sendquestionproblemsthroughcourse']`:  By default, clicking the "Report problem with question" will open email.  To send using an IMathAS message instead, set this option to a course ID, ideally one that all instructors are participants in.
 - `$CFG['GEN']['qerrorsendto']`:  Normally question errors are reported to the question author.  To have them sent do a different user, set this option.  Set to a user ID to send to that user.  You can also force the delivery method by defining this is an array of `array(userid, sendmethod, title, alsosendtoowner)`, like `array(2, "email", "Contact Support", true)`.  The email address for the specified user ID will be used.  If alsosendtoowner is set to true, the message will be sent both to the question owner as well.
 - `$CFG['GEN']['qerroronold']`: Normally question errors are reported to the question author. To have them delivered
@@ -152,9 +163,14 @@ course list from the course browser options, so you must also have `$CFG['course
 - `$CFG['CPS']['leftnavtools']`:  Set to `"limited"` to remove from the course left navigation tools that are also in the top navigation.  Set to false to remove the entire Tools block from the course left navigation.
 - `$CFG['GEN']['deflicense']`:  The default license for new questions.  See `/course/moddataset.php` for valid values.  Defaults to 1 (IMathAS community license).
 - `$CFG['GEN']['defGroupType']`: Set to change the default group type for newly created groups (def: 0)
+- `$CFG['GEN']['allowedImgDomains']`: In the text editor, which domains pasted images
+  are allowed to point to. Defaults to host domain and amazonaws.com.  Set as stringified
+  javascript array like <code>'["site1.com","site2.com"]'</code>
+
 
 ### LTI
 
+- If you're going to be using LTI 1.3, make sure you go to Admin Page, LTI 1.3 Platforms, Manage Private Keys and add a new key.  This should only need to be done once, unless you choose to rotate your keys.
 - `$CFG['LTI']['noCourseLevel']`: set to true to hide course level LTI key and secret from users. Use this if you want to require use of global LTI key/secrets.
 - `$CFG['LTI']['noGlobalMsg']`: When the `noCourseLevel` option above is set, use this option to define a message that will be displayed on the export page when no global LTI is set for the group.
 - `$CFG['LTI']['showURLinSettings']`: Set to true to show the LTI launch URL on the course settings page.  Normally omitted to avoid confusion (since it's not needed in most LMSs).
@@ -184,6 +200,7 @@ By default, emails are sent using the built-in PHP `mail()` function.  This can 
       - Optionally, but recommended: set `$CFG['email']['authcode']`, and set up SES to call
          `/admin/handleSESbounce.php?authcode=####` on bounces or complaints.
     - `$CFG['email']['handlerpriority']` can be set to define a breakpoint between using the default `mail()` delivery and the custom handler.   See `/includes/email.php` for values.
+- `$CFG['email']['secsalt']`: A secret value used for salting hashes.
 
 
 
@@ -193,13 +210,28 @@ If you wish to enable users to request browser push notifications (does not work
 
 - `$CFG['FCM']['SenderId']`: Your SenderId, from the Firebase project console.
 - `$CFG['FCM']['webApiKey']`: Your web API key, from the Firebase project console.
-- `$CFG['FCM']['serverApiKey']`: Your server key, from the Firebase project console.
 - `$CFG['FCM']['icon']`: an absolute web path to an icon to show on notifications.
+- `$CFG['FCM']['project_id']`: your Project ID, from the Firebase project console.
+- `$CFG['FCM']['app_id']`: your appId, from the Firebase project console.
+- `$CFG['FCM']['vapidKey']`: this is the public key, found under 
+  Project Settings, Cloud Messaging, Web configuration, in the Key pair column.
+- Go to the Firebase console, click on your project, go to Project Settings, click on Service Accounts,
+  and click Generate new private key. This will download a .json file to your computer.
+- In the Project Settings, click on Cloud Messaging, and ensure Firebase Cloud Messaging API (V1) is
+  enabled (you may need to go to the Google Cloud Console to enable it)
+- In your IMathAS install, while logged in as an admin, go to Admin Page, click Utilities, then click
+  Set up FCM for push notifications.  Here, paste the contents of the .json file you downloaded, and Save.
+
+If you had an older setup, pre-June 2024, using the serverApiKey, you need to update it.
+
 
 ### Internationalization
 
 The student side of the system is pretty well set up for i18n, but the instructor side is  not yet.  Currently the only translation pack available is `de` (German).  See `/i18n/translating.md` for more information about generating translations.  To enable a translation:
 - `$CFG['locale']`: Set this to the desired language code, like `de`
+
+Also adjustable:
+- `$CFG['nocommathousandsseparator']`: set to `true` to disallow the use of comma as a thousands separator in large numbers.
 
 ### IPEDS / NCES 
 
@@ -234,6 +266,10 @@ Options:
 - `$CFG['cleanup']['msgfrom']`:  the userid to send notification message from (def: 0)
 - `$CFG['cleanup']['keepsent']`:   set =0 to keep a copy of sent notifications in sent list
 - `$CFG['cleanup']['allowoptout']`:   (default: true) set to false to prevent teachers opting out
+- `$CFG['cleanup']['deloldaudit']`:  a number of days after which to delete 
+    teacher audit log data.  (def: 0 (don't use))
+- `$CFG['cleanup']['deloldltiqueue']`:  a number of days after which to delete 
+    LTI failure timesouts.  (def: 180)
 - `$CFG['cleanup']['groups']`: You can specify different old/delay values for different groups by defining
 `$CFG['cleanup']['groups'] = array(groupid => array('old'=>days, 'delay'=>days));`
 - `$CFG['cleanup']['oldstu']`: a number of days of inactivity in a student account after which the account is 
@@ -262,9 +298,6 @@ to re-minify the javascript.  You can do this using the shell script
 If you change any of the Vue files for the assessment player, you'll need to
 re-build the distribution files.  See `/assess2/vue-src/README.md` for more
 info, and how to configure your system for development mode testing.
-
-If tinymce is changed, or the plugins used are changed, you will need to run
-`/tinymce4/maketinymcebundle.php` to re-generate `tinymce_bundled.js`.
 
 ### Changing Mathquill
 The version of Mathquill used in this repo has it's source in the repo

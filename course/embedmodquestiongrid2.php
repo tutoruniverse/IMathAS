@@ -11,6 +11,17 @@
     }
     $aid = intval($_GET['aid']);
 
+	//get defaults
+	$query = "SELECT defpoints,defattempts,showhints,showwork,ver FROM imas_assessments ";
+	$query .= "WHERE id=:id AND courseid=:cid";
+	$stm = $DBH->prepare($query);
+	$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
+	$defaults = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($defaults === false) {
+		echo 'Invalid ID';
+		exit;
+	}
+
 	if (isset($_POST['action'])) {
 		require_once "../includes/updateptsposs.php";
 		if ($_POST['action'] == 'add') { //adding new questions
@@ -116,23 +127,18 @@
             }
 			$jsonintro = json_decode($intro,true);
 
-			//what qsetids do we need for adding copies?
-			$lookupid = array();
-			foreach(explode(',',$_POST['qids']) as $qid) {
-				if (intval($_POST['copies'.$qid])>0 && intval($qid)>0) {
-					$lookupid[] = intval($qid);
-				}
-			}
+			
 			//lookup qsetids
 			$qidtoqsetid = array();
-			if (count($lookupid)>0) {
-				$stm = $DBH->query("SELECT id,questionsetid FROM imas_questions WHERE id IN (".implode(',',$lookupid).")"); //sanitized above
-				while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-					$qidtoqsetid[$row[0]] = $row[1];
-				}
+			$stm = $DBH->prepare("SELECT id,questionsetid FROM imas_questions WHERE assessmentid=?");
+			$stm->execute([$aid]);
+			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$qidtoqsetid[$row[0]] = $row[1];
 			}
+			
 
 			foreach(explode(',',$_POST['qids']) as $qid) {
+				if (!isset($qidtoqsetid[$qid])) { continue; } // invalid qid
 				$attempts = trim($_POST['attempts'.$qid]);
                 $showhints = !empty($_POST['showhintsusedef'.$qid]) ? -1 : (
                     (empty($_POST['showhints1'.$qid]) ? 0 : 1) +
@@ -204,13 +210,7 @@
         exit;
 
 	} else {
-		//get defaults
-		$query = "SELECT defpoints,defattempts,showhints,showwork,ver FROM imas_assessments ";
-		$query .= "WHERE id=:id";
-		$stm = $DBH->prepare($query);
-		$stm->execute(array(':id'=>$aid));
-        $defaults = $stm->fetch(PDO::FETCH_ASSOC);
-        
+	
         if ($defaults['ver'] > 1) {
             $query = "SELECT iar.userid FROM imas_assessment_records AS iar,imas_students WHERE ";
             $query .= "iar.assessmentid=:assessmentid AND iar.userid=imas_students.userid AND imas_students.courseid=:courseid LIMIT 1";
@@ -323,14 +323,16 @@
 			$qidlist = implode(',', array_map('intval', $qids));
 			$query = "SELECT imas_questions.id,imas_questionset.description,imas_questions.points,imas_questions.attempts,imas_questions.showhints,imas_questions.showwork,imas_questionset.extref,imas_questionset.id AS qsid ";
 			$query .= "FROM imas_questions,imas_questionset WHERE imas_questionset.id=imas_questions.questionsetid AND ";
-			$query .= "imas_questions.id IN ($qidlist)";
-			$stm = $DBH->query($query);
+			$query .= "imas_questions.id IN ($qidlist) AND imas_questions.assessmentid=?";
+			$stm = $DBH->prepare($query);
+			$stm->execute([$aid]);
+			$cnt = 0;
 			while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 				if ($row['attempts']==9999) {
 					$row['attempts'] = '';
 				}
 
-				$qrows[$row['id']] = '<tr><td>'.Sanitize::encodeStringForDisplay($qns[$row['id']]).'</td><td>'.Sanitize::encodeStringForDisplay($row['description']).'</td>';
+				$qrows[$row['id']] = '<tr><td>'.Sanitize::encodeStringForDisplay($qns[$row['id']]).'</td><td id="qd'.$cnt.'">'.Sanitize::encodeStringForDisplay($row['description']).'</td>';
 				$qrows[$row['id']] .= '<td>';
 				if ($row['extref']!='') {
 					$extref = explode('~~',$row['extref']);
@@ -351,7 +353,7 @@
 				}
 				$qrows[$row['id']] .= '</td>';
 				$qrows[$row['id']] .= '<td><button type="button" onclick="previewq('.$row['qsid'].')">'._('Preview').'</button></td>';
-				$qrows[$row['id']] .= "<td><input type=text size=3 name=\"attempts{$row['id']}\" value=\"{$row['attempts']}\" /></td>";
+				$qrows[$row['id']] .= "<td><input type=text size=3 name=\"attempts{$row['id']}\" value=\"{$row['attempts']}\" aria-labelledby=\"qd$cnt\"/></td>";
 
                 $qrows[$row['id']] .= '<td><label><input type=checkbox class=showhintsdef name="showhintsusedef'.$row['id'].'" value=1 '. 
                                         ($row['showhints']==-1 ? 'checked':'').'> '._('Use Default').'</label>';
@@ -363,16 +365,17 @@
                 $qrows[$row['id']] .=   '<br><label>&nbsp; <input type=checkbox name="showhints4'.$row['id'].'" value=4 '. 
                                         ($row['showhints']&4 ? 'checked':'').'> '._('Written Examples').'</label></span></td>'; 
 
-                $qrows[$row['id']] .= "<td><select name=\"showwork{$row['id']}\">";
+                $qrows[$row['id']] .= "<td><select name=\"showwork{$row['id']}\" aria-labelledby=\"qd$cnt\">";
                 foreach ($showworkoptions as $v=>$l) {
                     $qrows[$row['id']] .= '<option value="'.Sanitize::encodeStringForDisplay($v).'" '.($row['showwork']==$v ? 'selected':'').'>';
                     $qrows[$row['id']] .= Sanitize::encodeStringForDisplay($l).'</option>';
                 }
                 $qrows[$row['id']] .= '</select></td>';
-				$qrows[$row['id']] .= "<td><input type=text size=1 name=\"copies" . Sanitize::onlyInt($row['id']) . "\" value=\"0\" /></td>";
+				$qrows[$row['id']] .= "<td><input type=text size=1 name=\"copies" . Sanitize::onlyInt($row['id']) . "\" value=\"0\" aria-labelledby=\"qd$cnt\"/></td>";
 				$qrows[$row['id']] .= '</tr>';
+				$cnt++;
 			}
-			echo "<th>Q#<br/>&nbsp;</th><th>Description<br/>&nbsp;</th><th></th><th></th>";
+			echo "<th aria-label-\"Question Number\">Q#<br/>&nbsp;</th><th>Description<br/>&nbsp;</th><th><span class=\"sr-only\">Features</span></th><th><span class=\"sr-only\">Preview</span></th>";
 			echo '<th>Tries<br/><i class="grey">Default: '.Sanitize::encodeStringForDisplay($defaults['defattempts']).'</i></th>';
 			echo '<th>Show Hints &amp; Videos?<br/><i class="grey">Default: '.Sanitize::encodeStringForDisplay($defaults['showhints']).'</i></th>';
 			echo '<th>Show Work?<br/><i class="grey">Default: '.Sanitize::encodeStringForDisplay($defaults['showwork']).'</i></th>';
@@ -406,7 +409,7 @@
         } else { //adding new questions
             $addqs = explode(';', $_GET['toaddqs']);
             
-			echo "<th>Description</th><th></th><th></th>";
+			echo "<th>Description</th><th><span class=\"sr-only\">Features</span></th><th><span class=\"sr-only\">Preview</span></th>";
 			echo '<th>Points<br/><i class="grey">Default: '.Sanitize::encodeStringForDisplay($defaults['defpoints']).'</i></th>';
 			echo '<th>Tries<br/><i class="grey">Default: '.Sanitize::encodeStringForDisplay($defaults['defattempts']).'</i></th>';
             echo '<th>Show Hints &amp; Videos?<br/><i class="grey">Default: '.Sanitize::encodeStringForDisplay($defaults['showhints']).'</i></th>';
@@ -416,14 +419,15 @@
 			$addqs = implode(',', array_map('intval', $addqs));
 			$stm = $DBH->query("SELECT id,description,extref,qtype,control FROM imas_questionset WHERE id IN ($addqs)");
 			$first = true;
+			$cnt = 0;
 			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$n = 1;
 				if ($row[3]=='multipart') {
-					preg_match('/anstypes\s*=(.*)/',$row[4],$match);
-					$n = substr_count($match[1],',')+1;
-				} else {
-					$n = 1;
+					if (preg_match('/anstypes\s*=(.*)/',$row[4],$match)) {
+						$n = substr_count($match[1],',')+1;
+					}
 				}
-				echo '<tr><td>'.Sanitize::encodeStringForDisplay($row[1]).'</td>';
+				echo '<tr><td id="qd'.$cnt.'">'.Sanitize::encodeStringForDisplay($row[1]).'</td>';
 				if ($row[2]!='') {
 					$extref = explode('~~',$row[2]);
 					$hasvid = false;  $hasother = false;
@@ -445,34 +449,35 @@
 				}
                 $qsid = Sanitize::encodeStringForDisplay($row[0]);
 				echo '<td><button type="button" onclick="previewq('.Sanitize::encodeStringForJavascript($row[0]).')">'._('Preview').'</button></td>';
-				echo "<td><input class=ptscol type=text size=2 name=\"points" . $qsid . "\" value=\"\" />";
+				echo "<td><input class=ptscol type=text size=2 name=\"points" . $qsid . "\" value=\"\" aria-labelledby=\"qd$cnt\"/>";
 				if ($first) {
 					echo '<input type=hidden name="firstqsetid" value="'.Sanitize::onlyInt($row[0]).'" />';
 					$first = false;
 				}
 				echo '<input type="hidden" name="qparts'.$qsid.'" value="'.Sanitize::onlyInt($n).'"/></td>';
-				echo "<td><input type=text size=3 name=\"attempts" . $qsid ."\" value=\"\" /></td>";
+				echo "<td><input type=text size=3 name=\"attempts" . $qsid ."\" value=\"\" aria-labelledby=\"qd$cnt\"/></td>";
                 echo '<td><label><input type=checkbox class=showhintsdef name="showhintsusedef'.$qsid.'" value=1 checked> '._('Use Default').'</label>';
-                echo '<span style="display:none>';
+                echo '<span style="display:none">';
                 echo '<br><label><input type=checkbox name="showhints1'.$qsid.'" value=1> '._('Hints').'</label>'; 
                 echo '<br><label><input type=checkbox name="showhints2'.$qsid.'" value=2> '._('Videos').'</label>'; 
                 echo '<br><label><input type=checkbox name="showhints4'.$qsid.'" value=4> '._('Written Examples').'</label></span></td>'; 
 
-                echo "<td><select name=\"showwork" . $qsid . "\">";
+                echo "<td><select name=\"showwork" . $qsid . "\" aria-labelledby=\"qd$cnt\">";
                 foreach ($showworkoptions as $v=>$l) {
                     echo '<option value="'.$v.'" '.($v==-1 ?'selected':'').'>';
                     echo Sanitize::encodeStringForDisplay($l).'</option>';
                 }
                 echo '</select></td>';
-				echo "<td><input type=text size=1 name=\"copies" . $qsid . "\" value=\"1\" /></td>";
+				echo "<td><input type=text size=1 name=\"copies" . $qsid . "\" value=\"1\" aria-labelledby=\"qd$cnt\"/></td>";
 				echo '</tr>';
+				$cnt++;
 			}
 			echo '</tbody></table>';
 			echo '<input type=hidden name="qsetids" value="'.Sanitize::encodeStringForDisplay($addqs).'" />';
 			echo '<input type=hidden name="action" value="add" />';
 
-			echo '<p><input type=checkbox name="addasgroup" value="1" onclick="chgisgrouped()"/> Add as a question group?</p>';
-			echo '<p><input type=checkbox name="pointsforparts" value="1" /> Set the points equal to the number of parts for multipart?</p>';
+			echo '<p><label><input type=checkbox name="addasgroup" value="1" onclick="chgisgrouped()"/> Add as a question group?</label></p>';
+			echo '<p><label><input type=checkbox name="pointsforparts" value="1" /> Set the points equal to the number of parts for multipart?</label></p>';
 			echo '<div class="submit"><input type="submit" value="'._('Add Questions').'"></div>';
 		}
 		echo '</form>';

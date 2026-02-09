@@ -19,7 +19,7 @@ ini_set("max_execution_time", "120");
 
 function generatemoveselect($count,$num) {
 	$num = $num+1;  //adjust indexing
-	$html = "<select id=\"ms-$num\" onchange=\"movefile($num)\">\n";
+	$html = "<select id=\"ms-$num\" onchange=\"movefile($num)\" aria-label=\"reorder file $num\">\n";
 	for ($i = 1; $i <= $count; $i++) {
 		$html .= "<option value=\"$i\" ";
 		if ($i==$num) { $html .= "selected=1";}
@@ -298,6 +298,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		}
 		$savetitle = _("Save Changes");
 	} else {
+		$line = [];
 		//set defaults
 		$line['title'] = "";
 		$line['text'] = "";
@@ -383,17 +384,17 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		}
 	}
 	$outcomes = array();
-	function flattenarr($ar) {
-		global $outcomes;
-		foreach ($ar as $v) {
-			if (is_array($v)) { //outcome group
-				$outcomes[] = array($v['name'], 1);
-				flattenarr($v['outcomes']);
-			} else {
-				$outcomes[] = array($v, 0);
-			}
-		}
-	}
+	function flattenarr($ar, $deftype = 0) {
+        global $outcomes;
+        foreach ($ar as $v) {
+            if (is_array($v)) { //outcome group
+                $outcomes[] = array($v['name'], 1);
+                flattenarr($v['outcomes'], 2);
+            } else if ($v !== '') {
+                $outcomes[] = array($v, $deftype);
+            }
+        }
+    }
 	flattenarr($outcomearr);
 
 	$page_formActionTag .= (isset($_GET['id'])) ? "&id=" . $gid : "";
@@ -444,17 +445,17 @@ $(function() { chghidetitle(); });
 	<div class=breadcrumb><?php echo $curBreadcrumb  ?></div>
 	<div id="headeraddinlinetext" class="pagetitle"><h1><?php echo $pagetitle ?><img src="<?php echo $staticroot ?>/img/help.gif" alt="Help" onClick="window.open('<?php echo $imasroot ?>/help.php?section=inlinetextitems','help','top=0,width=400,height=500,scrollbars=1,left='+(screen.width-420))"/></h1></div>
 
-	<form enctype="multipart/form-data" method=post action="<?php echo $page_formActionTag ?>">
-	<span class=form>Title: </span>
+	<form enctype="multipart/form-data" method=post action="<?php echo Sanitize::encodeStringForDisplay($page_formActionTag) ?>">
+	<label for=title class=form>Title: </label>
 	<span class=formright>
 		<span id="titlewrap" <?php if ($hidetitle==true) {echo 'style="display:none;"';} ?>>
-		<input type=text size=60 name=title value="<?php echo str_replace('"','&quot;',$line['title']);?>" required /><br/>
+		<input type=text size=60 name=title id=title value="<?php echo str_replace('"','&quot;',$line['title']);?>" required /><br/>
 		</span>
-		<input type="checkbox" name="hidetitle" value="1" onclick="chghidetitle()" <?php writeHtmlChecked($hidetitle,true) ?>/>
-		Hide title and icon
-	</span><BR class=form>
+		<label><input type="checkbox" name="hidetitle" value="1" onclick="chghidetitle()" <?php writeHtmlChecked($hidetitle,true) ?>/>
+		Hide title and icon</label>
+	</span><br class=form />
 
-	Text: (shows on course page)<BR>
+	<label for=text>Text: (shows on course page)</label><br/>
 	<div class=editor>
 		<textarea cols=60 rows=20 id=text name=text style="width: 100%"><?php echo Sanitize::encodeStringForDisplay($line['text'], true);?></textarea>
 	</div>
@@ -470,79 +471,79 @@ $(function() { chghidetitle(); });
 ?>
 		<a href="<?php echo getcoursefileurl($arr['link']); ?>" target="_blank">
 		View</a>
-		<input type="text" name="filedescr-<?php echo $arr['fid'] ?>" value="<?php echo $arr['desc'] ?>"/>
-		Delete? <input type=checkbox name="delfile-<?php echo $arr['fid'] ?>"/><br/>
+		<input type="text" name="filedescr-<?php echo $arr['fid'] ?>" value="<?php echo $arr['desc'] ?>" aria-label="Description"/>
+		<label><input type=checkbox name="delfile-<?php echo $arr['fid'] ?>"/> Delete</label><br/>
 <?php
 		}
 	}
 ?>
 
 		<input type="hidden" name="MAX_FILE_SIZE" value="10000000" />
-		New file<sup>*</sup>: <input type="file" name="userfile"/><br/>
-		Description: <input type="text" name="newfiledescr"/><br/>
+		<label for="userfile">New file</label><sup>*</sup>: <input type="file" id=userfile name="userfile"/><br/>
+		<label>Description: <input type="text" name="newfiledescr"/></label><br/>
 		<input type=submit name="submitbtn" value="Add / Update Files"/>
 	</span><br class=form>
 
 	<span class="form">List of YouTube videos</span>
 	<span class="formright">
-		<input type="checkbox" name="isplaylist" value="1" <?php writeHtmlChecked($line['isplaylist'],1);?>/> Show as embedded playlist
+		<label><input type="checkbox" name="isplaylist" value="1" <?php writeHtmlChecked($line['isplaylist'],1);?>/> Show as embedded playlist</label>
 	</span>
 	<br class="form"/>
 
 	<div>
-		<span class=form>Show:</span>
-		<span class=formright>
-			<input type=radio name="avail" value="0" <?php writeHtmlChecked($line['avail'],0);?> onclick="$('#datediv').slideUp(100);$('#altcaldiv').slideUp(100);"/>Hide<br/>
-			<input type=radio name="avail" value="1" <?php writeHtmlChecked($line['avail'],1);?> onclick="$('#datediv').slideDown(100);$('#altcaldiv').slideUp(100);"/>Show by Dates<br/>
-			<input type=radio name="avail" value="2" <?php writeHtmlChecked($line['avail'],2);?> onclick="$('#datediv').slideUp(100);$('#altcaldiv').slideDown(100);"/>Show Always<br/>
+		<span class=form id=availlbl>Show:</span>
+		<span class=formright role=group aria-labelledby=availlbl>
+			<label><input type=radio name="avail" value="0" <?php writeHtmlChecked($line['avail'],0);?> onclick="$('#datediv').slideUp(100);$('#altcaldiv').slideUp(100);"/>Hide</label><br/>
+			<label><input type=radio name="avail" value="1" <?php writeHtmlChecked($line['avail'],1);?> onclick="$('#datediv').slideDown(100);$('#altcaldiv').slideUp(100);"/>Show by Dates</label><br/>
+			<label><input type=radio name="avail" value="2" <?php writeHtmlChecked($line['avail'],2);?> onclick="$('#datediv').slideUp(100);$('#altcaldiv').slideDown(100);"/>Show Always</label><br/>
 		</span><br class="form"/>
 
 		<div id="datediv" style="display:<?php echo ($line['avail']==1)?"block":"none"; ?>">
 
 		<span class=form>Available After:</span>
 		<span class=formright>
-			<input type=radio name="sdatetype" value="0" <?php writeHtmlChecked($startdate,'0',0) ?>/>
-			 Always until end date<br/>
-			<input type=radio name="sdatetype" value="sdate" <?php writeHtmlChecked($startdate,'0',1) ?>/>
-			<input type=text size=10 name=sdate value="<?php echo $sdate;?>">
+			<label><input type=radio name="sdatetype" value="0" <?php writeHtmlChecked($startdate,'0',0) ?>/>
+			 Always until end date</label><br/>
+			<input type=radio name="sdatetype" value="sdate" <?php writeHtmlChecked($startdate,'0',1) ?> aria-label="Available after a date"/>
+			<input type=text size=10 name=sdate value="<?php echo $sdate;?>" aria-label="available after date">
 			<a href="#" onClick="displayDatePicker('sdate', this); return false">
 			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
-			at <input type=text size=10 name=stime value="<?php echo $stime;?>">
+			at <input type=text size=10 name=stime value="<?php echo $stime;?>" aria-label="available after time">
 		</span><BR class=form>
 
 		<span class=form>Available Until:</span>
 		<span class=formright>
-			<input type=radio name="edatetype" value="2000000000" <?php writeHtmlChecked($enddate,'2000000000',0) ?>/>
-			Always after start date<br/>
-			<input type=radio name="edatetype" value="edate" <?php writeHtmlChecked($enddate,'2000000000',1) ?>/>
-			<input type=text size=10 name=edate value="<?php echo $edate;?>">
+			<label><input type=radio name="edatetype" value="2000000000" <?php writeHtmlChecked($enddate,'2000000000',0) ?>/>
+			Always after start date</label><br/>
+			<input type=radio name="edatetype" value="edate" <?php writeHtmlChecked($enddate,'2000000000',1) ?> aria-label="available until a date"/>
+			<input type=text size=10 name=edate value="<?php echo $edate;?>" aria-label="available until date">
 			<a href="#" onClick="displayDatePicker('edate', this, 'sdate', 'start date'); return false">
 			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
-			at <input type=text size=10 name=etime value="<?php echo $etime;?>">
+			at <input type=text size=10 name=etime value="<?php echo $etime;?>" aria-label="available until time">
 		</span><BR class=form>
 
 		<span class=form>Place on Calendar?</span>
 		<span class=formright>
-			<input type=radio name="oncal" value=0 <?php writeHtmlChecked($line['oncal'],0); ?> /> No<br/>
-			<input type=radio name="oncal" value=1 <?php writeHtmlChecked($line['oncal'],1); ?> /> Yes, on Available after date (will only show after that date)<br/>
-			<input type=radio name="oncal" value=2 <?php writeHtmlChecked($line['oncal'],2); ?> /> Yes, on Available until date<br/>
-			With tag: <input name="caltag" type=text size=8 value="<?php echo Sanitize::encodeStringForDisplay($line['caltag']); ?>"/>
+			<label><input type=radio name="oncal" value=0 <?php writeHtmlChecked($line['oncal'],0); ?> /> No</label><br/>
+			<label><input type=radio name="oncal" value=1 <?php writeHtmlChecked($line['oncal'],1); ?> /> Yes, on Available after date (will only show after that date)</label><br/>
+			<label><input type=radio name="oncal" value=2 <?php writeHtmlChecked($line['oncal'],2); ?> /> Yes, on Available until date</label><br/>
+			<label>With tag: <input name="caltag" type=text size=8 value="<?php echo Sanitize::encodeStringForDisplay($line['caltag']); ?>"/></label>
 		</span><br class="form" />
 		</div>
 		<div id="altcaldiv" style="display:<?php echo ($line['avail']==2)?"block":"none"; ?>">
 		<span class=form>Place on Calendar?</span>
 		<span class=formright>
-			<input type=radio name="altoncal" value="0" <?php writeHtmlChecked($altoncal,0); ?> /> No<br/>
-			<input type=radio name="altoncal" value="1" <?php writeHtmlChecked($altoncal,1); ?> /> Yes, on
-			<input type=text size=10 name="cdate" value="<?php echo $sdate;?>">
+			<label><input type=radio name="altoncal" value="0" <?php writeHtmlChecked($altoncal,0); ?> /> No</label><br/>
+			<label><input type=radio name="altoncal" value="1" <?php writeHtmlChecked($altoncal,1); ?> /> Yes, on</label>
+			<input type=text size=10 name="cdate" value="<?php echo $sdate;?>" aria-label="date on calendar">
 			<a href="#" onClick="displayDatePicker('cdate', this); return false">
 			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a> <br/>
-			With tag: <input name="altcaltag" type=text size=8 value="<?php echo Sanitize::encodeStringForDisplay($line['caltag']); ?>"/>
+			<label>With tag: <input name="altcaltag" type=text size=8 value="<?php echo Sanitize::encodeStringForDisplay($line['caltag']); ?>"/></label>
 		</span><BR class=form>
 		</div>
 <?php
 	if (count($outcomes)>0) {
-			echo '<span class="form">Associate Outcomes:</span></span class="formright">';
+			echo '<label for="outcomes" class="form">Associate Outcomes:</label></span class="formright">';
 			writeHtmlMultiSelect('outcomes',$outcomes,$outcomenames,$gradeoutcomes,'Select an outcome...');
 			echo '</span><br class="form"/>';
 	}

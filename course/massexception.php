@@ -2,6 +2,7 @@
 //IMathAS:  Make deadline exceptions for a multiple students; included by listusers and gradebook
 //(c) 2007 David Lippman
 require_once __DIR__."/../includes/TeacherAuditLog.php";
+require_once __DIR__."/../includes/checkdata.php";
 
 	if (!isset($imasroot)) {
 		echo "This file cannot be called directly";
@@ -10,7 +11,12 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 
 	if (isset($_POST['clears'])) {
         $clearlist = implode(',', array_map('intval', $_POST['clears']));
-		$stm = $DBH->query("DELETE FROM imas_exceptions WHERE id IN ($clearlist)");
+		$stm = $DBH->prepare("DELETE e FROM imas_exceptions AS e
+			LEFT JOIN imas_assessments AS a ON e.assessmentid=a.id AND e.itemtype='A' 
+			LEFT JOIN imas_forums AS f ON e.assessmentid=f.id AND (e.itemtype='F' OR e.itemtype='P' OR e.itemtype='R')
+			WHERE e.id IN ($clearlist) AND ((a.courseid=? AND e.itemtype='A') OR
+				(f.courseid=? AND (e.itemtype='F' OR e.itemtype='P' OR e.itemtype='R')))");
+		$stm->execute([$cid,$cid]);
 	}
 	if (isset($_POST['addexc']) || isset($_POST['addfexc'])) {
         $DBH->beginTransaction();
@@ -19,6 +25,9 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 		$enddate = parsedatetime($_POST['edate'],$_POST['etime']);
 		$epenalty = (isset($_POST['overridepenalty']))?intval($_POST['newpenalty']):null;
 		$waivereqscore = (isset($_POST['waivereqscore']))?1:0;
+		if (isset($_POST['waiveworkcutoff'])) {
+			$waivereqscore += 2;
+		}
         $timelimitext = (isset($_POST['timelimitext'])) ? intval($_POST['timelimitextmin']) : 0;
         $attemptext = (isset($_POST['attemptext'])) ? intval($_POST['attemptextnum']) : 0;
 
@@ -30,9 +39,9 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 
 		if (!isset($_POST['addexc'])) { $_POST['addexc'] = array();}
 		if (!isset($_POST['addfexc'])) { $_POST['addfexc'] = array();}
-		$toarr = array_map('Sanitize::onlyInt', explode(',', $_POST['tolist']));
-		$addexcarr = array_map('Sanitize::onlyInt', $_POST['addexc']);
-		$addfexcarr = array_map('Sanitize::onlyInt', $_POST['addfexc']);
+		$toarr = filter_users_by_course(explode(',', $_POST['tolist']), $cid);
+		$addexcarr = filter_items_by_course($_POST['addexc'], 'imas_assessments', $cid);
+		$addfexcarr = filter_items_by_course($_POST['addfexc'], 'imas_forums', $cid);
         $existingExceptions = array();
         $eligibleForTimeExt = array();
 		if (count($addexcarr)>0 && count($toarr)>0) {
@@ -58,7 +67,7 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
                     // if time limit not expired, need to rewrite assess_versions[last]['timelimit_end']
                     //   and add timelimit_ext to note use of extension.
                     // if time limit is expired, then set eligibleForTimeExt
-                    $adata = json_decode(gzdecode($row[2]), true);
+                    $adata = json_decode(Sanitize::gzexpand($row[2]), true);
                     $lastver = &$adata['assess_versions'][count($adata['assess_versions'])-1];
                     if ($lastver['status']==0 && $lastver['timelimit_end'] > $now) {
                         // not submitted and time limit still active; extend now.
@@ -67,7 +76,7 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
                             $lastver['timelimit_ext'] = [];
                         }
                         $lastver['timelimit_ext'][] = $timelimitext;
-                        $iarupdate->execute([gzencode(json_encode($adata)), $row[0], $row[1]]);
+                        $iarupdate->execute([gzcompress(json_encode($adata)), $row[0], $row[1]]);
                         $eligibleForTimeExt[$row[0].'-'.$row[1]] = -1;
                     } else {
                         $eligibleForTimeExt[$row[0].'-'.$row[1]] = 1;
@@ -200,6 +209,9 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 					$stm->execute(array(':userid'=>$stu, ':assessmentid'=>$aid));
 					$stm = $DBH->prepare("DELETE FROM imas_assessment_records WHERE userid=:userid AND assessmentid=:assessmentid");
 					$stm->execute(array(':userid'=>$stu, ':assessmentid'=>$aid));
+                    // clear any lock
+                    $stm = $DBH->prepare("UPDATE imas_students SET lockaid=0 WHERE userid=? AND courseid=? AND lockaid=?");
+                    $stm->execute([$stu, $cid, $aid]);
 				}
 
 			}
@@ -369,15 +381,19 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 		$stm = $DBH->prepare("SELECT iu.LastName,iu.FirstName,istu.section FROM imas_users AS iu JOIN imas_students AS istu ON iu.id=istu.userid WHERE iu.id=:id AND istu.courseid=:courseid");
 		$stm->execute(array(':id'=>$tolist, ':courseid'=>$cid));
 		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row === false) {
+			echo "Invalid user";
+			exit;
+		}
 		echo "<h1><span class='pii-full-name'>" . Sanitize::encodeStringForDisplay($row[0]) . ", " . Sanitize::encodeStringForDisplay($row[1]) . '</span>';
 		if ($row[2]!='') {
 			echo ' <span class="small">(Section: '.Sanitize::encodeStringForDisplay($row[2]).')</span>';
 		}
 		echo "</h1>";
 	}
-	$query = "(SELECT ie.id AS eid,iu.LastName,iu.FirstName,ia.name as itemname,iu.id AS userid,ia.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,ia.tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_assessments AS ia ";
+	$query = "(SELECT ie.id AS eid,iu.LastName,iu.FirstName,ia.name as itemname,iu.id AS userid,ia.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.exceptionpenalty,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,ia.tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_assessments AS ia ";
 	$query .= "WHERE ie.itemtype='A' AND ie.assessmentid=ia.id AND ie.userid=iu.id AND ia.courseid=:courseid AND iu.id IN ($tolist) ) ";
-	$query .= "UNION (SELECT ie.id AS eid,iu.LastName,iu.FirstName,i_f.name as itemname,iu.id AS userid,i_f.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,2 AS tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_forums AS i_f ";
+	$query .= "UNION ALL (SELECT ie.id AS eid,iu.LastName,iu.FirstName,i_f.name as itemname,iu.id AS userid,i_f.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.exceptionpenalty,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,2 AS tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_forums AS i_f ";
 	$query .= "WHERE (ie.itemtype='F' OR ie.itemtype='P' OR ie.itemtype='R') AND ie.assessmentid=i_f.id AND ie.userid=iu.id AND i_f.courseid=:courseid2 AND iu.id IN ($tolist) )";
 	if ($isall) {
 		$query .= "ORDER BY itemname,LastName,FirstName";
@@ -408,11 +424,15 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 					echo "<li>" . Sanitize::encodeStringForDisplay($row['itemname']) ." <ul>";
 					$lasta = $row['itemid'];
 				}
-				printf('<li><input type=checkbox name="clears[]" value="%s" /><span class="pii-full-name">%s, %s</span> ',
+				printf('<li><label><input type=checkbox name="clears[]" value="%s" /><span class="pii-full-name">%s, %s</span> ',
 					Sanitize::encodeStringForDisplay($row['eid']), Sanitize::encodeStringForDisplay($row['LastName']),
 					Sanitize::encodeStringForDisplay($row['FirstName']));
 				if ($row['itemtype']=='A') {
-					echo Sanitize::encodeStringForDisplay("($sdate - $edate)");
+					if ($row['startdate'] == $row['enddate']) {
+						echo _('(no date override)');
+					} else {
+						echo Sanitize::encodeStringForDisplay("($sdate - $edate)");
+					}
 				} else if ($row['itemtype']=='F') {
 					echo Sanitize::encodeStringForDisplay("(PostBy: $sdate, ReplyBy: $edate)");
 				} else if ($row['itemtype']=='P') {
@@ -420,9 +440,15 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 				} else if ($row['itemtype']=='R') {
 					echo Sanitize::encodeStringForDisplay("(ReplyBy: $edate)");
 				}
-				if ($row['waivereqscore']==1) {
+				if (($row['waivereqscore']&1)==1) {
 					echo ' <i>('._('waives prereq').')</i>';
                 }
+				if (($row['waivereqscore']&2)==2) {
+					echo ' <i>('._('waives add work cutoff').')</i>';
+                }
+				if ($row['exceptionpenalty'] !== null) {
+					echo ' <i>('.sprintf(_('%d%% late penalty'), $row['exceptionpenalty']).')</i>';
+				}
                 if ($row['timeext'] != 0) {
                     echo ' <i>('.sprintf(_('%d min time extension'), abs($row['timeext']));
                     if ($row['timeext'] < 0) {
@@ -438,7 +464,7 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 				} else if ($row['is_lti']>0) {
 					echo ' <i>('._('Set by LTI').')</i>';
 				}
-				echo "</li>";
+				echo "</label></li>";
 
 			}
 			echo "</ul></li>";
@@ -454,11 +480,11 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 					if ($lasts!=0) {
 						natsort($assessarr);
 						foreach ($assessarr as $id=>$val) {
-							echo "<li><input type=checkbox name=\"clears[]\" value=\"" . Sanitize::onlyInt($id) . "\" />".Sanitize::encodeStringForDisplay($val);
+							echo "<li><label><input type=checkbox name=\"clears[]\" value=\"" . Sanitize::onlyInt($id) . "\" />".Sanitize::encodeStringForDisplay($val);
 							if ($notesarr[$id]!='') {
 								echo ' <em class=small>'.Sanitize::encodeStringForDisplay($notesarr[$id]).'</em>';
 							}
-							echo "</li>";
+							echo "</label></li>";
 						}
 						echo "</ul></li>";
 						$assessarr = array();
@@ -471,7 +497,11 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 				}
 				$assessarr[$row['eid']] = "{$row['itemname']} ";
 				if ($row['itemtype']=='A') {
-					$assessarr[$row['eid']] .= "($sdate - $edate)";
+					if ($row['startdate'] == $row['enddate']) {
+						$assessarr[$row['eid']] .= _('(no date override)');
+					} else {
+						$assessarr[$row['eid']] .= "($sdate - $edate)";
+					}
 				} else if ($row['itemtype']=='F') {
 					$assessarr[$row['eid']] .= "(PostBy: $sdate, ReplyBy: $edate)";
 				} else if ($row['itemtype']=='P') {
@@ -480,9 +510,15 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 					$assessarr[$row['eid']] .= "(ReplyBy: $edate)";
 				}
 				$notesarr[$row['eid']] = '';
-				if ($row['waivereqscore']==1) {
+				if (($row['waivereqscore']&1)==1) {
 					$notesarr[$row['eid']] .= ' ('._('waives prereq').')';
                 }
+				if (($row['waivereqscore']&2)==2) {
+					$notesarr[$row['eid']] .= ' ('._('waives add work cutoff').')';
+                }
+				if ($row['exceptionpenalty'] !== null) {
+					$notesarr[$row['eid']] .= ' ('.sprintf(_('%d%% late penalty'), $row['exceptionpenalty']).')';
+				}
                 if ($row['timeext'] != 0) {
                     $notesarr[$row['eid']] .= ' ('.sprintf(_('%d min time extension'), abs($row['timeext']));
                     if ($row['timeext'] < 0) {
@@ -502,11 +538,11 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 			}
 			natsort($assessarr);
 			foreach ($assessarr as $id=>$val) {
-				echo "<li><input type=checkbox name=\"clears[]\" value=\"" . Sanitize::onlyInt($id) . "\" />".Sanitize::encodeStringForDisplay($val);
+				echo "<li><label><input type=checkbox name=\"clears[]\" value=\"" . Sanitize::onlyInt($id) . "\" />".Sanitize::encodeStringForDisplay($val);
 				if ($notesarr[$id]!='') {
 					echo ' <em class=small>'.Sanitize::encodeStringForDisplay($notesarr[$id]).'</em>';
 				}
-				echo "</li>";
+				echo "</label></li>";
 			}
 			echo "</ul></li>";
 		}
@@ -575,25 +611,26 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 		echo 'priority.  Only create a manual exception here if it is for a special purpose, like waiving a prerequisite.</p>';
 	}
 	echo '<fieldset class="optionlist"><legend>'._("Exception Options").'</legend>';
-	echo '<p class="list"><input type="checkbox" name="eatlatepass"/> Deduct <input type="input" name="latepassn" size="1" value="1"/> LatePass(es) from each student. '.Sanitize::encodeStringForDisplay($lpmsg).'</p>';
-	echo '<p class="list"><input type="checkbox" name="sendmsg"/> Send message to these students?</p>';
+	echo '<p class="list"><input type="checkbox" name="eatlatepass" id="eatlatepass"> <label for="eatlatepass" id="dl">Deduct LatePass(es) from each student:</label> <input type="input" name="latepassn" size="1" value="1" aria-labelledby="dl"/>. '.Sanitize::encodeStringForDisplay($lpmsg).'</p>';
+	echo '<p class="list"><label><input type="checkbox" name="sendmsg"/> Send message to these students?</label></p>';
 	echo '<p>For assessments:</p>';
 	if ($courseUIver < 2) {
-		echo '<p class="list"><input type="checkbox" name="forceregen"/> Force student to work on new versions of all questions?  Students ';
-		echo 'will keep any scores earned, but must work new versions of questions to improve score. <i>Do not use with group assessments</i>.</p>';
+		echo '<p class="list"><label><input type="checkbox" name="forceregen"/> Force student to work on new versions of all questions?  Students ';
+		echo 'will keep any scores earned, but must work new versions of questions to improve score. <i>Do not use with group assessments</i>.</label></p>';
 	}
-	echo '<p class="list"><input type="checkbox" name="forceclear"/> Clear students\' attempts?  Students ';
+	echo '<p class="list"><label><input type="checkbox" name="forceclear"/> Clear students\' attempts?  Students ';
 	echo 'will <b>not</b> keep any scores earned, and must rework all problems.';
 	echo '<span style="display:none" class="noticetext" id="forceclearwarn">';
-	echo '<br/>Warning: this will delete the students\' attempts and grades for these assessments.</span>';
+	echo '<br/>Warning: this will delete the students\' attempts and grades for these assessments.</span></label>';
 	echo '</p>';
-	echo '<p class="list"><input type="checkbox" name="waivereqscore"/> Waive "show based on an another assessment" requirements, if applicable.</p>';
-    echo '<p class="list"><input type="checkbox" name="overridepenalty"/> Override default exception/LatePass penalty.  Deduct <input type="input" name="newpenalty" size="2" value="0"/>% for questions done while in exception.</p>';
+	echo '<p class="list"><label><input type="checkbox" name="waivereqscore"/> Waive "show based on an another assessment" requirements, if applicable.</label></p>';
+	echo '<p class="list"><label><input type="checkbox" name="waiveworkcutoff"/> Waive "add work cutoff", if applicable.</label></p>';
+    echo '<p class="list"><label><input type="checkbox" name="overridepenalty"/> Override default exception/LatePass penalty.</label>  <label>Deduct <input type="input" name="newpenalty" size="2" value="0"/>% for questions done while in exception.</label></p>';
     if ($courseUIver > 1) {
-        echo '<p class="list"><input type="checkbox" name="timelimitext"/> If time limit is active or expired, allow an additional <input size=2 name="timelimitextmin" value="0"> additional minutes.
+        echo '<p class="list"><label><input type="checkbox" name="timelimitext"/> If time limit is active or expired, allow additional time:</label> <label><input size=2 name="timelimitextmin" value="0"> additional minutes.</label>
         <span class="small" id="timelimitinfo" style="display:none"><br>Only applies to the most recent attempt. Be aware that depending on your settings, students may have already been shown the answers.
         <br>To give more time in advance, do not use this, use a Time Limit Multiplier (in the Roster, click the student\'s name).</span></p>';
-        echo '<p class="list"><input type="checkbox" name="attemptext" /> Allow student <input size=2 name="attemptextnum" value="0"> additional versions.</p>';
+        echo '<p class="list"><label><input type="checkbox" name="attemptext" /> Allow student additional versions:</label> <label><input size=2 name="attemptextnum" value="0"> Additional versions</label></p>';
     }
     echo '</fieldset>';
 
@@ -612,13 +649,13 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 		$etime = (($hr==0)?12:$hr).':'.(($min<10)?'0':'').$min.' '.$am;
 		//$etime = tzdate("g:i a",$wk);
 		echo "<span class=form>Available After:</span><span class=formright>";
-		echo "<input type=text size=10 name=sdate value=\"$sdate\">\n";
+		echo "<input type=text size=10 name=sdate value=\"$sdate\" aria-label=\"available after date\">\n";
 		echo "<a href=\"#\" onClick=\"displayDatePicker('sdate', this); return false\"><img src=\"$staticroot/img/cal.gif\" alt=\"Calendar\"/></A>\n";
-		echo "at <input type=text size=10 name=stime value=\"$stime\"></span><BR class=form>\n";
+		echo "at <input type=text size=10 name=stime value=\"$stime\" aria-label=\"available after time\"></span><BR class=form>\n";
 
-		echo "<span class=form>Available Until:</span><span class=formright><input type=text size=10 name=edate value=\"$edate\">\n";
+		echo "<span class=form>Available Until:</span><span class=formright><input type=text size=10 name=edate value=\"$edate\" aria-label=\"available until date\">\n";
 		echo "<a href=\"#\" onClick=\"displayDatePicker('edate', this); return false\"><img src=\"$staticroot/img/cal.gif\" alt=\"Calendar\"/></A>\n";
-		echo "at <input type=text size=10 name=etime value=\"$etime\"></span><BR class=form>\n";
+		echo "at <input type=text size=10 name=etime value=\"$etime\" aria-label=\"available until time\"></span><BR class=form>\n";
 
 		echo "Set Exception for assessments: ";
 		echo 'Check: <a href="#" onclick="return chkAllNone(\'qform2\',\'addexc[]\',true)">All</a> <a href="#" onclick="return chkAllNone(\'qform2\',\'addexc[]\',false)">None</a>. ';
@@ -627,9 +664,9 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 
 		natsort($assessarr);
 		foreach ($assessarr as $id=>$val) {
-			echo "<li><input type=checkbox name=\"addexc[]\" value=\"$id\" ";
+			echo "<li><label><input type=checkbox name=\"addexc[]\" value=\"$id\" ";
 			if (isset($_POST['assesschk']) && in_array($id,$_POST['assesschk'])) { echo 'checked="checked" ';}
-			echo "/>" . Sanitize::encodeStringForDisplay($val) . "</li>";
+			echo "/>" . Sanitize::encodeStringForDisplay($val) . "</label></li>";
 		}
 		echo '</ul>';
 		echo "<input type=submit value=\"Record Changes\" />";
@@ -649,18 +686,18 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 		$pbtime = (($hr==0)?12:$hr).':'.(($min<10)?'0':'').$min.' '.$am;
 		$rbtime = $pbtime;
 		//$etime = tzdate("g:i a",$wk);
-		echo '<span class="form">Exception type:</span><span class="formright"><select name="forumitemtype">';
+		echo '<span class="form"><label for="forumitemtype">Exception type</label>:</span><span class="formright"><select name="forumitemtype" id="forumitemtype">';
 		echo '<option value="F" checked">Override Post By and Reply By</option>';
 		echo '<option value="P" checked">Override Post By only</option>';
 		echo '<option value="R" checked">Override Reply By only</option></select></span><br class="form"/>';
 
-		echo "<span class=form>Post By:</span><span class=formright><input type=text size=10 name=pbdate value=\"$pbdate\">\n";
+		echo "<span class=form>Post By:</span><span class=formright><input type=text size=10 name=pbdate value=\"$pbdate\" aria-label=\"post by date\">\n";
 		echo "<a href=\"#\" onClick=\"displayDatePicker('pbdate', this); return false\"><img src=\"$staticroot/img/cal.gif\" alt=\"Calendar\"/></A>\n";
-		echo "at <input type=text size=10 name=pbtime value=\"$pbtime\"></span><BR class=form>\n";
+		echo "at <input type=text size=10 name=pbtime value=\"$pbtime\" aria-label=\"post by time\"></span><BR class=form>\n";
 
-		echo "<span class=form>Reply By:</span><span class=formright><input type=text size=10 name=rbdate value=\"$rbdate\">\n";
+		echo "<span class=form>Reply By:</span><span class=formright><input type=text size=10 name=rbdate value=\"$rbdate\" aria-label=\"reply by date\">\n";
 		echo "<a href=\"#\" onClick=\"displayDatePicker('rbdate', this); return false\"><img src=\"$staticroot/img/cal.gif\" alt=\"Calendar\"/></A>\n";
-		echo "at <input type=text size=10 name=rbtime value=\"$rbtime\"></span><BR class=form>\n";
+		echo "at <input type=text size=10 name=rbtime value=\"$rbtime\" aria-label=\"reply by time\"></span><BR class=form>\n";
 
 
 
@@ -671,9 +708,9 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 
 		natsort($forumarr);
 		foreach ($forumarr as $id=>$val) {
-			echo "<li><input type=checkbox name=\"addfexc[]\" value=\"$id\" ";
+			echo "<li><label><input type=checkbox name=\"addfexc[]\" value=\"$id\" ";
 			if (isset($_POST['forumchk']) && in_array($id,$_POST['forumchk'])) { echo 'checked="checked" ';}
-			echo "/>" . Sanitize::encodeStringForDisplay($val) . "</li>";
+			echo "/>" . Sanitize::encodeStringForDisplay($val) . "</label></li>";
 		}
 		echo '</ul>';
 		echo "<input type=submit value=\"Record Changes\" />";
@@ -685,7 +722,11 @@ require_once __DIR__."/../includes/TeacherAuditLog.php";
 	if (!isset($_GET['uid']) && count($_POST['checked'])>1) {
 		echo '<fieldset><legend>'._("Students Selected").'</legend>';
 		//echo "<h3>Students Selected</h3>";
-		$stm = $DBH->query("SELECT LastName,FirstName FROM imas_users WHERE id IN ($tolist) ORDER BY LastName,FirstName");
+		$stm = $DBH->prepare("SELECT iu.LastName,iu.FirstName FROM imas_users AS iu 
+			JOIN imas_students AS istu ON istu.userid=iu.id 
+			WHERE iu.id IN ($tolist) AND istu.courseid=?
+			ORDER BY LastName,FirstName");
+		$stm->execute([$cid]);
 		echo "<ul>";
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 			printf("<li><span class='pii-full-name'>%s, %s</span></li>",

@@ -42,6 +42,9 @@ class CalculatedMatrixAnswerBox implements AnswerBox
 
         $optionkeys = ['ansprompt', 'answersize', 'answerboxsize', 'hidepreview', 'answerformat',
             'answer', 'reqdecimals', 'displayformat', 'readerlabel'];
+        if ($anstype === 'algmatrix') {
+            array_push($optionkeys, 'domain', 'variables');
+        }
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
@@ -55,7 +58,12 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             $out .= $ansprompt;
         }
         if (!empty($answersize)) {
-            list($tip, $shorttip) = formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix', false, true);
+            if ($anstype === 'algmatrix') {
+                $shorttip = _('Enter an algebraic expression');
+                $tip = _('Enter each element of the matrix as an algebraic expression. Example: 3x^2, x/5, (a+b)/c');
+            } else {
+                list($tip, $shorttip) = formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype, false, true);
+            }
             //$tip = "Enter each element of the matrix as  number (like 5, -3, 2.2) or as a calculation (like 5/3, 2^3, 5+4)";
 
             if (empty($answerboxsize)) {$answerboxsize = 3;}
@@ -75,24 +83,34 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             }
             $out .= '<table>';
             if (in_array('det', $dispformats)) {
-                $out .= '<tr><td class="matrixdetleft">&nbsp;</td><td>';
+                $out .= '<tr><td class="matrixdetleft">&nbsp;</td><td style="padding:0px">';
             } else {
-                $out .= '<tr><td class="matrixleft">&nbsp;</td><td>';
+                $out .= '<tr><td class="matrixleft">&nbsp;</td><td style="padding:0px">';
             }
+            
             $arialabel = $this->answerBoxParams->getQuestionIdentifierString() .
+                ' ' . sprintf(_('matrix entry with %d rows and %d columns'), $answersize[0], $answersize[1]) .
                 (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
             $out .= '<table role="group" aria-label="' . $arialabel . '">';
             $count = 0;
             $las = explode("|", $la);
             $cellcnt = $answersize[0] * $answersize[1];
+            $augcolumn = -1;
+            if (in_array('augmented', $dispformats)) {
+                $augcolumn = $answersize[1] - 1;
+            }
             for ($row = 0; $row < $answersize[0]; $row++) {
                 $out .= "<tr>";
                 for ($col = 0; $col < $answersize[1]; $col++) {
-                    $out .= '<td>';
+                    if ($col == $augcolumn) {
+                        $out .= '<td style="border-left: 1px solid #000">';
+                    } else {
+                        $out .= '<td>';
+                    }
 
                     $attributes = [
                         'type' => 'text',
-                        'size' => $answerboxsize,
+                        'style' => 'width:'.sizeToCSS($answerboxsize),
                         'name' => "qn$qn-$count",
                         'id' => "qn$qn-$count",
                         'value' => ($las[$count] ?? ''),
@@ -102,8 +120,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
                     $params['matrixsize'] = $answersize;
 
                     $out .= '<input ' .
-                    'aria-label="' . sprintf(_('Cell %d of %d'), $count + 1, $cellcnt) . '" ' .
-                    Sanitize::generateAttributeString($attributes) .
+                        Sanitize::generateAttributeString($attributes) .
                         '" />';
 
                     $out .= "</td>\n";
@@ -124,9 +141,16 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             } else {
                 $qnref = ($multi - 1) . '-' . ($qn % 1000);
             }
-            $shorttip = _('Enter your answer as a matrix');
-            // convert [(2,3,4),(1,4,5)] to latex
-            $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 1 & 4 & 5 \\end{smallmatrix}\\right]\\]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+            if ($anstype === 'calccomplexmatrix') {
+                $shorttip = _('Enter a matrix of complex numbers');
+                $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2+i & 3 & i \\\\ 2-i & 4 & 5 \\end{smallmatrix}\\right]\\]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype);
+            } else if ($anstype === 'algmatrix') {
+                $shorttip = _('Enter a matrix of algebraic expressions');
+                $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} x & 2 & x^2 \\\\ 1 & 3x & 5 \\end{smallmatrix}\\right]\\]');
+            } else {
+                $shorttip = _('Enter your answer as a matrix');
+                $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 1 & 4 & 5 \\end{smallmatrix}\\right]\\]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype);
+            }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
 
             $classes = ['text'];
@@ -135,7 +159,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             }
             $attributes = [
                 'type' => 'text',
-                'size' => $answerboxsize,
+                'style' => 'width:'.sizeToCSS($answerboxsize),
                 'name' => "qn$qn",
                 'id' => "qn$qn",
                 'value' => $la,
@@ -156,6 +180,9 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             $preview .= '</button> &nbsp;';
         }
         $preview .= "<span id=p$qn></span> ";
+        if ($anstype === 'algmatrix' && in_array('generalcomplex', $ansformats)) {
+            $tip .= '<br>'._('Your answer can contain complex numbers.');
+        }
         $params['tip'] = $shorttip;
         $params['longtip'] = $tip;
         $params['calcformat'] = $answerformat;
@@ -163,12 +190,30 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             $params['helper'] = 1;
         }
 
+        if ($anstype === 'algmatrix') {
+            if (empty($variables)) {$variables = "x";}
+            $addvars = [];
+            if (in_array('generalcomplex', $ansformats)) {
+                $addvars[] = 'i';
+            }
+            list($variables, $ofunc, $newdomain, $restrictvartoint) = numfuncParseVarsDomain($variables, $domain, $addvars);
+    
+            $params['vars'] = $variables;
+            $params['fvars'] = $ofunc;
+            $params['domain'] = $newdomain;
+        }
+
+        $nosolntype = 0;
         if (in_array('nosoln', $ansformats) || in_array('nosolninf', $ansformats)) {
-            list($out, $answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
+            list($out, $answer,$nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
         }
 
         if ($answer !== '' && !is_array($answer) && !$isConditional) {
-            $sa = '`' . $answer . '`';
+            if ($nosolntype > 0) {
+                $sa = $answer;
+            } else {
+                $sa = '`' . $answer . '`';
+            }
         }
 
         // Done!

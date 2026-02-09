@@ -106,7 +106,7 @@ class StringAnswerBox implements AnswerBox
             }
             $attributes = [
                 'type' => 'text',
-                'size' => $answerboxsize,
+                'style' => 'width:'.sizeToCSS($answerboxsize),
                 'name' => "qn$qn",
                 'id' => "qn$qn",
                 'value' => $la,
@@ -185,6 +185,8 @@ class StringAnswerBox implements AnswerBox
                 $sa = '`' . str_replace(['and', 'xor', 'or', 'implies', 'iff'], ['^^', 'oplus', 'vv', '=>', '<=>'], $answer) . '`';
             } else if ($answerformat == "setexp") {
                 $sa = '`' . str_replace(['and', 'cap', 'xor', 'oplus', 'ominus', 'or', 'cup'], ['nn', 'nn', '⊖', '⊖', '⊖', 'uu', 'uu'], $answer) . '`';
+            } else if (strpos($strflags, 'all_words') !== false) {
+                $sa .= _('The answer must contain the words:') . ' ' . $answer;
             } else {
                 $sa .= $answer;
             }

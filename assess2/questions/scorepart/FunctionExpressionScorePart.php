@@ -87,12 +87,13 @@ class FunctionExpressionScorePart implements ScorePart
             return $scorePartResult;
         }
 
-        if (!in_array('inequality',$ansformats) &&
+        if (!in_array('inequality',$ansformats) && !in_array('doubleinequality', $ansformats) &&
             (strpos($answer,'<')!==false || strpos($answer,'>')!==false || strpos($answer,'!=')!==false)
          ) {
             echo 'Your $answer contains an inequality sign, but you do not have $answerformat="inequality" set. This question probably will not work right.';
         } else if (!in_array('equation',$ansformats) &&
           !in_array('inequality',$ansformats) &&
+          !in_array('doubleinequality', $ansformats) &&
           strpos($answer,'=')!==false
         ) {
             echo 'Your $answer contains an equal sign, but you do not have $answerformat="equation" set. This question probably will not work right.';
@@ -107,6 +108,23 @@ class FunctionExpressionScorePart implements ScorePart
             }
             $answer = rewritePlusMinus($answer);
             $givenans = rewritePlusMinus($givenans);
+        }
+        if (in_array('doubleinequality', $ansformats)) {
+            if (!$isListAnswer) {
+                $ansformats[] = 'list';
+                $isListAnswer = true;
+            }
+            if (!in_array('inequality', $ansformats)) {
+                $ansformats[] = 'inequality';
+            }
+            $answer = preg_replace('/(.*?)(<=|>=|<|>)(.*?)(<=|>=|<|>)(.*?)/', '$1$2$3,$3$4$5', $answer);
+            $givenans = preg_replace_callback('/(.*?)(<=|>=|<|>)(.*?)(<=|>=|<|>)(.*?)/', function($m) {
+                if ($m[2][0] != $m[4][0]) { // non-matching directions: reject
+                    return '';
+                } else {
+                    return $m[1].$m[2].$m[3].','.$m[3].$m[4].$m[5];
+                }
+            }, $givenans);
         }
 
         if ($isListAnswer) {
@@ -144,7 +162,6 @@ class FunctionExpressionScorePart implements ScorePart
             } else {
                 $toevalGivenans = $givenans;
             }
-
             $givenansfunc = parseMathQuiet($toevalGivenans, $vlist, [], $flist, true, $isComplex);
             if ($givenansfunc === false) { //parse error
                 continue;
@@ -214,8 +231,12 @@ class FunctionExpressionScorePart implements ScorePart
                     } else {
                         preg_match('/(.*?)(<=|>=|<|>|!=)(.*)/', $answer, $matches);
                     }
-                    $answer = $matches[3] . '-(' . $matches[1] . ')';
-                    $answerInequality = $matches[2];
+                    if (isset($matches[3])) {
+                        $answer = $matches[3] . '-(' . $matches[1] . ')';
+                        $answerInequality = $matches[2];
+                    } else {
+                        $answerInequality = '='; // prevent error on invalid $answer
+                    }
                 } else if (in_array('equation',$ansformats)) {
                     $answer = preg_replace('/(.*)=(.*)/','$1-($2)',$answer);
                 }
@@ -348,7 +369,7 @@ class FunctionExpressionScorePart implements ScorePart
                             } else if (abs($realans)<=.00000001 && is_numeric($givenansvals[$i]) && abs($givenansvals[$i])<=.00000001) {
                                 $cntbothzero++;
                             }
-                        } else if ($isComplex && in_array('toconst',$ansformats)) {
+                        } else if (in_array('toconst',$ansformats)) {
                             if (isNaN($givenansvals[$i])) {
                                 $stunan++;
                                 continue;
@@ -360,27 +381,36 @@ class FunctionExpressionScorePart implements ScorePart
                             // want g2-g1 == r2-r1.
                             // This approach is simpler for complex than the meandiff approach
                             if (count($rollingstu)==2) {
-                                $v1 = [$rollingstu[1][0]-$rollingstu[0][0], $rollingstu[1][1]-$rollingstu[0][1]];
-                                $v2 = [$rollingreal[1][0]-$rollingreal[0][0], $rollingreal[1][1]-$rollingreal[0][1]];
-                                for ($ci=0;$ci<2;$ci++) {
+                                if ($isComplex) {
+                                    $v1 = [$rollingstu[1][0]-$rollingstu[0][0], $rollingstu[1][1]-$rollingstu[0][1]];
+                                    $v2 = [$rollingreal[1][0]-$rollingreal[0][0], $rollingreal[1][1]-$rollingreal[0][1]];
+                                    for ($ci=0;$ci<2;$ci++) {
+                                        // TODO: these tolerances may not make sense in this context
+                                        if ($abstolerance !== '') {
+                                            if (abs($v2[$ci] - $v1[$ci]) > $abstolerance+1E-12) { $correct = false; break 2;}
+                                        } else {
+                                            if ((abs($v2[$ci] - $v1[$ci])/(max(abs($v1[$ci]),abs($v2[$ci]))+.0001) > $reltolerance+1E-12)) {$correct = false; break 2;}
+                                        }
+                                    }
+                                } else {
+                                    $v1 = $rollingstu[1]-$rollingstu[0];
+                                    $v2 = $rollingreal[1]-$rollingreal[0];
                                     // TODO: these tolerances may not make sense in this context
                                     if ($abstolerance !== '') {
-                                        if (abs($v2[$ci] - $v1[$ci]) > $abstolerance+1E-12) { $correct = false; break 2;}
+                                        if (abs($v2 - $v1) > $abstolerance+1E-12) { $correct = false; break 2;}
                                     } else {
-                                        if ((abs($v2[$ci] - $v1[$ci])/(max(abs($v1[$ci]),abs($v2[$ci]))+.0001) > $reltolerance+1E-12)) {$correct = false; break 2;}
+                                        if ((abs($v2 - $v1)/(max(abs($v1),abs($v2))+.0001) > $reltolerance+1E-12)) {$correct = false; break 2;}
                                     }
                                 }
                             }
+                        /* // old toconst method; had issues with large numbers
                         } else if (in_array('toconst',$ansformats)) {
                             if (isNaN($givenansvals[$i])) {
                                 $stunan++;
                             } else {
                                 $diffs[] = $givenansvals[$i] - $realans;
-                                $realanss[] = $realans;
-                                $ysqr = $realans*$realans;
-                                $ysqrtot += 1/($ysqr+.0001);
-                                $reldifftot += ($givenansvals[$i] - $realans)/($ysqr+.0001);
                             }
+                        */
                         } else if ($isComplex) { // compare complex points
                             if (!is_array($givenansvals[$i])) {
                                 $stunan++;
@@ -402,8 +432,8 @@ class FunctionExpressionScorePart implements ScorePart
                         }
                     }
 
-                    if ($cntnan==20 && isset($GLOBALS['teacherid'])) {
-                        echo _('Debug info: function evaled to Not-a-number at all test points.  Check $domain');
+                    if ($cntnan==20) {
+                        echo _('Debug info: $answer function evaled to Not-a-number at all test points.  Check $domain');
                     }
                     if ($stunan>1) { //if more than 1 student NaN response
                         $correct = false; continue;
@@ -447,27 +477,28 @@ class FunctionExpressionScorePart implements ScorePart
                         } else {
                             $correct = false;
                         }
-                    } else if (!$isComplex && in_array('toconst',$ansformats) && count($diffs)>0) {
-                        if ($abstolerance !== '') {
-                            //if abs, use mean diff - will minimize error in abs diffs
-                            $meandiff = array_sum($diffs)/count($diffs);
-                        } else {
-                            //if relative tol, use meandiff to minimize relative error
-                            $meandiff = $reldifftot/$ysqrtot;
-                        }
-                        if (is_nan($meandiff)) {
-                            $correct=false; continue;
-                        }
-                        for ($i=0; $i<count($diffs); $i++) {
-                            if ($abstolerance !== '') {
-                                if (abs($diffs[$i]-$meandiff) > $abstolerance+1E-12) {$correct = false; break;}
+                    }
+                    /* // old toconst method
+
+                     else if (!$isComplex && in_array('toconst',$ansformats) && count($diffs)>0) {
+                       
+                        $meandiff = array_sum($diffs)/count($diffs);
+                        // do same comparison as for regular funcs, but subtracting meandiff
+                        foreach ($realanstmp as $i=>$realans) {
+                            if (isNaN($realans)) {
+                                continue;
+                            }
+                            if (isNaN($givenansvals[$i])) {
+                                continue;
+                            } else if ($abstolerance !== '') {
+                                if (abs($givenansvals[$i]-$meandiff-$realans) > $abstolerance+1E-12) { $correct = false; break;}
                             } else {
-                                //if ((abs($diffs[$i]-$meandiff)/(abs($meandiff)+0.0001) > $reltolerance-1E-12)) {$correct = false; break;}
-                                if ((abs($diffs[$i]-$meandiff)/(abs($realanss[$i])+0.0001) > $reltolerance+1E-12)) {$correct = false; break;}
+                                if ((abs($givenansvals[$i]-$meandiff-$realans)/(abs($realans)+.0001) > $reltolerance+1E-12)) {$correct = false; break;}
                             }
                         }
                     }
-
+                    */
+     
                     if ($correct == true) {
                         //test for correct format, if specified
                         if ($thisreqtimes!='' && checkreqtimes(str_replace(',','',$givenanslist[$gaidx]),$thisreqtimes)==0) {
@@ -481,7 +512,7 @@ class FunctionExpressionScorePart implements ScorePart
                                 continue;
                             }
                         }
-                        $correctscores[] = $partialpts[$ansidx];
+                        $correctscores[] = $partialpts[$ansidx] ?? 1;
                         $givenansused[$gaidx] = 1;
                         continue 3; // skip to next answer list entry
                     }

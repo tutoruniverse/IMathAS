@@ -52,7 +52,8 @@ class ScoreEngine
         'strflags',
         'questions',
         'variables',
-        'formatfeedbackon'
+        'formatfeedbackon',
+        'defaults'
     );
 
     const ADDITIONAL_VARS_FOR_SCORING = array(
@@ -138,10 +139,13 @@ class ScoreEngine
         $attemptn = $scoreQuestionParams->getAttemptNumber();
         $thisq = $scoreQuestionParams->getQuestionNumber() + 1;
         $currentseed = $scoreQuestionParams->getQuestionSeed();
+        $graphdispmode = $_SESSION['userprefs']['graphdisp'];
+        $drawentrymode = $_SESSION['userprefs']['drawentry'];
         try {
-          eval(interpret('control', $quesData['qtype'], $quesData['control']));
+          $db_qsetid = $scoreQuestionParams->getDbQuestionSetId();
+          eval(interpret('control', $quesData['qtype'], $quesData['control'], 1, [$db_qsetid]));
           $this->randWrapper->srand($scoreQuestionParams->getQuestionSeed() + 1);
-          eval(interpret('answer', $quesData['qtype'], $quesData['answer']));
+          eval(interpret('answer', $quesData['qtype'], $quesData['answer'], 1, [$db_qsetid]));
         } catch (\Throwable $t) {
             $this->addError(
                 _('Caught error while evaluating the code in this question: ')
@@ -149,6 +153,10 @@ class ScoreEngine
                 . ' on line '
                 . $t->getLine()
               );
+            if (!empty($GLOBALS['CFG']['newrelic_log_question_errors']) && extension_loaded('newrelic')) {
+                newrelic_add_custom_parameter('cur_qsid', $db_qsetid);
+                newrelic_notice_error($t);
+            }
         }
 
         /*
@@ -173,6 +181,32 @@ class ScoreEngine
             $anstypes = array_map('trim', $anstypes);
         }
 
+        /*
+         * Apply defaults, if set
+         */
+        if (isset($defaults)) {
+            foreach ($defaults as $kidx => $atIdx) {
+                if (!in_array($kidx, self::VARS_FOR_SCOREPART_EVALS)) { continue; }
+                if ($quesData['qtype'] == "multipart" && is_array($anstypes)) {
+                    for ($_pnidx=0; $_pnidx < count($anstypes); $_pnidx++) {
+                        if (!isset(${$kidx}[$_pnidx]) && 
+                            ($anstypes[$_pnidx] !== 'draw' || ($kidx !== 'abstolerance' && $kidx !== 'reltolerance'))
+                        ) {
+                            ${$kidx}[$_pnidx] = $atIdx;
+                        }
+                    }
+                } else if (!isset(${$kidx}) && 
+                    ($quesData['qtype'] !== 'draw' || ($kidx !== 'abstolerance' && $kidx !== 'reltolerance'))
+                ) {
+                    ${$kidx} = $atIdx;
+                }
+            }
+        }
+
+        /*
+		 * Massage some more data.
+		 */
+
         if (isset($reqdecimals) && $reqdecimals !== '') {
             $hasGlobalAbstol = false;
             if (isset($anstypes) && is_array($anstypes) && !isset($abstolerance) && !isset($reltolerance)) {
@@ -183,9 +217,6 @@ class ScoreEngine
             }
             if (is_array($reqdecimals)) {
                 foreach ($reqdecimals as $kidx => $vval) {
-                    if (substr((string)$vval, 0, 1) == '=') {
-                        continue;
-                    } //skip '=2' style $reqdecimals
                     list($vval, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($vval);
                     if (($hasGlobalAbstol || !isset($abstolerance[$kidx])) && (!isset($reltolerance) || !is_array($reltolerance) || !isset($reltolerance[$kidx]))) {
                         if (count($reqdecscoretype)==2) {
@@ -199,10 +230,10 @@ class ScoreEngine
                         }
                     }
                 }
-            } else if (substr((string)$reqdecimals, 0, 1) != '=') { //skip '=2' style $reqdecimals
+            } else { 
                 list($parsedreqdec, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs((string)$reqdecimals);
                 if (!isset($abstolerance) && !isset($reltolerance)) { //set global abstol
-                    if (count($reqdecscoretype)==2) {
+                    if (count($reqdecscoretype)==2) { // value set in reqdec string
                         if ($reqdecscoretype[0]=='abs') {
                             $abstolerance = $reqdecscoretype[1];
                         } else {
@@ -228,7 +259,6 @@ class ScoreEngine
                 }
             }
         }
-
         /*
          * Set RNG to a known state.
          */
@@ -246,7 +276,7 @@ class ScoreEngine
                 continue;
             }
 
-            if ('answerformat' == $optionKey && is_scalar($answerformat)) {
+            if ('answerformat' == $optionKey) {
                 $answerformat = str_replace(' ', '', $answerformat);
             }
 
@@ -288,7 +318,7 @@ class ScoreEngine
                 $stuanswers, $quesData['qtype']);
         } else {
             $scoreResult = $this->scorePartNonMultiPart($scoreQuestionParams, $quesData);
-            if ($quesData['qtype'] == "conditional") {
+            if ($quesData['qtype'] == "conditional" && isset($anstypes)) {
               // Store just-build $stuanswers as lastanswer for conditional
               // in case there was no POST (like multans checkbox), null out
               // stuanswers
@@ -320,16 +350,20 @@ class ScoreEngine
             (time() - $quesData['lastmoddate']) > 10000
         ) {
             // only log if hasn't been edited in a few hours
-            $query = 'INSERT INTO imas_questionerrors (qsetid, seed, scored, etime, error)
-                VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE etime=VALUES(etime),error=VALUES(error)';
+            $errortolog = implode('; ', $this->errors);
+            
+            $query = 'INSERT INTO imas_questionerrorlog (qsetid, seed, etime, ehash, error, ownerid)
+                VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE etime=VALUES(etime)';
             $stm = $this->dbh->prepare($query);
             $stm->execute([
                 $scoreQuestionParams->getDbQuestionSetId(),
                 $scoreQuestionParams->getQuestionSeed(),
-                1,
                 time(),
-                implode('; ', $this->errors)
+                md5($errortolog),
+                $errortolog,
+                $quesData['ownerid']
             ]);
+            
         }
 
         return $scoreResult;
@@ -548,6 +582,8 @@ class ScoreEngine
             } else if (is_numeric($_POST["qn$qnidx"])) { // number
               $stuanswersval[$thisq] = floatval($_POST["qn$qnidx"]);
             }
+            $stuanswers[$thisq] = str_replace(array('(:',':)','<<','>>'), array('<','>','<','>'), $stuanswers[$thisq]);
+
             if (isset($_SESSION['choicemap'][$assessmentId][$qnidx])) {
                 if (is_array($stuanswers[$thisq])) { //multans
                     foreach ($stuanswers[$thisq] as $k => $v) {
@@ -631,6 +667,7 @@ class ScoreEngine
                     return evalbasic($v);
                 }
             }, $answeights);
+            ksort($answeights);
             if (array_sum($answeights)==0) {
                 $answeights = array_fill_keys(array_keys($anstypes), 1); 
             }
@@ -782,22 +819,39 @@ class ScoreEngine
             ->setAnswerType($qdata['qtype'])
             ->setIsMultiPartQuestion(false);
 
-        $scorePart = ScorePartFactory::getScorePart($scoreQuestionParams);
-        $scorePartResult = $scorePart->getResult();
-        $score = $scorePartResult->getRawScore();
+        $scorePartResults = false;
+        try {
+            $scorePart = ScorePartFactory::getScorePart($scoreQuestionParams);
+            $scorePartResult = $scorePart->getResult();
+            $score = $scorePartResult->getRawScore();
+        } catch (\Throwable $t) {
+            $this->addError(
+                _('Caught error while scoring parts in this question: ')
+                . $t->getMessage()
+                . ' on line '
+                . $t->getLine()
+                . ' of '
+                . basename($t->getFile())
+                );
+        }
 
         if (isset($scoremethod) && $scoremethod == "allornothing") {
             if ($score < .98) {
                 $score = 0;
             }
         }
-
         $returnData = array(
             'scores' => array(round($score, 3)),
             'rawScores' => array(round($score, 3)),
-            'lastAnswerAsGiven' => array($scorePartResult->getLastAnswerAsGiven()),
-            'lastAnswerAsNumber' => array($scorePartResult->getLastAnswerAsNumber()),
-            'correctAnswerWrongFormat' => array($scorePartResult->getCorrectAnswerWrongFormat()),
+            'lastAnswerAsGiven' => array(
+                $scorePartResult !== null ? $scorePartResult->getLastAnswerAsGiven() : ''
+            ),
+            'lastAnswerAsNumber' => array(
+                $scorePartResult !== null ? $scorePartResult->getLastAnswerAsNumber() : ''
+            ),
+            'correctAnswerWrongFormat' => array(
+                $scorePartResult !== null ? $scorePartResult->getCorrectAnswerWrongFormat() : false
+            ),
             'answeights' => array(1)
         );
 

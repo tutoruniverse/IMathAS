@@ -1,27 +1,28 @@
 <template>
   <div class="showworkwrap">
     <div v-if="worktype === 0">
-      {{ $t("question.showwork") }}
+      {{ $t("question-showwork") }}
       <textarea
         :id="computedId"
         ref="inbox"
         class="fbbox swbox"
         :rows="rows"
+        :aria-label="$t('question-showwork_n', {n: qn+1})"
       ></textarea>
     </div>
     <div v-else class="feedbackwrap">
-      {{ $t("question.uploadwork") }}
+      {{ $t("question-uploadwork") }}
       <ul class="nomark">
         <li v-for="(file,index) in filelist" :key="index">
           <a :href="file" class="attach" target="_blank">{{ file.split('/').pop() }}</a>
           <button @click="removeFile(index)">
-            {{ $t('group.remove') }}
+            {{ $t('group-remove') }}
           </button>
         </li>
         <li>
           <input type="file" ref="fileinput" @change="uploadFile" />
           <span class="noticetext" v-if="uploading">
-            {{ $t('question.uploading') }}
+            {{ $t('question-uploading') }}
           </span>
         </li>
       </ul>
@@ -44,6 +45,7 @@ export default {
   name: 'ShowworkInput',
   props: {
     id: { default: null },
+    qn: { default: null },
     value: { default: '' },
     rows: { default: 2 },
     active: { default: true }
@@ -76,7 +78,7 @@ export default {
     }
   },
   updated: function () {
-    if (this.active && this.worktype === 0) {
+    if (this.active && this.worktype === 0 && this.objTinymce === null) {
       this.initEditor();
     }
   },
@@ -129,54 +131,70 @@ export default {
       this.filelist = out;
     },
     updateValue: function (value) {
+      if (value.length > 30000) {
+        value = value.substr(0, 30000);
+      }
       this.$emit('input', value);
     },
     focus: function () {
       this.objTinymce.focus();
     },
     uploadFile: function () {
-      const data = new FormData();
-      data.append('type', 'attach');
-      data.append('file', this.$refs.fileinput.files[0]);
-      this.uploading = true;
-      window.$.ajax({
-        url: store.APIbase.replace(/\/\w+\/$/, '') + '/tinymce4/upload_handler.php',
-        type: 'POST',
-        dataType: 'json',
-        data: data,
-        processData: false,
-        contentType: false,
-        xhrFields: {
-          withCredentials: true
-        },
-        crossDomain: true
-      })
-        .done(response => {
-          if (response.location) {
-            this.filelist.push(response.location);
-            this.updateValueFromFilelist();
-          } else {
+      window.doImageUploadResize(this.$refs.fileinput, (el) => {
+        if (!el.files || el.files.length === 0) {
+          actions.handleError('file_error_cant_read');
+          this.$refs.fileinput.value = '';
+          return;
+        }
+        if (el.files[0].size > 15000 * 1024) {
+          actions.handleError('file_toolarge');
+          this.$refs.fileinput.value = '';
+          return;
+        }
+
+        const data = new FormData();
+        data.append('type', 'attach');
+        data.append('file', el.files[0]);
+        this.uploading = true;
+        window.$.ajax({
+          url: store.APIbase.replace(/\/\w+\/$/, '') + '/tinymce8/upload_handler.php',
+          type: 'POST',
+          dataType: 'json',
+          data: data,
+          processData: false,
+          contentType: false,
+          xhrFields: {
+            withCredentials: true
+          },
+          crossDomain: true
+        })
+          .done(response => {
+            if (response.location) {
+              this.filelist.push(response.location);
+              this.updateValueFromFilelist();
+            } else {
+              actions.handleError('file_upload_error');
+            }
+          })
+          .fail(response => {
             actions.handleError('file_upload_error');
-          }
-        })
-        .fail(response => {
-          actions.handleError('file_upload_error');
-        })
-        .always(() => {
-          this.$refs.fileinput.value = null;
-          this.uploading = false;
-        });
+          })
+          .always(() => {
+            this.$refs.fileinput.value = null;
+            this.uploading = false;
+          });
+      });
     },
     removeFile: function (index) {
       store.confirmObj = {
-        body: 'work.remove',
+        body: 'work-remove',
         action: () => {
           const todel = this.filelist[index];
           this.filelist.splice(index, 1);
           this.updateValueFromFilelist();
           // actually delete file, if possible
           window.$.ajax({
-            url: store.APIbase + '../tinymce4/upload_handler.php',
+            url: store.APIbase + '../tinymce8/upload_handler.php',
             type: 'POST',
             dataType: 'json',
             data: { remove: todel },

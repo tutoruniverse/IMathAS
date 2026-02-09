@@ -55,17 +55,17 @@ function showitemtree($items,$parent,$greyitems=0) {
 
 	 foreach ($items as $k=>$item) {
 		if (is_array($item)) {
-			if (isset($item['grouplimit']) && count($item['grouplimit'])>0 && !$viewall) {
-				 if (!in_array('s-'.$studentinfo['section'],$item['grouplimit'])) {
+			if (isset($item['grouplimit']) && count($item['grouplimit'])>0 && !$viewall && isset($studentinfo['section'])) {
+				if (!in_array(strtolower('s-' . $studentinfo['section']), array_map('strtolower', $item['grouplimit']))) {
 					 continue;
-				 }
+				}
 			}
             if (!isset($item['avail'])) { //backwards compat
 				$item['avail'] = 1;
 			}
 			if (($item['avail']==2 || ($item['avail']==1 && $item['startdate']<$now && $item['enddate']>$now)) ||
 						($viewall || ($item['SH'][0]=='S' && $item['avail']>0))) {
-				if ($item['SH'][1]=='T') { //just link to treereader item
+				if (($item['SH'][1]??'')=='T') { //just link to treereader item
 					echo '<li><a href="course.php?cid='.$cid.'&folder='.Sanitize::encodeUrlParam($parent).'#B'.Sanitize::encodeUrlParam($item['id']).'">';
 					showicon('tree', 'treereader');
 					echo Sanitize::encodeStringForDisplay($item['name']);
@@ -97,13 +97,13 @@ function showitemtree($items,$parent,$greyitems=0) {
 				if (!$viewall && isset($exceptions[$item])) {
 					$useexception = $exceptionfuncs->getCanUseAssessException($exceptions[$item], $line, true);
 					if ($useexception) {
-						$line['startdate'] = $exceptions[$item][0];
-						$line['enddate'] = $exceptions[$item][1];
+						$line['startdate'] = $exceptions[$item]['startdate'];
+						$line['enddate'] = $exceptions[$item]['enddate'];
 					}
 			   	}
 			   	$nothidden = true;  $showgreyedout = false;
 				if (abs($line['reqscore'])>0 && $line['reqscoreaid']>0 && !$viewall && $line['enddate']>$now
-				   && (!isset($exceptions[$item]) || $exceptions[$item][3]==0)) {
+				   && (!isset($exceptions[$item]) || ($exceptions[$item]['waivereqscore']&1)==0)) {
 				   if ($line['reqscore']<0 || $line['reqscoretype']&1) {
 					   $showgreyedout = true;
 				   }

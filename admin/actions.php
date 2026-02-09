@@ -53,16 +53,22 @@ switch($_POST['action']) {
 			echo _("You don't have the authority for this action");
 			break;
 		}
+		if (!isset($_POST['challenge']) || $_POST['challenge'] !== $_SESSION['secchallenge']) {
+			echo _('Error');
+			exit;
+		}
 		if ($_POST['newrights']>$myrights) {
 			$_POST['newrights'] = $myrights;
 		}
 		$stm = $DBH->prepare("SELECT rights,groupid,jsondata FROM imas_users WHERE id=:id");
 		$stm->execute(array(':id'=>$_GET['id']));
-		list($oldrights,$oldgroupid,$oldjsondata) = $stm->fetch(PDO::FETCH_NUM);
+		$row = $stm->fetch(PDO::FETCH_NUM);
 		if ($row === false) {
 			echo _("invalid id");
 			exit;
-		} else if ($myrights < 100 && ($myspecialrights&32)!=32 && $oldgroupid!=$groupid) {
+		} 
+		list($oldrights,$oldgroupid,$oldjsondata) = $row;
+		if ($myrights < 100 && ($myspecialrights&32)!=32 && $oldgroupid!=$groupid) {
 			echo "You don't have the authority for this action";
 			exit;
 		}
@@ -97,11 +103,8 @@ switch($_POST['action']) {
 		if ((isset($_POST['specialrights64']) && $myrights==100) || $_POST['newrights']==100) {
 			$specialrights += 64;
 		}
-		if (isset($CFG['GEN']['newpasswords'])) {
-			$hashpw = password_hash($_POST['newpassword'], PASSWORD_DEFAULT);
-		} else {
-			$hashpw = md5($_POST['newpassword']);
-		}
+		$hashpw = password_hash($_POST['newpassword'], PASSWORD_DEFAULT);
+		
 		if ($_POST['newrights']>$myrights) { //checked above, but do it again
 			$_POST['newrights'] = $myrights;
 		}
@@ -181,12 +184,22 @@ switch($_POST['action']) {
             if ($chgJsondata) {
                 $query .= ',jsondata=:jsondata';
             }
+			if (!empty($_POST['removefromgroup'])) {
+				$query .= ',groupid=0'; // move to default group
+				$newgroup = 0;
+			}
 			if (isset($_POST['doresetpw'])) {
 				$query .= ',password=:password';
 			}
 			$query .= " WHERE id=:id AND groupid=:groupid AND rights<100";
 			$stm = $DBH->prepare($query);
 			$stm->execute($arr);
+
+			if (!empty($_POST['removefromgroup'])) {
+				// fix library group
+				$stm = $DBH->prepare("UPDATE imas_libraries SET groupid=0 WHERE ownerid=:ownerid");
+				$stm->execute(array(':ownerid'=>$_GET['id']));
+			}
 		}
 
 		//if student being promoted, enroll in teacher enroll courses
@@ -253,24 +266,16 @@ switch($_POST['action']) {
 	case "resetpwd":
 		if ($myrights < 75) { echo "You don't have the authority for this action"; break;}
 		if (isset($_POST['newpw'])) {
-			if (isset($CFG['GEN']['newpasswords'])) {
-				$md5pw = password_hash($_POST['newpw'], PASSWORD_DEFAULT);
-			} else {
-				$md5pw = md5($_POST['newpw']);
-			}
+			$pwhash = password_hash($_POST['newpw'], PASSWORD_DEFAULT);
 		} else {
-			if (isset($CFG['GEN']['newpasswords'])) {
-				$md5pw = password_hash("password", PASSWORD_DEFAULT);
-			} else {
-				$md5pw =md5("password");
-			}
+			$pwhash = password_hash("password", PASSWORD_DEFAULT);
 		}
 		if ($myrights < 100) {
 			$stm = $DBH->prepare("UPDATE imas_users SET password=:password WHERE id=:id AND groupid=:groupid AND rights<100");
-			$stm->execute(array(':password'=>$md5pw, ':id'=>$_GET['id'], ':groupid'=>$groupid));
+			$stm->execute(array(':password'=>$pwhash, ':id'=>$_GET['id'], ':groupid'=>$groupid));
 		} else {
 			$stm = $DBH->prepare("UPDATE imas_users SET password=:password WHERE id=:id");
-			$stm->execute(array(':password'=>$md5pw, ':id'=>$_GET['id']));
+			$stm->execute(array(':password'=>$pwhash, ':id'=>$_GET['id']));
 		}
 		break;
 	case "anonuser":
@@ -300,7 +305,7 @@ switch($_POST['action']) {
 		}
 		if ($stm->rowCount()==0) { break;}
 		$toDelTable = array('user_prefs', 'students', 'teachers', 'tutors',
-			'assessment_sessions', 'exceptions', 'bookmarks', 'content_track',
+			'assessment_sessions', 'assessment_records', 'exceptions', 'bookmarks', 'content_track',
 			'forum_views', 'forum_subscriptions', 'grades', 'ltiusers', 'stugroupmembers');
 		foreach ($toDelTable as $table) {
 			$stm = $DBH->prepare("DELETE FROM imas_$table WHERE userid=:userid");
@@ -349,6 +354,10 @@ switch($_POST['action']) {
 		if ($_POST['newrights']>$myrights) {
 			$_POST['newrights'] = $myrights;
 		}
+		if (!isset($_POST['challenge']) || $_POST['challenge'] !== $_SESSION['secchallenge']) {
+			echo _('Error');
+			exit;
+		}
 		$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
 		$stm->execute(array(':SID'=>$_POST['SID']));
 		$row = $stm->fetch(PDO::FETCH_NUM);
@@ -358,11 +367,8 @@ switch($_POST['action']) {
 			echo "<a href=\"forms.php?action=chgrights&id={$row[0]}\">",_("Change rights for existing user"),"</a></body></html>\n";
 			exit;
 		}
-		if (isset($CFG['GEN']['newpasswords'])) {
-			$md5pw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-		} else {
-			$md5pw =md5($_POST['pw1']);
-		}
+		$pwhash= password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+
 		if ($myrights == 100 || ($myspecialrights&32)==32) {
 			if ($_POST['group']==-1) {
 				if (trim($_POST['newgroupname'])!='') {
@@ -421,7 +427,7 @@ switch($_POST['action']) {
         }
 		$stm = $DBH->prepare("INSERT INTO imas_users (SID,password,FirstName,LastName,rights,email,groupid,homelayout,specialrights,jsondata) VALUES (:SID, :password, :FirstName, :LastName, :rights, :email, :groupid, :homelayout, :specialrights, :jsondata);");
 		$stm->execute(array(':SID'=>$_POST['SID'],
-			':password'=>$md5pw,
+			':password'=>$pwhash,
 			':FirstName'=>Sanitize::stripHtmlTags($_POST['firstname']),
 			':LastName'=>Sanitize::stripHtmlTags($_POST['lastname']),
 			':rights'=>$_POST['newrights'],
@@ -462,8 +468,7 @@ switch($_POST['action']) {
 	case "logout":
 		$_SESSION = array();
 		if (isset($_COOKIE[session_name()])) {
-			setcookie(session_name(), '', time()-42000, '/', '',false ,true );
-
+			setsecurecookie(session_name(), '', time()-42000, true);
 		}
 		session_destroy();
 		break;
@@ -492,7 +497,8 @@ switch($_POST['action']) {
 			}
 		}
 		if (isset($_GET['id'])) {
-			$stm = $DBH->prepare("SELECT * FROM imas_courses WHERE id=:id");
+			$stm = $DBH->prepare("SELECT ic.*,iu.groupid FROM imas_courses AS ic
+				JOIN imas_users AS iu ON ic.ownerid=iu.id WHERE ic.id=:id");
 			$stm->execute(array(':id'=>$_GET['id']));
 			$old_course_settings = $stm->fetch(PDO::FETCH_ASSOC);
 			if (isset($CFG['cleanup']['groups'][$groupid]['allowoptout'])) {
@@ -502,6 +508,12 @@ switch($_POST['action']) {
 			}
 			if ($allowoptout && isset($_POST['cleanupoptout'])) {
 				$old_course_settings['cleanupdate'] = 0;
+			}
+			if (($myrights < 75 && $old_course_settings['ownerid'] !== $userid) ||
+				($myrights < 100 && $old_course_settings['groupid'] !== $groupid)
+			) {
+				echo "Invalid ID";
+				exit;
 			}
 		} else {
 			$old_course_settings['istemplate'] = 0;
@@ -565,7 +577,7 @@ switch($_POST['action']) {
 		if (isset($CFG['CPS']['toolset']) && $CFG['CPS']['toolset'][1]==0) {
 			$toolset = $CFG['CPS']['toolset'][0];
 		} else {
-			$toolset = 1*!isset($_POST['toolset-cal']) + 2*!isset($_POST['toolset-forum']) + 4*!isset($_POST['toolset-reord']);
+			$toolset = 1*!isset($_POST['toolset-cal']) + 2*!isset($_POST['toolset-forum']) + 4*!isset($_POST['toolset-gb']);
 		}
 
 		$avail = isset($_POST['stuavail']) ? 0 : 1;//1 - $_POST['stuavail'];
@@ -756,18 +768,25 @@ switch($_POST['action']) {
 					$stm->execute(array(':cid'=>$_GET['id']));
 					//remove is_lti from exceptions with latepasses
 					$query = "UPDATE imas_exceptions JOIN imas_assessments ";
-					$query .= "ON imas_exceptions.assessmentid=imas_assessments.id ";
+					$query .= "ON imas_exceptions.assessmentid=imas_assessments.id AND imas_exceptions.itemtype='A' ";
 					$query .= "SET imas_exceptions.is_lti=0 ";
 					$query .= "WHERE imas_exceptions.is_lti>0 AND imas_exceptions.islatepass>0 AND imas_assessments.courseid=:cid";
 					$stm = $DBH->prepare($query);
 					$stm->execute(array(':cid'=>$_GET['id']));
 					//delete any other is_lti exceptions
 					$query = "DELETE imas_exceptions FROM imas_exceptions JOIN imas_assessments ";
-					$query .= "ON imas_exceptions.assessmentid=imas_assessments.id ";
+					$query .= "ON imas_exceptions.assessmentid=imas_assessments.id AND imas_exceptions.itemtype='A' ";
 					$query .= "WHERE imas_exceptions.is_lti>0 AND imas_exceptions.islatepass=0 AND imas_assessments.courseid=:cid";
 					$stm = $DBH->prepare($query);
 					$stm->execute(array(':cid'=>$_GET['id']));
 				}
+                // fix any latepass-based exceptions to not exceed course end date
+                $query = "UPDATE imas_exceptions JOIN imas_assessments ";
+                $query .= "ON imas_exceptions.assessmentid=imas_assessments.id AND imas_exceptions.itemtype='A' ";
+                $query .= "SET imas_exceptions.enddate = ? ";
+                $query .= "WHERE imas_exceptions.enddate > ? AND imas_exceptions.islatepass>0 AND imas_assessments.courseid=?";
+                $stm = $DBH->prepare($query);
+                $stm->execute([$enddate,$enddate,$_GET['id']]);
 			}
 		} else { //new course
 
@@ -988,10 +1007,20 @@ switch($_POST['action']) {
 			*/
 			$DBH->commit();
 
+			TeacherAuditLog::addTracking(
+				$cid,
+				"Course Settings Change",
+				null,
+				[
+					'action' => 'Course Created',
+					'via' => 'Home'
+				]
+			);
+
 			$stm = $DBH->prepare("SELECT id FROM imas_users WHERE (rights=11 OR rights=76 OR rights=77) AND groupid=?");
 			$stm->execute(array($groupid));
 			$hasGroupLTI = ($stm->fetchColumn() !== false);
-
+			$pagetitle = _(' Course Creation Confirmation');
 			require_once "../header.php";
 			echo '<div class="breadcrumb">'.$breadcrumbbase._(' Course Creation Confirmation').'</div>';
 			echo '<h1>',_('Your course has been created'),'!</h1>';
@@ -1279,7 +1308,7 @@ switch($_POST['action']) {
 				$mfadata['laston'] = time();
 				if (isset($_POST['mfatrust'])) {
 					$trusttoken = $MFA->createSecret();
-					setcookie('gat', $trusttoken, time()+60*60*24*365*10, $imasroot.'/', '', true, true);
+					setsecurecookie('gat', $trusttoken, time()+60*60*24*365*10, true);
 					if (!isset($mfadata['trusted'])) {
 						$mfadata['trusted'] = array();
 					}
@@ -1288,6 +1317,7 @@ switch($_POST['action']) {
 				$stm = $DBH->prepare("UPDATE imas_users SET mfa = :mfa WHERE id = :uid");
 				$stm->execute(array(':uid'=>$userid, ':mfa'=>json_encode($mfadata)));
 				if (isset($_POST['mfatrust'])) {
+					$pagetitle = _('MFA Confirmation');
 					require_once "../header.php";
 					echo '<p>This device is now trusted; you will not be asked for your 2-factor authentication on this device again.</p>';
 					echo '<p>If you ever need to un-trust this device, you can clear all cookies, or disable 2-factor authentication in your account settings.</p>';
@@ -1305,19 +1335,15 @@ switch($_POST['action']) {
 }
 
 session_write_close();
-if ($myrights<75 || $from=='home') {
-	header('Location: ' . $GLOBALS['basesiteurl'] . "/index.php");
-} else if (empty($from)) {
-	header('Location: ' . $GLOBALS['basesiteurl'] . "/admin/admin2.php");
-} else if (isset($_GET['cid'])) {
-	$btf = isset($_GET['btf']) ? '&folder=' . Sanitize::encodeUrlParam($_GET['btf']) : '';
-	header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=".Sanitize::courseId($_GET['cid']).$btf);
-} else if ($from=='admin2') {
-	header('Location: ' . $GLOBALS['basesiteurl'] . "/admin/admin2.php");
-} else if ($from=='userreports') {
+if ($from=='userreports') {
 	header('Location: ' . $GLOBALS['basesiteurl'] . "/admin/userreports.php");
 } else if (substr($from,0,2)=='ud' || substr($from,0,2)=='gd' || $from=='unhide') {
 	header('Location: ' . $GLOBALS['basesiteurl'] . "/admin/$backloc");
+} else if (isset($_GET['cid'])) {
+	$btf = isset($_GET['btf']) ? '&folder=' . Sanitize::encodeUrlParam($_GET['btf']) : '';
+	header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=".Sanitize::courseId($_GET['cid']).$btf);
+} else if ($myrights<75 || $from=='home') {
+	header('Location: ' . $GLOBALS['basesiteurl'] . "/index.php");
 } else {
 	header('Location: ' . $GLOBALS['basesiteurl'] . "/admin/admin2.php");
 }

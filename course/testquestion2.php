@@ -1,5 +1,5 @@
 <?php
-//IMathAS:  Main admin page
+//IMathAS:  Question Preview
 //(c) 2006 David Lippman
 
 /*** master php includes *******/
@@ -16,6 +16,7 @@ $overwriteBody = 0;
 $body = "";
 $pagetitle = _("Test Question");
 $asid = 0;
+$a11ymode = 0;
 
 	//CHECK PERMISSIONS AND SET FLAGS
 if ($myrights<20) {
@@ -23,8 +24,52 @@ if ($myrights<20) {
 	$body = _("You need to log in as a teacher to access this page");
 } else {
 	//data manipulation here
-    $useeditor = 1;
+    $useeditor = "noinit";
+
+    $cid = Sanitize::courseId($_GET['cid'] ?? 0);
+
+    $isadmin = ($cid === 'admin' && $myrights == 100);
+    $isgrpadmin = ($cid === 'admin' && $myrights >= 75);
     
+	if (isset($_GET['a11ymode'])) {
+		$a11ymode = intval($_GET['a11ymode']);
+		if ($a11ymode > 0) {
+			$origa11ysettings = [$_SESSION['userprefs']['graphdisp'], $_SESSION['userprefs']['drawentry']];
+			if (($a11ymode&1) == 1) {
+				$_SESSION['userprefs']['graphdisp'] = 0;
+				$_SESSION['graphdisp'] = 0;
+			}
+			if (($a11ymode&2) == 2) {
+				$_SESSION['userprefs']['drawentry'] = 0;
+			}
+		}
+	}
+  if (isset($_POST['a11yreview'])) {
+    if ($_POST['a11yreview'] === 'remove') {
+      $query = 'DELETE FROM imas_a11yreviews WHERE qsetid=? AND userid=?';
+      $stm = $DBH->prepare($query);
+      $stm->execute([intval($_GET['qsetid']), $userid]);
+    } else {
+      $query = 'INSERT INTO imas_a11yreviews (qsetid,userid,review) VALUES (?,?,?)
+        ON DUPLICATE KEY UPDATE review=VALUES(review)';
+      $stm = $DBH->prepare($query);
+      $stm->execute([intval($_GET['qsetid']), $userid, intval($_POST['a11yreview'])]);
+    }
+	$query = 'SELECT 
+		SUM(CASE WHEN review=1 THEN 1 ELSE 0 END) AS positive_reviews,
+		SUM(CASE WHEN review=0 THEN 1 ELSE 0 END) AS negative_reviews 
+		FROM imas_a11yreviews WHERE qsetid=?';
+	$stm = $DBH->prepare($query);
+	$stm->execute([intval($_GET['qsetid'])]);
+	$line = $stm->fetch(PDO::FETCH_ASSOC);
+	$stm = $DBH->prepare('UPDATE imas_questionset SET a11ystatus=? WHERE id=?');
+	$stm->execute([
+		($line['positive_reviews']>0?1:0) + ($line['negative_reviews']>0?2:0)
+		, intval($_GET['qsetid'])
+	]);
+    echo 'DONE';
+    exit;
+  }
     if (!empty($_POST['dellibitems']) && $myrights == 100) {
         $libid = $_POST['libid'];
         $uid = $_POST['uid'];
@@ -70,16 +115,26 @@ if ($myrights<20) {
 		}
 	}
 
-  $query = "SELECT imas_users.email,imas_questionset.* ";
-	$query .= "FROM imas_users,imas_questionset WHERE imas_users.id=imas_questionset.ownerid AND imas_questionset.id=:id";
-	$stm = $DBH->prepare($query);
-	$stm->execute(array(':id'=>$qsetid));
-	$line = $stm->fetch(PDO::FETCH_ASSOC);
-    if ($line === false) {
-        echo _('Invalid question ID');
-        exit;
-    }
-    $isquestionauthor = ($line['ownerid'] == $userid);
+  $query = "SELECT imas_users.email,imas_questionset.*, ";
+  $query .= 'COUNT(CASE WHEN imas_a11yreviews.review=1 THEN 1 END) AS positive_reviews,';
+  $query .= 'COUNT(CASE WHEN imas_a11yreviews.review=0 THEN 1 END) AS negative_reviews ';
+  $query .= "FROM imas_questionset JOIN imas_users ON imas_users.id=imas_questionset.ownerid ";
+  $query .= "LEFT JOIN imas_a11yreviews ON imas_questionset.id=imas_a11yreviews.qsetid ";
+  $query .= "WHERE imas_questionset.id=:id GROUP BY imas_questionset.id";
+  $stm = $DBH->prepare($query);
+  $stm->execute(array(':id'=>$qsetid));
+  $line = $stm->fetch(PDO::FETCH_ASSOC);
+  if ($line === false) {
+    echo _('Invalid question ID');
+    exit;
+  }
+  $isquestionauthor = ($line['ownerid'] == $userid);
+  $mya11yreview = false;
+  if ($line['positive_reviews']>0 || $line['negative_reviews']>0) {
+    $stm = $DBH->prepare('SELECT review FROM imas_a11yreviews WHERE qsetid=? AND userid=?');
+    $stm->execute([$qsetid, $userid]);
+    $mya11yreview = $stm->fetchColumn(0);
+  }
 
   $a2 = new AssessStandalone($DBH);
   $a2->setQuestionData($line['id'], $line);
@@ -119,8 +174,19 @@ if ($myrights<20) {
     }
     $res = $a2->scoreQuestion($qn, $parts_to_score);
 
-		$score = implode('~', $res['scores']);
-		$page_scoreMsg =  "<p>"._("Score on last answer: ").Sanitize::encodeStringForDisplay($score)."/1</p>\n";
+	$scoretot = round(array_sum($res['scores']), 2);
+	$score = $scoretot . '/1';
+	if (count($res['scores'])>1) {
+		$weightTot = array_sum($res['answeights']);
+		$scaledWeights = array_map(function($w) use ($weightTot) {
+			return $weightTot>0 ? round($w/$weightTot,4) : 0;
+		}, $res['answeights']);
+		$score .= ' (' . implode(', ', array_map(function($score, $weight) {
+			return "$score/$weight";
+		}, $res['scores'], $scaledWeights)) . ')';
+	} 
+	$page_scoreMsg =  "<p>"._("Score on last answer: ").Sanitize::encodeStringForDisplay($score)."</p>\n";
+
     if (!empty($res['errors'])) {
       $page_scoreMsg .= '<ul class="small">';
       foreach ($res['errors'] as $err) {
@@ -132,7 +198,7 @@ if ($myrights<20) {
 		$page_scoreMsg = "";
 		$_SESSION['choicemap'] = array();
 	}
-  $cid = Sanitize::courseId($_GET['cid'] ?? 0);
+  
 	$page_formAction = "testquestion2.php?cid=$cid&qsetid=".Sanitize::encodeUrlParam($qsetid);
 
 	if (isset($_POST['usecheck'])) {
@@ -150,6 +216,10 @@ if ($myrights<20) {
 	if (isset($_GET['fixedseeds'])) {
 		$page_formAction .=  "&fixedseeds=1";
 	}
+	$a11yaction = $page_formAction;
+	if ($a11ymode > 0) {
+		$page_formAction .= '&a11ymode='.intval($a11ymode);
+	}
 
 	$lastmod = date("m/d/y g:i a",$line['lastmoddate']);
 
@@ -163,7 +233,7 @@ if ($myrights<20) {
 	} else {
 		$eqnhelper = 4;
 	}
-	$resultLibNames = $DBH->prepare("SELECT imas_libraries.name,imas_users.LastName,imas_users.FirstName,imas_libraries.id,imas_users.id FROM imas_libraries,imas_library_items,imas_users  WHERE imas_libraries.id=imas_library_items.libid AND imas_libraries.deleted=0 AND imas_library_items.deleted=0 AND imas_library_items.ownerid=imas_users.id AND imas_library_items.qsetid=:qsetid");
+	$resultLibNames = $DBH->prepare("SELECT imas_libraries.name,imas_users.LastName,imas_users.FirstName,imas_libraries.id AS libid,imas_users.id AS uid,imas_libraries.userights,imas_users.groupid FROM imas_libraries,imas_library_items,imas_users  WHERE imas_libraries.id=imas_library_items.libid AND imas_libraries.deleted=0 AND imas_library_items.deleted=0 AND imas_library_items.ownerid=imas_users.id AND imas_library_items.qsetid=:qsetid");
 	$resultLibNames->execute(array(':qsetid'=>$qsetid));
 }
 
@@ -172,28 +242,25 @@ $_SESSION['coursetheme'] = $coursetheme;
 $flexwidth = true; //tells header to use non _fw stylesheet
 $nologo = true;
 
-$useeqnhelper = $eqnhelper;
-$lastupdate = '20221027';
-$placeinhead = '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/vue/css/index.css?v='.$lastupdate.'" />';
-$placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/vue/css/chunk-common.css?v='.$lastupdate.'" />';
-$placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/print.css?v='.$lastupdate.'" media="print">';
+$useeqnhelper = $eqnhelper ?? 0;
+$placeinhead = '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/vue/css/style.css?v='.$lastvueupdate.'" />';
+$placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/print.css?v='.$lastvueupdate.'" media="print">';
 if (!empty($CFG['assess2-use-vue-dev'])) {
-  $placeinhead .= '<script src="'.$staticroot.'/mathquill/mathquill.js?v=112822" type="text/javascript"></script>';
+  $placeinhead .= '<script src="'.$staticroot.'/mathquill/mathquill.min.js?v=101825" type="text/javascript"></script>';
   $placeinhead .= '<script src="'.$staticroot.'/javascript/drawing.js?v=041920" type="text/javascript"></script>';
   $placeinhead .= '<script src="'.$staticroot.'/javascript/AMhelpers2.js?v=071122" type="text/javascript"></script>';
   $placeinhead .= '<script src="'.$staticroot.'/javascript/eqntips.js?v=041920" type="text/javascript"></script>';
-  $placeinhead .= '<script src="'.$staticroot.'/javascript/mathjs.js?v=20230729" type="text/javascript"></script>';
   $placeinhead .= '<script src="'.$staticroot.'/mathquill/AMtoMQ.js?v=071122" type="text/javascript"></script>';
   $placeinhead .= '<script src="'.$staticroot.'/mathquill/mqeditor.js?v=021121" type="text/javascript"></script>';
   $placeinhead .= '<script src="'.$staticroot.'/mathquill/mqedlayout.js?v=071122" type="text/javascript"></script>';
 } else {
-  $placeinhead .= '<script src="'.$staticroot.'/mathquill/mathquill.min.js?v=112822" type="text/javascript"></script>';
-  $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2_min.js?v=20231106" type="text/javascript"></script>';
+  $placeinhead .= '<script src="'.$staticroot.'/mathquill/mathquill.min.js?v=020326" type="text/javascript"></script>';
+  $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2_min.js?v='.$lastvueupdate.'" type="text/javascript"></script>';
 }
 
 $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2supp.js?v=041522" type="text/javascript"></script>';
-$placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mathquill-basic.css?v=021823">
-  <link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mqeditor.css?v=081122">';
+$placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mathquill-basic.css?v=010726">
+  <link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mqeditor.css?v=020226">';
 $placeinhead .= '<style>form > hr { border: 0; border-bottom: 1px solid #ddd;}</style>';
 $placeinhead .= '<script>
   function loadNewVersion() {
@@ -205,6 +272,10 @@ $placeinhead .= '<script>
   function showPartSteps(seed) {
     location.href = location.href.replace(/&seed=\w+/g,"").replace(/&showallparts=\w+/,"") + "&seed=" + seed;
   }
+  function changea11ymode(el) {
+    let seed = document.getElementById("seed").value;
+	location.href = location.href.replace(/&a11ymode=\d+/g,"") + "&seed=" + seed + "&a11ymode="+el.value;
+  }  
   function dellibitems(libid,uid,el) {
       $.post({
           url: window.location.href,
@@ -213,7 +284,73 @@ $placeinhead .= '<script>
           $(el).parent().slideUp();
       });
   }
+  function makea11yreview() {
+    GB_show("'._('Accessibility Review').'","a11yreview.php", 500, "auto", true);
+  }
+  function removea11yreview() {
+    senda11yreview("remove");
+  }
+  function senda11yreview(val) {
+    $.post({
+      url: window.location.href,
+      data: {a11yreview:val}
+    }).done(function(msg) {
+      window.location.reload();
+    });
+  }
+
+  $(function() {
+	if (window.opener && window.opener.setlib) {
+		$("#liblist li").each(function(i,el) {
+			let libid = el.id.substr(3);
+			$(el).find("span").first().after(
+				$("<a></a>", {href:"#", class:"small"}).text("'._('List library').'")
+				  .on("click", function(e) {
+				  	window.opener.setlib(libid);
+					window.opener.setlibnames(this.previousElementSibling.innerText);
+					e.preventDefault();
+				  })
+			).after(" ");
+		});
+ 	}
+  });
   </script>';
+if (($a11ymode&1)==1) {
+	$placeinhead .= '<script>
+	$(function() {
+		$(".questionpane > .question > .question img").each(function() {
+		console.log(this);
+			if (!this.hasAttribute("alt")) {
+				$(this).after("<span class=\"small noticetext\"><br/>Accessibility preview note: this image has no alt text</span>");
+			} else if ($(this).attr("role")=="presentation") {
+				$(this).after("<span class=\"small noticetext\"><br/>Accessibility preview note: this image has been marked as decorative</span>");
+			} else if ($(this).attr("alt")=="") {
+				$(this).after("<span class=\"small noticetext\"><br/>Accessibility preview note: this image has blank alt text</span>");
+			} else {
+				var $span = $("<span class=\"small noticetext\"><br/>Accessibility preview note: this image has alt text: </span>");
+				$span.append(document.createTextNode($(this).attr("alt")));
+				$(this).after($span);
+			}
+		});
+		$(".questionpane > .question > .question .sr-only").each(function() {
+			$(this).removeClass("sr-only").addClass("sr-only-highlight");
+		});
+	});
+	</script>
+	<style>
+	.sr-only-highlight {
+		border: 1px solid #ccc;
+		padding: 5px;
+		color: #666;
+	}
+	.sr-only-highlight::before {
+		display: block;
+		color: #f33;
+		content: "Accessibility preview note: This text is only visible to screenreaders";
+	}
+	</style>
+	';
+}
 require_once "../header.php";
 
 if ($overwriteBody==1) {
@@ -363,14 +500,15 @@ if ($overwriteBody==1) {
 	echo '<script type="text/javascript"> function whiteout() { e=document.getElementsByTagName("div");';
 	echo 'for (i=0;i<e.length;i++) { if (e[i].className=="question") {e[i].style.backgroundColor="#fff";}}}</script>';
 	echo "<form method=post class=\"questionwrap\" enctype=\"multipart/form-data\" action=\"$page_formAction\" onsubmit=\"return dopresubmit($qn,false)\">\n";
-	echo "<input type=hidden name=seed value=\"$seed\">\n";
+	echo "<input type=hidden id=seed name=seed value=\"$seed\">\n";
 
   // DO DISPLAY
   echo '<hr/>';
   $starttime = microtime(true);
   $disp = $a2->displayQuestion($qn, [
     'showans' => true,
-    'showallparts' => ($hasSeqParts && !empty($_GET['showallparts']))
+    'showallparts' => ($hasSeqParts && !empty($_GET['showallparts'])),
+    'showteachernotes' => true
   ]);
   $gentime = microtime(true) - $starttime;
   if (isset($_SESSION['userprefs']['useeqed']) && $_SESSION['userprefs']['useeqed'] == 0) {
@@ -427,6 +565,10 @@ if ($overwriteBody==1) {
 		}
 	}
 
+    if (strpos($disp['html'], 'dsboxTN') !== false) {
+        echo '<p class=small>' . _('Note: Instructor Notes only show in the gradebook for instructors. They will not display to students ever.') . '</p>';
+    }
+
 	printf("<p>"._("Question ID:")." %s.  ", Sanitize::encodeStringForDisplay($qsetid));
 	echo '<span class="small subdued">'._('Seed:').' '.Sanitize::onlyInt($seed) . '.</span> ';
     echo '<span class="small subdued">'._('Generated in ').round(1000*$gentime).'ms</span> ';
@@ -461,25 +603,62 @@ if ($overwriteBody==1) {
 	}
 	echo '</p>';
 
+	if ($line['a11yalttype'] > 0) {
+		$a11ylabels = [_('no'),_('visual alt'),_('mouse alt'),_('visual or mouse alt')];
+		echo '<p>'.sprintf(_('Uses accessible alternative for %s'), $a11ylabels[$line['a11yalttype']]);
+		echo ': <a href="testquestion2.php?cid='.$cid.'&qsetid='.intval($line['a11yalt']).'">';
+		echo intval($line['a11yalt']).'</a></p>';
+	}
+
+	echo '<p>'._('Accessibility Reviews: ');
+	echo sprintf(_('%d "looks good", %d "needs work". '),
+	  $line['positive_reviews'], $line['negative_reviews']);
+	if ($mya11yreview !== false) {
+		echo _('Your review: ');
+		echo ($mya11yreview==1?_('Looks good'):_('Needs work'));
+		echo '<button onclick="removea11yreview()" class="slim">'._('Remove Review').'</button>';
+	} else {
+    echo '<button onclick="makea11yreview()" class="slim">'._('Review').'</button>';
+  }
+	echo '</p>';
+
 	echo '<p>'._('Question is in these libraries:').'</p>';
-	echo '<ul>';
-	while ($row = $resultLibNames->fetch(PDO::FETCH_NUM)) {
-		echo '<li>'.Sanitize::encodeStringForDisplay($row[0]);
-		if ($myrights==100) {
-            printf(' (<span class="pii-full-name">%s, %s</span>)',
-                Sanitize::encodeStringForDisplay($row[1]), Sanitize::encodeStringForDisplay($row[2]));
-            echo ' <a class="small" href="#" onclick="if(confirm(\'Are you sure?\')){dellibitems('.Sanitize::onlyInt($row[3]).',';
-            echo Sanitize::onlyInt($row[4]).',this);} return false;">';
-            echo _('Remove all questions in this library added by this person');
-            echo '</a>';
-		}
-		echo '</li>';
+	echo '<ul id="liblist">';
+	while ($row = $resultLibNames->fetch(PDO::FETCH_ASSOC)) {
+        if ($row['userights'] > 2 ||
+            ($row['userights'] > 0 && ($row['groupid'] == $groupid || $isadmin)) ||
+            ($row['userights'] == 0 && ($row['uid'] == $userid || $isadmin || ($isgrpadmin && $row['groupid'] == $groupid)))
+        ) {
+            echo '<li id="lib'. Sanitize::onlyInt($row['libid']) .'">';
+            if ($row['userights'] == 0) {
+                echo '<span style="color:red">';
+            } else if ($row['userights'] < 3) {
+                echo '<span style="color:#0c0">';
+            } else {
+                echo '<span>';
+            }
+            echo Sanitize::encodeStringForDisplay($row['name']) . '</span>';
+
+			if ($isadmin) {
+                printf(' (<span class="pii-full-name">%s, %s</span>)',
+                    Sanitize::encodeStringForDisplay($row['LastName']), Sanitize::encodeStringForDisplay($row['FirstName']));
+                echo ' <a class="small" href="#" onclick="if(confirm(\'Are you sure?\')){dellibitems('.Sanitize::onlyInt($row['libid']).',';
+                echo Sanitize::onlyInt($row['uid']).',this);} return false;">';
+                echo _('Remove all questions in this library added by this person');
+                echo '</a>';
+            }
+            echo '</li>';
+        }
 	}
 	echo '</ul>';
 
 	if ($line['ancestors']!='') {
         $line['ancestors'] = str_replace(',',', ',$line['ancestors']);
-		echo "<p>"._("Derived from:")." ".Sanitize::encodeStringForDisplay($line['ancestors']);
+		$line['ancestors'] = explode(',', $line['ancestors']);
+		foreach ($line['ancestors'] as $k=>$ancestorqsid) {
+			$line['ancestors'][$k] = '<a href="testquestion2.php?cid='.$cid.'&qsetid='.intval($ancestorqsid).'">'.intval($ancestorqsid).'</a>';
+		}
+		echo "<p>"._("Derived from:")." ".implode(', ', $line['ancestors']);
 		if ($line['ancestorauthors']!='') {
 			echo '<br/>'._('Created by: ').Sanitize::encodeStringForDisplay($line['ancestorauthors']);
 		}
@@ -490,15 +669,27 @@ if ($overwriteBody==1) {
 	if ($myrights==100) {
 		echo '<p>'._('UniqueID: ').Sanitize::encodeStringForDisplay($line['uniqueid']).'</p>';
 	}
-  echo '<p>'._('Testing using the new interface.');
-  echo ' <a href="testquestion.php?cid='.$cid.'&qsetid='.$qsetid.'">';
-  echo _('Test in old interface').'</a></p>';
+  echo '<p>'._('Test with accessibility settings').': ';
+  echo '<select onchange="changea11ymode(this)">';
+  echo '<option value=0'.($a11ymode==0?' selected':'').'>'._('Default').'</option>';
+  echo '<option value=2'.($a11ymode==2?' selected':'').'>'._('Mouse alt').'</option>';
+  echo '<option value=3'.($a11ymode==3?' selected':'').'>'._('Visual and mouse alt').'</option>';
+  echo '</select>';
+  echo '</p>';
+  
 }
 $placeinfooter = '<div id="ehdd" class="ehdd" style="display:none;">
   <span id="ehddtext"></span>
   <span onclick="showeh(curehdd);" style="cursor:pointer;">'._('[more..]').'</span>
 </div>
 <div id="eh" class="eh"></div>';
+
+if ($a11ymode > 0) {
+	$_SESSION['userprefs']['graphdisp'] = $origa11ysettings[0];
+	$_SESSION['graphdisp'] = $origa11ysettings[0];
+	$_SESSION['userprefs']['drawentry'] = $origa11ysettings[1];
+}
+
 require_once "../footer.php";
 
 ?>

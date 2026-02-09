@@ -1,10 +1,13 @@
 <template>
   <table class="scorelist">
     <caption class="sr-only">Category Scores</caption>
-    <tr>
-      <th>{{ $t('catlist.category') }}</th>
-      <th>{{ $t('catlist.score') }}</th>
-    </tr>
+    <thead>
+      <tr>
+        <th>{{ $t('catlist-category') }}</th>
+        <th>{{ $t('catlist-score') }}</th>
+      </tr>
+    </thead>
+    <tbody>
     <tr v-for="(cat,index) in catScores" :key="index">
       <td>
         {{ cat.name }}
@@ -12,10 +15,11 @@
       <td>
         {{ cat.pct }}%
         <span class="subdued med-left">
-          {{ $tc('catlist.pts', cat.poss, {pts: cat.tot, poss: cat.poss}) }}
+          {{ $t('catlist-pts', {pts: cat.tot, poss: cat.poss}) }}
         </span>
       </td>
     </tr>
+    </tbody>
   </table>
 </template>
 

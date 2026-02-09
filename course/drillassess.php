@@ -3,10 +3,10 @@
 //(c) 2011 David Lippman
 
 require_once "../init.php";
-$courseUIver = 1; // Doesn't quite work right yet
 if ($courseUIver > 1) {
     require_once '../assess2/AssessStandalone.php';
     $a2 = new AssessStandalone($DBH);
+	$assessUIver = 2;
 } else {
     require_once "../assessment/displayq2.php";
 }
@@ -26,14 +26,6 @@ $cid = intval($_GET['cid']);
 $daid = intval($_GET['daid']);
 $now = time();
 
-if (isset($studentid) && !isset($_SESSION['stuview']) &&
-	!isset($_GET['start']) && !isset($_GET['score'])
-) {
-	$query = "INSERT INTO imas_content_track (userid,courseid,type,typeid,viewtime) VALUES ";
-	$query .= "(:userid, :courseid, :type, :typeid, :viewtime)";
-	$stm = $DBH->prepare($query);
-	$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':type'=>'drill', ':typeid'=>$daid, ':viewtime'=>$now));
-}
 
 $stm = $DBH->prepare("SELECT * FROM imas_drillassess WHERE id=:id AND courseid=:courseid");
 $stm->execute(array(':id'=>$daid, ':courseid'=>$cid));
@@ -51,6 +43,7 @@ $classbests = explode(',',$dadata['classbests']);
 if ($scoretype[0]=='t') {
 	$mode = 'cntdown';
 	$torecord = 'cc';   //count  correct
+	$stopattype = 'na';
 } else {
 	$mode = 'cntup';
 	$stopattype = $scoretype[1];  //a: attempted, c: correct, s: streak
@@ -58,6 +51,15 @@ if ($scoretype[0]=='t') {
 }
 $itemids = explode(',',$dadata['itemids']);
 $itemdescr = explode(',',$dadata['itemdescr']);
+
+if (isset($studentid) && !isset($_SESSION['stuview']) &&
+	!isset($_GET['start']) && !isset($_GET['score'])
+) {
+	$query = "INSERT INTO imas_content_track (userid,courseid,type,typeid,viewtime) VALUES ";
+	$query .= "(:userid, :courseid, :type, :typeid, :viewtime)";
+	$stm = $DBH->prepare($query);
+	$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':type'=>'drill', ':typeid'=>$daid, ':viewtime'=>$now));
+}
 
 //declare some globals to make things work
 $scores = array();
@@ -77,7 +79,9 @@ if ($stm->rowCount()==0) {
 } else {
 	$sessdata = $stm->fetch(PDO::FETCH_ASSOC);
 	$curitem = $sessdata['curitem'];
-	$curitemid = $itemids[$curitem];
+	if ($curitem > -1) {
+		$curitemid = $itemids[$curitem];
+	}
 	$seed = $sessdata['seed'];
 	if ($sessdata['curscores']=='') {
 		$curscores = array();
@@ -90,12 +94,15 @@ if ($stm->rowCount()==0) {
 
 //score a submitted question
 $showans = false;
-if (isset($_GET['score'])) {
+if (isset($_GET['score']) && !empty($curitemid)) {
     if ($courseUIver > 1) {
         $state = array(
             'seeds' => array(0 => $seed),
             'qsid' => array(0 => $curitemid)
         );
+		if (isset($_POST['useda11yalt'])) {
+			$state['useda11yalt'] = [0 => true];
+		}
         $a2->setState($state);
         $a2->loadQuestionData();
         $res = $a2->scoreQuestion(0);
@@ -106,7 +113,11 @@ if (isset($_GET['score'])) {
     }
     $scores[0] = $score;
     $rawscores[0] = $rawscore;
-	$page_scoreMsg =  printscore($score,$curitemid,$seed);
+	if ($courseUIver > 1) {
+		$page_scoreMsg =  printscore2($res,$curitemid,$seed);
+	} else {
+		$page_scoreMsg =  printscore($score,$curitemid,$seed);
+	}
 	if (getpts($score)<.99 && $sa==0) {
 		$showans = true;
 	} else if (getpts($score)<.99 && $sa==4) {
@@ -235,15 +246,14 @@ $showtips = isset($CFG['AMS']['showtips'])?$CFG['AMS']['showtips']:2;
 $useeqnhelper = isset($CFG['AMS']['eqnhelper'])?$CFG['AMS']['eqnhelper']:0;
 $flexwidth = true;
 if ($courseUIver > 1) {
-    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assessment/mathtest.css" />';
-    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/vue/css/index.css?v='.$lastupdate.'" />';
-    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/vue/css/chunk-common.css?v='.$lastupdate.'" />';
-    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/print.css?v='.$lastupdate.'" media="print">';
-    $placeinhead .= '<script src="'.$staticroot.'/mathquill/mathquill.min.js?v=022720" type="text/javascript"></script>';
-    $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2_min.js?v=20231106" type="text/javascript"></script>';
-    $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2supp.js?v=050120" type="text/javascript"></script>';
-    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mathquill-basic.css?v=021823">
-        <link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mqeditor.css">';
+    $placeinhead = '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assessment/mathtest.css" />';
+    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/vue/css/style.css?v='.$lastvueupdate.'" />';
+    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/assess2/print.css?v='.$lastvueupdate.'" media="print">';
+    $placeinhead .= '<script src="'.$staticroot.'/mathquill/mathquill.min.js?v=020326" type="text/javascript"></script>';
+    $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2_min.js?v='.$lastvueupdate.'" type="text/javascript"></script>';
+    $placeinhead .= '<script src="'.$staticroot.'/javascript/assess2supp.js?v='.$lastvueupdate.'" type="text/javascript"></script>';
+    $placeinhead .= '<link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mathquill-basic.css?v=010726">
+        <link rel="stylesheet" type="text/css" href="'.$staticroot.'/mathquill/mqeditor.css?v=020226">';
     $placeinhead .= '<style>form > hr { border: 0; border-bottom: 1px solid #ddd;}</style>';
     require_once "../header.php";
 } else {
@@ -355,7 +365,12 @@ if ($curitem == -1) {
 		echo "		var theform = document.getElementById(\"qform\");";
 		echo "		var action = theform.getAttribute(\"action\");";
 		echo "		theform.setAttribute(\"action\",action+'&superdone=true');";
-		echo "		if (doonsubmit(theform,true,true)) { theform.submit(); } \n";
+		if ($courseUIver > 1) {
+			echo " if (dopresubmit($qn,false)) { theform.submit(); } \n";
+		} else {
+			echo " if (doonsubmit(theform,true,true)) { theform.submit(); } \n";
+		}
+		
 		//setTimeout('document.getElementById(\"qform\").submit()',1000);} \n";
 		echo "		return 0;";
 		echo "    }";
@@ -380,15 +395,6 @@ if ($curitem == -1) {
 		echo "<div class=right id=timelimitholder>" . _("Time") . ": <span id=\"timer\" style=\"font-size: 120%; color: red;\" ";
 		echo ">$hours:$minutes:$seconds</span></div>\n";
 
-		?>
-		<script type="text/javascript">
-		function focusfirst() {
-            var el = document.getElementById("qn0");
-            if (el != null) {el.focus();}
-		}
-		initstack.push(focusfirst);
-		</script>
-		<?php
 		//not done with assessment.
 		$page_formAction = "drillassess.php?cid=$cid&daid=$daid";
 		if ($showans) {
@@ -422,6 +428,7 @@ if ($curitem == -1) {
             } else {
                 echo "onsubmit=\"doonsubmit(this)\">\n";
             }
+			echo '<div class="question" id="questionwrap'.$qn.'">';
 			if ($courseUIver > 1) {
                 $state = array(
                     'seeds' => array(0 => $seed),
@@ -431,12 +438,16 @@ if ($curitem == -1) {
                 $a2->loadQuestionData();
                 $disp = $a2->displayQuestion(0, ['showans'=>$doshowans]);
                 echo $disp['html'];
+				if ($disp['useda11yalt']) {
+					echo '<input type=hidden name=useda11yalt value=1 />';
+				}
                 echo '<script>$(function() {
                     initq('.$qn.','.json_encode($disp['jsparams']).');
                   });</script>';
             } else {
                 displayq(0,$curitemid,$seed,$doshowans,true,0);
             }
+			echo '</div>';
             echo '<div class="submitbtnwrap">';
 			if ($sa==3) {
 				echo "<button type=\"submit\" name=\"next\" value=\"Next Question\" class=\"primary\">" . _("New Question") . "</button>\n";
@@ -445,6 +456,22 @@ if ($curitem == -1) {
 			}
 			echo "</div></form>\n";
 		}
+		?>
+		<script type="text/javascript">
+		function focusfirst() {
+			var mqel = document.getElementById("mqinput-qn0");
+			if (mqel != null) {
+				rendermathnode(document.getElementById("questionwrap<?php echo $qn;?>"), function () {
+					MQ(mqel).focus();;
+				});
+			} else {
+            	var el = document.getElementById("qn0");
+            	if (el != null) {el.focus();}
+			}
+		}
+		initstack.push(focusfirst);
+		</script>
+		<?php
 	}
 }
 
@@ -554,6 +581,69 @@ function sandboxgetweights($code,$seed) {
 	}
 
 	return $answeights;
+}
+
+function printscore2($res,$qsetid,$seed) {
+	global $DBH,$imasroot,$staticroot;
+	$poss = 1;
+	if (count($res['scores']) == 1) {
+		$sc = str_replace('-1','N/A',$res['scores'][0]);
+		$out =  sprintf(_("%s out of %d"), $sc, $poss);
+		$pts = $sc;
+		if (!is_numeric($pts)) { $pts = 0;}
+	} else {
+		$ptposs = $res['answeights'];
+		$weightsum = array_sum($ptposs);
+		if ($weightsum>1.1) {
+			$poss = $weightsum;
+		} else {
+			$poss = count($ptposs);
+		}
+		for ($i=0; $i<count($ptposs)-1; $i++) {
+			$ptposs[$i] = round($ptposs[$i]/$weightsum*$poss,2);
+		}
+		//adjust for rounding
+		$diff = $poss - array_sum($ptposs);
+		$ptposs[count($ptposs)-1] += $diff;
+
+		$pts = getpts(implode('~',$res['scores']),$poss);
+		$scarr = $res['scores'];
+		foreach ($res['scores'] as $k=>$v) {
+			$v = str_replace('-1','N/A',$v);
+			$v = round($v * $poss, 2);
+			if ($ptposs[$k]==0) {
+				$pm = 'gchk'; $alt=_('Correct');
+			} else if (!is_numeric($v) || $v==0) {
+				$pm = 'redx'; $alt=_('Incorrect');
+			} else if (abs($v-$ptposs[$k])<.011) {
+				$pm = 'gchk'; $alt=_('Correct');
+			} else {
+				$pm = 'ychk'; $alt=_('Partially correct');
+			}
+			$bar = "<img src=\"$staticroot/img/$pm.gif\" alt=\"$alt\"/>";
+			$scarr[$k] = "$bar $v/{$ptposs[$k]}";
+		}
+		$sc = implode(', ',$scarr);
+		$out =  sprintf(_("%s out of %d (parts: %s)"), $pts, $poss, $sc);
+	}
+
+	$bar = '<span class="scorebarholder">';
+	if ($poss==0) {
+		$w = 30;
+	} else {
+		$w = round(30*$pts/$poss);
+	}
+	if ($w==0) {$w=1;}
+	if ($w < 15) {
+	     $color = "#f".dechex(floor(16*($w)/15))."0";
+	} else if ($w==15) {
+	     $color = '#ff0';
+	} else {
+	     $color = "#". dechex(floor(16*(2-$w/15))) . "f0";
+	}
+
+	$bar .= '<span class="scorebarinner" style="background-color:'.$color.';width:'.$w.'px;">&nbsp;</span></span> ';
+	return $bar . $out;
 }
 
 function printscore($sc,$qsetid,$seed) {

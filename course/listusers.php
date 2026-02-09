@@ -39,7 +39,7 @@ $hasInclude = 0;
 $istutor = isset($tutorid);
 $isteacher = isset($teacherid);
 if (!isset($CFG['GEN']['allowinstraddstus'])) {
-	$CFG['GEN']['allowinstraddstus'] = true;
+	$CFG['GEN']['allowinstraddstus'] = false;
 }
 if (!isset($CFG['GEN']['allowinstraddtutors'])) {
 	$CFG['GEN']['allowinstraddtutors'] = true;
@@ -53,15 +53,15 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 	$body = "You need to log in as a teacher to access this page";
 } else { // PERMISSIONS ARE OK, PROCEED WITH PROCESSING
 
-	if (isset($_POST['submit']) && $_POST['submit']=="Unenroll") {
+	if (isset($_POST['posted']) && $_POST['posted']=="Unenroll") {
 		$_GET['action'] = "unenroll";
 	}
-	if (isset($_POST['submit']) && $_POST['submit']=="Lock") {
+	if (isset($_POST['posted']) && $_POST['posted']=="Lock") {
 		$_GET['action'] = "lock";
 	}
 	if (isset($_POST['lockinstead'])) {
 		$_GET['action'] = "lock";
-		$_POST['tolock'] = $_POST['tounenroll'];
+		$_POST['tolock'] = $_POST['tounenroll'] ?? $_GET['uid'];
 	}
 
 	if (isset($_GET['assigncode'])) {
@@ -159,16 +159,13 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 				$overwriteBody = 1;
 				$body = $errors . "<br/><a href=\"listusers.php?cid=$cid&newstu=new\">Try Again</a>\n";
 			} else {
-				if (isset($CFG['GEN']['newpasswords'])) {
-					require_once "../includes/password.php";
-					$md5pw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-				} else {
-					$md5pw = md5($_POST['pw1']);
-				}
+				require_once "../includes/password.php";
+				$pwhash = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+				
 				$query = "INSERT INTO imas_users (SID, password, rights, FirstName, LastName, email, msgnotify, forcepwreset) ";
 				$query .= "VALUES (:SID, :password, :rights, :FirstName, :LastName, :email, :msgnotify, 1);";
 				$stm = $DBH->prepare($query);
-				$stm->execute(array(':SID'=>$_POST['SID'], ':password'=>$md5pw, ':rights'=>10,
+				$stm->execute(array(':SID'=>$_POST['SID'], ':password'=>$pwhash, ':rights'=>10,
 					':FirstName'=>Sanitize::stripHtmlTags($_POST['firstname']),
 					':LastName'=>Sanitize::stripHtmlTags($_POST['lastname']),
 					':email'=>Sanitize::emailAddress($_POST['email']),
@@ -192,7 +189,7 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 				exit;
 			}
 		}
-	} elseif (isset($_POST['submit']) && $_POST['submit']=="Copy Emails") {
+	} elseif (isset($_POST['posted']) && $_POST['posted']=="Copy Emails") {
 		$curBreadcrumb .= " <a href=\"listusers.php?cid=$cid\">Roster</a> &gt; Copy Emails\n";
 		$pagetitle = "Copy Student Emails";
 		if (!empty($_POST['checked'])) {
@@ -205,7 +202,8 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 			$stuemails = array();
 			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 				$row[2] = str_replace('BOUNCED','',$row[2]);
-				$stuemails[] = Sanitize::encodeStringForDisplay($row[0]) . ' ' . Sanitize::encodeStringForDisplay($row[1]) .  ' &lt;' . Sanitize::encodeStringForDisplay($row[2]) . '&gt;';
+				$name = $row[0] . ' ' . $row[1];
+				$stuemails[] = '"'.Sanitize::encodeStringForDisplay(str_replace('"','',$name)) . '" ' . ' &lt;' . Sanitize::encodeStringForDisplay($row[2]) . '&gt;';
 			}
 			$stuemails = implode('; ',$stuemails);
 		}
@@ -216,24 +214,47 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/jquery.validate.min.js?v=122917"></script>';
 		require_once "../includes/newusercommon.php";
 
+		$uidToUpdate = Sanitize::onlyInt($_GET['uid']);
+
 		if (isset($_POST['timelimitmult'])) {
 			$msgout = '';
-			if (isset($_POST['SID'])) {
-				if (checkFormatAgainstRegex($_POST['SID'], $loginformat)) {
+			$stm = $DBH->prepare("SELECT iu.* FROM imas_users AS iu JOIN imas_students AS istu ON istu.userid=iu.id WHERE istu.courseid=? AND istu.userid=?");
+			$stm->execute([$cid, $uidToUpdate]);
+			$olddata = $stm->fetch(PDO::FETCH_ASSOC);
+			if ($olddata === false) {
+				echo 'Invalid userid';
+				exit;
+			}
+			$jsondata = json_decode($olddata['jsondata'], true);
+			if (!is_array($jsondata)) {
+				$jsondata = [];
+			}
+			$chglog = [];
+			if ($olddata['rights'] < $myrights && isset($_POST['SID']) && (
+				$_POST['SID'] != $olddata['SID'] || $_POST['firstname'] != $olddata['FirstName'] || $_POST['lastname'] != $olddata['LastName'] ||
+				$_POST['email'] != $olddata['email'] || isset($_POST['doresetpw'])
+			)) {
+				if (checkFormatAgainstRegex($_POST['SID'], $loginformat) && $_POST['SID'] != $olddata['SID']) {
 					$un = $_POST['SID'];
-					$updateusername = true;
+					$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
+					$stm->execute(array(':SID'=>$un));
+					if ($stm->rowCount()>0) {
+						$updateusername = false;
+					} else {
+						$updateusername = true;
+						$chglog['oldusername'] = $olddata['SID'];
+					}
 				} else {
 					$updateusername = false;
 				}
-				$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
-				$stm->execute(array(':SID'=>$un));
-				if ($stm->rowCount()>0) {
-					$updateusername = false;
-				}
+				
 				if ($updateusername) {
 					$msgout .= '<p>Username changed to <span class="pii-username">'.Sanitize::encodeStringForDisplay($un).'</span></p>';
 				} else {
 					$msgout .= '<p>Username left unchanged</p>';
+				}
+				if ($_POST['firstname'] != $olddata['FirstName'] || $_POST['lastname'] != $olddata['LastName']) {
+					$chglog['oldname'] = $olddata['LastName'] . ', ' . $olddata['FirstName'];
 				}
 				$query = "UPDATE imas_users SET FirstName=:FirstName,LastName=:LastName";
 
@@ -243,9 +264,12 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 					$qarr[':SID'] = $un;
 				}
 				if (!preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/',$_POST['email']) ||
-				(isset($CFG['acct']['emailFormat']) && !checkFormatAgainstRegex($_POST['email'], $CFG['acct']['emailFormat']))) {
-				$msgout .= '<p>Invalid email address - left unchanged</p>';
-			  } else {
+					(isset($CFG['acct']['emailFormat']) && !checkFormatAgainstRegex($_POST['email'], $CFG['acct']['emailFormat']))) {
+					$msgout .= '<p>Invalid email address - left unchanged</p>';
+				} else {
+					if ($_POST['email'] != $olddata['email']) {
+						$chglog['oldemail'] = $olddata['email'];
+					}
 					$query .= ",email=:email";
 					$qarr[':email'] = $_POST['email'];
 				}
@@ -253,19 +277,24 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 					if (isset($CFG['acct']['passwordFormat']) && !checkFormatAgainstRegex($_POST['pw1'], $CFG['acct']['passwordFormat'])) {
 						$msgout .= '<p>Invalid password - left unchanged</p>';
 					} else {
-						if (isset($CFG['GEN']['newpasswords'])) {
-							require_once "../includes/password.php";
-							$newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-						} else {
-							$newpw = md5($_POST['pw1']);
-						}
+						require_once "../includes/password.php";
+						$newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+	
+						$chglog['resetpw'] = 1;
 						$query .= ",password=:password,forcepwreset=1";
 						$qarr[':password'] = $newpw;
 						$msgout .= '<p>Password updated</p>';
 					}
 				}
+				if (!empty($chglog)) {
+					$query .= ',jsondata=:jsondata';
+					$chglog['by'] = $userid;
+					$jsondata['chglog'][time()] = $chglog;
+					$qarr['jsondata'] = json_encode($jsondata);
+				}
+				
 				$query .= " WHERE id=:id AND rights<:rights";
-				$qarr[':id'] = $_GET['uid'];
+				$qarr[':id'] = $uidToUpdate;
 				$qarr[':rights'] = $myrights;
 				$stm = $DBH->prepare($query);
 				$stm->execute($qarr);
@@ -300,33 +329,33 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 
 			if ($locked==0) {
 				$stm = $DBH->prepare("UPDATE imas_students SET code=:code,section=:section,locked=:locked,timelimitmult=:timelimitmult,hidefromcourselist=:hidefromcourselist,latepass=:latepass WHERE userid=:userid AND courseid=:courseid");
-				$stm->execute(array(':code'=>$code, ':section'=>$section, ':locked'=>$locked, ':timelimitmult'=>$timelimitmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$_GET['uid'], ':courseid'=>$cid));
+				$stm->execute(array(':code'=>$code, ':section'=>$section, ':locked'=>$locked, ':timelimitmult'=>$timelimitmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
 			} else {
 				$stm = $DBH->prepare("UPDATE imas_students SET code=:code,section=:section,timelimitmult=:timelimitmult,hidefromcourselist=:hidefromcourselist,latepass=:latepass WHERE userid=:userid AND courseid=:courseid");
-				$stm->execute(array(':code'=>$code, ':section'=>$section, ':timelimitmult'=>$timelimitmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$_GET['uid'], ':courseid'=>$cid));
+				$stm->execute(array(':code'=>$code, ':section'=>$section, ':timelimitmult'=>$timelimitmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
 				$stm = $DBH->prepare("UPDATE imas_students SET locked=:locked WHERE userid=:userid AND courseid=:courseid AND locked=0");
-				$stm->execute(array(':locked'=>$locked, ':userid'=>$_GET['uid'], ':courseid'=>$cid));
+				$stm->execute(array(':locked'=>$locked, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
             }
             require_once '../includes/setSectionGroups.php';
-            setSectionGroups($_GET['uid'], $cid, $section);
+            setSectionGroups($uidToUpdate, $cid, $section);
 
 			require_once '../includes/userpics.php';
 
 			// $_FILES[]['tmp_name'] is not user provided. This is safe.
 			if (is_uploaded_file($_FILES['stupic']['tmp_name'])) {
-				processImage($_FILES['stupic'],Sanitize::onlyInt($_GET['uid']),200,200);
-				processImage($_FILES['stupic'],'sm'.Sanitize::onlyInt($_GET['uid']),40,40);
+				processImage($_FILES['stupic'],Sanitize::onlyInt($uidToUpdate),200,200);
+				processImage($_FILES['stupic'],'sm'.Sanitize::onlyInt($uidToUpdate),40,40);
 				$chguserimg = 1;
 			} else if (isset($_POST['removepic'])) {
-				deletecoursefile('userimg_'.Sanitize::onlyInt($_GET['uid']).'.jpg');
-				deletecoursefile('userimg_sm'.Sanitize::onlyInt($_GET['uid']).'.jpg');
+				deletecoursefile('userimg_'.Sanitize::onlyInt($uidToUpdate).'.jpg');
+				deletecoursefile('userimg_sm'.Sanitize::onlyInt($uidToUpdate).'.jpg');
 				$chguserimg = 0;
 			} else {
 				$chguserimg = -1;
 			}
 			if ($chguserimg != -1) {
 				$stm = $DBH->prepare("UPDATE imas_users SET hasuserimg=:chguserimg WHERE id=:id");
-				$stm->execute(array(':id'=>$_GET['uid'], ':chguserimg'=>$chguserimg));
+				$stm->execute(array(':id'=>$uidToUpdate, ':chguserimg'=>$chguserimg));
 			}
 
 
@@ -344,16 +373,16 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 			$query = "SELECT imas_users.*,imas_students.code,imas_students.section,imas_students.locked,imas_students.timelimitmult,imas_students.hidefromcourselist,imas_students.latepass FROM imas_users,imas_students ";
 			$query .= "WHERE imas_users.id=imas_students.userid AND imas_users.id=:id AND imas_students.courseid=:courseid";
 			$stm = $DBH->prepare($query);
-			$stm->execute(array(':id'=>$_GET['uid'], ':courseid'=>$cid));
+			$stm->execute(array(':id'=>$uidToUpdate, ':courseid'=>$cid));
 			$lineStudent = $stm->fetch(PDO::FETCH_ASSOC);
 
 		}
 
-	} elseif ((isset($_POST['submit']) && ($_POST['submit']=="E-mail" || $_POST['submit']=="Message"))|| isset($_GET['masssend']))  {
+	} elseif ((isset($_POST['posted']) && ($_POST['posted']=="E-mail" || $_POST['posted']=="Message"))|| isset($_GET['masssend']))  {
 		$calledfrom='lu';
 		$overwriteBody = 1;
 		$fileToInclude = "masssend.php";
-	} elseif ((isset($_POST['submit']) && $_POST['submit']=="Make Exception") || isset($_GET['massexception'])) {
+	} elseif ((isset($_POST['posted']) && $_POST['posted']=="Make Exception") || isset($_GET['massexception'])) {
 		$calledfrom='lu';
 		$overwriteBody = 1;
 		$fileToInclude = "massexception.php";
@@ -370,7 +399,10 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		$calledfrom='lu';
 		$overwriteBody = 1;
 		$fileToInclude = "lockstu.php";
-
+	} elseif (isset($_POST['posted']) && $_POST['posted']=="Unlock") {
+		$calledfrom='lu';
+		require_once('lockstu.php');
+		exit;
 	} elseif (isset($_POST['action']) && $_POST['action']=="lockone" && is_numeric($_POST['uid'])) {
 		$now = time();
 		$stm = $DBH->prepare("UPDATE imas_students SET locked=:locked WHERE courseid=:courseid AND userid=:userid");
@@ -385,6 +417,44 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 
 		header('Location: ' . $GLOBALS['basesiteurl'] . "/course/listusers.php?cid=$cid&r=" . Sanitize::randomQueryStringParam());
 		exit;
+	} else if (isset($_POST['posted']) && $_POST['posted']=='maketutor' && !empty($_POST['checked'])) {
+		$curBreadcrumb .= " <a href=\"listusers.php?cid=$cid\">Roster</a> &gt; Add Tutors\n";
+		$pagetitle = "Add Tutors";
+
+		// get stu info
+		$stus = array_map('intval', $_POST['checked']);
+		$ph = Sanitize::generateQueryPlaceholders($stus);
+		$stm = $DBH->prepare("SELECT iu.FirstName,iu.LastName,iu.id FROM imas_users AS iu 
+							  JOIN imas_students AS istu ON istu.userid=iu.id
+							  WHERE iu.id IN ($ph) AND istu.courseid=?");
+		$stm->execute(array_merge($stus, [$cid]));
+		$stusToPromote = $stm->fetchAll(PDO::FETCH_ASSOC);
+
+		// get section info
+		$isdiag = false;
+		$sections = array();
+		//if diagnostic, then we'll use level-2 selectors in place of sections.  level-2 selector is recorded into the
+		//imas_students.section field, so filter will act the same.
+		$stm = $DBH->prepare("SELECT sel2name,sel2list FROM imas_diags WHERE cid=:cid");
+		$stm->execute(array(':cid'=>$cid));
+		if ($stm->rowCount()>0) {
+			$isdiag = true;
+			list($limitname,$sel2list) = $stm->fetch(PDO::FETCH_NUM);
+			$sel2list = str_replace('~',';',$sel2list);
+			$sections = array_unique(explode(';',$sel2list));
+		}
+
+		//if not diagnostic, we'll work off the sections
+		if (!$isdiag) {
+			$stm = $DBH->prepare("SELECT DISTINCT section FROM imas_students WHERE courseid=:courseid AND section IS NOT NULL");
+			$stm->execute(array(':courseid'=>$cid));
+			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$sections[] = $row[0];
+			}
+			$limitname = "Section";
+
+		}
+		sort($sections);
 	} else { //DEFAULT DATA MANIPULATION HERE
 
 		$curBreadcrumb .= " Roster\n";
@@ -393,7 +463,7 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		$stm->execute(array(':courseid'=>$cid));
 		if ($stm->rowCount()>0) {
 			$hassection = true;
-			$sectionselect = "<br/><select id=\"secfiltersel\" onchange=\"chgsecfilter()\"><option value=\"-1\" ";
+			$sectionselect = "<br/><select id=\"secfiltersel\" onchange=\"chgsecfilter()\"><option value=\"-1\" " ;
 			if ($secfilter==-1) {$sectionselect .= 'selected=1';}
 			$sectionselect .=  '>All</option>';
 			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
@@ -449,7 +519,7 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 				$haslatepasses=true;
 			}
 		}
-		$hasSectionRowHeader = ($hassection)? "<th>Section$sectionselect</th>" : "";
+		$hasSectionRowHeader = ($hassection)? "<th><label for=\"secfiltersel\">Section</label>$sectionselect</th>" : "";
 		$hasCodeRowHeader = ($hascode) ? "<th>Code</th>" : "";
 		$hasLatePassHeader = ($haslatepasses) ? "<th>LatePasses</th>" : "";
 
@@ -478,18 +548,26 @@ $placeinhead .= '$(function() { $(".lal").attr("title","View login log");
 	});';
 $placeinhead .= "</script>";
 $placeinhead .= '<script type="text/javascript">$(function() {
-  var html = \'<span class="dropdown"><a role="button" tabindex=0 class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="'.$staticroot.'/img/gears.png" alt="Options"/></a>\';
+  var html = \'<span class="dropdown"><a role="button" tabindex=0 class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">INSERTNAME <img src="'.$staticroot.'/img/collapse.gif" width="10" class="mida" alt="" /></a>\';
   html += \'<ul role="menu" class="dropdown-menu">\';
-  $("img[data-uid]").each(function (i,el) {
+  $("a[data-uid]").each(function (i,el) {
   	var uid = $(el).attr("data-uid");
-	var thishtml = html + \' <li><a href="listusers.php?cid=\'+cid+\'&chgstuinfo=true&uid=\'+uid+\'">'._('Student profile and options').'</a></li>\';
-	if ($(el).siblings("span.greystrike").length) {
+	var thishtml = html.replace("INSERTNAME", el.textContent) + \' <li><a href="listusers.php?cid=\'+cid+\'&chgstuinfo=true&uid=\'+uid+\'">'._('Student profile and options').'</a></li>\';
+	thishtml += \' <li><a href="gradebook.php?cid=\'+cid+\'&stu=\'+uid+\'&from=listusers">'._('View Grades').'</a></li>\';
+	thishtml += \' <li><a href="viewloginlog.php?cid=\'+cid+\'&uid=\'+uid+\'">'._('Login Log').'</a></li>\';
+	thishtml += \' <li><a href="viewactionlog.php?cid=\'+cid+\'&uid=\'+uid+\'">'._('Activity Log').'</a></li>\';
+	if ($(el).parent(".greystrike").length) {
 		thishtml += \' <li><a href="#" onclick="postRosterForm(\'+uid+\',\\\'unlockone\\\');return false;">'._('Unlock').'</a></li>\';
 	} else {
 		thishtml += \' <li><a href="#" onclick="postRosterForm(\'+uid+\',\\\'lockone\\\');return false;">'._('Lock out of course').'</a></li>\';
 	}
-	thishtml += \' <li><a href="viewloginlog.php?cid=\'+cid+\'&uid=\'+uid+\'">'._('Login Log').'</a></li>\';
-	thishtml += \' <li><a href="viewactionlog.php?cid=\'+cid+\'&uid=\'+uid+\'">'._('Activity Log').'</a></li>\';
+	';
+if (!isset($CFG['GEN']['noInstrUnenroll'])) {
+	$placeinhead .= 'thishtml += \'<li role="separator" class="divider"></li>\';';
+	//$placeinhead .= 'thishtml += \'<li><a href="#" onclick="postRosterForm(\'+uid+\',\\\'unenroll\\\');;return false;">'. _('Unenroll'). '</a></li>\'';
+	$placeinhead .= 'thishtml += \'<li><a href="listusers.php?cid=\'+cid+\'&action=unenroll&uid=\'+uid+\'">'. _('Unenroll'). '</a></li>\'';
+}
+$placeinhead .= '
 	thishtml += \'</ul></span> \';
 	$(el).replaceWith(thishtml);
   });
@@ -500,6 +578,16 @@ $placeinhead .= '<script type="text/javascript">$(function() {
 	  .append($("<input>", {name:"action", value:action, type:"hidden"}))
 	  .append($("<input>", {name:"uid", value:uid, type:"hidden"}))
 	  .appendTo("body").submit();
+  }
+  function postWithSelform(val) {
+	$("#qform").append($("<input>", {name:"posted", value:val, type:"hidden"})).submit();
+  }
+  function copyemails() {
+	var ids = [];
+	$("#myTable input:checkbox:checked").each(function(i) {
+		ids.push(this.value);
+	});
+	GB_show("Emails","viewemails.php?cid="+cid+"&ids="+ids.join("-"),500,500);
   }
   </script>';
 
@@ -535,21 +623,23 @@ if ($overwriteBody==1) {
 			</thead>
 			<tbody>
 <?php
+		$i = 0;
 		while ($line=$resultStudentList->fetch(PDO::FETCH_ASSOC)) {
+			$i++;
 ?>
 			<tr>
-                <td><span class="pii-full-name"><?php echo Sanitize::encodeStringForDisplay($line['LastName']) . ", " . Sanitize::encodeStringForDisplay($line['FirstName']); ?></span>
+                <td><span class="pii-full-name" id="n<?php echo $i;?>"><?php echo Sanitize::encodeStringForDisplay($line['LastName']) . ", " . Sanitize::encodeStringForDisplay($line['FirstName']); ?></span>
                     <input type="hidden" name="uid[<?php echo Sanitize::onlyInt($line['id']); ?>]" value="<?php echo Sanitize::encodeStringForDisplay($line['userid']); ?>" />
                 </td>
-				<td><input type=text name="sec[<?php echo Sanitize::onlyInt($line['id']); ?>]" value="<?php echo Sanitize::encodeStringForDisplay($line['section']); ?>"/></td>
-				<td><input type=text name="code[<?php echo Sanitize::onlyInt($line['id']); ?>]" value="<?php echo Sanitize::encodeStringForDisplay($line['code']); ?>"/></td>
+				<td><input type=text name="sec[<?php echo Sanitize::onlyInt($line['id']); ?>]" value="<?php echo Sanitize::encodeStringForDisplay($line['section']); ?>" aria-labelledby="n<?php echo $i;?>"/></td>
+				<td><input type=text name="code[<?php echo Sanitize::onlyInt($line['id']); ?>]" value="<?php echo Sanitize::encodeStringForDisplay($line['code']); ?>" aria-labelledby="n<?php echo $i;?>"/></td>
 			</tr>
 <?php
 		}
 ?>
 			</tbody>
 		</table>
-		<input type=submit name=submit value="Submit"/>
+		<button type=submit name=submit value=submit>Submit</button>
 	</form>
 <?php
 	} elseif (isset($_GET['enroll']) && ($myrights==100 || (isset($CFG['GEN']['allowinstraddbyusername']) && $CFG['GEN']['allowinstraddbyusername']==true))) {
@@ -568,7 +658,8 @@ if ($overwriteBody==1) {
 ?>
 
 	<form method=post id=pageform class=limitaftervalidate action="listusers.php?cid=<?php echo $cid ?>&newstu=new">
-		<span class=form><label for="SID"><?php echo $loginprompt;?>:</label></span> <input class="form pii-username" type=text size=12 id=SID name=SID><BR class=form>
+    <div id="errorlive" aria-live="polite" class="sr-only"></div>
+	<span class=form><label for="SID"><?php echo $loginprompt;?>:</label></span> <input class="form pii-username" type=text size=12 id=SID name=SID><BR class=form>
 	<span class=form><label for="pw1">Choose a password:</label></span><input class="form pii-security" type=text size=20 id=pw1 name=pw1><BR class=form>
 	<span class=form><label for="firstname">Enter First Name:</label></span> <input class="form pii-first-name" type=text size=20 id=firstname name=firstname><BR class=form>
 	<span class=form><label for="lastname">Enter Last Name:</label></span> <input class="form pii-last-name" type=text size=20 id=lastname name=lastname><BR class=form>
@@ -583,7 +674,7 @@ if ($overwriteBody==1) {
 <?php
 		require_once "../includes/newusercommon.php";
 		showNewUserValidation("pageform");
-	} elseif (isset($_POST['submit']) && $_POST['submit']=="Copy Emails") {
+	} elseif (isset($_POST['posted']) && $_POST['posted']=="Copy Emails") {
 		if (empty($_POST['checked'])) {
 			echo "No student selected. <a href=\"listusers.php?cid=$cid\">Try again</a>";
 		} else {
@@ -599,7 +690,8 @@ if ($overwriteBody==1) {
 		}
 ?>
 		<form enctype="multipart/form-data" id=pageform method=post action="listusers.php?cid=<?php echo $cid ?>&chgstuinfo=true&uid=<?php echo Sanitize::onlyInt($_GET['uid']) ?>" class="limitaftervalidate"/>
-			<span class=form><label for="SID">User Name (login name):</label></span>
+            <div id="errorlive" aria-live="polite" class="sr-only"></div>
+            <span class=form><label for="SID">User Name (login name):</label></span>
 			<input <?php echo $disabled;?> class="form pii-username" type=text size=20 id=SID name=SID value="<?php echo Sanitize::encodeStringForDisplay($lineStudent['SID']); ?>"/><br class=form>
 			<span class=form><label for="firstname">First Name:</label></span>
 			<input <?php echo $disabled;?> class="form pii-first-name" type=text size=20 id=firstname name=firstname value="<?php echo Sanitize::encodeStringForDisplay($lineStudent['FirstName']); ?>"/><br class=form>
@@ -651,6 +743,44 @@ if ($overwriteBody==1) {
         );
 		require_once "../includes/newusercommon.php";
 		showNewUserValidation("pageform", array(), $requiredrules, array('originalSID'=>$lineStudent['SID']));
+	} else if (isset($_POST['posted']) && $_POST['posted']=='maketutor' && count($_POST['checked'])> 0) {
+		echo '<form enctype="multipart/form-data" id=pageform method=post action="managetutors.php?cid='.$cid.'">';
+
+		echo '<p class=noticetext style="font-size:150%">Warning</p>';
+		echo '<p>To promote these students to a tutor, they will have to be un-enrolled as a student, ';
+		echo '<span class="noticetext">which will DELETE ALL their student data</span>, including assessment scores. ';
+		echo 'If you are SURE you want to do this, check the boxes next to each student.</p>';
+		echo '<p>Un-enroll as a student and add as a tutor:</p>';
+
+		echo '<table class="gb">
+    		<caption class="sr-only">Potential Tutors</caption>
+			<thead>
+				<tr>
+					<th>'._('Add as tutor?').'</th>
+					<th>'._('Name').'</th>
+					<th>'._('Limit to').' '. Sanitize::encodeStringForDisplay($limitname). '</th>
+				</tr>
+			</thead>
+			<tbody>';
+
+		foreach ($stusToPromote as $k=>$u) {
+			echo '<tr>';
+			echo '<td><input type=checkbox name="promotetotutor[]" value="'.intval($u['id']).'" id="cb'.intval($k).'"></td>';
+			echo '<td class="pii-full-name"><label id="n'.intval($k).'" for="cb'.intval($k).'">';
+			echo Sanitize::encodeStringForDisplay($u['LastName'] . ', ' . $u['FirstName']);
+			echo '</label></td>';
+			echo '<td>';
+			echo '<select name="section['.Sanitize::encodeStringForDisplay($u['id']).']" aria-labelledby="n'.intval($k).'">';
+			echo '<option value="">All</option>';
+			foreach ($sections as $sec) {
+				echo '<option value="'.Sanitize::encodeStringForDisplay($sec).'">'.Sanitize::encodeStringForDisplay($sec).'</option>';
+			}
+			echo '</select></td></tr>';
+		}
+		echo '</tbody></table>';
+
+		echo '<p><button type=submit name=submit value=submit>Submit</button></p>';
+		echo '</form>';
 	} else {
 ?>
 
@@ -717,49 +847,57 @@ if ($overwriteBody==1) {
     }
     echo '<br class="clear"/>';
 	echo '</div>';
-	echo '<p>Pictures: <select id="picsize" onchange="chgpicsize()">';
+	echo '<p><label>'._('Pictures').': <select id="picsize" onchange="chgpicsize()">';
 	echo "<option value=0 selected>", _('None'), "</option>";
 	echo "<option value=1>", _('Small'), "</option>";
-	echo "<option value=2>", _('Big'), "</option></select> ";
-	echo 'Email: <select id="showemail" onchange="chgrmode()">';
+	echo "<option value=2>", _('Big'), "</option></select></label> ";
+	echo '<label>'._('Email').': <select id="showemail" onchange="chgrmode()">';
 	echo '<option value=1 '.($showemail==true?'selected':'').'>'._('Show').'</option>';
 	echo '<option value=0 '.($showemail==true?'':'selected').'>'._('Hide').'</option>';
-	echo '</select> ';
-	echo Sanitize::encodeStringForDisplay($loginprompt).': <select id="showsid" onchange="chgrmode()">';
+	echo '</select></label> ';
+	echo '<label>'.Sanitize::encodeStringForDisplay($loginprompt).': <select id="showsid" onchange="chgrmode()">';
 	echo '<option value=1 '.($showSID==true?'selected':'').'>'._('Show').'</option>';
 	echo '<option value=0 '.($showSID==true?'':'selected').'>'._('Hide').'</option>';
-	echo '</select> ';
+	echo '</select></label> ';
 	echo '</p>';
 	?>
 	<form id="qform" method=post action="listusers.php?cid=<?php echo $cid ?>">
-		<p>Check: <a href="#" onclick="return chkAllNone('qform','checked[]',true)">All</a> <a href="#" onclick="return chkAllNone('qform','checked[]',true,'locked')">Non-locked</a> <a href="#" onclick="return chkAllNone('qform','checked[]',false)">None</a>
-		With Selected:
-		<?php
-		  if (!isset($CFG['GEN']['noEmailButton'])) {
-		  	  echo '<input type=submit name=submit value="E-mail" title="Send e-mail to the selected students">';
-		  }
-		?>
-		<input type=submit name=submit value="Message" title="Send a message to the selected students">
-		<input type=submit name=submit value="Lock" title="Lock selected students out of the course">
-		<input type=submit name=submit value="Make Exception" title="Make due date exceptions for selected students">
-		<input type=submit name=submit value="Copy Emails" title="Get copyable list of email addresses for selected students">
-		<?php
-		if (!isset($CFG['GEN']['noInstrUnenroll'])) {
-			echo '<input type=submit name=submit value="Unenroll" title="Unenroll the selected students">';
-		}
-		?>
-		</p>
+	<?php
+	echo _('Check:'), ' <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',true)">', _('All'), '</a> <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',true,\'locked\')">', _('Non-locked'), '</a> <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',false)">', _('None'), '</a> ';
+	echo '<span class="dropdown">';
+	echo ' <a tabindex=0 class="dropdown-toggle arrow-down" id="dropdownMenuWithsel" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
+	echo _('With Selected').'</a>';
+	echo '<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenuWithsel">';
+	echo ' <li><a href="#" onclick="postWithSelform(\'Message\');return false;" title="',_("Send a message to the selected students"),'">', _('Message'), "</a></li>";
+	if (!isset($CFG['GEN']['noEmailButton'])) {
+		echo ' <li><a href="#" onclick="postWithSelform(\'E-mail\');return false;" title="',_("Send e-mail to the selected students"),'">', _('E-mail'), "</a></li>";
+	}
+	echo ' <li><a href="#" onclick="copyemails();return false;" title="',_("Copy e-mail addresses of the selected students"),'">', _('Copy E-mails'), "</a></li>";
+	echo ' <li><a href="#" onclick="postWithSelform(\'Make Exception\');return false;" title="',_("Make due date exceptions for selected students"),'">',_('Make Exception'), "</a></li>";
+	echo ' <li><a href="#" onclick="postWithSelform(\'Lock\');return false;" title="',_("Lock selected students out of the course"),'">', _('Lock'), "</a></li>";
+	echo ' <li><a href="#" onclick="postWithSelform(\'Unlock\');return false;" title="',_("Un-Lock selected students from the course"),'">', _('Un-Lock'), "</a></li>";
+	if (!isset($CFG['GEN']['allowinstraddtutors']) || $CFG['GEN']['allowinstraddtutors']==true) {
+		echo ' <li><a href="#" onclick="postWithSelform(\'maketutor\');return false;" title="',_("Promote students to tutors"),'">', _('Add as Tutors'), "</a></li>";
+	}
 
+	if (!isset($CFG['GEN']['noInstrUnenroll'])) {
+		echo '<li role="separator" class="divider"></li>';
+		echo ' <li><a href="#" onclick="postWithSelform(\'Unenroll\');return false;" title="',_("Unenroll the selected students"),'">', _('Unenroll'), "</a></li>";
+	}
+
+	echo '</ul></span>';
+	?>
+		
 	<table class=gb id=myTable>
     <caption class="sr-only">Roster</caption>
 		<thead>
 		<tr>
-			<th></th>
-			<th></th>
+			<th><span class="sr-only">Checkboxes</span></th>
+			<th><span class="sr-only">Images</span></th>
 			<?php echo $hasSectionRowHeader; ?>
 			<?php echo $hasCodeRowHeader; ?>
 			<th>Name</th>
-			<th></th>
+			<th><span class="sr-only">Notes</span></th>
 			<?php
 			if ($showSID) {
 				echo '<th>'.Sanitize::encodeStringForDisplay($loginprompt).'</th>';
@@ -768,8 +906,8 @@ if ($overwriteBody==1) {
 				echo '<th>'._('Email').'</th>';
 			}
 			?>
-			<th>Last Access</th>
-			<th>Grades</th>
+			<th>Last Access <span id="llt" class="sr-only">View login log</span></th>
+			<th id="gt">Grades</th>
 			<?php echo $hasLatePassHeader; ?>
 		</tr>
 		</thead>
@@ -777,7 +915,9 @@ if ($overwriteBody==1) {
 <?php
 		$alt = 0;
 		$numstu = 0;  $numunlocked = 0;
+		$ln = 0;
 		foreach ($defaultUserList as $line) {
+			$ln++;
 			if ($line['section']==null) {
 				$line['section'] = '';
 			}
@@ -802,7 +942,8 @@ if ($overwriteBody==1) {
 			$hasCodeData = ($hascode) ? "<td>".Sanitize::encodeStringForDisplay($line['code'])."</td>" : "";
 			if ($alt==0) {echo "<tr class=even>"; $alt=1;} else {echo "<tr class=odd>"; $alt=0;}
 ?>
-				<td><input type=checkbox name="checked[]" value="<?php echo Sanitize::onlyInt($line['userid']); ?>" <?php if ($line['locked']>0) echo 'class="locked"'?>></td>
+				<td><input type=checkbox name="checked[]" id="userchk<?php echo Sanitize::onlyInt($line['userid']); ?>" 
+					value="<?php echo Sanitize::onlyInt($line['userid']); ?>" <?php if ($line['locked']>0) echo 'class="locked"'?>></td>
 				<td>
 <?php
 
@@ -818,33 +959,30 @@ if ($overwriteBody==1) {
 				<?php
 				echo $hasSectionData;
 				echo $hasCodeData;
-				$nameline = '<a href="listusers.php?cid='.$cid.'&chgstuinfo=true&uid=' . Sanitize::onlyInt($line['userid']) . '" class="ui">';
-				$nameline .= Sanitize::encodeStringForDisplay($line['LastName']).', '.Sanitize::encodeStringForDisplay($line['FirstName']) . '</a>';
-				echo '<td><img data-uid="'. Sanitize::onlyInt($line['userid']) .'" src="'.$staticroot.'/img/gears.png"/> ';
+		
+				$nameline = Sanitize::encodeStringForDisplay($line['LastName']).', '.Sanitize::encodeStringForDisplay($line['FirstName']);
+				//echo '<td><img data-uid="'. Sanitize::onlyInt($line['userid']) .'" src="'.$staticroot.'/img/gears.png"/> ';
+				echo '<th scope=row>';
+				
 				if ($line['locked']>0) {
-					echo '<span class="greystrike pii-full-name">'.$nameline.'</span></td>';
-					echo '<td>'.$icons.'</td>';
-					if ($showSID) {
-						echo '<td><span class="greystrike pii-username">'.Sanitize::encodeStringForDisplay($line['SID']).'</span></td>';
-					}
-					if ($showemail) {
-						echo '<td><span class="greystrike">'.Sanitize::emailAddress($line['email']).'</span></td>';
-					}
-					echo '<td><span class="greystrike"><a href="viewloginlog.php?cid='.$cid.'&uid='.Sanitize::onlyInt($line['userid']).'" class="lal">'.$lastaccess.'</a></span></td>';
+					$lineclass = 'greystrike ';
 				} else {
-					echo '<span class="pii-full-name">'.$nameline.'</span></td>';
-					echo '<td>'.$icons.'</td>';
-					if ($showSID) {
-						echo '<td><span class="pii-username">'.Sanitize::encodeStringForDisplay($line['SID']).'</span></td>';
-					}
-					if ($showemail) {
-						echo '<td><span class="pii-email">'.Sanitize::emailAddress($line['email']).'</span></td>';
-					}
-					echo '<td><a href="viewloginlog.php?cid='.$cid.'&uid='.Sanitize::onlyInt($line['userid']).'" class="lal">'.$lastaccess.'</a></td>';
+					$lineclass = '';
 				}
+				echo '<label for="userchk'. Sanitize::onlyInt($line['userid']) . '" class="' . $lineclass . 'pii-full-name" id="u'.$ln.'">';
+				echo '<a data-uid="'. Sanitize::onlyInt($line['userid']).'">'.$nameline.'</a></label></th>';
+				echo '<td>'.$icons.'</td>';
+				if ($showSID) {
+					echo '<td><span class="' . $lineclass . 'pii-username">'.Sanitize::encodeStringForDisplay($line['SID']).'</span></td>';
+				}
+				if ($showemail) {
+					echo '<td><span class="' . $lineclass . '">'.Sanitize::emailAddress($line['email']).'</span></td>';
+				}
+				echo '<td><span class="' . $lineclass . '"><a href="viewloginlog.php?cid='.$cid.'&uid='.Sanitize::onlyInt($line['userid']).'" class="lal" id="la'.$ln.'" aria-labelledby="la'.$ln.' llt u'.$ln.'">'.$lastaccess.'</a></span></td>';
+
 				?>
 
-				<td><a href="gradebook.php?cid=<?php echo $cid ?>&stu=<?php echo Sanitize::onlyInt($line['userid']); ?>&from=listusers" class="gl">Grades</a></td>
+				<td><a href="gradebook.php?cid=<?php echo $cid ?>&stu=<?php echo Sanitize::onlyInt($line['userid']); ?>&from=listusers" class="gl" aria-labelledby="gt u<?php echo $ln;?>">Grades</a></td>
 				<?php
 				if ($haslatepasses) {
 					echo '<td>'.Sanitize::onlyInt($line['latepass']).'</td>';

@@ -26,8 +26,6 @@ require_once "./AssessInfo.php";
 require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 check_for_required('GET', array('aid', 'cid'));
 check_for_required('POST', array('newquestion', 'newstate'));
 $cid = Sanitize::onlyInt($_GET['cid']);
@@ -149,7 +147,7 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
 
   // call the livepoll server
   if (isset($CFG['GEN']['livepollpassword'])) {
-    $livepollsig = base64_encode(sha1($aid . $qn . $seed. $CFG['GEN']['livepollpassword'] . $now, true));
+    $livepollsig = base64_encode(hash('sha256',$aid . $qn . $seed. $CFG['GEN']['livepollpassword'] . $now, true));
   } else {
     $livepollsig = '';
   }
@@ -194,7 +192,7 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
 
   // call the livepoll server
   if (isset($CFG['GEN']['livepollpassword'])) {
-    $livepollsig = base64_encode(sha1($aid . $qn . $newState. $CFG['GEN']['livepollpassword'] . $now, true));
+    $livepollsig = base64_encode(hash('sha256',$aid . $qn . $newState. $CFG['GEN']['livepollpassword'] . $now, true));
   } else {
     $livepollsig = '';
   }

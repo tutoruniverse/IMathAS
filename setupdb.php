@@ -1,6 +1,11 @@
-<html>
+<?php
+$dbsetup = true;
+$use_local_sessions = true;
+$init_session_start = true;
+require_once "init_without_validate.php";
+?><html>
 <head>
-<link rel="stylesheet" href="imas.css" type="text/css">
+<link rel="stylesheet" href="imascore.css" type="text/css">
 </head>
 <body>
 <?php
@@ -15,12 +20,10 @@ Because of this, this file does NOT contain the full up-to-date database schema.
 
 ***************/
 
-$dbsetup = true;
-$use_local_sessions = true;
-$init_session_start = true;
-require_once "init_without_validate.php";
+
 $stm = $DBH->query("SHOW TABLES LIKE 'imas_dbschema'");
-if ($stm->rowCount()>0) {
+$row = $stm->fetch();
+if ($row !== false) {
 	echo "It appears the database setup has already been run.  Aborting.  If you need to ";
 	echo "rerun the setup, clear out your database";
 	echo "</body></html>";
@@ -1041,15 +1044,12 @@ $sql = 'CREATE TABLE `php_sessions` (
 $DBH->query($sql);
 echo 'php_sessions created<br/>';
 
-if (isset($CFG['GEN']['newpasswords'])) {
-	require_once "includes/password.php";
-	$md5pw = password_hash($password, PASSWORD_DEFAULT);
-} else {
-	$md5pw = md5($password);
-}
+require_once "includes/password.php";
+$pwhash = password_hash($password, PASSWORD_DEFAULT);
+
 $now = time();
 $stm = $DBH->prepare("INSERT INTO imas_users (SID,password,rights,FirstName,LastName,email) VALUES (:SID, :password, :rights, :FirstName, :LastName, :email)");
-$stm->execute(array(':SID'=>$username, ':password'=>$md5pw, ':rights'=>100, ':FirstName'=>$firstname, ':LastName'=>$lastname, ':email'=>$email));
+$stm->execute(array(':SID'=>$username, ':password'=>$pwhash, ':rights'=>100, ':FirstName'=>$firstname, ':LastName'=>$lastname, ':email'=>$email));
 
 echo "user " . Sanitize::encodeStringForDisplay($username) . " created<br/>";
 

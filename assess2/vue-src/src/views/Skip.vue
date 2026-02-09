@@ -10,7 +10,7 @@
       role="region"
       ref="scrollpane"
       tabindex="-1"
-      :aria-label="$t('regions.questions')"
+      :aria-label="$t('regions-questions')"
     >
       <intro-text
         :active = "qn == -1"
@@ -20,10 +20,18 @@
       <router-link
           v-if = "qn == -1"
           :to="'/skip/1'"
-          tag="button"
+          custom
+          v-slot="{ navigate }"
       >
-        <icons name="right" alt=""/>
-        {{ $t('question.firstq') }}
+        <button
+          type="button"
+          @click="navigate"
+          @keypress.enter="navigate"
+          role="link"
+        >
+          <icons name="right" alt=""/>
+          {{ $t('question-firstq') }}
+        </button>
       </router-link>
       <inter-question-text-skiplist
         pos = "before"
@@ -35,6 +43,9 @@
         :class="{inactive: curqn != qn}"
         :aria-hidden = "curqn != qn"
       >
+        <h2 class="sr-only">
+          {{ $t('question_n', { n: curqn + 1 }) }}
+        </h2>
         <question
           :qn="curqn"
           :active="curqn == qn"

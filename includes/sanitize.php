@@ -4,20 +4,47 @@ require_once __DIR__ . "/htmLawed.php";
 
 class Sanitize
 {
-
+	/*
 	private static $blacklistedFilenames = array(
 		'/^\./',
-		'/\.php\d?($|\.)/',
-		'/\.bat($|\.)/',
-		'/\.com($|\.)/',
-		'/\.exe($|\.)/',
-		'/\.pl($|\.)/',
-		'/\.ph\d($|\.)/',
-		'/\.phtml?($|\.)/',
-		'/\.sh($|\.)/',
-		'/\.asp($|\.)/',
-		'/\.p($|\.)/'
+		'/\.php\d?$/',
+		'/\.phar$/',
+		'/\.bat$/',
+		'/\.com$/',
+		'/\.exe$/',
+		'/\.pl$/',
+		'/\.ph\d$/',
+		'/\.phtml?$/',
+		'/\.sh$/',
+		'/\.asp$/',
+		'/\.p$/'
 	);
+
+	private static $localBlacklistedFilenames = array(
+		'/\.htm$/',
+		'/\.html\d?$/',
+		'/\.js$/',
+		'/\.xhtml$/',
+		'/\.xml$/'
+	);
+	*/
+	private static $whitelistedExtensions = [
+		'.jpg', '.jpeg', '.png',  '.gif',  '.webp', '.heic', '.tiff', '.bmp', '.svg',
+		'.doc', '.xls',  '.ppt',  '.docx', '.xlsx', '.pptx', '.rtf',  '.csv',  
+		'.pdf', '.txt',  '.odt',  '.ods',  '.odp',  '.key',  '.md',   '.epub', '.tex',
+		'.zip', '.rar',  '.7z',   '.gz',   
+		'.mp4', '.mov',  '.mkv',  '.mp3',  '.m4a',  '.vtt',  '.srt',
+		'.nb',  '.nbp',  '.mw',   '.mws',  '.m',    '.mat',  '.mlx',  
+		'.sas', '.sav',  '.r',    '.rda',  '.rds',  '.dta',  '.rdata', '.rmd',  
+		'.sps', '.qmd',  '.mpx',  '.mpj',  '.mwx',  '.mtw',  '.jmp',   '.jrn', '.jrp', 
+		'.dat',  '.json', 
+		'.imas', '.imscc', '.ggb',
+		'.ipynb', '.pages', '.numbers'
+	];
+
+	private static $whitelistedNonlocalExtensions = [
+		'.htm', '.html', '.js', '.xml', '.xhtml'
+	];
 
 	/**
 	 * Sanitize a filename and check it against a blacklist. Request processing is halted
@@ -28,7 +55,7 @@ class Sanitize
 	 */
 	public static function sanitizeFilenameAndCheckBlacklist($uncleanFilename)
 	{
-		$safeFilename = preg_replace('/[^\da-z\._\-]/i', '', $uncleanFilename);
+		$safeFilename = self::singleExtension(preg_replace('/[^\da-z\._\-]/i', '', $uncleanFilename));
 
 		if (self::isFilenameBlacklisted($safeFilename)) {
 			print("Invalid filename used! Halting.\n");
@@ -57,6 +84,8 @@ class Sanitize
 			$saferFilePath = str_replace('../','',$saferFilePath,$cnt);
 		}
 
+		$saferFilePath = self::singleExtension($saferFilePath);
+		
 		if (self::isFilenameBlacklisted(basename($saferFilePath)) || basename($saferFilePath)=='') {
 			print("Invalid filename used! Halting.\n");
 			// Normally, an exception would be thrown here, but we don't have exception handling. Yet! :)
@@ -75,13 +104,49 @@ class Sanitize
 	public static function isFilenameBlacklisted($filenameToCheck)
 	{
 		$filenameToCheck = strtolower($filenameToCheck);
-		foreach (self::$blacklistedFilenames as $blacklistedFilename) {
-			if (preg_match($blacklistedFilename, $filenameToCheck)) {
-				return true;
-			}
+		$pos = strrpos($filenameToCheck, '.');
+		if ($pos === false) {
+			$ext = ''; // no extension
+		} else {
+			$ext = strtolower(substr($filenameToCheck, $pos));
 		}
+		if (isset($GLOBALS['CFG']['GEN']['filewhitelist'])) {
+			if (in_array($ext, $GLOBALS['CFG']['GEN']['filewhitelist'])) {
+				return false;
+			} 
+			
+		} else {
+			if (in_array($ext, self::$whitelistedExtensions)) {
+				return false;
+			}
+			if (!empty($GLOBALS['CFG']['GEN']['AWSforcoursefiles']) &&
+				in_array($ext, self::$whitelistedNonlocalExtensions)
+			) {
+				return false;
+			}
+			/*
+			// old blacklist method
+			$filenameToCheck = strtolower($filenameToCheck);
+			foreach (self::$blacklistedFilenames as $blacklistedFilename) {
+				if (preg_match($blacklistedFilename, $filenameToCheck)) {
+					return true;
+				}
+			}
+			// not using S3 for coursefiles, check local blacklist
+			// even though file might get uploaded to S3 if not coursefile
+			// this is easier than trying to keep track of what kind of upload it is
+			if (empty($GLOBALS['CFG']['GEN']['AWSforcoursefiles'])) {
+				foreach (self::$localBlacklistedFilenames as $blacklistedFilename) {
+					if (preg_match($blacklistedFilename, $filenameToCheck)) {
+						return true;
+					}
+				}
+			}
 
-		return false;
+			return false;
+			*/
+		}
+		return true;
 	}
 
 	/**
@@ -98,6 +163,7 @@ class Sanitize
 	public static function encodeStringForDisplay($string, $doubleencode = false)
 	{
         if ($string === null) { return '';}
+        $string = (string) $string; //force to string type
 		return htmlspecialchars($string, ENT_QUOTES | ENT_HTML401, ini_get("default_charset"), $doubleencode);
 	}
 
@@ -231,6 +297,7 @@ class Sanitize
 			? preg_replace('/[^\da-z\.-]/i', '', $parsed_url['host']) : '';
 		$port = isset($parsed_url['port']) ? preg_replace('/[^\d]/', '', $parsed_url['port']) : '';
 		$fragment = isset($parsed_url['fragment']) ? rawurlencode(rawurldecode($parsed_url['fragment'])) : '';
+        $fragment = str_replace('%3D', '=', $fragment);
 
         // Sanitize the path
         if (isset($parsed_url['path'])) {
@@ -484,7 +551,7 @@ class Sanitize
 	 */
 	public static function courseId($courseId)
 	{
-		if ("admin" == strtolower(trim($courseId))) {
+		if ("admin" == strtolower(trim($courseId ?? ''))) {
 			return "admin";
 		} else {
 			return self::onlyInt($courseId);
@@ -568,10 +635,24 @@ class Sanitize
 	 * Note: This method currently uses htmLawed.
 	 *
 	 * @param $unsafeContent string The content to sanitize.
+	 * @param $stricter boolean Strip some attributes from the HTML that might interfere with things
+	 * @param $trim int Trim if over this many characters (0 for no trim)
 	 * @return string The sanitized content.
 	 */
-	public static function incomingHtml($unsafeContent) {
-		return myhtmLawed($unsafeContent);
+	public static function incomingHtml($unsafeContent, $stricter = false, $trim = 0) {
+		if ($stricter) {
+			$NC = [
+				'deny_attribute' => 'on*,data*,aria*,tabindex,id'
+			];
+			$str = myhtmLawed($unsafeContent, $NC);
+		} else {
+			$str = myhtmLawed($unsafeContent);
+		}
+		if ($trim > 0 && strlen($str) > $trim) {
+			$str = substr($str,0,$trim) . ' (remainder truncated due to length)';
+            $str = myhtmLawed($str, $NC); // do again to close any truncated tags
+		}
+		return $str;
 	}
 
 	/**
@@ -599,4 +680,57 @@ class Sanitize
         return preg_replace('/(<p>(&nbsp;)?<\/p>\s*)+$/','', $str);
     }
 
+    public static function gzexpand($data) {
+        if (mb_strpos($data , "\x1f" . "\x8b" . "\x08") === 0) {
+            return gzdecode($data);
+        } else {
+            return gzuncompress($data);
+        }
+    }
+
+    /**
+     * Replace "smart quotes" and related "smart" characters with their
+     * "normal" equivalents.
+     *
+     * @param string $text
+     * @return string The provided text with "smart" characters removed.
+     */
+    public static function replaceSmartQuotes(string $text): string
+    {
+        return str_replace(
+            [
+                "\xe2\x80\x98", "\xe2\x80\x99", "\xe2\x80\x9c", "\xe2\x80\x9d",
+                "\xe2\x80\x93", "\xe2\x80\x94", "\xe2\x80\xa6"
+            ],
+            [
+                "'", "'", '"', '"',
+                '-', '--', '...'
+            ],
+            $text
+        );
+    }
+
+	/**
+	 * adjusts file extensions to a single one.  So file.ext.ex2 would come file_ext.ex2
+	 */
+	private static function singleExtension(string $filename): string
+	{
+		// Get the last extension
+		$lastDotPos = strrpos($filename, '.');
+		
+		if ($lastDotPos === false) {
+			// No extension found, just replace all dots
+			return str_replace('.', '_', $filename);
+		}
+		
+		// Split into name and extension
+		$name = substr($filename, 0, $lastDotPos);
+		$extension = substr($filename, $lastDotPos); // includes the dot
+		
+		// Replace all dots in the name part with underscores
+		$safeName = str_replace('.', '_', $name);
+		
+		// Combine back together
+		return $safeName . $extension;
+	}
 }

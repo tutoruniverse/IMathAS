@@ -35,107 +35,56 @@
 				)
 			);
 		}
-		//update sections
+		//update sections and nomsg
 		if (isset($_POST['section']) && count($_POST['section'])>0) {
 			foreach ($_POST['section'] as $id=>$val) {
-				$stm = $DBH->prepare("UPDATE imas_tutors SET section=:section WHERE id=:id AND courseid=:courseid");
-				$stm->execute(array(':section'=>$val, ':id'=>$id, ':courseid'=>$cid));
+				$nomsg = 0;
+				if (empty($_POST['nomsg1'][$id])) {
+					$nomsg |= 1;
+				}
+				if (empty($_POST['nomsg2'][$id])) {
+					$nomsg |= 2;
+				}
+				$stm = $DBH->prepare("UPDATE imas_tutors SET section=:section,nomsg=:nomsg WHERE id=:id AND courseid=:courseid");
+				$stm->execute(array(':section'=>$val, ':nomsg'=>$nomsg, ':id'=>$id, ':courseid'=>$cid));
 			}
 		}
 		//add new tutors
 		if (isset($_POST['promotetotutor'])) {
 			require_once "../includes/unenroll.php";
 			$ph = Sanitize::generateQueryPlaceholders($_POST['promotetotutor']);
-			$stm = $DBH->prepare("SELECT u.id,u.SID FROM imas_students as stu JOIN imas_users as u ON stu.userid=u.id WHERE stu.courseid=? AND u.id IN ($ph)");
+			$stm = $DBH->prepare("SELECT userid FROM imas_students WHERE courseid=? AND userid IN ($ph)");
 			$stm->execute(array_merge(array($cid), $_POST['promotetotutor']));
-			$toaddSID = array();
-			$tounenroll = array();
+			$topromote = [];
 			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				$tounenroll[] = $row[0];
-				$toaddSID[] = $row[1];
+				$topromote[] = $row[0];
 			}
+			if (count($topromote) > 0) {
+				// unenroll
+				unenrollstu($cid, $topromote);
 
-			unenrollstu($cid, $tounenroll);
-			$_POST['newtutors'] = implode(',', $toaddSID);
-		}
-		if (trim($_POST['newtutors'])!='') {
-			//gotta check if they're already a tutor
-			$existingtutorsids = array();
-			$existingstusids = array();
-			$stm = $DBH->prepare("SELECT u.SID FROM imas_tutors as tut JOIN imas_users as u ON tut.userid=u.id WHERE tut.courseid=:courseid");
-			$stm->execute(array(':courseid'=>$cid));
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				$existingtutorsids[] = $row[0];
-			}
-			//also don't want students enrolled as tutors
-			$stm = $DBH->prepare("SELECT u.SID,u.id,u.FirstName,u.LastName FROM imas_students as stu JOIN imas_users as u ON stu.userid=u.id WHERE stu.courseid=:courseid");
-			$stm->execute(array(':courseid'=>$cid));
-			$stuinfo = array();
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				$existingstusids[] = $row[0];
-				$stuinfo[$row[0]] = array($row[1], $row[3].', '.$row[2]);
-			}
-			$sids = explode(',',$_POST['newtutors']);
-			for ($i=0;$i<count($sids);$i++) {
-				$sids[$i] = trim($sids[$i]);
-			}
-			$sidstouse = array_diff($sids,$existingtutorsids,$existingstusids);
-			if (count($sidstouse)>0) {
-				//check if SID exists
-				$query_placeholders = Sanitize::generateQueryPlaceholders($sidstouse);
-				$stm = $DBH->prepare("SELECT id,SID FROM imas_users WHERE SID IN ($query_placeholders)");
-				$stm->execute($sidstouse);
-				$insvals = array();
-				if ($stm->rowCount()>0) {
-					while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-						$inspt[] = "(?,?,'')";
-						array_push($insvals, $row[0], $cid);
-						$foundsid[] = $row[1];
-					}
-					$ins = implode(',',$inspt);
-					//insert them
-					$stm = $DBH->prepare("INSERT INTO imas_tutors (userid,courseid,section) VALUES $ins");
-					$stm->execute($insvals);
-					$notfound = array_diff($sids,$foundsid);
-					if (count($notfound)>0) {
-						$err .= "<p>Some usernames not found:<br/>";
-						foreach ($notfound as $nf) {
-							$err .= Sanitize::encodeStringForDisplay($nf) . "<br/>";
-						}
-						$err .= '</p>';
-					}
-                    if (!empty($foundsid)) {
-                        TeacherAuditLog::addTracking(
-                            $cid,
-                            "Roster Action",
-                            null,
-                            array(
-                                'action' => 'Add Tutors',
-                                'SIDs' => $foundsid
-                            )
-                        );
-                    }
-				} else {
-					$err .= "<p>No usernames provided were found</p>";
+				// add as tutor
+				$insvals = [];
+				foreach ($topromote as $uid) {
+					$inspt[] = "(?,?,?)";
+					array_push($insvals, $uid, $cid, $_POST['section'][$uid] ?? '');
 				}
+				$ins = implode(',',$inspt);
+				//insert them
+				$stm = $DBH->prepare("INSERT INTO imas_tutors (userid,courseid,section) VALUES $ins");
+				$stm->execute($insvals);
+				TeacherAuditLog::addTracking(
+					$cid,
+					"Roster Action",
+					null,
+					array(
+						'action' => 'Add Tutors',
+						'IDs' => $topromote
+					)
+				);
 			}
-			$promoteable = array_intersect($existingstusids, $sids);
-			if (count($promoteable)>0) {
-				$err .= '<form id="curform2" method=post action="managetutors.php?cid='.$cid.'">';
-				$err .= '<h2>Warning</h2>';
-				$err .= '<p>At least one of your potential tutors is currently enrolled in the course as a student.</p>';
-				$err .= '<p>To promote them to a tutor, they will have to be un-enrolled as a student, ';
-				$err .= '<span class="noticetext">which will DELETE ALL their student data</span>, including assessment scores. ';
-				$err .= 'If you are SURE you want to do this, check the boxes next to each student.</p>';
-				$err .= '<p>Un-enroll as a student and add as a tutor:</p>';
-				$err .= '<ul class="nomark">';
-				foreach ($promoteable as $sid) {
-					$err .= '<li><input type="checkbox" name="promotetotutor[]" value="'.Sanitize::encodeStringForDisplay($stuinfo[$sid][0]).'" /> ';
-					$err .= Sanitize::encodeStringForDisplay($stuinfo[$sid][1]).'</li>';
-				}
-				$err .= '</ul>';
-				$err .= '<p><input type="submit" name="submit" value="Un-Enroll and Add as Tutor"/></p></form><p>&nbsp;</p>';
-			}
+			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/managetutors.php?cid=$cid" . "&r=" . Sanitize::randomQueryStringParam());
+			exit;
 		} else {
 			//if not adding new, redirect back to listusers
 			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/listusers.php?cid=$cid" . "&r=" . Sanitize::randomQueryStringParam());
@@ -169,15 +118,20 @@
 	}
 	sort($sections);
 
+	//messaging options
+	$msgkeys = [0,1,2,3];
+	$msgvals = [_('Yes'),_('Only via question help'),_('Only directly'),_('No')];
+
 	//get tutorlist
 	$tutorlist = array();
 	$i = 0;
-	$stm = $DBH->prepare("SELECT tut.id,u.LastName,u.FirstName,tut.section FROM imas_tutors as tut JOIN imas_users as u ON tut.userid=u.id WHERE tut.courseid=:courseid ORDER BY u.LastName,u.FirstName");
+	$stm = $DBH->prepare("SELECT tut.id,u.LastName,u.FirstName,tut.section,tut.nomsg FROM imas_tutors as tut JOIN imas_users as u ON tut.userid=u.id WHERE tut.courseid=:courseid ORDER BY u.LastName,u.FirstName");
 	$stm->execute(array(':courseid'=>$cid));
 	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 		$tutorlist[$i]['id'] = $row[0];
 		$tutorlist[$i]['name'] = $row[1].', '.$row[2];
 		$tutorlist[$i]['section'] = $row[3];
+		$tutorlist[$i]['nomsg'] = $row[4];
 		$i++;
 	}
 
@@ -199,30 +153,31 @@
 	echo $err;
 ?>
 	<form id="curform" method=post action="managetutors.php?cid=<?php echo $cid ?>">
-	
+	<p>Check: <a href="#" onclick="return chkAllNone('curform','remove[]',true)">All</a> <a href="#" onclick="return chkAllNone('curform','remove[]',false)">None</a></p>
 	<table class="gb">
     <caption class="sr-only">Tutors</caption>
 	<thead>
 		<tr>
 			<th>Tutor name</th>
 			<th>Limit to <?php echo Sanitize::encodeStringForDisplay($limitname); ?></th>
-
-			<th>Remove?
-			Check: <a href="#" onclick="return chkAllNone('curform','remove[]',true)">All</a> <a href="#" onclick="return chkAllNone('curform','remove[]',false)">None</a></th>
+			<th>Students can Message<sup>*</sup></th>
+			<th>Remove?</th>
 
 		</tr>
 	</thead>
 	<tbody>
 <?php
 if (count($tutorlist)==0) {
-	echo '<tr><td colspan="3">No tutors have been designated for this course. You can add tutors below</td></tr>';
+	echo '<tr><td colspan="3">No tutors have been designated for this course.</td></tr>';
 }
+$i = 0;
 foreach ($tutorlist as $tutor) {
+	$i++;
 	echo '<tr>';
-	echo '<td><span class="pii-full-name">'.Sanitize::encodeStringForDisplay($tutor['name']).'</span></td>';
+	echo '<td><span class="pii-full-name" id="u'.$i.'">'.Sanitize::encodeStringForDisplay($tutor['name']).'</span></td>';
 	echo '<td>';
 	//section
-	echo '<select name="section['.Sanitize::encodeStringForDisplay($tutor['id']).']">';
+	echo '<select name="section['.Sanitize::encodeStringForDisplay($tutor['id']).']" aria-labelledby="u'.$i.'">';
 	echo '<option value="" '.getHtmlSelected($tutor['section'],"").'>All</option>';
 	foreach ($sections as $sec) {
 		echo '<option value="'.Sanitize::encodeStringForDisplay($sec).'" '.getHtmlSelected($tutor['section'],$sec).'>'.Sanitize::encodeStringForDisplay($sec).'</option>';
@@ -233,7 +188,15 @@ foreach ($tutorlist as $tutor) {
 	echo '</select>';
 	echo '</td>';
 	echo '<td>';
-	echo '<input type="checkbox" name="remove[]" value="'.Sanitize::encodeStringForDisplay($tutor['id']).'" />';
+	echo '<label><input type=checkbox name="nomsg1['.Sanitize::encodeStringForDisplay($tutor['id']).']" value="1"';
+	if (($tutor['nomsg']&1)==0) { echo ' checked="true"'; }
+	echo '>'._('Directly').'</label><br/>';
+	echo '<label><input type=checkbox name="nomsg2['.Sanitize::encodeStringForDisplay($tutor['id']).']" value="2"';
+	if (($tutor['nomsg']&2)==0) { echo ' checked="true"'; }
+	echo '>'._('Via question help').'</label>';
+	echo '</td>';
+	echo '<td>';
+	echo '<input type="checkbox" name="remove[]" value="'.Sanitize::encodeStringForDisplay($tutor['id']).'" aria-labelledby="u'.$i.'" />';
 	echo '</td>';
 	echo '</tr>';
 }
@@ -242,16 +205,12 @@ foreach ($tutorlist as $tutor) {
 
 	</tbody>
 	</table>
-	<hr/>
-	<p>
-	<b>Add new tutors.</b>  Provide a list of usernames below, separated by commas, to add as tutors.
-	</p>
-	<p>
-	<textarea name="newtutors" rows="3" cols="60"></textarea>
-	</p>
+	
 	<input type="submit" name="submit" value="Update" />
 	</form>
 
 <?php
+	echo '<p>'._('You can add additional tutors by having them enroll as students, then in the roster select them and use the "With Selected: Add as Tutors" option.').'</p>';
+	echo '<p><sup>*</sup> ' . _('The message settings only apply if the course message settings allow messaging instructors. Messaging directly is via the course page New Message button. Via question help is when the "message instructor" help option is enabled on an assessment.').'</p>';
 	require_once "../footer.php";
 ?>

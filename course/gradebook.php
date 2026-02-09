@@ -18,7 +18,6 @@
 
 
 require_once "../init.php";
-$cid = Sanitize::courseId($_GET['cid']);
 $isteacher = isset($teacherid);
 $istutor = isset($tutorid);
 
@@ -54,7 +53,7 @@ if ($canviewall) {
 		$stm = $DBH->prepare("SELECT colorize FROM imas_gbscheme WHERE courseid=:courseid");
 		$stm->execute(array(':courseid'=>$cid));
 		$colorize = $stm->fetchColumn(0);
-		setcookie("colorize-$cid",$colorize);
+		setsecurecookie("colorize-$cid",$colorize, 0, false);
 	}
 	if (isset($_GET['catfilter'])) {
 		$catfilter = $_GET['catfilter'];
@@ -93,7 +92,8 @@ if ($canviewall) {
 	$hidesection = (((floor($gbmode/100000)%10)&1)==1);
 	$hidecode = (((floor($gbmode/100000)%10)&2)==2);
 	$showpercents = (((floor($gbmode/100000)%10)&4)==4)?1:0; //show percents instead of points
-	$showpics = floor($gbmode/10000)%10 ; //0 none, 1 small, 2 big
+	$showpics = ((floor($gbmode/10000)%10)&3) ; //0 none, 1 small, 2 big
+	$headerlockdef = (((floor($gbmode/10000)%10)&4)==0)?0:1 ; //0 locked, 1 unlocked (inverted from $headerslocked)
 	$totonleft = ((floor($gbmode/1000)%10)&1) ; //0 right, 1 left
 	$avgontop = ((floor($gbmode/1000)%10)&2) ; //0 bottom, 2 top
 	$lastlogin = (((floor($gbmode/1000)%10)&4)==4) ; //0 hide, 2 show last login column
@@ -104,6 +104,17 @@ if ($canviewall) {
 	$includelastchange = (((floor($gbmode/10)%10)&4)==4);  //: hide last change, 4: show last change
 	$availshow = $gbmode%10; //0: past, 1 past&cur, 2 all, 3 past and attempted, 4=current only
 
+	$usefullwidth = false;
+	$headerslocked = false;
+	if ($headerlockdef == 0) {
+		$headerslocked = true;
+	} else {
+		$headerslocked = false;
+		$usefullwidth = true;
+	}
+	if (isset($_COOKIE["gbfullw-$cid"]) && $_COOKIE["gbfullw-$cid"]==1) {
+		$usefullwidth = true;
+	}
 } else {
 	$secfilter = -1;
 	$catfilter = -1;
@@ -119,17 +130,27 @@ if ($canviewall) {
 	$includeduedate = false;
     $includelastchange = false;
     $gbmode = '';
+	$headerlockdef = true;
+	$usefullwidth = false;
 }
 
 if ($canviewall && !empty($_GET['stu'])) {
 	$stu = Sanitize::onlyInt($_GET['stu']);
+	if (!empty($_POST)) { 
+		$stm = $DBH->prepare("SELECT userid FROM imas_students WHERE userid=? AND courseid=?");
+		$stm->execute([$stu, $cid]);
+		$stu = $stm->fetchColumn(0);
+		if ($stu === false) {
+			exit;
+		}
+	}
 } else {
 	$stu = 0;
 }
 
 if (!empty($CFG['assess2-use-vue-dev'])) {
 	$assessGbUrl = sprintf("%s/gbviewassess.html", $CFG['assess2-use-vue-dev-address']);
-	$assessUrl = $CFG['assess2-use-vue-dev-address'] . '/';
+	$assessUrl = $CFG['assess2-use-vue-dev-address'] . '/index.html';
 } else {
 	$assessGbUrl = "../assess2/gbviewassess.php";
 	$assessUrl = "../assess2/";
@@ -191,7 +212,11 @@ if ($isteacher) {
 		require_once "lockstu.php";
 		require_once "../footer.php";
 		exit;
-	}
+	} elseif (isset($_POST['posted']) && $_POST['posted']=="Unlock") {
+		$calledfrom='gb';
+		require_once('lockstu.php');
+		exit;
+	} 
 	if (isset($_POST['posted']) && $_POST['posted']=='Print Report') {
 		//based on a contribution by Cam Joyce
 		require_once "gbtable2.php";
@@ -221,12 +246,18 @@ if ($isteacher) {
 
 	}
 	if (isset($_POST['usrcomments']) && $stu>0) {
-			$stm = $DBH->prepare("UPDATE imas_students SET gbcomment=:gbcomment WHERE userid=:userid AND courseid=:courseid");
-			$stm->execute(array(':gbcomment'=>$_POST['usrcomments'], ':userid'=>$stu, ':courseid'=>$cid));
-			//echo "<p>Comment Updated</p>";
+		$stm = $DBH->prepare("UPDATE imas_students SET gbcomment=:gbcomment,gbinstrcomment=:gbinstrcomment WHERE userid=:userid AND courseid=:courseid");
+		$stm->execute(array(':gbcomment'=>$_POST['usrcomments'], ':gbinstrcomment'=>$_POST['instrnote'], ':userid'=>$stu, ':courseid'=>$cid));
+		//echo "<p>Comment Updated</p>";
+	}
+	if ($stu > 0 && (isset($_POST['score']) || isset($_POST['newscore']))) {
+		$stm = $DBH->prepare("SELECT id FROM imas_gbitems WHERE courseid=?");
+		$stm->execute([$cid]);
+		$allgbitems = $stm->fetchAll(PDO::FETCH_COLUMN, 0);
 	}
 	if (isset($_POST['score']) && $stu>0) {
 		foreach ($_POST['score'] as $id=>$val) {
+			if (!in_array($id, $allgbitems)) { continue; }
 			if (trim($val)=='') {
 				$stm = $DBH->prepare("DELETE FROM imas_grades WHERE userid=:userid AND gradetypeid=:gradetypeid AND gradetype='offline'");
 				$stm->execute(array(':userid'=>$stu, ':gradetypeid'=>$id));
@@ -241,6 +272,7 @@ if ($isteacher) {
 		$toins = array();
 		$qarr = array();
 		foreach ($_POST['newscore'] as $id=>$val) {
+			if (!in_array($id, $allgbitems)) { continue; }
 			if (trim($val)=="") {continue;}
 			$toins[] = "(?,?,?,?)";
 			array_push($qarr, $id, 'offline', $stu, $val);
@@ -274,6 +306,8 @@ var gbmod = {
 	"hidelocked": '.Sanitize::onlyInt($hidelocked).',
 	"links": '.Sanitize::onlyInt($links).',
 	"pts": '.Sanitize::onlyInt($showpercents).',
+	"fullwidth": '.($usefullwidth ? 1 : 0).',
+	"headerlockdef": '.Sanitize::onlyInt($headerlockdef).',
 	"showpics": '.Sanitize::onlyInt($showpics).'};
 </script>';
 $placeinhead .= '<style>
@@ -291,9 +325,9 @@ $placeinhead .= '<style>
  }
  ul.inlineul li::after { content: ", "; }
  ul.inlineul li:last-child::after { content: ""; }
- </style>';
+ </style>';	
 if ($canviewall) {
-	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/gradebook.js?v=080622"></script>';
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/gradebook.js?v=071225"></script>';
 }
 
 if (isset($studentid) || $stu!=0) { //show student view
@@ -340,7 +374,8 @@ if (isset($studentid) || $stu!=0) { //show student view
 	}
 	if ($canviewall) {
 		echo "<div class=cpmid>";
-		echo _('Category'), ': <select id="filtersel" onchange="chgfilter()">';
+		echo '<span class="sr-only">Note changing these filters will reload the page</span>';
+		echo '<label>',_('Category'), ': <select id="filtersel" onchange="chgfilter()">';
 		echo '<option value="-1" ';
 		if ($catfilter==-1) {echo "selected=1";}
 		echo '>', _('All'), '</option>';
@@ -357,13 +392,13 @@ if (isset($studentid) || $stu!=0) { //show student view
 		echo '<option value="-2" ';
 		if ($catfilter==-2) {echo "selected=1";}
 		echo '>', _('Category Totals'), '</option>';
-		echo '</select> | ';
-		echo _('Not Counted:'), " <select id=\"hidenc\" onchange=\"chggbfilters()\">";
+		echo '</select></label> | ';
+		echo '<label>', _('Not Counted:'), " <select id=\"hidenc\" onchange=\"chggbfilters()\">";
 		echo "<option value=0 "; writeHtmlSelected($hidenc,0); echo ">", _('Show all'), "</option>";
 		echo "<option value=1 "; writeHtmlSelected($hidenc,1); echo ">", _('Show stu view'), "</option>";
 		echo "<option value=2 "; writeHtmlSelected($hidenc,2); echo ">", _('Hide all'), "</option>";
-		echo "</select>";
-		echo " | ", _('Show:'), " <select id=\"availshow\" onchange=\"chggbfilters()\">";
+		echo "</select></label>";
+		echo " | <label>", _('Show:'), " <select id=\"availshow\" onchange=\"chggbfilters()\">";
 		echo "<option value=0 "; writeHtmlSelected($availshow,0); echo ">", _('Past due'), "</option>";
 		echo "<option value=3 "; writeHtmlSelected($availshow,3); echo ">", _('Past &amp; Attempted'), "</option>";
 		echo "<option value=4 "; writeHtmlSelected($availshow,4); echo ">", _('Available Only'), "</option>";
@@ -371,7 +406,7 @@ if (isset($studentid) || $stu!=0) { //show student view
 		echo "<option value=2 "; writeHtmlSelected($availshow,2); echo ">", _('All'), "</option></select>";
 		echo " | ", _('Links:'), " <select id=\"linktoggle\" onchange=\"chglinktoggle()\">";
 		echo "<option value=0 "; writeHtmlSelected($links,0); echo ">", _('View/Edit'), "</option>";
-		echo "<option value=1 "; writeHtmlSelected($links,1); echo ">", _('Scores'), "</option></select>";
+		echo "<option value=1 "; writeHtmlSelected($links,1); echo ">", _('Scores'), "</option></select></label>";
 		echo '<input type="hidden" id="toggle4" value="'.$showpics.'" />';
 		echo '<input type="hidden" id="toggle5" value="'.$hidelocked.'" />';
 		echo "</div>";
@@ -384,6 +419,10 @@ if (isset($studentid) || $stu!=0) { //show student view
 	echo '<li>'._('PT-practice test').'</li>';
 	echo '<li>'._('EC-extra credit').'</li>';
 	echo '<li>'._('NC-no credit').'</li>';
+    echo '<li>'._('NS-no submission').'</li>';
+	if ($canviewall) {
+		echo '<li>'._('NR-not manually released to student').'</li>';
+	}
     echo '<li>'._('N/A-Not Available').'</li>';
 	echo '<li>'._('<sub>d</sub> Dropped score').'</li>';
 	echo '<li>'._('<sup>x</sup> Excused score').'</li>';
@@ -396,30 +435,11 @@ if (isset($studentid) || $stu!=0) { //show student view
 
 } else { //show instructor view
 	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablesorter.js?v=012811\"></script>\n";
-	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablescroller2.js?v=052320\"></script>\n";
-	$placeinhead .= "<script type=\"text/javascript\">\n";
-	$placeinhead .= 'var ts = new tablescroller("myTable",';
-	if (isset($_COOKIE["gblhdr-$cid"]) && $_COOKIE["gblhdr-$cid"]==1) {
-		$placeinhead .= 'true,'.$showpics.');';
-		$headerslocked = true;
-	} else {
-		if (!isset($_COOKIE["gblhdr-$cid"]) && isset($CFG['GBS']['lockheader']) && $CFG['GBS']['lockheader']==true) {
-			$placeinhead .= 'true,'.$showpics.');';
-			$headerslocked = true;
-		} else {
-			$placeinhead .= 'false,'.$showpics.');';
-			$headerslocked = false;
-			$usefullwidth = true;
-		}
-	}
-	if (isset($_COOKIE["gbfullw-$cid"]) && $_COOKIE["gbfullw-$cid"]==1) {
-		$usefullwidth = true;
-	}
+	
 	$showwidthtoggle = (strpos($coursetheme, '_fw')!==false);
 
-	$placeinhead .= "</script>\n";
 	$placeinhead .= "<style type=\"text/css\"> table.gb { margin: 0px; } div.trld {display:table-cell;vertical-align:middle;white-space: nowrap;} </style>";
-	$placeinhead .= '<style type="text/css"> .dropdown-header {  font-size: inherit;  padding: 3px 10px;} </style>';
+	$placeinhead .= '<style type="text/css"> .dropdown-header, .dropdown-group {  font-size: inherit;  padding: 3px 10px;}</style>';
 
 	require_once "../header.php";
     echo "<div class=breadcrumb>";
@@ -437,6 +457,55 @@ if (isset($studentid) || $stu!=0) { //show student view
 	}
 	echo "<div class=cpmid>";
 	$i = 0;
+
+	$togglehtml = '<span class="dropdown">';
+	$togglehtml .= ' <a tabindex=0 class="dropdown-toggle arrow-down" id="dropdownMenu'.$i.'" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
+	$togglehtml .= _('Toggles').'</a>';
+	$togglehtml .= '<div class="dropdown-menu gbtoggle" aria-labelledby="dropdownMenu'.$i.'">';
+	
+	$togglehtml .= '<div role=radiogroup aria-labelledby=toghdrlbl>';
+	$togglehtml .= '<div id=toghdrlbl class="dropdown-header">'._('Headers').'</div><div class="dropdown-group">';
+	$togglehtml .= '<label><input type=radio name="hdrs" value=1>'._('Locked').'</label><br/>';
+	$togglehtml .= '<label><input type=radio name="hdrs" value=0>'._('Unlocked').'</label>';
+	$togglehtml .= '</div></div>';
+
+	if ($showwidthtoggle) {
+		$togglehtml .= '<div role=radiogroup aria-labelledby=togpgwlbl id=pgwgroup>';
+		$togglehtml .= '<div id=togpgwlbl class="dropdown-header">'._('Width').'</div><div class="dropdown-group">';
+		$togglehtml .= '<label><input type=radio name="pgw" value=0>'._('Fixed').'</label><br/>';
+		$togglehtml .= '<label><input type=radio name="pgw" value=1>'._('Full').'</label>';
+		$togglehtml .= '</div></div>';
+	}
+
+	$togglehtml .= '<div role=radiogroup aria-labelledby=togptslbl>';
+	$togglehtml .= '<div id=togptslbl class="dropdown-header">'._('Scores').'</div><div class="dropdown-group">';
+	$togglehtml .= '<label><input type=radio name="pts" value=0>'._('Points').'</label><br/>';
+	$togglehtml .= '<label><input type=radio name="pts" value=1>'._('Percent').'</label>';
+	$togglehtml .= '</div></div>';
+
+	$togglehtml .= '<div role=radiogroup aria-labelledby=toglinkslbl>';
+	$togglehtml .= '<div id=toglinkslbl class="dropdown-header">'._('Links').'</div><div class="dropdown-group">';
+	$togglehtml .= '<label><input type=radio name="links" value=0>'._('View/Edit').'</label><br/>';
+	$togglehtml .= '<label><input type=radio name="links" value=1>'._('Summary').'</label>';
+	$togglehtml .= '</div></div>';
+
+	$togglehtml .= '<div role=radiogroup aria-labelledby=togpicslbl>';
+	$togglehtml .= '<div id=togpicslbl class="dropdown-header">'._('Pictures').'</div><div class="dropdown-group">';
+	$togglehtml .= '<label><input type=radio name="pics" value=0>'._('None').'</label><br/>';
+	$togglehtml .= '<label><input type=radio name="pics" value=1>'._('Small').'</label><br/>';
+	$togglehtml .= '<label><input type=radio name="pics" value=2>'._('Large').'</label>';
+	$togglehtml .= '</div></div>';
+
+	if ($isteacher) {
+		$togglehtml .= '<div role=radiogroup aria-labelledby=tognewflaglbl>';
+		$togglehtml .= '<div id=tognewflaglbl class="dropdown-header">'._('New Flag').'</div><div class="dropdown-group">';
+		$togglehtml .= '<label><input type=radio name="newflag" value=0>'._('Off').'</label><br/>';
+		$togglehtml .= '<label><input type=radio name="newflag" value=1>'._('On').'</label>';
+		$togglehtml .= '</div></div>';
+	}
+	$togglehtml .= '</div>';
+	$togglehtml .= '<script>$(function() { $(".dropdown-menu").on("click", function(ev) { ev.stopPropagation();}); });</script>';
+/*
 	$togglehtml = '<span class="dropdown">';
 	$togglehtml .= ' <a tabindex=0 class="dropdown-toggle arrow-down" id="dropdownMenu'.$i.'" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
 	$togglehtml .= _('Toggles').'</a>';
@@ -473,6 +542,7 @@ if (isset($studentid) || $stu!=0) { //show student view
 		$togglehtml .= '<li><a data-newflag="1">'. _('On').'</a></li>';
 	}
 	$togglehtml .= '</ul></span>';
+	*/
 	$i++;
 
 	if ($isteacher) {
@@ -488,7 +558,7 @@ if (isset($studentid) || $stu!=0) { //show student view
 		echo '<a href="gb-export.php?cid='.$cid.'&export=true">'._('Export').'</a> &nbsp; ';
 		echo "<a href=\"gbsettings.php?cid=$cid\">", _('Settings'), "</a> &nbsp; ";
 		echo "<a href=\"gbcomments.php?cid=$cid&stu=0\">", _('Comments'), "</a> &nbsp; ";
-		echo _('Color:'), ' <select id="colorsel" onchange="updateColors(this)">';
+		echo '<label>', _('Color:'), ' <select id="colorsel" onchange="updateColors(this)">';
 		echo '<option value="0">', _('None'), '</option>';
 		for ($j=50;$j<90;$j+=($j<70?10:5)) {
 			for ($k=$j+($j<70?10:5);$k<100;$k+=($k<70?10:5)) {
@@ -505,15 +575,15 @@ if (isset($studentid) || $stu!=0) { //show student view
         echo '<option value="-2:-2" ';
 		if ($colorize == "-2:-2") { echo 'selected="selected" ';}
 		echo '>', _('NC'), '</option>';
-		echo '</select> &nbsp; ';
+		echo '</select></label> &nbsp; ';
 		//echo ' | <a href="#" onclick="chgnewflag(); return false;">', _('NewFlag'), '</a>';
 		//echo '<input type="button" value="Pics" onclick="rotatepics()" />';
 		echo $togglehtml;
 		echo "<br/>\n";
 
 	}
-
-	echo _('Category:'), ' <select id="filtersel" onchange="chgfilter()">';
+	echo '<span class="sr-only">Note changing these filters will reload the page</span>';
+	echo '<label>', _('Category:'), ' <select id="filtersel" onchange="chgfilter()">';
 	echo '<option value="-1" ';
 	if ($catfilter==-1) {echo "selected=1";}
 	echo '>', _('All'), '</option>';
@@ -530,18 +600,18 @@ if (isset($studentid) || $stu!=0) { //show student view
 	echo '<option value="-2" ';
 	if ($catfilter==-2) {echo "selected=1";}
 	echo '>', ('Category Totals'), '</option>';
-	echo '</select> &nbsp; ';
-	echo _('Not Counted:'), " <select id=\"hidenc\" onchange=\"chggbfilters()\">";
+	echo '</select></label> &nbsp; ';
+	echo '<label>', _('Not Counted:'), " <select id=\"hidenc\" onchange=\"chggbfilters()\">";
 	echo "<option value=0 "; writeHtmlSelected($hidenc,0); echo ">", _('Show all'), "</option>";
 	echo "<option value=1 "; writeHtmlSelected($hidenc,1); echo ">", _('Show stu view'), "</option>";
 	echo "<option value=2 "; writeHtmlSelected($hidenc,2); echo ">", _('Hide all'), "</option>";
-	echo "</select> &nbsp; ";
-	echo _('Show:'), " <select id=\"availshow\" onchange=\"chggbfilters()\">";
+	echo "</select></label> &nbsp; ";
+	echo '<label>', _('Show:'), " <select id=\"availshow\" onchange=\"chggbfilters()\">";
 	echo "<option value=0 "; writeHtmlSelected($availshow,0); echo ">", _('Past due'), "</option>";
 	echo "<option value=3 "; writeHtmlSelected($availshow,3); echo ">", _('Past &amp; Attempted'), "</option>";
 	echo "<option value=4 "; writeHtmlSelected($availshow,4); echo ">", _('Available Only'), "</option>";
 	echo "<option value=1 "; writeHtmlSelected($availshow,1); echo ">", _('Past &amp; Available'), "</option>";
-	echo "<option value=2 "; writeHtmlSelected($availshow,2); echo ">", _('All'), "</option></select> &nbsp; ";
+	echo "<option value=2 "; writeHtmlSelected($availshow,2); echo ">", _('All'), "</option></select></label> &nbsp; ";
 
 	if (!$isteacher) {
 		echo $togglehtml;
@@ -550,19 +620,19 @@ if (isset($studentid) || $stu!=0) { //show student view
 	echo "</div>";
 	echo '<script type="text/javascript">
 	$(function() {
-		$("a[data-hdrs='.($headerslocked?1:0).']").parent().addClass("active");
-		$("a[data-pts='.($showpercents?1:0).']").parent().addClass("active");
-		$("a[data-links='.Sanitize::onlyInt($links).']").parent().addClass("active");
-		$("a[data-pics='.Sanitize::onlyInt($showpics).']").parent().addClass("active");
-		$("a[data-newflag='.(($coursenewflag&1)==1?1:0).']").parent().addClass("active");
-		$("a[data-pgw='.(empty($_COOKIE["gbfullw-$cid"])?0:1).']").parent().addClass("active");
+		$("input[name=hdrs][value='.($headerslocked?1:0).']").prop("checked", true);
+		$("input[name=pts][value='.($showpercents?1:0).']").prop("checked", true);
+		$("input[name=links][value='.Sanitize::onlyInt($links).']").prop("checked", true);
+		$("input[name=pics][value='.Sanitize::onlyInt($showpics).']").prop("checked", true);
+		$("input[name=newflag][value='.(($coursenewflag&1)==1?1:0).']").prop("checked", true);
+		$("input[name=pgw][value='.(empty($_COOKIE["gbfullw-$cid"])?0:1).']").prop("checked", true);
 		setupGBpercents();';
 		if ($isteacher && $colorize != '0' && $colorize != null) {
 			echo '$("#myTable").hide();';
 			echo 'updateColors(document.getElementById("colorsel"));';
 			echo '$("#myTable").show();';
 		}
-		echo 'ts.init();
+		echo '
 	});
 	</script>';
 
@@ -580,7 +650,9 @@ if (isset($studentid) || $stu!=0) { //show student view
 		echo ' <li><a href="#" onclick="postGBform(\'Make Exception\');return false;" title="',_("Make due date exceptions for selected students"),'">',_('Make Exception'), "</a></li>";
 		echo ' <li><a href="#" onclick="postGBform(\'Print Report\');return false;" title="',_("Generate printable grade reports"),'">', _('Print Report'), "</a></li>";
 		echo ' <li><a href="#" onclick="postGBform(\'Lock\');return false;" title="',_("Lock selected students out of the course"),'">', _('Lock'), "</a></li>";
+		echo ' <li><a href="#" onclick="postGBform(\'Unlock\');return false;" title="',_("Un-Lock selected students from the course"),'">', _('Un-Lock'), "</a></li>";
 		if (!isset($CFG['GEN']['noInstrUnenroll'])) {
+			echo '<li role="separator" class="divider"></li>';
 			echo ' <li><a href="#" onclick="postGBform(\'Unenroll\');return false;" title="',_("Unenroll the selected students"),'">', _('Unenroll'), "</a></li>";
 		}
 
@@ -604,7 +676,7 @@ if (isset($studentid) || $stu!=0) { //show student view
 	gbinstrdisp();
 	echo "</form>";
 	echo "</div>";
-	echo _('Meanings:  IP-In Progress (some unattempted questions), UA-Unsubmitted attempt, OT-overtime, PT-practice test, EC-extra credit, NC-no credit<br/><sup>*</sup> Has feedback, <sub>d</sub> Dropped score, <sup>x</sup> Excused score, <sup>e</sup> Has exception <sup>LP</sup> Used latepass'), "\n";
+	echo _('Meanings:  IP-In Progress (some unattempted questions), UA-Unsubmitted attempt, OT-overtime, PT-practice test, EC-extra credit, NC-no credit, NS-no submission, NR-not manually released<br/><sup>*</sup> Has feedback, <sub>d</sub> Dropped score, <sup>x</sup> Excused score, <sup>e</sup> Has exception <sup>LP</sup> Used latepass'), "\n";
 	require_once "../footer.php";
 
 	/*if ($isteacher) {
@@ -646,7 +718,7 @@ function gbstudisp($stu) {
 				$hasoutcomes = true;
 			}
 		}
-		$query = "SELECT imas_students.gbcomment,imas_users.email,imas_students.latepass,imas_students.section,imas_students.lastaccess FROM imas_students,imas_users WHERE ";
+		$query = "SELECT imas_students.gbcomment,imas_students.gbinstrcomment,imas_users.email,imas_students.latepass,imas_students.section,imas_students.lastaccess FROM imas_students,imas_users WHERE ";
 		$query .= "imas_students.userid=imas_users.id AND imas_users.id=:id AND imas_students.courseid=:courseid";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':id'=>$stu, ':courseid'=>$_GET['cid']));
@@ -655,11 +727,15 @@ function gbstudisp($stu) {
 			require_once "../footer.php";
 			exit;
 		}
-		list($gbcomment,$stuemail,$latepasses,$stusection,$lastaccess) = $stm->fetch(PDO::FETCH_NUM);
+		list($gbcomment,$gbinstrcomment,$stuemail,$latepasses,$stusection,$lastaccess) = $stm->fetch(PDO::FETCH_NUM);
 	}
 	$curdir = rtrim(dirname(__FILE__), '/\\');
 
 	$gbt = gbtable($stu);
+
+    if ($GLOBALS['myrights'] === 100 && !empty($_GET['showgbt'])) {
+        print_r($gbt);
+    }
 
 	if ($stu>0) {
 		echo '<div style="font-size:1.1em;font-weight:bold">';
@@ -695,7 +771,7 @@ function gbstudisp($stu) {
 				$stm->execute(array(':courseid'=>$cid));
 			}
 
-			echo '<select id="userselect" class="pii-full-name" style="border:0;font-size:1.1em;font-weight:bold" onchange="chgstu(this)">';
+			echo '<select id="userselect" class="pii-full-name" style="border:0;font-size:1.1em;font-weight:bold" onchange="chgstu(this)" aria-label="'._('Student to display. Will reload the page.') .'">';
 			$lastsec = '';
 			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 				if ($row[3]!='' && $row[3]!=$lastsec && $usersort==0) {
@@ -755,13 +831,24 @@ function gbstudisp($stu) {
 		if (trim($gbcomment)!='' || $isteacher) {
 			if ($isteacher) {
 				echo "<form method=post action=\"gradebook.php?".Sanitize::encodeStringForDisplay($_SERVER['QUERY_STRING'])."\">";
-				echo _('Gradebook Comment').': '.  "<input type=submit value=\"", _('Update Comment'), "\"><br/>";
-				echo "<textarea name=\"usrcomments\" rows=3 cols=60>" . Sanitize::encodeStringForDisplay($gbcomment, true) . "</textarea>";
+				echo '<label for="usrcomments">'._('Gradebook Comment').'</label>: '.  "<input type=submit value=\"", _('Update Comment'), "\"> ";
+				echo '<button type=button aria-controls=instrcommentwrap class=togglecontrol>';
+				if ($gbinstrcomment=='') {
+					echo _('Add Instructor Note');
+				} else {
+					echo _('View Instructor Note');
+				}
+				echo '</button> <br/>';
+				echo "<textarea name=\"usrcomments\" id=\"usrcomments\" rows=3 cols=60>" . Sanitize::encodeStringForDisplay($gbcomment, true) . "</textarea>";
+				echo '<div id=instrcommentwrap style="display:none;"><label for=instrnote>'._('Instructor Note').'</label> <button type=submit>'. _('Update Note') .'</button><br>';
+				echo "<textarea name=\"instrnote\" id=\"instrnote\" rows=3 cols=60>" . Sanitize::encodeStringForDisplay($gbinstrcomment, true) . "</textarea>";
+				echo '</div>';
 				echo '</form>';
 			} else {
 				echo "<div style=\"clear:both;display:inline-block\" class=\"cpmid\">" . Sanitize::encodeStringForDisplay($gbcomment) . "</div><br/>";
 			}
 		}
+		$lpmsg = '';
 		if ($showlatepass==1) {
 			if ($latepasses==0) {
 				$lpmsg = _('No LatePasses available');
@@ -791,7 +878,7 @@ function gbstudisp($stu) {
 	echo '<thead><tr>';
 	$sarr = array();
 	if ($stu>0 && $isteacher) {
-		echo '<th></th>';
+		echo '<th><span class="sr-only">'._('Pictures'). '</span></th>';
 	}
 	echo '<th>', _('Item'), '</th><th>', _('Percent'), '</th><th>', _('Grade'), '</th><th>', _('Possible'), '</th>';
 	if ($stu>0 && $isteacher) {
@@ -835,7 +922,7 @@ function gbstudisp($stu) {
 			if ($hidepast && $gbt[0][1][$i][3]==0) {
 				continue;
             }
-            if (isset($gbt[0][1][$i][17]) && $gbt[0][1][$i][17] != $stusection) {
+            if (isset($gbt[0][1][$i][17]) && !in_array(strtolower($stusection ?? ''), $gbt[0][1][$i][17])) {
                 // is section limited, and this student isn't in the section
                 continue;
             }
@@ -843,21 +930,24 @@ function gbstudisp($stu) {
 			echo '<tr class="grid">';
 			if ($stu>0 && $isteacher) {
 				if ($gbt[0][1][$i][6]==0) {
-					echo '<td><input type="checkbox" name="assesschk[]" value="'.$gbt[0][1][$i][7] .'" /></td>';
+					echo '<td><input type="checkbox" name="assesschk[]" value="'.$gbt[0][1][$i][7] .'" id="chkbx'.$i.'" /></td>';
 				} else if ($gbt[0][1][$i][6]==1) {
-					echo '<td><input type="checkbox" name="offlinechk[]" value="'.$gbt[0][1][$i][7] .'" /></td>';
+					echo '<td><input type="checkbox" name="offlinechk[]" value="'.$gbt[0][1][$i][7] .'" id="chkbx'.$i.'" /></td>';
 				} else if ($gbt[0][1][$i][6]==2) {
-					echo '<td><input type="checkbox" name="discusschk[]" value="'.$gbt[0][1][$i][7] .'" /></td>';
+					echo '<td><input type="checkbox" name="discusschk[]" value="'.$gbt[0][1][$i][7] .'" id="chkbx'.$i.'" /></td>';
 				} else if ($gbt[0][1][$i][6]==3) {
-					echo '<td><input type="checkbox" name="exttoolchk[]" value="'.$gbt[0][1][$i][7] .'" /></td>';
+					echo '<td><input type="checkbox" name="exttoolchk[]" value="'.$gbt[0][1][$i][7] .'" id="chkbx'.$i.'" /></td>';
 				} else {
 					echo '<td></td>';
 				}
 			}
-			echo '<td class="cat'.Sanitize::onlyInt(($gbt[0][1][$i][1]%10)).'" scope="row">';
+			echo '<th class="cat'.Sanitize::onlyInt(($gbt[0][1][$i][1]%10)).'" scope="row">';
+			if ($stu>0 && $isteacher && $gbt[0][1][$i][6] >= 0 && $gbt[0][1][$i][6] < 4) {
+				echo '<label for="chkbx'.$i.'">';
+			}
 
 			$showlink = false;
-			if ($gbt[0][1][$i][6]==0 && $gbt[0][1][$i][3]==1 && $gbt[1][1][$i][13]==1 && !$isteacher && !$istutor) {
+			if ($stu > 0 && $gbt[0][1][$i][6]==0 && $gbt[0][1][$i][3]==1 && $gbt[1][1][$i][13]==1 && !$isteacher && !$istutor) {
 				$showlink = true;
 				if ($gbt[0][1][$i][15] > 1) {
 					echo '<a href="'.$assessUrl.'?cid='.$cid.'&aid='.$gbt[0][1][$i][7].'"';
@@ -900,6 +990,9 @@ function gbstudisp($stu) {
 			if ($showlink) {
 				echo '</a>';
 			}
+			if ($stu>0 && $isteacher && $gbt[0][1][$i][6] >= 0 && $gbt[0][1][$i][6] < 4) {
+				echo '</label>';
+			}
 			$afterduelatepass = false;
 			if (!$isteacher && !$istutor && $latepasses>0 && !isset($gbt[1][1][$i][10])) {
 				//not started, so no canuselatepass record
@@ -922,7 +1015,7 @@ function gbstudisp($stu) {
 				echo _('Attach Work') .']</a></span>';
 			}
 
-			echo '</td>';
+			echo '</th>';
 
 			echo '<td>';
 			if (isset($gbt[1][1][$i][0]) && is_numeric($gbt[1][1][$i][0])) {
@@ -1059,16 +1152,20 @@ function gbstudisp($stu) {
                     if ($gbt[1][1][$i][3]>9) {
                         $gbt[1][1][$i][3] -= 10;
                     }
-                    if ($gbt[1][1][$i][3]==1) {
+                    if ($gbt[1][1][$i][3]==1 && $gbt[1][1][$i][0] !== 'NC') {
                         echo ' (NC)';
                     } else if ($gbt[1][1][$i][3]==2) {
                         echo ' (IP)';
                     } else if ($gbt[1][1][$i][3]==5) {
                         echo ' (UA)';
                     } else if ($gbt[1][1][$i][3]==3) {
-                        echo ' (OT)';
+                        // echo ' (OT)';
                     } else if ($gbt[1][1][$i][3]==4) {
                         echo ' (PT)';
+                    } else if ($gbt[1][1][$i][3]==6) {
+                        echo ' (NS)';
+                    } else if ($gbt[1][1][$i][3]==7) {
+                        echo ' (NR)';
                     }
                 }
 			} else {
@@ -1172,17 +1269,34 @@ function gbstudisp($stu) {
 		echo '<table class="gb"><thead>';
 		echo '<tr>';
 		echo '<th >', _('Totals'), '</th>';
-		if (($show&1)==1) {
-			echo '<th>', _('Past Due'), '</th>';
+		$instronlynote = '<br><span class=small><i>'._('Not shown to students').'</i></span>';
+		if (($show&1)==1 || ($canviewall && $availshow == 0)) {
+			echo '<th>', _('Past Due');
+			if (($show&1)!=1) { 
+				echo $instronlynote;
+			}
+			echo '</th>';
 		}
-		if (($show&2)==2) {
-			echo '<th>', _('Past Due and Attempted'), '</th>';
+		if (($show&2)==2 || ($canviewall && $availshow == 3)) {
+			echo '<th>', _('Past Due and Attempted');
+			if (($show&2)!=2) { 
+				echo $instronlynote;
+			}
+			echo '</th>';
 		}
-		if (($show&4)==4) {
-			echo '<th>', _('Past Due and Available'), '</th>';
+		if (($show&4)==4 || ($canviewall && $availshow == 1)) {
+			echo '<th>', _('Past Due and Available');
+			if (($show&4)!=4) { 
+				echo $instronlynote;
+			}
+			echo '</th>';
 		}
-		if (($show&8)==8) {
-			echo '<th>', _('All'), '</th>';
+		if (($show&8)==8 || ($canviewall && $availshow == 2)) {
+			echo '<th>', _('All');
+			if (($show&8)!=8) { 
+				echo $instronlynote;
+			}
+			echo '</th>';
 		}
 		echo '</tr>';
 		echo '</thead><tbody>';
@@ -1201,7 +1315,7 @@ function gbstudisp($stu) {
 				//} else {
 					echo '<tr class="grid">';
 				//}
-				echo '<td class="cat'.Sanitize::onlyFloat($gbt[0][2][$i][1]%10).'"><span class="cattothdr">'.Sanitize::encodeStringForDisplay($gbt[0][2][$i][0]);
+				echo '<th scope=row class="cat'.Sanitize::onlyFloat($gbt[0][2][$i][1]%10).'"><span class="cattothdr">'.Sanitize::encodeStringForDisplay($gbt[0][2][$i][0]);
                 if ($gbt[0][2][$i][13]==1) { //averaged percents
                     echo '<sup>AP</sup>';
                 }
@@ -1209,8 +1323,8 @@ function gbstudisp($stu) {
 				if (isset($gbt[0][2][$i][11])) {  //category weight
 					echo ' ('.Sanitize::onlyFloat($gbt[0][2][$i][11]).'%)';
 				}
-				echo '</td>';
-				if (($show&1)==1) { //past
+				echo '</th>';
+				if (($show&1)==1 || ($canviewall && $availshow == 0)) { //past
 					echo '<td>';
 					//show points in points-based mode
 					if ($gbt[1][2][$i][4] == 0) {
@@ -1229,7 +1343,7 @@ function gbstudisp($stu) {
 					}
 					echo '</td>';
 				}
-				if (($show&2)==2) { //past and attempted
+				if (($show&2)==2 || ($canviewall && $availshow == 3)) { //past and attempted
 					echo '<td>';
 					//show points in points-based mode
 					if ($gbt[1][2][$i][7] == 0) {
@@ -1248,7 +1362,7 @@ function gbstudisp($stu) {
 					}
 					echo '</td>';
 				}
-				if (($show&4)==4) { //past and avail
+				if (($show&4)==4 || ($canviewall && $availshow == 1)) { //past and avail
 					echo '<td>';
 					if ($gbt[1][2][$i][5] == 0) {
 						echo 'N/A';
@@ -1267,7 +1381,7 @@ function gbstudisp($stu) {
 					}
 					echo '</td>';
 				}
-				if (($show&8)==8) { //all
+				if (($show&8)==8 || ($canviewall && $availshow == 2)) { //all
 					echo '<td>';
 					if ($gbt[1][2][$i][6] == 0) {
 						echo 'N/A';
@@ -1291,40 +1405,40 @@ function gbstudisp($stu) {
 			}
 		}
 		//Totals
-		if ($catfilter<0) {
+		if ($catfilter<0 && isset($gbt[1][3])) {
 			echo '<tr class="grid">';
 			if ($gbt[0][4][0]==0) { //using points based
 				echo '<td>', _('Total'), '</td>';
-				if (($show&1)==1) {
+				if (($show&1)==1 || ($canviewall && $availshow == 0)) {
 					if ($gbt[1][3][4] > 0) {}
 					$pct = ($gbt[1][3][4] > 0) ? round(100*$gbt[1][3][0]/$gbt[1][3][4], 1) : 0;
 					echo '<td>'.Sanitize::onlyFloat($gbt[1][3][0]).'/'.Sanitize::onlyFloat($gbt[1][3][4]).' ('.$pct.'%)</td>';
 				}
-				if (($show&2)==2) {
+				if (($show&2)==2 || ($canviewall && $availshow == 3)) {
 					$pct = ($gbt[1][3][7] > 0) ? round(100*$gbt[1][3][3]/$gbt[1][3][7], 1) : 0;
 					echo '<td>'.Sanitize::onlyFloat($gbt[1][3][3]).'/'.Sanitize::onlyFloat($gbt[1][3][7]).' ('.$pct.'%)</td>';
 				}
-				if (($show&4)==4) {
+				if (($show&4)==4 || ($canviewall && $availshow == 1)) {
 					$pct = ($gbt[1][3][5] > 0) ? round(100*$gbt[1][3][1]/$gbt[1][3][5], 1) : 0;
 					echo '<td>'.Sanitize::onlyFloat($gbt[1][3][1]).'/'.Sanitize::onlyFloat($gbt[1][3][5]).' ('.$pct.'%)</td>';
 				}
-				if (($show&8)==8) {
+				if (($show&8)==8 || ($canviewall && $availshow == 2)) {
 					$pct = ($gbt[1][3][6] > 0) ? round(100*$gbt[1][3][2]/$gbt[1][3][6], 1) : 0;
 					echo '<td>'.Sanitize::onlyFloat($gbt[1][3][2]).'/'.Sanitize::onlyFloat($gbt[1][3][6]).' ('.$pct.'%)</td>';
 				}
 
 			} else {
 				echo '<td>', _('Weighted Total'), '</td>';
-				if (($show&1)==1) {
+				if (($show&1)==1 || ($canviewall && $availshow == 0)) {
 					echo '<td>'.(($gbt[1][3][4] > 0) ? round(100*$gbt[1][3][0]/$gbt[1][3][4], 1) : 0) .'%</td>';
 				}
-				if (($show&2)==2) {
+				if (($show&2)==2 || ($canviewall && $availshow == 3)) {
 					echo '<td>'.(($gbt[1][3][7] > 0) ? round(100*$gbt[1][3][3]/$gbt[1][3][7], 1) : 0) .'%</td>';
 				}
-				if (($show&4)==4) {
+				if (($show&4)==4 || ($canviewall && $availshow == 1)) {
 					echo '<td>'.(($gbt[1][3][5] > 0) ? round(100*$gbt[1][3][1]/$gbt[1][3][5], 1) : 0) .'%</td>';
 				}
-				if (($show&8)==8) {
+				if (($show&8)==8 || ($canviewall && $availshow == 2)) {
 					echo '<td>'.(($gbt[1][3][6] > 0) ? round(100*$gbt[1][3][2]/$gbt[1][3][6], 1) : 0) .'%</td>';
 				}
 			}
@@ -1335,17 +1449,17 @@ function gbstudisp($stu) {
 		echo '<dl class="inlinedl">';
 		$outcometype = 0;
 		if (($show&1)==1) {
-			echo _('<dt>Past Due:</dt> <dd>total only includes items whose due date has passed.  Current assignments are not counted in this total.'), '</dd><br/>';
+			echo _('<dt>Past Due:</dt> <dd>total only includes items whose due date has passed.  Current assignments are not counted in this total.'), '<br/></dd>';
 		}
 		if (($show&2)==2) {
-			echo _('<dt>Past Due and Attempted:</dt> <dd> total includes items whose due date has passed, as well as currently available items you have started working on.'), '</dd><br/>';
+			echo _('<dt>Past Due and Attempted:</dt> <dd> total includes items whose due date has passed, as well as currently available items you have started working on.'), '<br/></dd>';
 			$outcometype = 1;
 		}
-		if (($show&4)==4) {
-			echo _('<dt>Past Due and Available:</dt> <dd> total includes items whose due date has passed as well as currently available items, even if you haven\'t started working on them yet.'), '</dd><br/>';
+		if (($show&4)==4 || true) {
+			echo _('<dt>Past Due and Available:</dt> <dd> total includes items whose due date has passed as well as currently available items, even if you haven\'t started working on them yet.'), '<br/></dd>';
 		}
 		if (($show&8)==8) {
-			echo _('<dt>All:</dt> <dd> total includes all items: past, current, and future to-be-done items.'), '</dd><br/>';
+			echo _('<dt>All:</dt> <dd> total includes all items: past, current, and future to-be-done items.'), '<br/></dd>';
 		}
 		echo '</dl>';
 		if ($hasoutcomes) {
@@ -1546,7 +1660,7 @@ function gbInstrCatCols(&$gbt, $i, $insdiv, $enddiv) {
 
 function gbinstrdisp() {
 	global $DBH,$hidenc,$showpics,$isteacher,$istutor,$cid,$gbmode,$stu,$availshow,$catfilter,$secfilter,$totonleft,$imasroot,$isdiag,$tutorsection;
-	global $avgontop,$hidelocked,$colorize,$urlmode,$overridecollapse,$includeduedate,$lastlogin,$hidesection,$hidecode,$showpercents;
+	global $avgontop,$hidelocked,$colorize,$urlmode,$overridecollapse,$includeduedate,$lastlogin,$hidesection,$hidecode,$showpercents,$headerslocked;
 	global $assessGbUrl;
 
 	$curdir = rtrim(dirname(__FILE__), '/\\');
@@ -1569,14 +1683,19 @@ function gbinstrdisp() {
 	//print_r($gbt);
 	//echo "<script type=\"text/javascript\" src=\"$imasroot/javascript/tablesorter.js\"></script>\n"; in placeinhead
 	echo "<div id=\"tbl-container\">";
-	echo '<div id="bigcontmyTable"><div id="tblcontmyTable">';
+	echo '<div id="bigcontmyTable">';
+	if ($headerslocked) {
+		echo '<div id="tblcontmyTable" class="sticky-table">';
+	} else {
+		echo '<div id="tblcontmyTable">';
+	}
 
 	//echo '<div id="gbloading">'._('Loading...').'</div>';
 	echo '<table class="gb" id="myTable"><thead><tr>';
 
 	$sortarr = array();
 	for ($i=0;$i<count($gbt[0][0]);$i++) { //biographical headers
-		if ($i==1) {echo '<th><div>&nbsp;</div></th>'; $sortarr[] = 'false';} //for pics
+		if ($i==1) {echo '<th><div>&nbsp;<span class="sr-only">'. _('Pictures'). '</span></div></th>'; $sortarr[] = 'false';} //for pics
 		if ($i==1 && $gbt[0][0][1]!='ID') { continue;}
 		if ($gbt[0][0][$i]=='Section' || $gbt[0][0][$i]=='Code' || $gbt[0][0][$i]=='Last Login') {
 			echo '<th class="nocolorize"><div>';
@@ -1585,7 +1704,7 @@ function gbinstrdisp() {
 		}
 		echo $gbt[0][0][$i];
 		if (($gbt[0][0][$i]=='Section' || ($isdiag && $i==4)) && (!$istutor || $tutorsection=='')) {
-			echo "<br/><select id=\"secfiltersel\" onchange=\"chgsecfilter()\"><option value=\"-1\" ";
+			echo "<br/><select id=\"secfiltersel\" onchange=\"chgsecfilter()\" aria-label=\"Section\"><option value=\"-1\" ";
 			if ($secfilter==-1) {echo  'selected=1';}
 			echo  '>', _('All'), '</option>';
 			$stm = $DBH->prepare("SELECT DISTINCT section FROM imas_students WHERE courseid=:courseid ORDER BY section");
@@ -1602,7 +1721,7 @@ function gbinstrdisp() {
 
 		} else if ($gbt[0][0][$i]=='Name') {
 			echo '<br/><span class="small">N='.(count($gbt)-2).'</span><br/>';
-			echo "<select id=\"lockedtoggle\" onchange=\"chglockedtoggle()\">";
+			echo "<select id=\"lockedtoggle\" onchange=\"chglockedtoggle()\" aria-label=\""._('Display locked students') ."\">";
 			echo "<option value=0 "; writeHtmlSelected($hidelocked,0); echo ">", _('Show Locked'), "</option>";
 			echo "<option value=2 "; writeHtmlSelected($hidelocked,2); echo ">", _('Hide Locked'), "</option>";
 			echo "</select>";
@@ -1720,27 +1839,29 @@ function gbinstrdisp() {
 		} else {
 			echo "<tr class=odd onMouseOver=\"highlightrow(this)\" onMouseOut=\"unhighlightrow(this)\">";
 		}
-		echo '<td class="locked" scope="row"><div class="trld">';
+		echo '<th class="locked" scope="row"><div class="trld">';
 		if ($gbt[$i][0][0]!="Averages" && $isteacher) {
-			echo "<input type=\"checkbox\" name='checked[]' value='{$gbt[$i][4][0]}' />&nbsp;";
+			echo "<input type=\"checkbox\" name='checked[]' id='chkbx$i' value='{$gbt[$i][4][0]}' />&nbsp;";
 		}
-		echo "<a href=\"gradebook.php?cid=$cid&amp;stu={$gbt[$i][4][0]}\">";
+		echo '<label for="chkbx'.$i.'"';
 		if (!empty($gbt[$i][4][1]) && $gbt[$i][4][1]>0) {
-			echo '<span class="greystrike pii-full-name">'.$gbt[$i][0][0].'</span>';
-		} else {
-			echo '<span class="pii-full-name">'.Sanitize::encodeStringForDisplay($gbt[$i][0][0]).'</span>';
+			echo ' class="greystrike"';
 		}
-		echo '</a>';
+		echo '>'."<a href=\"gradebook.php?cid=$cid&amp;stu={$gbt[$i][4][0]}\">";
+		echo '<span class="pii-full-name">'.Sanitize::encodeStringForDisplay($gbt[$i][0][0]).'</span>';
+		echo '</a></label>';
 		if (!empty($gbt[$i][4][3]) &&  $gbt[$i][4][3]==1) {
 			echo '<sup>*</sup>';
 		}
-		echo '</div></td>';
+		echo '</div></th>';
 		if ($showpics==1 && !empty($gbt[$i][4][2])) { //file_exists("$curdir//files/userimg_sm{$gbt[$i][4][0]}.jpg")) {
-			echo "<td>{$insdiv}<div class=\"trld\"><img class=\"pii-image\" src=\"$userimgbase/userimg_sm{$gbt[$i][4][0]}.jpg\" alt=\"User picture\"/></div></td>";
+			echo "<td><div class=\"trld\"><img class=\"pii-image\" src=\"$userimgbase/userimg_sm{$gbt[$i][4][0]}.jpg\" alt=\"User picture\"/></div></td>";
 		} else if ($showpics==2 && !empty($gbt[$i][4][2])) {
-			echo "<td>{$insdiv}<div class=\"trld\"><img class=\"pii-image\" src=\"$userimgbase/userimg_{$gbt[$i][4][0]}.jpg\" alt=\"User picture\"/></div></td>";
+			echo "<td><div class=\"trld\"><img class=\"pii-image\" src=\"$userimgbase/userimg_{$gbt[$i][4][0]}.jpg\" alt=\"User picture\"/></div></td>";
+		} else if (!empty($gbt[$i][4][2])) {
+			echo "<td><div class=\"trld\"><img class=\"pii-image\" src=\"$userimgbase/userimg_{$gbt[$i][4][0]}.jpg\" alt=\"User picture\" style=\"display:none\"/></div></td>";
 		} else {
-			echo '<td>'.$insdiv.'<div class="trld">&nbsp;</div></td>';
+			echo "<td><div class=\"trld\"></div></td>";
 		}
 		for ($j=($gbt[0][0][1]=='ID'?1:2);$j<count($gbt[0][0]);$j++) {
             if (isset($gbt[$i][0][$j])) {
@@ -1809,7 +1930,7 @@ function gbinstrdisp() {
 								echo "<a href=\"gb-viewasid.php?stu=$stu&amp;cid=$cid&amp;asid={$gbt[$i][1][$j][4]}&amp;uid={$gbt[$i][4][0]}\">";
 							}
 						}
-
+                        
 						echo $gbt[$i][1][$j][0];
 
 						echo '</a>';
@@ -1829,6 +1950,10 @@ function gbinstrdisp() {
                                 // echo ' (OT)';
                             } else if ($gbt[$i][1][$j][3]==4) {
                                 echo ' (PT)';
+                            } else if ($gbt[$i][1][$j][3]==6) {
+                                echo ' (NS)';
+                            } else if ($gbt[$i][1][$j][3]==7) {
+                                echo ' (NR)';
                             }
                         }
 

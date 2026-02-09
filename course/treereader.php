@@ -61,7 +61,7 @@ if ($_GET['folder']!='0') {
 			break;
 		}
 		if (isset($items[$blocktree[$i]-1]['grouplimit']) && count($items[$blocktree[$i]-1]['grouplimit'])>0 && !isset($teacherid) && !isset($tutorid)) {
-			if (!in_array('s-'.$studentinfo['section'],$items[$blocktree[$i]-1]['grouplimit'])) {
+			if (!in_array(strtolower('s-' . $studentinfo['section']), array_map('strtolower', $items[$blocktree[$i]-1]['grouplimit']))) {
 				echo 'Not authorized';
 				exit;
 			}
@@ -282,17 +282,17 @@ if (!$viewall) {
 	if (!isset($teacherid) && !isset($tutorid) && !$inInstrStuView) {
 		$query = "SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.waivereqscore,ex.itemtype FROM ";
 		$query .= "imas_exceptions AS ex,imas_items as items,imas_assessments as i_a WHERE ex.userid=:userid AND ";
-		$query .= "ex.assessmentid=i_a.id AND (items.typeid=i_a.id AND items.itemtype='Assessment' AND items.courseid=:courseid) ";
-		$query .= "UNION SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.waivereqscore,ex.itemtype FROM ";
+		$query .= "ex.assessmentid=i_a.id AND ex.itemtype='A' AND (items.typeid=i_a.id AND items.itemtype='Assessment' AND items.courseid=:courseid) ";
+		$query .= "UNION ALL SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.waivereqscore,ex.itemtype FROM ";
 		$query .= "imas_exceptions AS ex,imas_items as items,imas_forums as i_f WHERE ex.userid=:userid2 AND ";
-		$query .= "ex.assessmentid=i_f.id AND (items.typeid=i_f.id AND items.itemtype='Forum' AND items.courseid=:courseid2) ";
+		$query .= "ex.assessmentid=i_f.id AND (ex.itemtype='F' OR ex.itemtype='R' OR ex.itemtype='P') AND (items.typeid=i_f.id AND items.itemtype='Forum' AND items.courseid=:courseid2) ";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':userid2'=>$userid, ':courseid2'=>$cid));
 
 		// $query .= "AND (($now<i_a.startdate AND ex.startdate<$now) OR ($now>i_a.enddate AND $now<ex.enddate))";
 		//$query .= "AND (ex.startdate<$now AND $now<ex.enddate)";
 		while ($line = $stm->fetch(PDO::FETCH_ASSOC)) {
-			$exceptions[$line['id']] = array($line['startdate'],$line['enddate'],$line['islatepass'],$line['waivereqscore'],$line['itemtype']);
+			$exceptions[$line['id']] = $line;
 		}
 		$exceptionfuncs = new ExceptionFuncs($userid, $cid, true, $studentinfo['latepasses'], $latepasshrs);
 	} else {
@@ -330,8 +330,8 @@ function printlist($items) {
 				$out .=  '</ul></li>';
 			}
 		} else {
-			$stm = $DBH->prepare("SELECT itemtype,typeid FROM imas_items WHERE id=:id");
-			$stm->execute(array(':id'=>$item));
+			$stm = $DBH->prepare("SELECT itemtype,typeid FROM imas_items WHERE id=:id AND courseid=:cid");
+			$stm->execute(array(':id'=>$item, ':cid'=>$cid));
 			$line = $stm->fetch(PDO::FETCH_ASSOC);
 			$typeid = Sanitize::onlyInt($line['typeid']);
 			$itemtype = Sanitize::simpleString($line['itemtype']);
@@ -345,14 +345,14 @@ function printlist($items) {
 			if ($line['itemtype']=='Assessment') {
 				//TODO check availability, timelimit, etc.
 				//TODO: reqscoreaid, latepasses
-				 $stm = $DBH->prepare("SELECT name,summary,startdate,enddate,reviewdate,LPcutoff,deffeedback,reqscore,reqscoreaid,reqscoretype,avail,allowlate,timelimit,displaymethod,ver FROM imas_assessments WHERE id=:id");
-				 $stm->execute(array(':id'=>$typeid));
+				 $stm = $DBH->prepare("SELECT name,summary,startdate,enddate,reviewdate,LPcutoff,deffeedback,reqscore,reqscoreaid,reqscoretype,avail,allowlate,timelimit,displaymethod,ver FROM imas_assessments WHERE id=:id AND courseid=:cid");
+				 $stm->execute(array(':id'=>$typeid, ':cid'=>$cid));
 				 $line = $stm->fetch(PDO::FETCH_ASSOC);
 				 if (isset($exceptions[$item])) {
 				 	 $useexception = $exceptionfuncs->getCanUseAssessException($exceptions[$item], $line, true);
 				 	 if ($useexception) {
-				 	 	 $line['startdate'] = $exceptions[$item][0];
-				 	 	 $line['enddate'] = $exceptions[$item][1];
+				 	 	 $line['startdate'] = $exceptions[$item]['startdate'];
+				 	 	 $line['enddate'] = $exceptions[$item]['enddate'];
 				 	 }
 				 }
 				 if ($viewall || ($line['avail']==1 && $line['startdate']<$now && ($line['enddate']>$now || $line['reviewdate']>$now))) {
@@ -421,7 +421,7 @@ function printlist($items) {
 					 }
 					 if ($line['ver'] > 1) {
 						 if (!empty($CFG['assess2-use-vue-dev'])) {
-							 $out .= '<a tabindex="-1" href="'.$CFG['assess2-use-vue-dev-address'].'/?cid='.$cid.'&amp;aid='.$typeid.'" '.$onclick.' target="readerframe">'.Sanitize::encodeStringForDisplay($line['name']).'</a></li>';
+							 $out .= '<a tabindex="-1" href="'.$CFG['assess2-use-vue-dev-address'].'/index.html?cid='.$cid.'&amp;aid='.$typeid.'" '.$onclick.' target="readerframe">'.Sanitize::encodeStringForDisplay($line['name']).'</a></li>';
 						 } else {
 						 	$out .= '<a tabindex="-1" href="'.$imasroot.'/assess2/?cid='.$cid.'&amp;aid='.$typeid.'" '.$onclick.' target="readerframe">'.Sanitize::encodeStringForDisplay($line['name']).'</a></li>';
 						 }
@@ -431,8 +431,8 @@ function printlist($items) {
 				 }
 			} else if ($line['itemtype']=='LinkedText') {
 				//TODO check availability, etc.
-				 $stm = $DBH->prepare("SELECT title,summary,text,startdate,enddate,avail,target FROM imas_linkedtext WHERE id=:id");
-				 $stm->execute(array(':id'=>$typeid));
+				 $stm = $DBH->prepare("SELECT title,summary,text,startdate,enddate,avail,target FROM imas_linkedtext WHERE id=:id AND courseid=:cid");
+				 $stm->execute(array(':id'=>$typeid, ':cid'=>$cid));
 				 $line = $stm->fetch(PDO::FETCH_ASSOC);
 				 if ($viewall || $line['avail']==2 || ($line['avail']==1 && $line['startdate']<$now && $line['enddate']>$now)) {
 					 if ($openitem=='' && $foundfirstitem=='') {
@@ -445,8 +445,8 @@ function printlist($items) {
 				 }
 			} else if ($line['itemtype']=='InlineText') {
 				//TODO check availability, etc.
-				 $stm = $DBH->prepare("SELECT title,text,startdate,enddate,avail FROM imas_inlinetext WHERE id=:id");
-				 $stm->execute(array(':id'=>$typeid));
+				 $stm = $DBH->prepare("SELECT title,text,startdate,enddate,avail FROM imas_inlinetext WHERE id=:id AND courseid=:cid");
+				 $stm->execute(array(':id'=>$typeid, ':cid'=>$cid));
 				 $line = $stm->fetch(PDO::FETCH_ASSOC);
 				 if ($viewall || $line['avail']==2 || ($line['avail']==1 && $line['startdate']<$now && $line['enddate']>$now)) {
 					 if ($openitem=='' && $foundfirstitem=='') {
@@ -471,8 +471,8 @@ function printlist($items) {
 				 $out .=  '<li><img src="'.$imasroot.'/img/forum_tiny.png" alt="Forum"> <a href="'.$imasroot.'/forums/thread.php?cid='.$cid.'&amp;forum='.$typeid.'" onclick="recordlasttreeview(\''.$itemtype.$typeid.'\')" target="readerframe">'.$line['name'].'</a></li>';
 			} */else if ($line['itemtype']=='Wiki') {
 				//TODO check availability, etc.
-				 $stm = $DBH->prepare("SELECT id,name,description,startdate,enddate,editbydate,avail,settings,groupsetid FROM imas_wikis WHERE id=:id");
-				 $stm->execute(array(':id'=>$typeid));
+				 $stm = $DBH->prepare("SELECT id,name,description,startdate,enddate,editbydate,avail,settings,groupsetid FROM imas_wikis WHERE id=:id AND courseid=:cid");
+				 $stm->execute(array(':id'=>$typeid, ':cid'=>$cid));
 				 $line = $stm->fetch(PDO::FETCH_ASSOC);
 				 if ($viewall || $line['avail']==2 || ($line['avail']==1 && $line['startdate']<$now && $line['enddate']>$now)) {
 					 if ($openitem=='' && $foundfirstitem=='') {
@@ -508,10 +508,10 @@ function upsendexceptions(&$items) {
 				if ($hasexc[1]>$maxedate) { $maxedate = $hasexc[1];}
 			  }
 		   } else {
-			   if (isset($exceptions[$item]) && $exceptions[$item][4]=='A') {
+			   if (isset($exceptions[$item]) && $exceptions[$item]['itemtype']=='A') {
 				  // return ($exceptions[$item]);
-				   if ($exceptions[$item][0]<$minsdate) { $minsdate = $exceptions[$item][0];}
-				   if ($exceptions[$item][1]>$maxedate) { $maxedate = $exceptions[$item][1];}
+				   if ($exceptions[$item]['startdate']<$minsdate) { $minsdate = $exceptions[$item]['startdate'];}
+				   if ($exceptions[$item]['enddate']>$maxedate) { $maxedate = $exceptions[$item]['enddate'];}
 			   }
 		   }
 	   }

@@ -34,14 +34,14 @@ if (!(isset($teacherid))) {
 	$cid = Sanitize::courseId($_GET['cid']);
 	$oktocopy = 1;
 
-	if (isset($_GET['action'])) {
+	if (isset($_GET['action']) && $ctc > 0) {
 		$query = "SELECT imas_courses.id FROM imas_courses,imas_teachers WHERE imas_courses.id=imas_teachers.courseid";
 		$query .= " AND imas_teachers.userid=:userid AND imas_courses.id=:id";
 		$stm = $DBH->prepare($query);
-		$stm->execute(array(':userid'=>$userid, ':id'=>$_POST['ctc']));
+		$stm->execute(array(':userid'=>$userid, ':id'=>$ctc));
 		if ($stm->rowCount()==0) {
 			$stm = $DBH->prepare("SELECT enrollkey,copyrights,termsurl FROM imas_courses WHERE id=:id");
-			$stm->execute(array(':id'=>$_POST['ctc']));
+			$stm->execute(array(':id'=>$ctc));
 			list($ekey, $copyrights, $termsurl) = $stm->fetch(PDO::FETCH_NUM);
 			if ($copyrights<2) {
 				$oktocopy = 0;
@@ -49,7 +49,7 @@ if (!(isset($teacherid))) {
 					$query = "SELECT imas_users.groupid FROM imas_courses,imas_users,imas_teachers WHERE imas_courses.id=imas_teachers.courseid ";
 					$query .= "AND imas_teachers.userid=imas_users.id AND imas_courses.id=:id";
 					$stm2 = $DBH->prepare($query);
-					$stm2->execute(array(':id'=>$_POST['ctc']));
+					$stm2->execute(array(':id'=>$ctc));
 					while ($row = $stm2->fetch(PDO::FETCH_NUM)) {
 						if ($row[0]==$groupid) {
 							$oktocopy=1;
@@ -74,15 +74,15 @@ if (!(isset($teacherid))) {
 				$body = _("Must agree to course terms of use to copy it.")."  <a href=\"copyitems.php?cid=$cid\">"._("Try Again")."</a>";
 			} else {
 				$now = time();
-				$ctc = intval($_POST['ctc']);
+				$ctc = intval($ctc);
 				$userid = intval($userid);
 				$stm = $DBH->prepare("INSERT INTO imas_log (time,log) VALUES(:time, :log)");
 				$stm->execute(array(':time'=>$now, ':log'=>"User $userid agreed to terms of use on course $cid"));
 			}
 		}
-	}
+	} 
 	if ($oktocopy == 1) {
-		if (isset($_GET['action']) && $_GET['action']=="copycalitems") {
+		if (isset($_GET['action']) && $_GET['action']=="copycalitems" && $ctc > 0) {
 			if (isset($_POST['clearexisting'])) {
 				$stm = $DBH->prepare("DELETE FROM imas_calitems WHERE courseid=:courseid");
 				$stm->execute(array(':courseid'=>$cid));
@@ -91,7 +91,7 @@ if (!(isset($teacherid))) {
 				$checked = $_POST['checked'];
 				$chklist = implode(',', array_map('intval',$checked));
 				$stm = $DBH->prepare("SELECT date,tag,title FROM imas_calitems WHERE id IN ($chklist) AND courseid=:courseid");
-				$stm->execute(array(':courseid'=>$_POST['ctc']));
+				$stm->execute(array(':courseid'=>$ctc));
 				$insarr = array();
 				$qarr = array();
 				while ($row = $stm->fetch(PDO::FETCH_NUM)) {
@@ -106,7 +106,7 @@ if (!(isset($teacherid))) {
 			$btf = isset($_GET['btf']) ? '&folder=' . Sanitize::encodeUrlParam($_GET['btf']) : '';
 			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=$cid$btf&r=" . Sanitize::randomQueryStringParam());
 			exit;
-		} else if (isset($_GET['action']) && $_GET['action']=="copy") {
+		} else if (isset($_GET['action']) && $_GET['action']=="copy" && $ctc > 0) {
 			if ($_POST['whattocopy']=='all') {
 				/*$_POST['copycourseopt'] = 1;
 				$_POST['copygbsetup'] = 1;
@@ -233,6 +233,9 @@ if (!(isset($teacherid))) {
 					$stm->execute(array(':id'=>$cid));
 					$row = $stm->fetch(PDO::FETCH_NUM);
 					$outcomesarr = unserialize($row[0]);
+					if (!is_array($outcomesarr)) {
+						$outcomesarr = array();
+					}
 					foreach ($newoutcomes as $o) {
 						$outcomesarr[] = $o;
 					}
@@ -289,6 +292,10 @@ if (!(isset($teacherid))) {
 			}
 
 			if (isset($_POST['checked']) || $_POST['whattocopy']=='all') {
+                if ($ctc != $cid) {
+                    prepopulate_forumtrack($ctc,$cid);
+                }
+
 				$checked = $_POST['checked'] ?? [];
 				$stm = $DBH->prepare("SELECT blockcnt,dates_by_lti FROM imas_courses WHERE id=:id");
 				$stm->execute(array(':id'=>$cid));
@@ -362,7 +369,7 @@ if (!(isset($teacherid))) {
 			}
 			if (isset($_POST['copystudata']) && ($myrights==100 || ($myspecialrights&32)==32 || ($myspecialrights&64)==64)) {
 				require_once "../util/copystudata.php";
-				copyStuData($cid, $_POST['ctc']);
+				copyStuData($cid, $ctc);
 			}
 			$DBH->commit();
 			if (isset($_POST['selectcalitems'])) {
@@ -380,11 +387,11 @@ if (!(isset($teacherid))) {
 				exit;
 			}
 
-		} elseif (isset($_GET['action']) && $_GET['action']=="select") { //DATA MANIPULATION FOR second option
+		} elseif (isset($_GET['action']) && $_GET['action']=="select" && $ctc > 0) { //DATA MANIPULATION FOR second option
 			$items = false;
 
 			$stm = $DBH->prepare("SELECT id,itemorder,name,UIver FROM imas_courses WHERE id IN (?,?)");
-			$stm->execute(array($_POST['ctc'], $cid));
+			$stm->execute(array($ctc, $cid));
 			while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 				if ($row['id']==$ctc) {
 					$items = unserialize($row['itemorder']);
@@ -432,9 +439,10 @@ if (!(isset($teacherid))) {
 /******* begin html output ********/
 
 if (!isset($_GET['loadothers']) && !isset($_GET['loadothergroup'])) {
-$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/libtree.js\"></script>\n";
-$placeinhead .= "<style type=\"text/css\">\n<!--\n@import url(\"$staticroot/course/libtree.css\");\n-->\n</style>\n";
-$placeinhead .= '<script src="'.$staticroot.'/javascript/copyitemslist.js" type="text/javascript"></script>';
+$placeinhead = '<script src="'.$staticroot.'/javascript/copyitemslist.js?v=081125" type="text/javascript"></script>';
+$placeinhead .= '<script src="'.$staticroot.'/javascript/accessibletree.js?v=070625"></script>';
+$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=070625" type="text/css" />';
+
 require_once "../header.php";
 }
 if ($overwriteBody==1) {
@@ -446,7 +454,7 @@ if ($overwriteBody==1) {
 	<div id="headercopyitems" class="pagetitle"><h1>Copy Course Items</h1></div>
 
 <?php
-	if (isset($_GET['action']) && $_GET['action']=='selectcalitems') {
+	if (isset($_GET['action']) && $_GET['action']=='selectcalitems' && $ctc > 0) {
 //DISPLAY BLOCK FOR selecting calendar items to copy
 ?>
 	<form id="qform" method=post action="copyitems.php?cid=<?php echo $cid ?>&action=copycalitems">
@@ -467,24 +475,24 @@ if ($overwriteBody==1) {
 			if ($alt==0) {echo "		<tr class=even>"; $alt=1;} else {echo "		<tr class=odd>"; $alt=0;}
 ?>
 			<td>
-			<input type=checkbox name='checked[]' value='<?php echo Sanitize::encodeStringForDisplay($calitems[$i][0]); ?>' checked="checked"/>
+			<input type=checkbox name='checked[]' id="cb<?php echo $i;?>" value='<?php echo Sanitize::encodeStringForDisplay($calitems[$i][0]); ?>' checked="checked"/>
 			</td>
 			<td class="nowrap"><?php echo tzdate("m/d/Y",$calitems[$i][1]); ?></td>
 			<td><?php echo Sanitize::encodeStringForDisplay($calitems[$i][2]); ?></td>
-			<td><?php echo Sanitize::encodeStringForDisplay($calitems[$i][3]); ?></td>
+			<td><label for="cb<?php echo $i;?>"><?php echo Sanitize::encodeStringForDisplay($calitems[$i][3]); ?><label></td>
 		</tr>
 <?php
 		}
 ?>
 		</tbody>
 	</table>
-	<p>Remove all existing calendar items? <input type="checkbox" name="clearexisting" value="1" /></p>
+	<p><label><input type="checkbox" name="clearexisting" value="1" /> Remove all existing calendar items?</label></p>
 	<p><input type=submit value="Copy Calendar Items"></p>
 	</form>
 
 <?php
 
-	} else if (isset($_GET['action']) && $_GET['action']=="select") {
+	} else if (isset($_GET['action']) && $_GET['action']=="select" && $ctc > 0) {
 
 //DISPLAY BLOCK FOR SECOND STEP - selecting course item
 
@@ -553,10 +561,12 @@ $excludeAssess = ($sourceUIver > $destUIver);
 			if ($alt==0) {echo "		<tr class=even>"; $alt=1;} else {echo "		<tr class=odd>"; $alt=0;}
 			echo '<td>';
 			if (strpos($types[$i],'Block')!==false) {
-				echo "<input type=checkbox name='checked[]' value='{$ids[$i]}' id='{$parents[$i]}' ";
+				$thisid = $ids[$i];
+				echo "<input type=checkbox name='checked[]' value='{$ids[$i]}' id='{$ids[$i]}' ";
 				echo "onClick=\"chkgrp(this.form, '{$ids[$i]}', this.checked);\" ";
 				echo '/>';
 			} else {
+				$thisid = "{$parents[$i]}.{$ids[$i]}";
 				echo "<input type=checkbox name='checked[]' value='{$ids[$i]}' id='{$parents[$i]}.{$ids[$i]}' ";
 				echo '/>';
 			}
@@ -577,7 +587,7 @@ $excludeAssess = ($sourceUIver > $destUIver);
 				case 'Assessment': echo $CFG['CPS']['miniicons']['assess']; break;
 				case 'Drill': echo $CFG['CPS']['miniicons']['drill']; break;
 			}
-			echo '" class="floatleft"/><div style="margin-left:21px">'.$names[$i].'</div></td>';
+			echo '" class="floatleft"/><div style="margin-left:21px"><label for="'.$thisid.'">'.$names[$i].'</label></div></td>';
 
 		?>
 			<td><?php echo $sums[$i] ?></td>
@@ -592,38 +602,90 @@ $excludeAssess = ($sourceUIver > $destUIver);
 	<p> </p>
 <div id="copyoptions" style="display:none;">
 	<fieldset><legend><?php echo _('Options'); ?></legend>
-	<table role="presentation">
-	<tbody>
-	<tr class="allon"><td class="r"><?php echo _('Copy course settings?'); ?></td><td><input type=checkbox name="copycourseopt"  value="1"/></td></tr>
-	<tr class="allon"><td class="r"><?php echo sprintf(_('Copy gradebook scheme and categories %s (%s will overwrite current scheme %s)?'),'<br/>','<i>','</i>'); ?> </td><td>
-		<input type=checkbox name="copygbsetup" value="1"/></td></tr>
-	<tr><td class="r"><?php echo _('Set all copied items as hidden to students?'); ?></td><td><input type="checkbox" name="copyhidden" value="1"/></td></tr>
-	<tr><td class="r"><?php echo _('Copy offline grade items?'); ?></td><td> <input type=checkbox name="copyoffline"  value="1"/></td></tr>
-	<tr><td class="r"><?php echo _('Remove any withdrawn questions from assessments?'); ?></td><td> <input type=checkbox name="removewithdrawn"  value="1" checked="checked"/></td></tr>
-	<tr><td class="r"><?php echo _('Use any suggested replacements for old questions?'); ?></td><td> <input type=checkbox name="usereplaceby"  value="1" checked="checked"/></td></tr>
-	<tr><td class="r"><?php echo _('Copy rubrics?'); ?> </td><td><input type=checkbox name="copyrubrics"  value="1" checked="checked" /></td></tr>
-	<tr><td class="r"><?php echo _('Copy outcomes?'); ?> </td><td><input type=checkbox name="copyoutcomes"  value="1" checked="checked" /></td></tr>
-	<tr><td class="r"><?php echo _('Select calendar items to copy?'); ?></td><td> <input type=checkbox name="selectcalitems"  value="1"/></td></tr>
-
-	<tr><td class="r"><?php echo _('Copy "display at top" instructor forum posts?'); ?> </td><td><input type=checkbox name="copystickyposts"  value="1" checked="checked"/></td></tr>
-
-	<tr class="selectonly"><td class="r"><?php echo _('Append text to titles?'); ?></td><td> <input type="text" name="append"></td></tr>
-	<tr class="selectonly"><td class="r"><?php echo _('Add to block:'); ?></td><td>
-
-<?php
+	<ul class="checklist">
+		<li class="allon">
+			<label>
+				<input type=checkbox name="copycourseopt"  value="1"/>
+				<?php echo _('Copy course settings?'); ?>
+			</label>
+		</li>
+		<li class="allon">
+			<label>
+				<input type=checkbox name="copygbsetup" value="1"/>
+				<?php echo sprintf(_('Copy gradebook scheme and categories %s (%s will overwrite current scheme %s)?'),'<br/>','<span class=noticetext>','</span>'); ?>
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type="checkbox" name="copyhidden" value="1"/>
+				<?php echo _('Set all copied items as hidden to students?'); ?>			
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type=checkbox name="copyoffline"  value="1"/>
+				<?php echo _('Copy offline grade items?'); ?>
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type=checkbox name="removewithdrawn"  value="1" checked="checked"/>
+				<?php echo _('Remove any withdrawn questions from assessments?'); ?>
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type=checkbox name="usereplaceby"  value="1" checked="checked"/>
+				<?php echo _('Use any suggested replacements for old questions?'); ?>
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type=checkbox name="copyrubrics" value="1" checked="checked"/>
+				<?php echo _('Copy rubrics?'); ?>
+			</label>
+		</li>
+		<li class="allon">
+			<label>
+				<input type=checkbox name="copyoutcomes"  value="1" />
+				<?php echo _('Copy outcomes?'); ?>
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type=checkbox name="selectcalitems"  value="1"/>
+				<?php echo _('Select calendar items to copy?'); ?>
+			</label>
+		</li>
+		<li>
+			<label>
+				<input type=checkbox name="copystickyposts"  value="1" checked="checked"/>
+				<?php echo _('Copy "display at top" instructor forum posts?'); ?>
+			</label>
+		</li>
+		<li class="selectonly">
+			<label>
+				<?php echo _('Append text to titles?'); ?>
+				<input type="text" name="append">
+			</label>
+		</li>
+		<li class="selectonly">
+			<label for=addto>
+				<?php echo _('Add to block:'); ?>
+			</label>
+			<?php
 writeHtmlSelect ("addto",$page_blockSelect['val'],$page_blockSelect['label'],$selectedVal=null,$defaultLabel=_("Main Course Page"),$defaultVal="none",$actions=null);
 ?>
+		</li>
 
-
-	</td></tr>
-	<?php
+<?php
 	if ($myrights==100 || ($myspecialrights&32)==32 || ($myspecialrights&64)==64) {
-		echo '<tr><td class="r">',_('Also copy students and assessment attempt data?'),'</td>';
-		echo '<td><input type=checkbox name=copystudata value=1> ',_('NOT recommended unless you know what you are doing.'),'</td></tr>';
+		echo '<li><label><input type=checkbox name=copystudata value=1> ',_('Also copy students and assessment attempt data?'),'</label><br/>';
+		echo '<span class=noticetext>',_('NOT recommended unless you know what you are doing.'),'</span>';
+		echo '</li>';
 	}
 	?>
-	</tbody>
-	</table>
+	</ul>
 	</fieldset>
 	</div>
 <?php

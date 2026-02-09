@@ -7,7 +7,7 @@ require_once "../init.php";
 
 $cid = Sanitize::courseId($_GET['cid']);
 if (isset($_GET['secfilter'])) {
-	$secfilter = $_GET['secfilter'];
+	$secfilter = Sanitize::onlyASCII($_GET['secfilter']);
 	$_SESSION[$cid.'secfilter'] = $secfilter;
 } else if (isset($_SESSION[$cid.'secfilter'])) {
 	$secfilter = $_SESSION[$cid.'secfilter'];
@@ -15,10 +15,10 @@ if (isset($_GET['secfilter'])) {
 	$secfilter = -1;
 }
 if (isset($_GET['gbmode']) && $_GET['gbmode']!='') {
-    $gbmode = $_GET['gbmode'];
+    $gbmode = Sanitize::onlyInt($_GET['gbmode']);
     $_SESSION[$cid.'gbmode'] = $gbmode;
 } else if (isset($_SESSION[$cid.'gbmode']) && !isset($_GET['refreshdef'])) {
-    $gbmode =  $_SESSION[$cid.'gbmode'];
+    $gbmode = Sanitize::onlyInt($_SESSION[$cid.'gbmode']);
 } else {
     $stm = $DBH->prepare("SELECT defgbmode FROM imas_gbscheme WHERE courseid=:courseid");
     $stm->execute(array(':courseid'=>$cid));
@@ -144,13 +144,13 @@ if ($overwriteBody==1) {
 		echo '<a href="logingrid.php?cid='.$cid.'&start='.($start+7*24*60*60).'">Show following week</a>. ';
 	}
 ?>
-	Show <input type="text" size="10" name="sdate" value="<?php echo $sdate;?>">
+	Show <input type="text" size="10" name="sdate" value="<?php echo $sdate;?>" aria-label="Start date">
 	<a href="#" onClick="displayDatePicker('sdate', this); return false">
 	<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a> through
-	<input type="text" size="10" name="edate" value="<?php echo $edate;?>">
+	<input type="text" size="10" name="edate" value="<?php echo $edate;?>" aria-label="End date">
 	<a href="#" onClick="displayDatePicker('edate', this, 'sdate', 'start date'); return false">
 	<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
-	<input type="submit" name="daterange" value="Go"/></p>
+	<button type="submit" name="daterange" value="go">Go</button></p>
     </form>
 <?php
 if ($haslocked) {
@@ -169,7 +169,7 @@ if ($haslocked) {
 	<table class="gb logingrid" id="myTable">
 	<thead>
 	<tr>
-	<th>Name</th>
+	<th>Name<br><span class=small>View login log</span></th>
 <?php
 	foreach ($dates as $date) {
 		echo '<th>'.$date.'</th>';

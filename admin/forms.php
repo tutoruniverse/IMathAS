@@ -67,9 +67,16 @@ if (!isset($_GET['cid'])) {
 switch($_GET['action']) {
 	case "delete":
 		if ($myrights < 40) { echo "You don't have the authority for this action"; break;}
-		$stm = $DBH->prepare("SELECT name FROM imas_courses WHERE id=:id");
+		$stm = $DBH->prepare("SELECT ic.name,ic.ownerid,iu.groupid FROM imas_courses AS ic JOIN imas_users AS iu ON ic.ownerid=iu.id WHERE ic.id=:id");
 		$stm->execute(array(':id'=>$_GET['id']));
-		$name = $stm->fetchColumn(0);
+		list($name,$courseowner,$coursegroup) = $stm->fetch(PDO::FETCH_NUM);
+		if (empty($courseowner) ||
+			($myrights < 75 && $courseowner !== $userid) ||
+			($myrights < 100 && $coursegroup !== $groupid)
+		) {
+			echo 'Invalid course';
+			break;
+		}
 		echo '<div id="headerforms" class="pagetitle"><h1>'._('Delete Course').'</h1></div>';
 		echo "<p>"._("Are you sure you want to delete the course")." <b>".Sanitize::encodeStringForDisplay($name)."</b>?</p>\n";
 		echo '<form method="POST" action="actions.php?from='.Sanitize::encodeUrlParam($from).'&id='.Sanitize::encodeUrlParam($_GET['id']).'">';
@@ -107,23 +114,28 @@ switch($_GET['action']) {
 		break;
 	case "deladmin":
 		if ($myrights < 75) { echo _("You don't have the authority for this action"); break;}
-        $stm = $DBH->prepare("SELECT FirstName,LastName,SID,rights FROM imas_users WHERE id=:id");
+        $stm = $DBH->prepare("SELECT FirstName,LastName,SID,rights,groupid FROM imas_users WHERE id=:id");
 		$stm->execute(array(':id'=>$_GET['id']));
 		$line = $stm->fetch(PDO::FETCH_ASSOC);
-		if ($myrights==100) {
-			$stm = $DBH->prepare("SELECT iu.id,iu.FirstName,iu.LastName,ig.name FROM imas_users AS iu LEFT JOIN imas_groups AS ig ON iu.groupid=ig.id WHERE (iu.rights=100 OR iu.groupid=?) AND iu.rights>12 AND iu.rights<>76 AND iu.rights<>77 ORDER BY iu.LastName,iu.FirstName");
-            $stm->execute(array($groupid));
-		} else {
-			$stm = $DBH->prepare("SELECT id,FirstName,LastName FROM imas_users WHERE groupid=? AND rights>12 AND rights<>76 AND rights<>77 ORDER BY LastName,FirstName");
-			$stm->execute(array($groupid));
+		if ($myrights < 100 && $line['groupid'] !== $groupid) {
+			echo 'Invalid user';
+			break;
 		}
-		$otherusers = array();
+        if ($myrights==100) {
+			$stm = $DBH->prepare("SELECT iu.id,iu.FirstName,iu.LastName,ig.name FROM imas_users AS iu LEFT JOIN imas_groups AS ig ON iu.groupid=ig.id WHERE (iu.rights=100 OR iu.groupid=?) AND iu.rights>12 AND iu.rights<>76 AND iu.rights<>77 AND iu.id<>? ORDER BY iu.LastName,iu.FirstName");
+            $stm->execute(array($line['groupid'], $_GET['id']));
+		} else {
+			$stm = $DBH->prepare("SELECT id,FirstName,LastName FROM imas_users WHERE groupid=? AND rights>12 AND rights<>76 AND rights<>77 AND id<>? ORDER BY LastName,FirstName");
+			$stm->execute(array($line['groupid'], $_GET['id']));
+		}
+		$otherusers = '<select name=transferto>';
 		while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 			if ($row['name'] === null) {
 				$row['name'] = _('Default');
 			}
-			$otherusers[$row['id']] = $row['LastName'].', '.$row['FirstName'].(isset($row['name'])?' ('.$row['name'].')':'');
+			$otherusers .= '<option value="'.$row['id'].'">'. Sanitize::encodeStringForDisplay($row['LastName'].', '.$row['FirstName'].(isset($row['name'])?' ('.$row['name'].')':'')).'</option>';
 		}
+        $otherusers .= '</select>';
 
         $allInstrEnroll = array_unique(array_merge($CFG['GEN']['enrollonnewinstructor'] ?? [], $CFG['GEN']['enrolloninstructorapproval'] ?? [])); 
 		$stm = $DBH->prepare("SELECT courseid FROM imas_students WHERE userid=? and lastaccess>?");
@@ -146,9 +158,9 @@ switch($_GET['action']) {
 		}
 		echo '<form method="POST" action="actions.php?from='.Sanitize::encodeUrlParam($from).'&id='.Sanitize::encodeUrlParam($_GET['id']).'">';
         if ($line['rights']>10) {
-            echo '<p>Any questions or libraries owned by this user need to be transfered to another user. <br/>Select user to transfer them to: ';
-            writeHtmlSelect('transferto',array_keys($otherusers),array_values($otherusers), $userid);
-            echo '</p>';
+            echo '<p>'._('Any questions or libraries owned by this user need to be transfered to another user.').'</p>';
+            require_once '../includes/userlookupform.php'; 
+            generateUserLookupForm(_('Transfer question and library ownership to:'), 'transferto', $otherusers);
         }
 		echo '<p><button type=submit name="action" value="deladmin">'._('Delete').'</button>';
 		echo "<input type=button value=\"",_("Nevermind"),"\" class=\"secondarybtn\" onclick=\"window.location='".Sanitize::encodeStringForJavascript($backloc)."'\"></p>\n";
@@ -157,9 +169,10 @@ switch($_GET['action']) {
 	case "chgrights":
 	case "newadmin":
 		if ($myrights < 75 && ($myspecialrights&16)!=16 && ($myspecialrights&32)!=32) { echo "You don't have the authority for this action"; break;}
-    echo "<form method=post id=userform class=limitaftervalidate action=\"actions.php?from=".Sanitize::encodeUrlParam($from);
+    	echo "<form method=post id=userform class=limitaftervalidate action=\"actions.php?from=".Sanitize::encodeUrlParam($from);
 		if ($_GET['action']=="chgrights") { echo "&id=".Sanitize::encodeUrlParam($_GET['id']); }
 		echo "\">\n";
+        echo '<div id="errorlive" aria-live="polite" class="sr-only"></div>';
 		echo '<input type=hidden name=action value="'.Sanitize::encodeStringForDisplay($_GET['action']).'" />';
 		if ($_GET['action'] == "newadmin") {
 			echo '<div class="pagetitle"><h1>'._('New User').'</h1></div>';
@@ -249,22 +262,22 @@ switch($_GET['action']) {
 			}
 			</script>
 		<?php
-		echo "<span class=form>Username:</span>  <input class='form pii-username' type=text size=40 name=SID ";
+		echo "<label for=SID class=form>Username:</label>  <input class='form pii-username' type=text size=40 name=SID id=SID ";
 		if ($_GET['action'] != "newadmin") {
 			echo 'value="'.Sanitize::encodeStringForDisplay($line['SID']).'"';
 		}
 		echo "><BR class=form>\n";
-		echo "<span class=form>First Name:</span> <input class='form pii-first-name' type=text size=40 name=firstname ";
+		echo "<label for=firstname class=form>First Name:</label> <input class='form pii-first-name' type=text size=40 name=firstname id=firstname ";
 		if ($_GET['action'] != "newadmin") {
 			echo 'value="'.Sanitize::encodeStringForDisplay($line['FirstName']).'"';
 		}
 		echo "><BR class=form>\n";
-		echo "<span class=form>Last Name:</span> <input class='form pii-last-name' type=text size=40 name=lastname ";
+		echo "<label for=lastname class=form>Last Name:</label> <input class='form pii-last-name' type=text size=40 name=lastname id=lastname ";
 		if ($_GET['action'] != "newadmin") {
 			echo 'value="'.Sanitize::encodeStringForDisplay($line['LastName']).'"';
 		}
 		echo "><BR class=form>\n";
-		echo "<span class=form>Email:</span> <input class='form pii-email' type=email size=40 name=email ";
+		echo "<label for=email class=form>Email:</label> <input class='form pii-email' type=email size=40 name=email id=email ";
 		if ($_GET['action'] != "newadmin") {
 			echo 'value="'.Sanitize::encodeStringForDisplay($line['email']).'"';
 		}
@@ -278,42 +291,42 @@ switch($_GET['action']) {
             echo "></span><br class=form />\n";
         }
 		if ($_GET['action'] == "newadmin") {
-			echo '<span class="form">Password:</span> <input class="form pii-security" type="text" size="40" name="pw1"/><br class="form"/>';
+			echo '<label for=pw1 class="form">Password:</label> <input class="form pii-security" type="text" size="40" name="pw1" id="pw1"/><br class="form"/>';
 		} else {
-			echo '<span class=form>Reset password?</span><span class=formright><input type=checkbox name="doresetpw" value="1" onclick="$(\'#newpwwrap\').toggle(this.checked)"/> ';
-			echo '<span id="newpwwrap" style="display:none">Set temporary password to: <input type=text size=20 name="newpassword" /></span></span><br class=form />';
+			echo '<span class=form>Reset password?</span><span class=formright><label><input type=checkbox name="doresetpw" value="1" onclick="$(\'#newpwwrap\').toggle(this.checked)"/> ' . _('Yes') . '<label> ';
+			echo '<span id="newpwwrap" style="display:none"><label>Set temporary password to: <input type=text size=20 name="newpassword" /></label></span></span><br class=form />';
             if ($myrights == 100 && $_GET['id'] != $userid && $line['mfa'] != '') {
-                echo '<span class=form>Disable 2-Factor Authentication?</span><span class=formright><input type=checkbox name="clearMFA" value="1"/></span>';
+                echo '<span class=form>2-Factor Authentication</span><span class=formright><label><input type=checkbox name="clearMFA" value="1"/> Disable 2-Factor Authentication</label></span>';
                 echo '<br class=form />';
             }
 		}
 
 		echo "<BR><span class=form><img src=\"$staticroot/img/help.gif\" alt=\"Help\" onClick=\"window.open('$imasroot/help.php?section=rights','help','top=0,width=400,height=500,scrollbars=1,left='+(screen.width-420))\"/> Set User rights to: </span> \n";
-		echo "<span class=formright><input type=radio name=\"newrights\" value=\"5\" ";
+		echo "<span class=formright><label><input type=radio name=\"newrights\" value=\"5\" ";
 		if ($oldrights == 5) {echo "CHECKED";}
-		echo "> Guest User <BR>\n";
-		echo "<input type=radio name=\"newrights\" value=\"10\" ";
+		echo "> Guest User</label> <BR>\n";
+		echo "<label><input type=radio name=\"newrights\" value=\"10\" ";
 		if ($oldrights == 10) {echo "CHECKED";}
-		echo "> Student <BR>\n";
+		echo "> Student</label> <BR>\n";
 		//obscelete
 		//echo "<input type=radio name=\"newrights\" value=\"15\" ";
 		//if ($oldrights == 15) {echo "CHECKED";}
 		//echo "> TA/Tutor/Proctor <BR>\n";
-		echo "<input type=radio name=\"newrights\" value=\"20\" ";
+		echo "<label><input type=radio name=\"newrights\" value=\"20\" ";
 		if ($oldrights == 20) {echo "CHECKED";}
-		echo "> Teacher <span class=small>(cannot create courses or edit course settings)</span><BR>\n";
-		echo "<input type=radio name=\"newrights\" value=\"40\" ";
+		echo "> Teacher <span class=small>(cannot create courses or edit course settings)</span></label><BR>\n";
+		echo "<label><input type=radio name=\"newrights\" value=\"40\" ";
 		if ($oldrights == 40) {echo "CHECKED";}
-		echo "> Course Creator <span class=small>(teacher who can create courses)</span><BR>\n";
+		echo "> Course Creator <span class=small>(teacher who can create courses)</span><BR></label>\n";
 		if ($myrights>=75) {
-			echo "<input type=radio name=\"newrights\" value=\"75\" ";
+			echo "<label><input type=radio name=\"newrights\" value=\"75\" ";
 			if ($oldrights == 75) {echo "CHECKED";}
-			echo "> Group Admin <BR>\n";
+			echo "> Group Admin</label> <BR>\n";
 		}
 		if ($myrights==100) {
-			echo "<input type=radio name=\"newrights\" value=\"100\" ";
+			echo "<label><input type=radio name=\"newrights\" value=\"100\" ";
 			if ($oldrights == 100) {echo "CHECKED";}
-			echo "> Full Admin";
+			echo "> Full Admin</label>";
 		}
 		echo "</span><BR class=form>\n";
 		echo '<span class="form">Task Rights:</span><span class="formright">';
@@ -388,7 +401,7 @@ switch($_GET['action']) {
             }
 			echo "<span class=form>Group: </span>";
 			echo "<span class=formright>";
-			echo '<label for=\"grpsearch\">Search for Groups</label> <input id=grpsearch /> <button type=button onclick="searchgrps()">Search</button><br/>';
+			echo '<label for="grpsearch">Search for Groups</label> <input id=grpsearch /> <button type=button onclick="searchgrps()">Search</button><br/>';
 			echo "<label for=\"group\">Assign to:</label> <select name=\"group\" id=\"group\" onchange=\"chknewgroup(this)\">";
 			echo '<option value="-2"'.($oldgroup==-2?' selected':'').'>'._('Select a Group').'</option>';
 			echo '<option value="-1">New Group</option>';
@@ -410,15 +423,26 @@ switch($_GET['action']) {
 				}
 			}
 			echo "</select>";
-			echo '<span id="newgroup" style="display:none"><br/>New group name: ';
-			echo ' <input name=newgroupname size=20 onblur="checkgroupisnew()"/></span>';
+			echo '<span id="newgroup" style="display:none"><br/><label>New group name: ';
+			echo ' <input name=newgroupname size=20 onblur="checkgroupisnew()"/></label></span>';
 			echo "</span><br class=form />\n";
-		}
+		} else if ($myrights == 75 && $oldgroup == $groupid) {
+			$stm = $DBH->prepare("SELECT name FROM imas_groups WHERE id=?");
+			$stm->execute(array($oldgroup));
+			$groupname = $stm->fetchColumn(0);
+			echo "<span class=form>Group: </span>";
+			echo "<span class=formright>";
+			echo '<b>'.Sanitize::encodeStringForDisplay($groupname).'</b> ';
+			echo '<label><input name=removefromgroup type=checkbox value=1> '._('Remove from group') .'</label>';
+			echo "</span><br class=form />\n";
+		} 
 		if ($myrights >= 75 || ($myspecialrights&32)==32) {
 			echo '<span class=form>'._('Add a course').'</span>';
 			echo '<span class=formright><label><input type=checkbox name=addnewcourse value=1> ';
 			echo _('Add a new course for this user').'</span><br class=form>';
 		}
+		$_SESSION['secchallenge'] = bin2hex(random_bytes(16));
+		echo '<input type=hidden name=challenge value="'.Sanitize::encodeStringForDisplay($_SESSION['secchallenge']).'"/>';
 
 		echo "<div class=submit><input type=submit value=Save></div></form>\n";
 		if ($_GET['action'] == "newadmin") {
@@ -433,7 +457,7 @@ switch($_GET['action']) {
 	case "modify":
 	case "addcourse":
 		if ($_GET['action']=='modify') {
-			$query = "SELECT ic.*,iu.FirstName,iu.LastName FROM imas_courses AS ic ";
+			$query = "SELECT ic.*,iu.FirstName,iu.LastName,iu.groupid FROM imas_courses AS ic ";
 			$query .= "JOIN imas_users AS iu on ic.ownerid=iu.id WHERE ic.id=:id";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':id'=>$_GET['id']));
@@ -545,7 +569,7 @@ switch($_GET['action']) {
 				if ($udat['groupid']==0) {
 					$udat['name'] = _('Default Group');
 				}
-				if ($myrights===75 && $udat['groupid']!=$groupid) {
+				if ($myrights<100 && $udat['groupid']!=$groupid) {
 					echo _("You don't have the authority for this action"); break;
 				}
 				if ($udat['parent']>0) {
@@ -661,6 +685,7 @@ switch($_GET['action']) {
 					$theme = $ctcinfo['theme'];
 					$msgset = $ctcinfo['msgset'];
 					$courselevel = $ctcinfo['level'];
+                    $deftime = $ctcinfo['deftime'];
 				}
 			} else {
 				$ctc = 0;
@@ -770,8 +795,10 @@ switch($_GET['action']) {
                 Sanitize::encodeStringForDisplay($udat['name'])
             );
 		}
-		echo "<span class=form>",_("Course name"),":</span><input class=form type=text size=80 name=\"coursename\" value=\"".Sanitize::encodeStringForDisplay($name)."\"><BR class=form>\n";
-		echo "<span class=form>",_("Enrollment key"),":</span><input class=form type=text size=30 name=\"ekey\" value=\"".Sanitize::encodeStringForDisplay($ekey)."\"><BR class=form>\n";
+		echo "<label for=coursename class=form>",_("Course name"),":</label>";
+		echo '<input class=form type=text size=80 name="coursename" id="coursename" value="'.Sanitize::encodeStringForDisplay($name).'"><br class=form>';
+		echo "<label for=ekey class=form>",_("Enrollment key"),":</label>";
+		echo '<input class=form type=text size=30 name="ekey" id="ekey" value="'.Sanitize::encodeStringForDisplay($ekey)."\"><BR class=form>\n";
 
 		if (isset($CFG['CPS']['usecourselevel']) && isset($CFG['coursebrowser'])) {
 			$browserprops = json_decode(file_get_contents(__DIR__.'/../javascript/'.$CFG['coursebrowser'], false, null, 25), true);
@@ -781,7 +808,7 @@ switch($_GET['action']) {
 					$levelother = substr($courselevel, 5);
 					$courselevel = 'other';
 				}
-				echo '<span class=form>Course Level:</span>';
+				echo '<label for=courselevel class=form>Course Level:</lael>';
 				echo '<span class=formright>';
 				writeHtmlSelect('courselevel',
 					array_keys($browserprops['level']['options']),
@@ -792,12 +819,12 @@ switch($_GET['action']) {
 					'onchange="courselevelchg(this)"' . ($CFG['CPS']['usecourselevel'] === 'required' ? ' required':'')
 				);
 				echo '<span id="courselevelotherwrap"' . ($courselevel === 'other' ? '' : ' style="display:none;"') . '>';
-				echo '<br/>Specify: <input id="courselevelother" name="courselevelother" size=30 value="'.Sanitize::encodeStringForDisplay($levelother).'" /></span>';
+				echo '<br/><label>Specify: <input id="courselevelother" name="courselevelother" size=30 value="'.Sanitize::encodeStringForDisplay($levelother).'" /></label></span>';
 				echo '</span><br class=form>';
 			}
 		}
 
-		if ($_GET['action']=="modify" && $line['cleanupdate']>0) {
+		if ($_GET['action']=="modify" && $line['cleanupdate']>1) {
 			$courseid = Sanitize::courseId($_GET['id']);
 			echo '<p>'._('This class has been scheduled for data cleanup, on ');
 			echo tzdate('F j, Y', $line['cleanupdate']).'. ';
@@ -812,8 +839,8 @@ switch($_GET['action']) {
 				$allowoptout = (!isset($CFG['cleanup']['allowoptout']) || $CFG['cleanup']['allowoptout']==true);
 			}
 			if ($allowoptout) {
-				echo '<p>'._('If you have a strong reason, you can ').'<input type=checkbox name=cleanupoptout value=1 /> ';
-				echo _('opt out of having the student data deleted.').' </p>';
+				echo '<p>'._('If you have a strong reason, you can ').'<label><input type=checkbox name=cleanupoptout value=1 /> ';
+				echo _('opt out of having the student data deleted.').'</label> </p>';
 			}
 		}
 		//Start grouping: copy options
@@ -835,21 +862,22 @@ switch($_GET['action']) {
 			echo _('Course Copy Options');
 			echo '</div>';
 			echo '<div class="blockitems hidden">';
-			echo '<span class=form><label for=copyoffline>'._('Copy offline grade items?').'</label></span>';
-			echo '<span class=formright><input type=checkbox name="copyoffline" id="copyoffline" value="1"/>';
+			echo '<span class=form>'._('Offline grade items').'</span>';
+			echo '<span class=formright><label><input type=checkbox name="copyoffline" id="copyoffline" value="1"/>';
+			echo _('Copy offline grade items?').'</label>';
 			echo '</span><br class=form>';
-			echo '<span class=form><label for=copyrubrics>'._('Copy rubrics?').'</label></span>';
-			echo '<span class=formright><input type=checkbox name="copyrubrics" id="copyrubrics" value="1" checked/>';
-			echo '</span><br class=form>';
-			echo '<span class=form><label for=copyoutcomes>'._('Copy outcomes?').'</label></span>';
-			echo '<span class=formright><input type=checkbox name="copyoutcomes" id="copyoutcomes" value="1" checked/>';
-			echo '</span><br class=form>';
-			echo '<span class=form><label for=copystickyposts>'._('Copy "display at top" instructor forum posts?').'</label></span>';
-			echo '<span class=formright><input type=checkbox name="copystickyposts" id="copystickyposts" value="1" checked/>';
-			echo '</span><br class=form>';
-			echo '<span class=form><label for=copyallcalitems>'._('Copy all calendar items?').'</label></span>';
-			echo '<span class=formright><input type=checkbox name="copyallcalitems" id="copyallcalitems" value="1"/>';
-			echo '</span><br class=form>';
+			echo '<span class=form>'._('Rubrics').'</span>';
+			echo '<span class=formright><label><input type=checkbox name="copyrubrics" id="copyrubrics" value="1" checked/>';
+			echo _('Copy rubrics?').'</label></span><br class=form>';
+			echo '<span class=form><label for=copyoutcomes>'._('Outcomes').'</label></span>';
+			echo '<span class=formright><label><input type=checkbox name="copyoutcomes" id="copyoutcomes" value="1" checked/>';
+			echo _('Copy outcomes?').'</label></span><br class=form>';
+			echo '<span class=form>'._('Forum posts').'</span>';
+			echo '<span class=formright><label><input type=checkbox name="copystickyposts" id="copystickyposts" value="1" checked/>';
+			echo _('Copy "display at top" instructor forum posts?').'</label></span><br class=form>';
+			echo '<span class=form>'._('Calendar items').'</span>';
+			echo '<span class=formright><label><input type=checkbox name="copyallcalitems" id="copyallcalitems" value="1"/>';
+			echo _('Copy all calendar items?').'</label></span><br class=form>';
 			echo '</div>';
 
 		} else if ($_GET['action']=='addcourse' && $ctc == 0) {
@@ -870,9 +898,9 @@ switch($_GET['action']) {
 		echo '<div class="blockitems hidden">';
 
 		echo '<span class=form>',_('Available'),'?</span><span class=formright>';
-		echo '<input type="checkbox" name="stuavail" value="1" ';
+		echo '<label><input type="checkbox" name="stuavail" value="1" ';
 		if (($avail&1)==0) { echo 'checked="checked"';}
-		echo '/>',_('Available to students'),'</span><br class="form" />';
+		echo '/>',_('Available to students'),'</label></span><br class="form" />';
 
 		//call hook, if defined
 		if (function_exists('getCourseSettingsForm')) {
@@ -880,7 +908,8 @@ switch($_GET['action']) {
 		}
 
 		if ($_GET['action']=="modify") {
-			echo '<span class=form>Lock for assessment:</span><span class=formright><select name="lockaid">';
+			echo '<label for=lockaid class=form>Lock for assessment:</label>';
+			echo '<span class=formright><select name="lockaid" id="lockaid">';
 			echo '<option value="0" ';
 			if ($lockaid==0) { echo 'selected="1"';}
 			echo '>No lock</option>';
@@ -905,18 +934,18 @@ switch($_GET['action']) {
 		} else {
 			$edate = tzdate("m/d/Y",$enddate);
 		}
-		echo 'Start: <input type=text size=10 name="sdate" value="'.$sdate.'">
+		echo '<label>'._('Start').': <input type=text size=10 name="sdate" value="'.$sdate.'"></label>
 			<a href="#" onClick="displayDatePicker(\'sdate\', this); return false">
 			<img src="'.$staticroot.'/img/cal.gif" alt="Calendar"/></a> ';
-		echo 'End: <input type=text size=10 name="edate" value="'.$edate.'">
+		echo '<label>'._('End').': <input type=text size=10 name="edate" value="'.$edate.'"></label>
 			<a href="#" onClick="displayDatePicker(\'edate\', this); return false">
 			<img src="'.$staticroot.'/img/cal.gif" alt="Calendar"/></a> ';
 		echo '</span><br class=form />';
 
 		if (!isset($CFG['CPS']['deftime']) || $CFG['CPS']['deftime'][1]==1) {
 			echo "<span class=form>",_("Default start/end time for new items"),":</span><span class=formright>";
-			echo 'Start: <input name="defstime" type="text" size="8" value="'.Sanitize::encodeStringForDisplay($defstimedisp).'"/>, ';
-			echo 'end: <input name="deftime" type="text" size="8" value="'.Sanitize::encodeStringForDisplay($deftimedisp).'"/>';
+			echo '<label>'._('Start').': <input name="defstime" type="text" size="8" value="'.Sanitize::encodeStringForDisplay($defstimedisp).'"/></label>, ';
+			echo '<label>'._('End').': <input name="deftime" type="text" size="8" value="'.Sanitize::encodeStringForDisplay($deftimedisp).'"/></label>';
 			echo '</span><br class="form"/>';
 		}
 
@@ -930,25 +959,28 @@ switch($_GET['action']) {
             ($myrights == 100 && ($istemplate&4)==4)
         ) {
 			echo "<span class=form>",_("Allow students to self-<u>un</u>enroll"),"</span><span class=formright>";
-			echo '<input type=radio name="allowunenroll" value="0" ';
+			echo '<label><input type=radio name="allowunenroll" value="0" ';
 			if (($allowunenroll&1)==0) { echo "checked=1";}
-			echo '/> ',_('No'),' <input type=radio name="allowunenroll" value="1" ';
+			echo '/> ',_('No'),'</label> <label><input type=radio name="allowunenroll" value="1" ';
 			if (($allowunenroll&1)==1) { echo "checked=1";}
-			echo '/> ',_('Yes'),' </span><br class=form />';
+			echo '/> ',_('Yes'),'<label> </span><br class=form />';
 		}
 
 		if (!isset($CFG['CPS']['copyrights']) || $CFG['CPS']['copyrights'][1]==1) {
-			echo "<span class=form>",_("Allow other instructors to copy course items"),":</span><span class=formright>";
-			echo '<input type=radio name="copyrights" value="-1" ';
+			echo '<span class=form id="lcopyrights">',_("Allow other instructors to copy course items"),":</span>";
+			echo '<span class=formright role=radiogroup aria-labelledby="lcopyrights">';
+			echo '<label><input type=radio name="copyrights" value="-1" ';
 			if ($copyrights==-1) { echo "checked=1";}
-            echo '/> ',_('No'),'<br/>';
-            echo '<input type=radio name="copyrights" value="0" ';
+            echo '/> ',_('No'),'</label><br/>';
+            echo '<label><input type=radio name="copyrights" value="0" ';
 			if ($copyrights==0) { echo "checked=1";}
-			echo '/> ',_('Yes, if I have given them the enrollment key'),'<br/> <input type=radio name="copyrights" value="1" ';
+			echo '/> ',_('Yes, if I have given them the enrollment key'),'</label><br/> ';
+			echo '<label><input type=radio name="copyrights" value="1" ';
 			if ($copyrights==1) { echo "checked=1";}
-			echo '/> ',_('Yes: No key required for group members, require key from others'),' <br/><input type=radio name="copyrights" value="2" ';
+			echo '/> ',_('Yes: No key required for group members, require key from others'),'</label> <br/>';
+			echo '<label><input type=radio name="copyrights" value="2" ';
 			if ($copyrights==2) { echo "checked=1";}
-			echo '/> ',_('Yes: No key required from anyone'),'</span><br class=form />';
+			echo '/> ',_('Yes: No key required from anyone'),'</label></span><br class=form />';
 		}
 
 		echo '</div>' ; //end Availability and Access grouping
@@ -991,8 +1023,8 @@ switch($_GET['action']) {
 					echo ' LTIkey_'.Sanitize::encodeStringForDisplay($_GET['id']).'_0 ('.sprintf(_('to allow students to login directly to %s'),$installname).')';
 					echo '</span><br class="form" />';
 
-					echo '<span class="form">LTI Secret (max 10 chars)</span>';
-					echo '<span class="formright"><input name="ltisecret" type="text" value="'.Sanitize::encodeStringForDisplay($ltisecret).'" maxlength="10"/> ';
+					echo '<label for=ltisecret class="form">LTI Secret (max 10 chars)</label>';
+					echo '<span class="formright"><input name="ltisecret" id="ltisecret" type="text" value="'.Sanitize::encodeStringForDisplay($ltisecret).'" maxlength="10"/> ';
 					echo '</span><br class="form" />';
 
 					echo '</div>';
@@ -1035,24 +1067,24 @@ switch($_GET['action']) {
 		echo '<div class="blockitems hidden">';
 
 		if (!isset($CFG['CPS']['deflatepass']) || $CFG['CPS']['deflatepass'][1]==1) {
-			echo '<span class="form">',_('Auto-assign LatePasses on course enroll'),':</span><span class="formright">';
-			echo '<input type="text" size="3" name="deflatepass" value="'.Sanitize::encodeStringForDisplay($deflatepass).'"/> ',_('LatePasses'),'</span><br class="form" />';
+			echo '<label><span class="form">',_('Auto-assign LatePasses on course enroll'),':</span><span class="formright">';
+			echo '<input type="text" size="3" name="deflatepass" value="'.Sanitize::encodeStringForDisplay($deflatepass).'"/> ',_('LatePasses'),'</span></label><br class="form" />';
 		}
 		if (!isset($CFG['CPS']['latepasshrs']) || $CFG['CPS']['latepasshrs'][1]==1) {
-			echo '<span class="form">',_('Late Passes extend the due date by'),':</span><span class="formright">';
-			echo '<input type="text" size="3" name="latepasshrs" value="'.Sanitize::encodeStringForDisplay($latepasshrs).'"/> ',_('hours'),'</span><br class="form" />';
+			echo '<label><span class="form">',_('Late Passes extend the due date by'),':</span><span class="formright">';
+			echo '<input type="text" size="3" name="latepasshrs" value="'.Sanitize::encodeStringForDisplay($latepasshrs).'"/> ',_('hours'),'</span></label><br class="form" />';
 		}
 
 		if (!isset($CFG['CPS']['msgonenroll']) || $CFG['CPS']['msgonenroll'][1]==1) {
-			echo '<span class="form">'._('Send teachers a message when students enroll').':</span><span class="formright">';
-			echo '<input type="checkbox" name="msgonenroll" value="10" ';
+			echo '<span class="form">'._('Enroll message').':</span><span class="formright">';
+			echo '<label><input type="checkbox" name="msgonenroll" value="10" ';
 			if ($msgOnEnroll>0) { echo 'checked="checked"';}
-			echo '/> '._('Send').'</span><br class="form" />';
+			echo '/> '._('Send teachers a message when students enroll').'</label></span><br class="form" />';
 		}
 
 		if (!isset($CFG['CPS']['theme']) || $CFG['CPS']['theme'][1]==1) {
-			echo "<span class=form>",_("Theme"),":</span><span class=formright>";
-			echo " <select name=\"theme\">";
+			echo "<label for=theme class=form>",_("Theme"),":</label><span class=formright>";
+			echo " <select name=\"theme\" id=\"theme\">";
 			if (isset($CFG['CPS']['themelist'])) {
 				$themes = explode(',',$CFG['CPS']['themelist']);
 				if (isset($CFG['CPS']['themenames'])) {
@@ -1086,70 +1118,81 @@ switch($_GET['action']) {
 
 
 		if (!isset($CFG['CPS']['msgset']) || $CFG['CPS']['msgset'][1]==1) {
-			echo "<span class=form>",_("Message System"),":</span><span class=formright>";
+			echo "<span id=\"lmsgset\"class=form>",_("Message System"),":</span>";
+			echo '<span class=formright role=radiogroup aria-labelledby="lmsgset">';
 			//0 on, 1 to instr, 2 to stu, 3 nosend, 4 off
-			echo '<input type=radio name="msgset" value="0" ';
+			echo '<label><input type=radio name="msgset" value="0" ';
 			if ($msgset==0) { echo "checked=1";}
-			echo '/> ',_('On for send and receive'),'<br/> <input type=radio name="msgset" value="1" ';
+			echo '/> ',_('On for send and receive'),'</label><br/>'; 
+			echo '<label><input type=radio name="msgset" value="1" ';
 			if ($msgset==1) { echo "checked=1";}
-			echo '/> ',_('On for receive, students can only send to instructor'),'<br/> <input type=radio name="msgset" value="2" ';
+			echo '/> ',_('On for receive, students can only send to instructor'),'</label><br/>';
+			echo '<label><input type=radio name="msgset" value="2" ';
 			if ($msgset==2) { echo "checked=1";}
-			echo '/> ',_('On for receive, students can only send to students'),'<br/> <input type=radio name="msgset" value="3" ';
+			echo '/> ',_('On for receive, students can only send to students'),'</label><br/>';
+			echo '<label><input type=radio name="msgset" value="3" ';
 			if ($msgset==3) { echo "checked=1";}
-			echo '/> ',_('On for receive, students cannot send'),'<br/> <input type=radio name="msgset" value="4" ';
+			echo '/> ',_('On for receive, students cannot send'),'</label><br/>';
+			echo '<label><input type=radio name="msgset" value="4" ';
 			if ($msgset==4) { echo "checked=1";}
-			echo '/> ',_('Off'),' <br/> <input type=checkbox name="msgmonitor" value="1" ';
+			echo '/> ',_('Off'),'</label> <br/>';
+			echo '<label><input type=checkbox name="msgmonitor" value="1" ';
 			if ($msgmonitor==1) { echo "checked=1";}
 			echo '/> ',_('Enable monitoring of student-to-student messages ');
-			echo '</span><br class=form />';
+			echo '</label></span><br class=form />';
 		}
 		if (!isset($CFG['CPS']['toolset']) || $CFG['CPS']['toolset'][1]==1) {
-			echo "<span class=form>",_("Navigation Links for Students"),":</span><span class=formright>";
-			echo '<input type="checkbox" name="toolset-cal" value="1" ';
+			echo '<span id=ltoolset class=form>',_("Navigation Links for Students"),":</span>";
+			echo '<span class=formright role=group aria-labelledby="ltoolset">';
+			echo '<label><input type="checkbox" name="toolset-cal" value="1" ';
 			if (($toolset&1)==0) { echo 'checked="checked"';}
-			echo '> ',_('Calendar'),'<br/>';
+			echo '> ',_('Calendar'),'</label><br/>';
 
-			echo '<input type="checkbox" name="toolset-forum" value="2" ';
+			echo '<label><input type="checkbox" name="toolset-forum" value="2" ';
 			if (($toolset&2)==0) { echo 'checked="checked"';}
-			echo '> ',_('Forum List');
+			echo '> ',_('Forum List'),'</label><br/>';
+
+            echo '<label><input type="checkbox" name="toolset-gb" value="4" ';
+			if (($toolset&4)==0) { echo 'checked="checked"';}
+			echo '> ',_('Gradebook'),'</label>';
 
 			echo '</span><br class=form />';
 		}
 
 		if (!isset($CFG['CPS']['showlatepass']) || $CFG['CPS']['showlatepass'][1]==1) {
-			echo '<span class="form">',_('Show remaining LatePasses on student gradebook page'),':</span><span class="formright">';
-			echo '<input type=checkbox name="showlatepass" value="1" ';
+			echo '<label for=showlatepass class="form">',_('Show remaining LatePasses on student gradebook page'),':</label><span class="formright">';
+			echo '<input type=checkbox name="showlatepass" id="showlatepass" value="1" ';
 			if ($showlatepass==1) {echo 'checked="checked"';};
 			echo ' /></span><br class="form" />';
 		}
 
 
 		if (($myspecialrights&1)==1 || ($myspecialrights&2)==2 || $myrights==100) {
-			echo '<span class="form">',_('Mark course as template'),'?</span>';
-			echo '<span class="formright">';
+			echo '<span class="form" id="ltemplate">',_('Mark course as template'),'?</span>';
+			echo '<span class="formright" role=group aria-labelledby="ltemplate">';
 			if (($myspecialrights&1)==1 || $myrights==100) {
-				echo '<input type=checkbox name="isgrptemplate" value="2" ';
+				echo '<label><input type=checkbox name="isgrptemplate" value="2" ';
 				if (($istemplate&2)==2) {echo 'checked="checked"';};
-				echo ' /> ',_('Mark as group template course');
+				echo ' /> ',_('Mark as group template course'),'</label>';
 			}
 			if ((($myspecialrights&2)==2 || $myrights==100) && !empty($hassupergroup)) {
-				echo '<br/><input type=checkbox name="issupergrptemplate" value="32" ';
+				echo '<br/><label><input type=checkbox name="issupergrptemplate" value="32" ';
 				if (($istemplate&32)==32) {echo 'checked="checked"';};
-				echo ' /> ',_('Mark as super-group template course');
+				echo ' /> ',_('Mark as super-group template course'),'</label>';
 			}
 			if (($myspecialrights&2)==2 || $myrights==100) {
-				echo '<br/><input type=checkbox name="istemplate" value="1" ';
+				echo '<br/><label><input type=checkbox name="istemplate" value="1" ';
 				if (($istemplate&1)==1) {echo 'checked="checked"';};
-				echo ' /> ',_('Mark as global template course');
+				echo ' /> ',_('Mark as global template course'),'</label>';
 			}
 			if ($myrights==100) {
-				echo '<br/><input type=checkbox name="isselfenroll" value="4" ';
+				echo '<br/><label><input type=checkbox name="isselfenroll" value="4" ';
 				if (($istemplate&4)==4) {echo 'checked="checked"';};
 				echo ' /> ',_('Include in public self-enroll course list');
 				if (isset($CFG['GEN']['guesttempaccts'])) {
 					echo '<br/><input type=checkbox name="isguest" value="8" ';
 					if (($istemplate&8)==8) {echo 'checked="checked"';};
-					echo ' /> ',_('Mark as guest-access course');
+					echo ' /> ',_('Mark as guest-access course'),'</label>';
 				}
 			}
 			echo '</span><br class="form" />';
@@ -1194,16 +1237,21 @@ switch($_GET['action']) {
 			}
 			if (empty($browser['owner'])) {
 				if (!isset($udat)) {
-					$stm = $DBH->prepare("SELECT iu.FirstName, iu.LastName, ig.name FROM imas_users AS iu JOIN imas_groups AS ig ON ig.id=iu.groupid WHERE iu.id=:id");
+					$stm = $DBH->prepare("SELECT iu.FirstName, iu.LastName, iu.groupid, ig.name FROM imas_users AS iu LEFT JOIN imas_groups AS ig ON ig.id=iu.groupid WHERE iu.id=:id");
 					$stm->execute(array(':id'=>$userid));
 					$udat = $stm->fetch(PDO::FETCH_ASSOC);
+					if ($udat['groupid']==0) {
+						$udat['name'] = _('Default Group');
+					}
 				}
 				$browser['owner'] = $udat['FirstName'].' '.$udat['LastName'].' ('.$udat['name'].')';
 			}
 
+			$cnt = 0;
 			foreach ($browserprops as $propname=>$propvals) {
+				$cnt++;
 				if (!empty($propvals['fixed'])) { continue; }
-				echo '<span class=form>'.$propvals['name'];
+				echo '<span class=form id="plbl'.$cnt.'">'.$propvals['name'];
 				if (!empty($propvals['subname'])) {
 					echo '<br/><span class=small>'.$propvals['subname'].'</span>';
 				}
@@ -1211,6 +1259,7 @@ switch($_GET['action']) {
 				echo '<span class=formright>';
 				if (isset($propvals['options'])) {  //is select
 					if (!empty($propvals['multi'])) { //checkboxes
+						echo '<span role=group aria-labelledby="plbl'.$cnt.'">';
 						if (isset($browser[$propname]) && !is_array($browser[$propname])) {
 							$browser[$propname] = array($browser[$propname]);
 						}
@@ -1218,12 +1267,14 @@ switch($_GET['action']) {
 							echo '<label><input type=checkbox name="browser'.$propname.'[]" value="'. Sanitize::encodeStringForDisplay($k).'" ';
 							echo ((isset($browser[$propname]) && in_array($k,$browser[$propname]))?'checked':'').' /> '.Sanitize::encodeStringForDisplay($v).'</label><br/>';
 						}
+						echo '</span>';
 					} else { //single select
 						$ingroup = false;
 						echo '<select name="browser'.$propname.'" id="browser'.$propname.'"';
 						if (isset($propvals['options']['other'])) {
 							echo ' onchange="chgother(this)"';
 						}
+						echo ' aria-labelledby="plbl'.$cnt.'"';
 						echo '>';
 
 						foreach ($propvals['options'] as $k=>$v) {
@@ -1247,13 +1298,13 @@ switch($_GET['action']) {
 
 						if (isset($propvals['options']['other'])) {
 							echo '<span id="browser'.$propname.'otherwrap" '.(!isset($browser[$propname]) || $browser[$propname]!='other'?'style="display:none"':'').'>';
-							echo '<br/>Other: <input type=text size=40 name="browser'.$propname.'other" value="'.(isset($browser[$propname]) && $browser[$propname]=='other'?Sanitize::encodeStringForDisplay($browser[$propname.'other']):'').'"></span>';
+							echo '<br/><label>Other: <input type=text size=40 name="browser'.$propname.'other" value="'.(isset($browser[$propname]) && $browser[$propname]=='other'?Sanitize::encodeStringForDisplay($browser[$propname.'other']):'').'"></label></span>';
 						}
 					}
 				} else if ($propvals['type']=='string') {
-					echo '<input type=text name="browser'.$propname.'" size=50 value="'.Sanitize::encodeStringForDisplay($browser[$propname]).'" />';
+					echo '<input type=text name="browser'.$propname.'" size=50 value="'.Sanitize::encodeStringForDisplay($browser[$propname]).'" aria-labelledby="plbl'.$cnt.'"/>';
 				} else if ($propvals['type']=='textarea') {
-					echo '<textarea rows=6 cols=70 name=browser'.$propname.'>'.Sanitize::encodeStringForDisplay($browser[$propname] ?? '', true).'</textarea>';
+					echo '<textarea rows=6 cols=70 name=browser'.$propname.' aria-labelledby="plbl'.$cnt.'">'.Sanitize::encodeStringForDisplay($browser[$propname] ?? '', true).'</textarea>';
 				}
 				echo '</span><br class="form">';
 			}
@@ -1690,7 +1741,7 @@ switch($_GET['action']) {
 		echo '<p>Enter the 2-factor authentication code from your device. This code can be found in the Google Authenticator compatible app, like Authy, that you set up when you enabled 2-factor authentication.</p>';
 		echo '<form method="POST" action="actions.php?from='.Sanitize::encodeUrlParam($from).'">';
 		echo '<input type=hidden name=action value="entermfa" />';
-		echo '<p>Code: <input size=8 name=mfatoken /></p>';
+		echo '<p><label>Code: <input size=8 name=mfatoken /></label></p>';
 		echo '<p><label><input type=checkbox name=mfatrust /> Do not ask again on this device</label></p>';
 		echo '<p><input type=submit value="Verify Code" /></p>';
 		echo '</form>';
@@ -1699,8 +1750,8 @@ switch($_GET['action']) {
 		if ($myrights < 20) { echo _("You don't have the authority for this action"); break;}
 		echo '<div id="headerforms" class="pagetitle"><h1>',_('Find Student'),'</h1></div>';
 		echo '<form method="post" action="forms.php?from='.Sanitize::encodeUrlParam($from).'&action=findstudent">';
-		echo '<p>',_('Enter all or part of the name, email, or username:'),' ';
-		echo '<input type=text class="pii-mixed" size=20 name=userinfo value="'.Sanitize::encodeStringForDisplay($_POST['userinfo'] ?? '').'"/></p>';
+		echo '<p><label>',_('Enter all or part of the name, email, or username:'),' ';
+		echo '<input type=text class="pii-mixed" size=20 name=userinfo value="'.Sanitize::encodeStringForDisplay($_POST['userinfo'] ?? '').'"/></label></p>';
 		echo '<input type="submit">';
 		echo '</form>';
 		if (!empty($_POST['userinfo'])) {
@@ -1709,19 +1760,19 @@ switch($_GET['action']) {
 			if ($from!='home' && $myrights>=75) {
 				$query .= ",iut.LastName AS teacherfirst,iut.FirstName AS teacherlast";
 			}
-			$query .= " FROM imas_users AS iu JOIN ";
-			$query .= "imas_students AS i_s ON iu.id=i_s.userid JOIN imas_courses AS ic ON ic.id=i_s.courseid ";
+			$query .= " FROM imas_users AS iu LEFT JOIN ";
+			$query .= "imas_students AS i_s ON iu.id=i_s.userid LEFT JOIN imas_courses AS ic ON ic.id=i_s.courseid ";
 			$myrights = 75;
 			if ($from=='home' || $myrights<75) {
 				$query .= "JOIN imas_teachers AS i_t ON ic.id=i_t.courseid ";
 				$query .= "WHERE i_t.userid=? AND ";
 				$qarr = array($userid);
 			} else {
-				$query .= "JOIN imas_teachers AS i_t ON ic.id=i_t.courseid ";
-				$query .= "JOIN imas_users AS iut ON i_t.userid=iut.id ";
+				$query .= "LEFT JOIN imas_teachers AS i_t ON ic.id=i_t.courseid ";
+				$query .= "LEFT JOIN imas_users AS iut ON i_t.userid=iut.id ";
 				if ($myrights<100) {
-					$query .= "WHERE iut.groupid=? AND ";
-					$qarr = array($groupid);
+					$query .= "WHERE (iut.groupid=? OR iu.groupid=?) AND ";
+					$qarr = array($groupid,$groupid);
 				} else {
 					$query .= "WHERE ";
 					$qarr = array();
@@ -1746,6 +1797,7 @@ switch($_GET['action']) {
 				echo '<table class="gb"><thead><th>Student</th><th>Username</th><th>Course</th>';
 				if ($from!='home' && $myrights>=75) {
 					echo '<th>Instructor</th>';
+                    echo '<th>Edit User</th>';
 				}
 				echo '</thead><tbody>';
 				$i = 0;
@@ -1758,6 +1810,8 @@ switch($_GET['action']) {
 					echo '<td>'.Sanitize::encodeStringForDisplay($row['name']).'</td>';
 					if ($from!='home' && $myrights>=75) {
 						echo '<td>'.Sanitize::encodeStringForDisplay($row['teacherlast'].', '.$row['teacherfirst']).'</td>';
+                        echo '<td><a href="forms.php?from='.Sanitize::encodeUrlParam($from).'&action=chgrights&id='.Sanitize::onlyInt($row['id']).'">';
+                        echo _('Edit').'</a></td>';
 					}
 					echo '</td></tr>';
 				}

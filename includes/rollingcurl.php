@@ -72,11 +72,11 @@ Class RollingCurlX {
     public function addRequest(
                         $url,
                         $post_data = NULL,
-                        callable $callback = NULL, //individual callback
+                        ?callable $callback = NULL, //individual callback
                         $user_data = NULL,
-                        callable $postdatacallback = NULL, //callback to generate post_data
-                        array $options = NULL, //individual cURL options
-                        array $headers = NULL //individual cURL request headers
+                        ?callable $postdatacallback = NULL, //callback to generate post_data
+                        ?array $options = NULL, //individual cURL options
+                        ?array $headers = NULL //individual cURL request headers
     ) { //Add to request queue
         $this->requests[] = [
             'url' => $url,
@@ -206,6 +206,9 @@ Class RollingCurlX {
         if($headers) {
             $options[CURLOPT_HTTPHEADER] = $headers;
         }
+
+        // set user agent
+        $options[CURLOPT_USERAGENT] = Sanitize::simpleASCII($GLOBALS['installname'] ?? 'IMathAS');
 
         // enable POST method and set POST parameters
         if($post_data !== null) {

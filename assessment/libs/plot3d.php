@@ -109,7 +109,7 @@ function plot3d($func,$umin=-2,$umax=2,$vmin=-2,$vmax=2,$disc=20,$width=300,$hei
 			}
 	  	  $GLOBALS['3dplotcnt'] = $r;
 	  	  $html .= "<canvas id=\"plot3d$r\" width=\"$width\" height=\"$height\" ";
-	  	  $html .= 'role="img" tabindex="0" aria-label="'.Sanitize::encodeStringForDisplay($alt).'" ';
+	  	  $html .= 'role="img" tabindex="0" aria-hidden="true" ';
 	  	  $html .= ">";
 	  	  if (isset($bounds)) {
 			  $bndtxt = 'bounds:"' . implode(',',$bounds) . '",';
@@ -119,6 +119,7 @@ function plot3d($func,$umin=-2,$umax=2,$vmin=-2,$vmax=2,$disc=20,$width=300,$hei
 	  	  $url = $GLOBALS['basesiteurl'] . substr($_SERVER['SCRIPT_NAME'],strlen($imasroot)) . (isset($_SERVER['QUERY_STRING'])?'?'.Sanitize::encodeStringForDisplay($_SERVER['QUERY_STRING']).'&useflash=true':'?useflash=true');
 		  $html .= "<span aria-hidden=true>Not seeing the 3D graph?  <a href=\"$url\">Try Flash Alternate</a></span>";
 	  	  $html .= "</canvas>";
+		  $html .= '<span class="sr-only">' . Sanitize::encodeStringForDisplay($alt) . '<wbr/></span>';
 				$init = "var plot3d$r = new Viewer3D({verts: '$verts', faces: '$faces', $bndtxt width: '$width', height:'$height', showaxes:$axes}, 'plot3d$r');";
 				if (isset($GLOBALS['assessUIver']) && $GLOBALS['assessUIver'] > 1) {
 					$html .= "<script type=\"text/javascript\"> $init </script>";
@@ -264,13 +265,14 @@ function spacecurve($func,$tmin,$tmax) {
 		 }
 	  	 $GLOBALS['3dplotcnt'] = $r;
 	  	 $html .= "<canvas id=\"plot3d$r\" width=\"$width\" height=\"$height\" ";
-	  	 $html .= 'role="img" tabindex="0" aria-label="'.Sanitize::encodeStringForDisplay($alt).'" ';
+	  	 $html .= 'role="img" tabindex="0" aria-hidden="true" ';
 	  	 $html .= ">";
-
 	  	 $url = $GLOBALS['basesiteurl'] . substr($_SERVER['SCRIPT_NAME'],strlen($imasroot)) . (isset($_SERVER['QUERY_STRING'])?'?'.Sanitize::encodeStringForDisplay($_SERVER['QUERY_STRING']).'&useflash=true':'?useflash=true');
 
 		 $html .= "<span aria-hidden=true>Not seeing the 3D graph?  <a href=\"$url\">Try Alternate</a></span>";
 	  	 $html .= "</canvas>";
+		$html .= '<span class="sr-only">' . Sanitize::encodeStringForDisplay($alt) . '<wbr/></span>';
+
         if (isset($bounds)) {
             $bndtxt = 'bounds:"' . implode(',',$bounds) . '",';
         } else {
@@ -288,38 +290,28 @@ function spacecurve($func,$tmin,$tmax) {
 }
 
 function replace3dalttext($plot, $alttext) {
-	return preg_replace('/aria-label="[^"]*"/', 'aria-label="'.Sanitize::encodeStringForDisplay($alttext).'"', $plot);
+	//return preg_replace('/aria-label="[^"]*"/', 'aria-label="'.Sanitize::encodeStringForDisplay($alttext).'"', $plot);
+	return preg_replace('/sr-only">.*?<wbr\/><\//', 'sr-only">'.Sanitize::encodeStringForDisplay($alttext).'<wbr/></', $plot);
 }
 
 //CalcPlot3Dembed(functions, [width, height, xmin, xmax, ymin, ymax, zmin, zmax, xscale, yscale, zscale, zclipmin, zclipmax])
 //funcs is array of function strings
-function CalcPlot3Dembed($funcs, $width=500, $height=500, $xmin=-2, $xmax=2, $ymin=-2, $ymax=2, $zmin=-2, $zmax=2, $xscl=1, $yscl=1, $zscl=1, $zclipmin=null,$zclipmax=null,$showbox=true) {
-	if ($zclipmin===null) {
-		$zclipmin = $zmin - .5*($zmax-$zmin);
-	}
-	if ($zclipmax===null) {
-		$zclipmax = $zmax + .5*($zmax-$zmin);
-	}
+function CalcPlot3Dembed($funcs, $width=500, $height=500, $xmin=-2, $xmax=2, $ymin=-2, $ymax=2, $zmin=-2, $zmax=2, $xscl=1, $yscl=1, $zscl=1, $zclipmin=null,$zclipmax=null,$showbox=true,$scaleaxes=false) {
 	$querystring = CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax, $xscl, $yscl, $zscl, $zclipmin, $zclipmax,$showbox);
 	$out = '<div class="video-wrapper-wrapper" style="max-width: '.Sanitize::onlyInt($width).'px">';
 	$aspectRatio = round(100*$height/$width,2);
 	$out .= '<div class="fluid-width-video-wrapper" style="padding-top:'.$aspectRatio.'%">';
-	$out .= '<iframe frameborder=0 scrolling="no" ';
+	$out .= '<iframe frameborder=0 scrolling="no" aria-hidden="true" ';
 	//$querystring is sanitized as it's constructed
 	$out .= 'src="https://c3d.libretexts.org/CalcPlot3D/dynamicFigure/index.html?'.$querystring.'"></iframe>';
+	$out .= '<div class="sr-only">3D Graph<wbr/></div>';
 	$out .= '</div></div>';
 	return $out;
 }
 
 //CalcPlot3Dlink(functions, link text, [xmin, xmax, ymin, ymax, zmin, zmax, xscale, yscale, zscale, zclipmin, zclipmax])
 //funcs is array of function strings
-function CalcPlot3Dlink($funcs, $linktext="View Graph", $xmin=-2, $xmax=2, $ymin=-2, $ymax=2, $zmin=-2, $zmax=2, $xscl=1, $yscl=1, $zscl=1, $zclipmin=null,$zclipmax=null,$showbox=true) {
-	if ($zclipmin===null) {
-		$zclipmin = $zmin - .5*($zmax-$zmin);
-	}
-	if ($zclipmax===null) {
-		$zclipmax = $zmax + .5*($zmax-$zmin);
-	}
+function CalcPlot3Dlink($funcs, $linktext="View Graph", $xmin=-2, $xmax=2, $ymin=-2, $ymax=2, $zmin=-2, $zmax=2, $xscl=1, $yscl=1, $zscl=1, $zclipmin=null,$zclipmax=null,$showbox=true,$scaleaxes=false) {
 	$querystring = CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax, $xscl, $yscl, $zscl, $zclipmin, $zclipmax,$showbox);
 	//$querystring is sanitized as it's constructed
 	$out = '<a href="https://c3d.libretexts.org/CalcPlot3D/index.html?'.$querystring.'" target="_blank">';
@@ -327,7 +319,13 @@ function CalcPlot3Dlink($funcs, $linktext="View Graph", $xmin=-2, $xmax=2, $ymin
 	return $out;
 }
 
-function CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax, $xscl, $yscl, $zscl, $zclipmin, $zclipmax, $showbox) {
+function CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax, $xscl, $yscl, $zscl, $zclipmin, $zclipmax, $showbox, $scaleaxes=false) {
+    if ($zclipmin===null) {
+		$zclipmin = $zmin - .5*($zmax-$zmin);
+	}
+	if ($zclipmax===null) {
+		$zclipmax = $zmax + .5*($zmax-$zmin);
+	}
 	$out = array();
 	if (!is_array($funcs)) {
 		$funcs = array($funcs);
@@ -337,8 +335,17 @@ function CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax,
 	}
 	$win = "type=window;xmin=$xmin;xmax=$xmax;ymin=$ymin;ymax=$ymax;zmin=$zmin;zmax=$zmax;";
 	$win .= "xscale=$xscl;yscale=$yscl;zscale=$zscl;zcmin=$zclipmin;zcmax=$zclipmax";
-    $win .= ";showbox=" . ($showbox ? 'true' : 'false');
-    $maxwidth = max($xmax-$xmin, $ymax-$ymin, $zmax-$zmin);
+    $win .= ";showbox=" . ($showbox ? 'true' : 'false').';';
+    $xd = $xmax-$xmin;
+    $yd = $ymax-$ymin;
+    $zd = $zmax-$zmin;
+    $maxwidth = max($xd, $yd, $zd);
+    if ($scaleaxes) {
+        $xf = $maxwidth/$xd;
+        $yf = $maxwidth/$yd;
+        $zf = $maxwidth/$zd;
+        $win .= "xscalefactor=$xf;yscalefactor=$yf;zscalefactor=$zf;";
+    }
     $zoom = 0.0000055/atan(0.00000198669*$maxwidth);
     $win .= ';zoom='.$zoom;
 	$out[] = $win;

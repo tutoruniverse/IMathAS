@@ -25,11 +25,13 @@ priority: (optional) priority of the email from 1 (low) to 10 (high)
 		  Password resets / new acct notices: priority 10
 		  Emails sent as user: 5
 		  Quickdrill results: 8
-		  
+includeUnsub: (optional) include unsubscribe headers
+usequeue: (optional) set to 2 to push to emailqueue instead of sending now. Note all queued emails 
+			will be sent with includeUnsub enabled
 */
 
-function send_email($email, $from, $subject, $message, $replyto=array(), $bccList=array(), $priority=10) {
-	global $CFG;
+function send_email($email, $from, $subject, $message, $replyto=array(), $bccList=array(), $priority=10, $includeUnsub = false, $usequeue=1) {
+	global $CFG,$DBH;
 	if (!is_array($email)) {
 		$email = array($email);
 	}
@@ -66,15 +68,23 @@ function send_email($email, $from, $subject, $message, $replyto=array(), $bccLis
 	if (!isset($CFG['email']['handlerpriority'])) {
 		$CFG['email']['handlerpriority'] = 0;
 	}
+	if (!empty($CFG['email']['usequeue']) && $usequeue == 2) {
+		$stm = $DBH->prepare("INSERT IGNORE INTO imas_emailqueue (email,emailfrom,subject,message,priority,sendafter) VALUES (?,?,?,?,?,?)");
+		foreach ($email as $emailto) {
+			$stm->execute([$emailto, $from, $subject, $message, $priority, time()]);
+		}
+		return;
+	}
 	if (isset($CFG['email']['handler']) && $priority>$CFG['email']['handlerpriority']) {
 		list($handlerscript, $sendfunc) = $CFG['email']['handler'];
 		require_once __DIR__ . '/' . $handlerscript;
-		$sendfunc($email, $from, $subject, $message, $replyto, $bccList);
+		$sendfunc($email, $from, $subject, $message, $replyto, $bccList, $includeUnsub);
 	} else if (!empty($CFG['GEN']['useSESmail']) && $priority>$CFG['email']['handlerpriority']) {
 		require_once __DIR__ . '/mailses.php';
-		send_SESemail($email, $from, $subject, $message, $replyto, $bccList);
+		send_SESemail($email, $from, $subject, $message, $replyto, $bccList, $includeUnsub);
 	} else {
 		$tostr = implode(',', $email);
+
 		$headers  = 'MIME-Version: 1.0' . "\r\n";
 		$headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
 		$headers .= "From: $from\r\n";
@@ -84,6 +94,14 @@ function send_email($email, $from, $subject, $message, $replyto=array(), $bccLis
 		if (count($bccList)>0) {
 			$headers .= "Bcc: ".implode(',', $bccList)."\r\n";
 		}
+        if ($includeUnsub && count($email) == 1) {
+            $headers .= 'List-Unsubscribe-Post: List-Unsubscribe=One-Click' . "\r\n";
+            preg_match('/[^<>\s]+@[^<>\s]+/',$tostr,$matches);
+            $baseemail = $matches[0];
+			$hash = hash_hmac('sha256', $baseemail, $GLOBALS['CFG']['email']['secsalt'] ?? '123');
+            $headers .= 'List-Unsubscribe: <' . $GLOBALS['basesiteurl'] . '/actions.php?action=unsubscribe&email='
+                . Sanitize::encodeUrlParam($baseemail) . '&ver=' . $hash . ">\r\n";
+        }
 		mail($tostr, $subject, $message, $headers);
 	}	
 }
@@ -102,5 +120,5 @@ function send_msg_notification($emailto, $from, $subject, $courseid, $coursename
 	$message .= '<p>'.sprintf(_('If you do not wish to receive email notification of new messages, please <%s>click here to change your user preferences'), 'a href="' . $GLOBALS['basesiteurl'] . '/forms.php?action=chguserinfo"');
 	$message .= "</a></p>\r\n";
 	
-	send_email($emailto, $sendfrom, _('New message notification'), $message, array(), array(), 1);			
+	send_email($emailto, $sendfrom, _('New message notification'), $message, array(), array(), 1, true);			
 }

@@ -33,9 +33,13 @@ if (!empty($_GET['from']) && $_GET['from'] == 'addq2') {
     $addq = 'addquestions';
     $from = 'addq';
 }
-$stm = $DBH->prepare("SELECT itemorder,shuffle,defpoints,name,intro FROM imas_assessments WHERE id=:id");
-$stm->execute(array(':id'=>$aid));
+$stm = $DBH->prepare("SELECT itemorder,shuffle,defpoints,name,intro FROM imas_assessments WHERE id=:id AND courseid=:cid");
+$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
 $line = $stm->fetch(PDO::FETCH_ASSOC);
+if ($line === false) {
+	echo 'Invalid aid';
+	exit;
+}
 
 
 if ($overwriteBody==1) {
@@ -72,6 +76,7 @@ if ($overwriteBody==1) {
 	echo '<span class="form">Include question numbers and point values:</span><span class="formright"><input type="checkbox" name="showqn" checked="checked" /> </span><br class="form"/>';
 	echo '<span class="form">Hide text entry lines?</span><span class="formright"><input type=checkbox name=hidetxtboxes checked="checked" ></span><br class="form"/>';
 	echo '<span class="form">Include between-question text?</span><span class="formright"><input type=checkbox name=showtexts ></span><br class="form"/>';
+	echo '<span class="form">Include detailed solutions?</span><span class="formright"><input type=checkbox name=detsoln ></span><br class="form"/>';
 
 	echo '<p>NOTE: In some versions of Word, variables in equations may appear incorrectly at first.  To fix this, ';
 	echo 'select everything (Control-A), then under the Equation Tools menu, click Linear then Professional.</p>';
@@ -218,7 +223,8 @@ if ($overwriteBody==1) {
 	}
 	}
 
-
+    $sa = [];
+    $detsol = [];
 	if ($_REQUEST['format']=='trad') {
 		for ($j=0; $j<$copies; $j++) {
 			if ($j>0) { $out .= '<p>'.$_REQUEST['vsep'].'</p>';}
@@ -236,7 +242,7 @@ if ($overwriteBody==1) {
 			$out .= "<div class=hdrm>\n";
 
 			$out .= "<div id=headerleft>$headerleft</div><div id=headerright>$headerright</div>\n";
-			$out .= "<div id=intro>{$line['intro']}</div>\n";
+			$out .= "<div id=intro>".printfilter($line['intro'])."</div>\n";
 			$out .= "</div>\n";
 			$out .= "</div>\n";
 
@@ -254,11 +260,21 @@ if ($overwriteBody==1) {
                     }
                 }
 				if ($courseUIver > 1) {
-					list($newout,$sa[$j][$i]) = printq2($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
+					list($newout,$sa[$j][$i],$detsol[$j][$i]) = printq2($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
 				} else {
-				list($newout,$sa[$j][$i]) = printq($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
+					list($newout,$sa[$j][$i]) = printq($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
 				}
 				$out .= $newout;
+			}
+			if (!empty($_REQUEST['showtexts'])) {
+				foreach ($texts as $k=>$v) {
+					if ($v['displayBefore'] >= $numq) {
+						if (!empty($v['ispage']) && !empty($v['pagetitle'])) {
+							$out .= '<p><b>'.printfilter(filter(Sanitize::encodeStringForDisplay(html_entity_decode($v['pagetitle'])))).'</b></p>';
+						}
+						$out .= '<div>'.printfilter(filter($v['text'])).'</div>';
+					}
+				}
 			}
 
 		}
@@ -275,6 +291,9 @@ if ($overwriteBody==1) {
 					} else {
 						$out .= printfilter(filter($sa[$j][$i]));
 					}
+                    if (!empty($_REQUEST['detsoln']) && !empty($detsol[$j][$i])) {
+                        $out .= printfilter(filter($detsol[$j][$i]));
+                    }
 					$out .= "</li>\n";
 				}
 				$out .= "</ol>\n";
@@ -295,7 +314,7 @@ if ($overwriteBody==1) {
 		$out .= "<div class=hdrm>\n";
 
 		$out .= "<div id=headerleft>$headerleft</div><div id=headerright>$headerright</div>\n";
-		$out .= "<div id=intro>{$line['intro']}</div>\n";
+		$out .= "<div id=intro>".printfilter($line['intro'])."</div>\n";
 		$out .= "</div>\n";
 		$out .= "</div>\n";
 		for ($i=0; $i<$numq; $i++) {
@@ -313,11 +332,21 @@ if ($overwriteBody==1) {
 			for ($j=0; $j<$copies;$j++) {
 				if ($j>0) { $out .= '<p>'.$_REQUEST['qsep'].'</p>';}
 				if ($courseUIver > 1) {
-					list($newout,$sa[]) = printq2($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
+					list($newout,$sa[],$detsol[]) = printq2($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
 				} else {
 				list($newout,$sa[]) = printq($i,$qn[$questions[$i]],$seeds[$j][$i],$points[$questions[$i]],isset($_REQUEST['showqn']));
 				}
 				$out .= $newout;
+			}
+		}
+		if (!empty($_REQUEST['showtexts'])) {
+			foreach ($texts as $k=>$v) {
+				if ($v['displayBefore'] >= $numq) {
+					if (!empty($v['ispage']) && !empty($v['pagetitle'])) {
+						$out .= '<p><b>'.printfilter(filter(Sanitize::encodeStringForDisplay(html_entity_decode($v['pagetitle'])))).'</b></p>';
+					}
+					$out .= '<div>'.printfilter(filter($v['text'])).'</div>';
+				}
 			}
 		}
 		if ($_REQUEST['keys']>0) { //print answer keys
@@ -331,6 +360,9 @@ if ($overwriteBody==1) {
 				} else {
 					$out .= printfilter(filter($sa[$i]));
 				}
+                if (!empty($_REQUEST['detsoln']) && !empty($detsol[$i])) {
+                    $out .= printfilter(filter($detsol[$i]));
+                }
 				$out .= "</li>\n";
 			}
 			$out .= "</ol>\n";
@@ -431,7 +463,7 @@ function printq2($qn,$qsetid,$seed,$pts,$showpts) {
 	$retstrout .= printfilter($res['html']) . '</div>';
 	$retstrout .= '</div></div>';
 
-	return array($retstrout, $res['jsparams']['ans']);
+	return array($retstrout, $res['jsparams']['ans'], (($res['solnopts']&5)==5)?$res['soln']:'');
 }
 
 function printq($qn,$qsetid,$seed,$pts,$showpts) {

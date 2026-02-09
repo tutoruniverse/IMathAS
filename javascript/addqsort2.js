@@ -106,7 +106,7 @@ function handleClickTextSegmentButton(e) {
     ) {
         collapseAndStyleTextSegment(selector);
     } else {
-        expandAndStyleTextSegment(selector);
+        expandAndStyleTextSegment(selector, type === "global");
     }
 }
 
@@ -118,6 +118,7 @@ function refreshTable() {
     initeditor("selector", "div.textsegment", null, true /*inline*/, editorSetup);
     tinymce.init({
         selector: "h4.textsegment",
+        license_key: 'gpl',
         inline: true,
         menubar: false,
         statusbar: false,
@@ -126,7 +127,20 @@ function refreshTable() {
         toolbar: "charmap saveclose",
         setup: editorSetup
     });
-    activateLastEditorIfBlank();
+    $("textarea.textsegment,input.textsegment").on("focus", function () {
+        var i = this.id.match(/[0-9]+$/)[0];
+        var type = getTypeForSelector("#" + this.id);
+        //if the editor is collapsed, expand it
+
+        if ($(this).hasClass("collapsed") || $(this).hasClass("collapsedheader")) {
+            expandAndStyleTextSegment("#textseg" + type + i);
+        }
+    }).on("input", function () {
+        $(this).data('dirty', true);
+        $(".savebtn").prop("disabled", false);
+    });
+    // only do on new seg 
+    // activateLastEditorIfBlank();
     $(".dropdown-toggle").dropdown();
     $("#curqtbl input")
         .off("keydown.doblur")
@@ -158,37 +172,56 @@ function refreshTable() {
 }
 
 //Show the editor toolbar on a newly created text segment
+var lastedifblankcnt = 0;
 function activateLastEditorIfBlank() {
-    last_editor = tinymce.editors[tinymce.editors.length - 1];
-    if (last_editor !== undefined && last_editor.getContent() == "") {
-        tinyMCE.setActive(last_editor);
-        last_editor.fire("focus");
-        last_editor.selection.setCursorLocation();
+    for (let i=0; i < itemarray.length; i++) {
+        if (itemarray[i][0] == 'text' && itemarray[i][1] == '') {
+            if (useed) {
+                let to_enable = tinymce.get('textseg' + i);
+                if (!to_enable || !to_enable.initialized) {
+                    lastedifblankcnt++;
+                    if (lastedifblankcnt < 20) {
+                        window.setTimeout(activateLastEditorIfBlank, 100);
+                    }
+                    return;
+                }
+                lastedifblankcnt = 0;
+                tinyMCE.setActive(to_enable);
+                to_enable.focus(); //dispatch("focus");
+            } else {
+                document.getElementById('textseg' + i).focus();
+            }
+        }
     }
 }
 
 //this is called by tinycme during initialization
 function editorSetup(editor) {
     var i = this.id.match(/[0-9]+$/)[0];
-    editor.addButton("saveclose", {
+    editor.ui.registry.addButton("saveclose", {
         text: "Save All",
         title: "Save All",
         icon: "save",
-        //icon: "shrink2 mce-i-addquestions-ico",
-        classes: "dim saveclose saveclose" + i, // "mce-dim" and "mce-saveclose0"
-        //disabled: true,
-        onclick: function () {
+        enabled: anyEditorDirtyVal,
+        onAction: function (api) {
             highlightSaveButton(false);
             savetextseg(); //Save all text segments
+            api.setEnabled(false);
         },
-        onPostRender: function () {
+        onSetup: function (api) {
+            function updateEnabledState() {
+                if (api.isEnabled() != anyEditorDirtyVal) {
+                    api.setEnabled(anyEditorDirtyVal);
+                }
+            }
+            editor.on('NodeChange', updateEnabledState);
             updateSaveButtonDimming();
         }
     });
     editor.on("dirty", function () {
         updateSaveButtonDimming();
     });
-    editor.on("focus", function () {
+    editor.on("focus", function (e) {
         var i = this.id.match(/[0-9]+$/)[0];
         var type = getTypeForSelector("#" + this.id);
         var max_height = $("#" + this.id).css("max-height");
@@ -200,6 +233,18 @@ function editorSetup(editor) {
         ) {
             expandAndStyleTextSegment("#textseg" + type + i);
         }
+        /*if (document.documentElement.clientWidth<450 && e.target.contentAreaContainer) {
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    $(e.target.editorContainer).css("left",0).css("width","100%");
+                    $(".tox-editor-header").css("max-width","100%");
+                    let editortop = $(e.target.contentAreaContainer).offset().top;
+                    let height = $(e.target.editorContainer).height();
+                    let pos = editortop - height;
+                    $(e.target.editorContainer).css("top", pos + "px");
+                });
+            });
+        }*/
     });
     $(".textsegment").on("mouseleave focusout", function (e) {
         highlightSaveButton(true);
@@ -218,13 +263,12 @@ function editorSetup(editor) {
 //Highlight all Save All buttons when the mouse leaves an editor
 function highlightSaveButton(leaving) {
     if (anyEditorIsDirty()) {
-        var i = tinymce.activeEditor.id.match(/[0-9]+$/)[0];
         if (leaving) {
-            $("div.mce-saveclose" + i)
+            $("button[data-mce-name='saveclose']")
                 .css("transition", "background-color 0s")
                 .addClass("highlightbackground");
         } else {
-            $("div.mce-saveclose" + i)
+            $("button[data-mce-name='saveclose']")
                 .css("transition", "background-color 1s ease-out")
                 .removeClass("highlightbackground");
         }
@@ -233,46 +277,34 @@ function highlightSaveButton(leaving) {
 
 //If any editor is dirty, undim the Save All button and
 // highlight that editor
+var anyEditorDirtyVal = false;
 function updateSaveButtonDimming(dim) {
-    var save_buttons = $("div.mce-saveclose");
     if (tinyMCE.activeEditor && tinyMCE.activeEditor.isDirty()) {
-        $("div.mce-saveclose").removeClass("mce-dim");
-        //update tinymce data structure in case other editors haven't
-        // been activated
-        for (index in tinymce.editors) {
-            var editor = tinymce.editors[index];
-            editor.buttons["saveclose"].classes = editor.buttons[
-                "saveclose"
-            ].classes.replace(/dim ?/g, "");
-            //could switch save to collapse icon
-            var editor_id = tinymce.activeEditor.id;
-            $("#" + editor_id)
-                .css("transition", "border 0s")
-                .removeClass("intro")
-                .parent()
-                .addClass("highlightborder");
-        }
+        anyEditorDirtyVal = true;
+        var editor_id = tinymce.activeEditor.id;
+        $("#" + editor_id)
+            .css("transition", "border 0s")
+            .removeClass("intro")
+            .parent()
+            .addClass("highlightborder");
+        $("#collapse-buttonglobal").fadeOut();
         var i = getIndexForSelector("#" + tinymce.activeEditor.id);
         var type = getTypeForSelector("#" + tinymce.activeEditor.id);
         $("#edit-button" + type + i).fadeOut();
-        //$("#edit-buttonglobal").fadeOut();
-        $("#collapse-buttonglobal").fadeOut();
     }
-    //TODO if tinyMCE's undo is correctly reflected in isDirty(), we could
-    // re-dim the Save All button after checking all editors
 }
 
-function expandAndStyleTextSegment(selector) {
+function expandAndStyleTextSegment(selector, isglobal) {
     var i = getIndexForSelector(selector);
     var type = getTypeForSelector(selector);
 
     $(selector).each(function (index, element) {
-        expandTextSegment("#" + element.id);
+        expandTextSegment("#" + element.id, isglobal);
     });
     //$("#collapsedtextfade"+i).removeClass("collapsedtextfade");
 
     //change the exit/collapse button for the corresponding editor
-    if (i === undefined || type === "global") {
+    if (i === undefined || isglobal) {
         //expand all
         //$("#edit-buttonglobal").attr("title","Collapse All");
         //$("#edit-button-spanglobal").removeClass("icon-pencil")
@@ -286,7 +318,7 @@ function expandAndStyleTextSegment(selector) {
         );
     } else {
         var editor = getEditorForSelector(selector);
-        if (editor !== undefined && editor.isDirty()) {
+        if (editor !== undefined && editor !== null && editor.isDirty()) {
             $("#edit-button" + type + i).fadeOut();
         }
         $("#edit-button" + type + i).attr("title", "Collapse");
@@ -300,9 +332,9 @@ function collapseAndStyleTextSegment(selector) {
     var i = getIndexForSelector(selector);
     var type = getTypeForSelector(selector);
 
-    if (i !== undefined) {
+    if (i !== undefined && useed) {
         //Deactivate the editor
-        tinymce.editors["textseg" + type + i].fire("focusout");
+        tinymce.get("textseg" + type + i).dispatch("focusout");
     }
 
     collapseTextSegment(selector);
@@ -342,7 +374,7 @@ function collapseAndStyleTextSegment(selector) {
 }
 
 //adjust the height/width smoothly (could replace with jquery-ui)
-function expandTextSegment(selector) {
+function expandTextSegment(selector, isglobal) {
     var type = getTypeForSelector(selector);
     //copy max-height/max-width to height/width temporarily
     var max_height = $(selector).css("max-height");
@@ -389,9 +421,8 @@ function expandTextSegment(selector) {
             //If a single editor was expanded, activate the editor
             //TODO remember whether this was a global expand
             //     if available, also scroll to keep global button fixed
-            var i = getIndexForSelector(selector);
-            var type = getTypeForSelector(selector);
-            if (i !== undefined && type !== "global") {
+            
+            if (!isglobal) {
                 $("#textseg" + type + i).focus();
             }
         });
@@ -462,7 +493,7 @@ function getEditorForSelector(selector) {
     var type = getTypeForSelector(selector);
 
     if (i !== undefined && i.length > 0) {
-        var editor = tinymce.editors["textseg" + type + i];
+        var editor = tinymce.get("textseg" + type + i);
     }
     //return undefined if the selector didn't end in a digit
     return editor;
@@ -470,11 +501,16 @@ function getEditorForSelector(selector) {
 
 function anyEditorIsDirty() {
     var any_dirty = false;
-    for (index in tinymce.editors) {
-        if (tinymce.editors[index].isDirty()) {
-            any_dirty = true;
-            break;
+    if (useed) {
+        const allEditors = tinymce.get();
+        for (index in allEditors) {
+            if (allEditors[index].isDirty()) {
+                any_dirty = true;
+                break;
+            }
         }
+    } else {
+        any_dirty = ($(".savebtn:enabled").length > 0);
     }
     return any_dirty;
 }
@@ -482,7 +518,7 @@ function anyEditorIsDirty() {
 function generateMoveSelect2(num) {
     var thisistxt = itemarray[num][0] == "text";
     num++; //adjust indexing
-    var sel = "<select id=" + num + ' onChange="moveitem2(' + num + ')">';
+    var sel = "<select id=" + num + ' onChange="moveitem2(' + num + ')" aria-label="' + _('Move question ') + num + '">';
     var qcnt = 1;
     var tcnt = 1;
     var curistxt = false;
@@ -592,7 +628,7 @@ function generateShowforSelect(num) {
         return "";
     } else {
         out =
-            _('Show for') + ' <select id="showforn' +
+            '<label>' + _('Show for') + ' <select id="showforn' +
             num +
             '" onchange="updateTextShowN(' +
             num +
@@ -606,7 +642,7 @@ function generateShowforSelect(num) {
             }
             out += ">" + j + "</option>";
         }
-        out += "</select>";
+        out += "</select></label>";
         if (itemarray[num][2] > 1) {
             out +=
                 '<br/><select id="showforntype' +
@@ -615,7 +651,7 @@ function generateShowforSelect(num) {
                 num +
                 "," +
                 itemarray[num][5] +
-                ')">';
+                ')" aria-label="' + _('Show behavior') + '">';
             out += "<option value=0";
             if (itemarray[num][5] == 0) {
                 out += " selected";
@@ -941,23 +977,42 @@ function edittextseg(i) {
 
 function savetextseg(i) {
     var any_dirty = false;
-    for (index in tinymce.editors) {
-        var editor = tinymce.editors[index];
-        if (editor.isDirty()) {
-            var i = editor.id.match(/[0-9]+$/)[0];
-            var i = getIndexForSelector("#" + editor.id);
-            var type = getTypeForSelector("#" + editor.id);
-            if (type === "") {
-                itemarray[i][1] = editor.getContent();
-                any_dirty = true;
-            } else if (editor.id.match("textsegheader")) {
-                itemarray[i][4] = strip_tags(editor.getContent());
-                any_dirty = true;
+    if (useed) {
+        const allEditors = tinymce.get();
+        for (index in allEditors) {
+            var editor = allEditors[index];
+            if (editor.isDirty()) {
+                var i = editor.id.match(/[0-9]+$/)[0];
+                var i = getIndexForSelector("#" + editor.id);
+                var type = getTypeForSelector("#" + editor.id);
+                if (type === "") {
+                    itemarray[i][1] = editor.getContent();
+                    any_dirty = true;
+                } else if (editor.id.match("textsegheader")) {
+                    itemarray[i][4] = strip_tags(editor.getContent());
+                    any_dirty = true;
+                }
             }
         }
+    } else {
+        $("textarea.textsegment,input.textsegment").each(function(i,el) {
+            if ($(el).data('dirty') === true) {
+                var i = getIndexForSelector("#" + el.id);
+                var type = getTypeForSelector("#" + el.id);
+                if (type === "") {
+                    itemarray[i][1] = el.value;
+                    any_dirty = true;
+                } else if (el.id.match("textsegheader")) {
+                    itemarray[i][4] = strip_tags(el.value);
+                    any_dirty = true;
+                }
+            }
+        });
     }
     if (any_dirty) {
-        tinymce.activeEditor.hide();
+        if (useed) {
+            tinymce.activeEditor.hide();
+        }
         submitChanges();
     }
 }
@@ -1087,7 +1142,7 @@ function updateqgrpcookie() {
         }
         qcnt++;
     }
-    document.cookie = "closeqgrp-" + curaid + "=" + closegrp.join(",");
+    setCookie("closeqgrp-" + curaid, closegrp.join(","));
 }
 
 function generateTable() {
@@ -1101,13 +1156,15 @@ function generateTable() {
 
     html += "<table cellpadding=5 class='gb questions-in-assessment'><thead><tr>";
     if (!beentaken) {
-        html += "<th></th>";
+        html += "<th><span class='sr-only'>Select</span></th>";
     }
     html += "<th>" + _("Order") + "</th>";
     //return "<span onclick=\"toggleCollapseTextSegments();//refreshTable();\" style=\"color: grey; font-weight: normal;\" >[<span id=\"collapseexpandsymbol\">"+this.getCollapseExpandSymbol()+"</span>]</span>";
     html += "<th>" + _("Description");
     html +=
-        "</th><th>&nbsp;</th><th>ID</th><th>" +
+        "</th><th><span class=\"sr-only\">" +
+        _("Features") +
+        "</span></th><th>ID</th><th>" +
         _("Preview") +
         "</th><th>" +
         _("Type") +
@@ -1117,13 +1174,13 @@ function generateTable() {
     html += "<th>" + _("Points");
     if (!beentaken) {
         html +=
-            "<br/><span class=small>" +
+            "<br/><span class=small><label>" +
             _("Default") +
             ': <input id="defpts" type=number min=0 step=1 size=2 value="' +
             defpoints +
             '" data-lastval="' +
             defpoints +
-            '"/></span>';
+            '"/></label></span>';
     }
     html += "</th>";
     html += "<th>" + _("Actions") + "</th>";
@@ -1202,7 +1259,13 @@ function generateTable() {
                             html += "ea";
                         }
                         html += (curitems[0][9] > 0 ? ECmark : '');
-                        html += "</td><td></td>";
+                        html +=
+                            '</td><td><div class="dropdown"><button tabindex=0 class="dropdown-toggle plain" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
+                        html += '⋮</button><ul role="menu" class="dropdown-menu dropdown-menu-right">';
+                        html += '<li><a href="#" onclick="return togglegroupEC(' + i + ');">' +
+                            _("Toggle Extra Credit") +
+                            "</a></li>";
+                        html += '</ul></div></td>';
                         html += "</tr><tr class=" + curclass + ">";
                     }
                     html += "<td>&nbsp;Q" + (curqnum + 1) + "-" + (j + 1);
@@ -1234,7 +1297,9 @@ function generateTable() {
                             curitems[j][0] +
                             ":" +
                             curqnum +
-                            '"/></td><td>';
+                            '" ' + 
+                            (curitems[j][0]=="text" ? 'aria-label="' + _('Text segment') + '"' : '') +
+                            '/></td><td>';
                     } else {
                         if (itemarray[i][3] == 1) {
                             html +=
@@ -1266,6 +1331,7 @@ function generateTable() {
                             _("Group") +
                             "</b> ";
                         html +=
+                            '<label>' + 
                             _("Select") +
                             " <input type='text' size='3' id='grpn" +
                             i +
@@ -1277,9 +1343,10 @@ function generateTable() {
                             itemarray[i][0] +
                             ")'/> " +
                             _("from group of ") +
-                            curitems.length;
+                            curitems.length + 
+                            '</label>';
                         html +=
-                            " <select id='grptype" +
+                            " <label><select id='grptype" +
                             i +
                             "' onchange='updateGrpT(" +
                             i +
@@ -1293,7 +1360,7 @@ function generateTable() {
                         if (itemarray[i][1] == 1) {
                             html += "selected=1";
                         }
-                        html += ">" + _("With") + "</option></select>" + _(" replacement");
+                        html += ">" + _("With") + "</option></select>" + _(" replacement") + '</label>';
                         html += "</td>";
                         html +=
                             '<td class="nowrap c"><input size=2 type=number min=0 step=1 id="grppts-' +
@@ -1302,14 +1369,14 @@ function generateTable() {
                             curgrppoints +
                             '" data-lastval="' +
                             curgrppoints +
-                            '"/>';
+                            '" aria-label="' + _('Points for questions in group') + '"/>';
                         if (itemarray[i][0] > 1) {
                             html += "ea";
                         }
                         html += (curitems[0][9] > 0 ? ECmark : '');
 
                         html +=
-                            '</td><td class=c><div class="dropdown"><button tabindex=0 class="dropdown-toggle plain" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
+                            '</td><td><div class="dropdown"><button tabindex=0 class="dropdown-toggle plain" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
                         html += '⋮</button><ul role="menu" class="dropdown-menu dropdown-menu-right">';
 
                         html +=
@@ -1326,7 +1393,7 @@ function generateTable() {
                             '<li><a href="#" onclick="return togglegroupEC(' + i + ');">' +
                             _("Toggle Extra Credit") +
                             "</a></li>";
-                        html += '</ul></div></tr>';
+                        html += '</ul></div></td></tr>';
 
                         if (itemarray[i][3] == 0) {
                             //collapsed group
@@ -1351,7 +1418,9 @@ function generateTable() {
                         curitems[j][0] +
                         ":" +
                         (curqnum + "-" + j) +
-                        '"/></td><td>';
+                        '" ' +
+                        (curitems[j][0]=="text" ? 'aria-label="' + _('Text segment') + '"' : '') +
+                        '/></td><td>';
                     html +=
                         '<a href="#" onclick="return ungroupitem(\'' +
                         i +
@@ -1372,14 +1441,24 @@ function generateTable() {
                         ' id="textsegdescr' +
                         i +
                         '" class="description-cell">';
-                    if (curitems[j][3] == 1) {
+                    if (curitems[j][3] == 1) { // is page
                         var header_contents = curitems[j][4];
-                        html +=
-                            '<div style="position: relative"><h4 id="textsegheader' +
-                            i +
-                            '" class="textsegment collapsedheader">' +
-                            header_contents +
-                            "</h4>";
+                        if (useed) {
+                            html +=
+                                '<div style="position: relative"><h4 id="textsegheader' +
+                                i +
+                                '" class="textsegment collapsedheader">' +
+                                header_contents +
+                                "</h4>";
+                        } else {
+                            html +=
+                                '<div style="position: relative"><input id="textsegheader' +
+                                i +
+                                '" class="textsegment collapsedheader" value="' +
+                                header_contents +
+                                '"/>' +
+                                '<button type=button class="savebtn slim" onclick="savetextseg();" disabled=true>' + _('Save All') + '</button>';
+                        }
                         html +=
                             '<div class="text-segment-icon"><button id="edit-buttonheader' +
                             i +
@@ -1390,12 +1469,22 @@ function generateTable() {
                             '" class="icon-pencil text-segment-icon"></span></button></div></div>';
                     }
                     var contents = curitems[j][1];
-                    html +=
-                        '<div class="intro intro-like"><div id="textseg' +
-                        i +
-                        '" class="textsegment collapsed">' +
-                        contents +
-                        "</div>"; //description
+                    if (useed) {
+                        html +=
+                            '<div class="intro intro-like"><div id="textseg' +
+                            i +
+                            '" class="textsegment collapsed">' +
+                            contents +
+                            "</div>";
+                    } else {
+                        html +=
+                            '<div class="intro intro-like"><textarea id="textseg' +
+                            i +
+                            '" class="textsegment collapsed">' +
+                            contents +
+                            "</textarea>" +
+                            '<button type=button class="savebtn slim" onclick="savetextseg();" disabled=true>' + _('Save All') + '</button>';
+                    }
                     html +=
                         '<div class="text-segment-icon"><button id="edit-button' +
                         i +
@@ -1423,12 +1512,22 @@ function generateTable() {
                         ' id="textsegdescr' +
                         i +
                         '" class="description-cell">'; //description
-                    html +=
-                        '<div class="intro intro-like"><div id="textseg' +
-                        i +
-                        '" class="textsegment collapsed">' +
-                        contents +
-                        "</div>";
+                    if (useed) {
+                        html +=
+                            '<div class="intro intro-like"><div id="textseg' +
+                            i +
+                            '" class="textsegment collapsed">' +
+                            contents +
+                            "</div>";
+                    } else {
+                        html +=
+                            '<div class="intro intro-like"><textarea id="textseg' +
+                            i +
+                            '" class="textsegment collapsed">' +
+                            contents +
+                            "</textarea>" +
+                            '<button type=button class="savebtn slim" onclick="savetextseg();" disabled=true>' + _('Save All') + '</button>';
+                    }
                     html +=
                         '<div class="text-segment-icon"><button id="edit-button' +
                         i +
@@ -1461,7 +1560,7 @@ function generateTable() {
                 }
                 if (curitems[j][10] == 1) {
                     descricon = '<span title="' + _('Marked as broken') + '">' + 
-                    '<svg viewBox="0 0 24 24" width="16" height="16" stroke="#f66" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19.7 1.3 19.6 9 16.2 6.3 13.8 11.3 10.5 8.3 7 11.7 3.6 9.2l0-7.9z" class="a"></path><path d="m19.7 22.9 0-7.8-2-1.4-3.1 4-3.3-3-3.8 3.8-4-3.9v8.4z" class="a"></path></svg>' + 
+                    '<svg role="img" viewBox="0 0 24 24" width="16" height="16" stroke="#f66" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><title>' + _('Marked as broken') + '</title><path d="M19.7 1.3 19.6 9 16.2 6.3 13.8 11.3 10.5 8.3 7 11.7 3.6 9.2l0-7.9z" class="a"></path><path d="m19.7 22.9 0-7.8-2-1.4-3.1 4-3.3-3-3.8 3.8-4-3.9v8.4z" class="a"></path></svg>' + 
                     '</span> ';
                 }
                 html += '<td';
@@ -1479,21 +1578,21 @@ function generateTable() {
                     curitems[j][1] +
                     '"/>';
                 
-                html += curitems[j][2] + "</td>"; //description
+                html += '<label for="qc'+ln+'" id="qsd'+ln+'">' + curitems[j][2] + "</label></td>"; //description
                 html += '<td class="nowrap">';
                 if ((curitems[j][7] & 32) == 32) {
-                    html += '<span title="' + _('Show Work') + '" aria-label="' + _('Show Work') + '">' + 
-                    '<svg viewBox="0 0 24 24" width="14" height="14" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'
+                    html += '<span title="' + _('Show Work') + '">' + 
+                    '<svg role="img" viewBox="0 0 24 24" width="14" height="14" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><title>' + _('Show Work') + '</title><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'
                     + '</span>';
                 }
                 if ((curitems[j][7] & 64) == 64) {
-                    html += '<span title="' + _('Has Rubric') + '" aria-label="' + _('Has Rubric') + '">' + 
-                    '<svg viewBox="0 0 24 24" width="14" height="14" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>'
+                    html += '<span title="' + _('Has Rubric') + '">' + 
+                    '<svg role="img" viewBox="0 0 24 24" width="14" height="14" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><title>' + _('Has Rubric') + '</title><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>'
                     + '</span>';
                 }
                 if ((curitems[j][7] & 256) == 256) {
-                    html += '<span title="' + _('Not Randomized') + '" aria-label="' + _('Not Randomized') + '">' + 
-                    '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><line stroke="#f00" x1="5" y1="1" x2="19" y2="23"></line></svg>' +
+                    html += '<span title="' + _('Not Randomized') + '">' + 
+                    '<svg role="img" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><title>' + _('Not Randomized') + '</title><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><line stroke="#f00" x1="5" y1="1" x2="19" y2="23"></line></svg>' +
                     '</span>';
                 }
                 if ((curitems[j][7] & 1) == 1) {
@@ -1636,14 +1735,16 @@ function generateTable() {
                             curpt +
                             '" data-lastval="' +
                             curpt +
-                            '"/>' +
+                            '" ' + 
+                            'aria-labelledby="qsd' + ln + '"' +
+                            '/>' +
                             (curitems[j][9] > 0 ? ECmark : '') +
                             '</td>'; //points
                     }
                 }
 
                 html +=
-                    '<td class=c><div class="dropdown"><button tabindex=0 class="dropdown-toggle plain" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
+                    '<td><div class="dropdown"><button tabindex=0 class="dropdown-toggle plain" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
                 html += '⋮</button><ul role="menu" class="dropdown-menu dropdown-menu-right">';
                 html +=
                     ' <li><a href="modquestion' +
@@ -1660,6 +1761,18 @@ function generateTable() {
                     _("Change Settings") +
                     "</a></li>";
                 if (curitems[j][5] == 1) {
+                    html +=
+                        '<li><a href="moddataset.php?id=' +
+                        curitems[j][1] +
+                        "&qid=" +
+                        curitems[j][0] +
+                        "&aid=" +
+                        curaid +
+                        "&cid=" +
+                        curcid +
+                        '&from=addq2&viewonly=1">' +
+                        _("View Code") +
+                        "</a></li>"; //edit
                     html +=
                         '<li><a href="moddataset.php?id=' +
                         curitems[j][1] +
@@ -1759,7 +1872,11 @@ function generateTable() {
                 if (j == 0) {
                     html += '<li><a href="#" onclick="addtextsegment(' + i + '); return false;">' + _('Add Text Before') + '</a></li>';
                 }
-                html += '</ul></div>';
+                html += '</ul>';
+                if (curitems[j][11] != '') {
+                    html += ' <span style="width:1em" onmouseover="tipshow(this,\'' + _('Settings override: ') + curitems[j][11] + '\')" onmouseout="tipout()" aria-label="has settings override">*</span>';
+                } 
+                html += '</div>';
             }
             html += "</tr>";
             ln++;
@@ -1813,7 +1930,8 @@ function generateTable() {
             ) +
             ".</p>";
     }
-    document.getElementById("pttotal").innerHTML = pttotal;
+    document.getElementById("pttotal").textContent = pttotal;
+
     return html;
 }
 
@@ -1825,6 +1943,7 @@ function addtextsegment(n) {
             itemarray.push(["text", "", 1, 0, "", 1]);
         }
         refreshTable();
+        activateLastEditorIfBlank();
     }
 }
 
@@ -1893,7 +2012,8 @@ function confirm_textseg_dirty() {
 function submitChanges() {
     var target = "submitnotice";
     check_textseg_itemarray();
-    document.getElementById(target).innerHTML = _(" Saving Changes... ");
+    document.getElementById(target).textContent = _(" Saving Changes... ");
+    document.getElementById("statusmsg").textContent = _("Saving Changes");
     data = generateOutput();
     var outdata = {
         order: data[0],
@@ -1904,6 +2024,8 @@ function submitChanges() {
         outdata["pts"] = JSON.stringify(data[2]);
         outdata["extracredit"] = JSON.stringify(data[3]);
         outdata["defpts"] = $("#defpts").val();
+    } else {
+        outdata["extracredit"] = JSON.stringify(data[3]);
     }
     $.ajax({
         type: "POST",
@@ -1912,7 +2034,8 @@ function submitChanges() {
     })
         .done(function (msg) {
             if (msg.match(/^error:/)) {
-                document.getElementById(target).innerHTML = msg;
+                document.getElementById(target).textContent = msg;
+                document.getElementById("statusmsg").textContent = msg;
                 itemarray = olditemarray.slice();
                 refreshTable();
                 return;
@@ -1921,10 +2044,12 @@ function submitChanges() {
                 defpoints = $("#defpts").val();
             }
             lastitemhash = msg;
-            document.getElementById(target).innerHTML = "";
+            document.getElementById(target).textContent = "";
+            document.getElementById("statusmsg").textContent = _("Done");
             refreshTable();
             updateInAssessMarkers();
             updateSaveButtonDimming();
+            anyEditorDirtyVal = false;
             //scroll to top if save action puts the curqtbl out of view
             if (
                 $(window).scrollTop() >
@@ -1934,13 +2059,14 @@ function submitChanges() {
             }
         })
         .fail(function (xhr, status, errorThrown) {
-            document.getElementById(target).innerHTML =
-                " Couldn't save changes:\n" +
+            document.getElementById(target).textContent =
+                " Couldn't save changes: " +
                 status +
-                "\n" +
+                ", " +
                 req.statusText +
-                "\nError: " +
+                ", Error: " +
                 errorThrown;
+            document.getElementById("statusmsg").textContent = _("Error saving");
             itemarray = olditemarray.slice();
             refreshTable();
         });
@@ -1954,6 +2080,7 @@ function addusingdefaults(asgroup) {
         checked.push(this.value);
     });
     if (checked.length == 0) { return; }
+    document.getElementById("statusmsg").textContent = _("Adding questions");
     $.ajax({
         type: "POST",
         url: AHAHsaveurl,
@@ -1962,12 +2089,15 @@ function addusingdefaults(asgroup) {
         dataType: 'json'
     }).done(function (msg) {
         if (msg.hasOwnProperty('error')) {
-            document.getElementById("submitnotice").innerHTML = msg.error;
+            document.getElementById("submitnotice").textContent = msg.error;
+            document.getElementById("statusmsg").textContent = _("Error adding");
         } else {
+            document.getElementById("statusmsg").textContent = _("Done adding");
             doneadding(msg);
         }
     }).fail(function () {
         alert("Error adding questions");
+        document.getElementById("statusmsg").textContent = _("Error adding");
     });
 }
 
@@ -2000,37 +2130,4 @@ function modsettings() {
     GB_show('Question Settings',qsettingsaddr + '&modqs=' + encodeURIComponent(checked.join(';')) + '&lih=' + lastitemhash,900,500);
 }
 
-/*
-function submitChanges() {
-  url = AHAHsaveurl + '&order='+generateOutput();
-  var target = "submitnotice";
-  document.getElementById(target).innerHTML = ' Saving Changes... ';
-  if (window.XMLHttpRequest) {
-    req = new XMLHttpRequest();
-  } else if (window.ActiveXObject) {
-    req = new ActiveXObject("Microsoft.XMLHTTP");
-  }
-  if (typeof req != 'undefined') {
-    req.onreadystatechange = function() {ahahDone(url, target);};
-    req.open("GET", url, true);
-    req.send("");
-  }
-}
 
-function ahahDone(url, target) {
-  if (req.readyState == 4) { // only if req is "loaded"
-    if (req.status == 200) { // only if "OK"
-	    if (req.responseText=='OK') {
-		    document.getElementById(target).innerHTML='';
-		    refreshTable();
-	    } else {
-		    document.getElementById(target).innerHTML=req.responseText;
-		    itemarray = olditemarray;
-	    }
-    } else {
-	    document.getElementById(target).innerHTML=" Couldn't save changes:\n"+ req.status + "\n" +req.statusText;
-	    itemarray = olditemarray;
-    }
-  }
-}
-*/

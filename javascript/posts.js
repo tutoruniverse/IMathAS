@@ -19,34 +19,43 @@ function checkchgstatus(type,id) {
 	}
 }
 function toggleshow(butn) {
-	var forumgrp = $(butn).closest(".block").nextAll(".forumgrp").first();
+	var forumgrp = $(butn).closest(".postwrap").nextAll(".forumgrp").first();
+	var img = butn.firstChild;
+	let newopen = true;
 	if (forumgrp.hasClass("hidden")) {
 		forumgrp.removeClass("hidden");
-		butn.src = staticroot+'/img/collapse.gif';
+		img.src = staticroot+'/img/collapse.gif';
+		newopen = true;
 	} else {
 		forumgrp.addClass("hidden");
-		butn.src = staticroot+'/img/expand.gif';
+		img.src = staticroot+'/img/expand.gif';
+		newopen = false;
 	}
+	butn.setAttribute("aria-expanded", newopen);
 }
 function toggleitem(butn) {
 	var blockitems = $(butn).closest(".block").nextAll(".blockitems").first();
+	let newopen = true;
 	if (blockitems.hasClass("hidden")) {
 		blockitems.removeClass("hidden");
 		butn.value = _('Hide');
+		newopen = true;
 	} else {
 		blockitems.addClass("hidden");
 		butn.value = _('Show');
+		newopen = false;
 	}
+	butn.setAttribute("aria-expanded", newopen);
 }
 function expandall() {
 	$(".expcol").each(function(i) {
-		var forumgrp = $(this).closest(".block").nextAll(".forumgrp").first().removeClass("hidden");
+		var forumgrp = $(this).closest(".postwrap").nextAll(".forumgrp").first().removeClass("hidden");
 		this.src = staticroot+'/img/collapse.gif';
 	});
 }
 function collapseall() {
 	$(".expcol").each(function(i) {
-		var forumgrp = $(this).closest(".block").nextAll(".forumgrp").first().addClass("hidden");
+		var forumgrp = $(this).closest(".postwrap").nextAll(".forumgrp").first().addClass("hidden");
 		this.src = staticroot+'/img/expand.gif';
 	});
 }
@@ -64,23 +73,25 @@ function hideall() {
 }
 
 function savelike(el) {
-	var like = (el.src.match(/gray/))?1:0;
+	var img = $(el).children("img")[0];
+	var like = (img.src.match(/gray/))?1:0;
 	var postid = el.id.substring(8);
-	$(el).parent().append('<img style="vertical-align: middle" src="'+staticroot+'/img/updating.gif" id="updating" alt="Updating"/>');
+	$(el).after('<img style="vertical-align: middle" src="'+staticroot+'/img/updating.gif" id="updating" alt="Updating"/>');
 	$.ajax({
 		url: "recordlikes.php",
 		data: {cid: cid, postid: postid, like: like},
 		dataType: "json"
 	}).done(function(msg) {
 		if (msg.aff==1) {
-			el.title = msg.msg;
+			img.title = msg.msg;
 			$('#likecnt'+postid).text(msg.cnt>0?msg.cnt:'');
-			el.className = "likeicon"+msg.classn;
+			img.className = "likeicon"+msg.classn;
 			if (like==0) {
-				el.src = el.src.replace("liked","likedgray");
+				img.src = img.src.replace("liked","likedgray");
 			} else {
-				el.src = el.src.replace("likedgray","liked");
+				img.src = img.src.replace("likedgray","liked");
 			}
+			$(el).attr("aria-checked", like==1);
 		}
 		$('#updating').remove();
 	});
@@ -93,4 +104,19 @@ function toggletagged(id) {
 	   	if (settag==0) { $("#tag"+id).attr("src",cursrc.replace(/filled/,"empty"));}
 	   	else {$("#tag"+id).attr("src",cursrc.replace(/empty/,"filled"));}
 	   }});
+}
+
+var newposts = [];
+var lastnew = -1;
+$(function() {
+	newposts = $(".newglow");
+	if (newposts.length > 0) {
+		$("#nextnew").show();
+	}
+});
+function shownextnew() {
+	$(".curactive").removeClass("curactive");
+	var nextnew = (lastnew + 1)%newposts.length;
+	$(newposts[nextnew]).focus().addClass("curactive");
+	lastnew = nextnew;
 }

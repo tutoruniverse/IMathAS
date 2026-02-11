@@ -264,6 +264,7 @@ class QuestionHtmlGenerator
         try {
           $db_qsetid = $this->questionParams->getDbQuestionSetId();
           eval(interpret('control', $quesData['qtype'], $quesData['control'], 1, [$db_qsetid]));
+          $controlVars = $varsOutput;
           eval(interpret('qcontrol', $quesData['qtype'], $quesData['qcontrol'], 1, [$db_qsetid]));
           eval(interpret('answer', $quesData['qtype'], $quesData['answer'], 1, [$db_qsetid]));
         } catch (\Throwable $t) {

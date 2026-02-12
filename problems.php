@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Send response
     header('Content-Type: application/json');
-    echo json_encode($response);
+    echo json_encode($response, JSON_PARTIAL_OUTPUT_ON_ERROR);
 } else {
     header('HTTP/1.0 405 Method Not Allowed');
     header('Content-Type: application/json');

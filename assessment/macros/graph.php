@@ -390,6 +390,26 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
             $alt .= "<tr><td>$val</td><td>$thisymax</td></tr>";
             $alt .= '</tbody></table>';
             $path .= "line([$val,$thisymin],[$val,$thisymax]);";
+            if (isset($function[5]) && $function[5] == 'open') {
+                $path .= "dot([$val,$thisymax],\"open\");";
+                $alt .= "Open dot at ($val,$thisymax). ";
+            } else if (isset($function[5]) && $function[5] == 'closed') {
+                $path .= "dot([$val,$thisymax],\"closed\");";
+                $alt .= "Closed dot at ($val,$thisymax). ";
+            } else if (isset($function[5]) && $function[5] == 'arrow') {
+                $path .= "arrowhead([$val,$thisymin],[$val,$thisymax]);";
+                $alt .= "Arrow at ($val,$thisymax). ";
+            }
+            if (isset($function[4]) && $function[4] == 'open') {
+                $path .= "dot([$val,$thisymin],\"open\");";
+                $alt .= "Open dot at ($val,$thisymin). ";
+            } else if (isset($function[4]) && $function[4] == 'closed') {
+                $path .= "dot([$val,$thisymin],\"closed\");";
+                $alt .= "Closed dot at ($val,$thisymin). ";
+            } else if (isset($function[4]) && $function[4] == 'arrow') {
+                $path .= "arrowhead([$val,$thisymax],[$val,$thisymin]);";
+                $alt .= "Arrow at ($val,$thisymin). ";
+            }
             if ($isineq) {
                 $path .= "stroke=\"none\";strokedasharray=\"none\";";
                 if (isset($function[1]) && ($function[1] == 'red' || $function[1] == 'green')) {

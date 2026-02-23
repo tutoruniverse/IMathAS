@@ -287,7 +287,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 				$toset['caltag'] = 'use_name';
 			}
 			$toset['shuffle'] = Sanitize::onlyInt($_POST['shuffle']);
-			if (isset($_POST['sameseed']) && $_POST['subtype'] == 'by_assessment') { 
+			if (isset($_POST['sameseed']) && 
+				($_POST['subtype'] == 'by_assessment' || $toset['defregens'] == 1)
+			) { 
 				$toset['shuffle'] += 2;
 			}
 			if (isset($_POST['samever'])) { $toset['shuffle'] += 4;}

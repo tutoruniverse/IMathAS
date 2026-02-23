@@ -881,7 +881,11 @@ function addlabelabs($plot, $x, $y, $lbl) {
 
 function adddrawcommand($plot, $cmd) {
     $cmd = str_replace("'", '"', $cmd);
-    return preg_replace("/'(\s+alt=\"[^\"]*\")?\s*\/>/", "$cmd'\\1 />", $plot);
+    $end = "' />";
+    if (preg_match("/'(\s+alt=\"[^\"]*\")?\s*\/>/", $cmd, $m)) {
+        $end = $m[0];
+    }
+    return str_replace("' />", $cmd . $end, $plot);
 }
 
 function mergeplots($plota) {
@@ -926,7 +930,9 @@ function addfractionaxislabels($plot, $step, $axis = "x") {
         echo 'invalid step in addfractionaxislabels';
         return $plot;
     }
+
     preg_match('/initPicture\(([\-\d\.]+),([\-\d\.]+),([\-\d\.]+),([\-\d\.]+)\)/', $plot, $matches);
+    
     if (!isset($matches[4])) {
         echo "addfractionaxislabels: input must be a plot";
         return $plot;
@@ -983,6 +989,12 @@ function addfractionaxislabels($plot, $step, $axis = "x") {
             $outst .= "line([$tm,$av],[$tx,$av]); text([$tm,$av],\"$ld\",\"left\");";
         }
         $step++;
+    }
+    // suppress the default axis labels by changing the dx/dy to negative
+    if ($axis === 'x') {
+        $plot = preg_replace('/axes\(.*?,/', 'axes(-1,', $plot);
+    } else if ($axis === 'y') {
+        $plot = preg_replace('/axes\((.*?),.*?,/', 'axes($1,-1,', $plot);
     }
     return str_replace("' />", "$outst' />", $plot);
 }

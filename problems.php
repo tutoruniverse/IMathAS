@@ -85,11 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'printformat' => true
     ]);
 
-    // Consolidated object queries (DRY Principle)
     $question = $a2->getQuestion();
     $questionContent = $question->getQuestionContent();
 
-    // Logic for Solution Generation
     if ($stype == "template") {
         $originalSolution = $question->getSolutionContent();
     } else {
@@ -109,14 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $answers = $question->getCorrectAnswersForParts();
 
-    // 4. Apply Conversion if Requested
     if ($convertToLatex) {
-        $AMT = new AMtoTeX; // Instantiate the converter
-
+        $AMT = new AMtoTeX;
         $questionContent = applyLatexConversion($questionContent, $AMT);
         $originalSolution = applyLatexConversion($originalSolution, $AMT);
         $prettySolution = applyLatexConversion($prettySolution, $AMT);
-        $answers = applyLatexConversion($answers, $AMT); // Handles array recursively
+        $answers = applyLatexConversion($answers, $AMT);
     }
 
     $response = array(

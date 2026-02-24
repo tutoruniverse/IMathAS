@@ -14,10 +14,10 @@ function processContent($matches) {
     return "`" . $processedContent . "`";
 }
 
-function applyLatexConversion($text, $AMT) {
+function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
     if (is_array($text)) {
         foreach ($text as $k => $v) {
-            $text[$k] = applyLatexConversion($v, $AMT);
+            $text[$k] = applyLatexConversion($v, $AMT, $wrap, $isAnswerMode);
         }
         return $text;
     }
@@ -25,10 +25,16 @@ function applyLatexConversion($text, $AMT) {
     if (!is_string($text)) return $text;
 
     // Regex: Find anything between backticks and convert it
-    return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT) {
+    return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
+        $AMT->isAnswerMode = $isAnswerMode;
         $asciimath = $matches[1];
         $tex = $AMT->convert($asciimath);
-        return '<math-field read-only="">' . $tex . '</math-field>';
+
+        if ($wrap) {
+            return '<math-field read-only="">' . $tex . '</math-field>';
+        } else {
+            return $tex;
+        }
     }, $text);
 }
 
@@ -114,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $questionContent = applyLatexConversion($questionContent, $AMT);
         $originalSolution = applyLatexConversion($originalSolution, $AMT);
         $prettySolution = applyLatexConversion($prettySolution, $AMT);
-        $answers = applyLatexConversion($answers, $AMT);
+        $answers = applyLatexConversion($answers, $AMT, false, true);
         $vars = applyLatexConversion($vars, $AMT);
         $jsparams = applyLatexConversion($jsparams, $AMT);
     }

@@ -106,6 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $prettySolution = preg_replace_callback('/`([^`]*)`/', 'processContent', $originalSolution);
 
     $answers = $question->getCorrectAnswersForParts();
+    $vars = $question->getVarsOutput();
+    $jsparams = $disp["jsparams"];
 
     if ($convertToLatex) {
         $AMT = new AMtoTeX;
@@ -113,6 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $originalSolution = applyLatexConversion($originalSolution, $AMT);
         $prettySolution = applyLatexConversion($prettySolution, $AMT);
         $answers = applyLatexConversion($answers, $AMT);
+        $vars = applyLatexConversion($vars, $AMT);
+        $jsparams = applyLatexConversion($jsparams, $AMT);
     }
 
     $response = array(
@@ -120,8 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         "originalSolution" => $originalSolution,
         "solution" => $prettySolution,
         "seed" => $seed,
-        "jsparams" => $disp["jsparams"],
-        "vars" => $question->getVarsOutput(),
+        "jsparams" => $jsparams,
+        "vars" => $vars,
         "answers" => $answers
     );
 

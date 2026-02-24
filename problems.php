@@ -1,6 +1,7 @@
 <?php
 require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
+require_once "filter/math/ASCIIMath2TeX.php";
 
 $GLOBALS['hide-sronly'] = true;
 
@@ -13,10 +14,34 @@ function processContent($matches) {
     return "`" . $processedContent . "`";
 }
 
+function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
+    if (is_array($text)) {
+        foreach ($text as $k => $v) {
+            $text[$k] = applyLatexConversion($v, $AMT, $wrap, $isAnswerMode);
+        }
+        return $text;
+    }
+
+    if (!is_string($text)) return $text;
+
+    // Regex: Find anything between backticks and convert it
+    return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
+        $AMT->isAnswerMode = $isAnswerMode;
+        $asciimath = $matches[1];
+        $tex = $AMT->convert($asciimath);
+
+        if ($wrap) {
+            return '<math-field read-only="">' . $tex . '</math-field>';
+        } else {
+            return $tex;
+        }
+    }, $text);
+}
+
 $a2 = new AssessStandalone($DBH);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawData = file_get_contents('php://input');
-
     $data = json_decode($rawData, true);
 
     if (!is_array($data)) {
@@ -29,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $solution = $data['solution'];
     $seed = isset($data['seed']) ? $data["seed"] : rand(0,10000);
     $stype = isset($data["stype"]) ? $data["stype"] : "template";
+    $convertToLatex = isset($data['convert_to_latex']) ? $data['convert_to_latex'] : false;
 
     $input = '{"email":"u@abc.co","id":"36","uniqueid":"1699501100492899","adddate":"1699501100","lastmoddate":"1699501137","ownerid":"1","author":"Nguyen,Vu","userights":"0","license":"1","description":"Algebra problem","qtype":"multipart","control":"","qcontrol":"","qtext":"","answer":"","solution":"","extref":"","hasimg":"0","deleted":"0","avgtime":"0","ancestors":"","ancestorauthors":"","otherattribution":"","importuid":"","replaceby":"0","broken":"0","solutionopts":"6","sourceinstall":"","meantimen":"1","meantime":"19","vartime":"0","meanscoren":"1","meanscore":"50","varscore":"0","isrand":"1"}';
     $qn = 27;
@@ -66,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 
     $question = $a2->getQuestion();
+    $questionContent = $question->getQuestionContent();
 
     if ($stype == "template") {
         $originalSolution = $question->getSolutionContent();
@@ -84,14 +111,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $prettySolution = preg_replace_callback('/`([^`]*)`/', 'processContent', $originalSolution);
 
+    $answers = $question->getCorrectAnswersForParts();
+    $vars = $question->getVarsOutput();
+    $jsparams = $disp["jsparams"];
+
+    if ($convertToLatex) {
+        $AMT = new AMtoTeX;
+        $questionContent = applyLatexConversion($questionContent, $AMT);
+        $originalSolution = applyLatexConversion($originalSolution, $AMT);
+        $prettySolution = applyLatexConversion($prettySolution, $AMT);
+        $answers = applyLatexConversion($answers, $AMT, false, true);
+        $vars = applyLatexConversion($vars, $AMT);
+        $jsparams = applyLatexConversion($jsparams, $AMT);
+    }
+
     $response = array(
-        "question" => $question->getQuestionContent(),
+        "question" => $questionContent,
         "originalSolution" => $originalSolution,
         "solution" => $prettySolution,
         "seed" => $seed,
-        "jsparams" => $disp["jsparams"],
-        "vars" => $question->getVarsOutput(),
-        "answers" => $question->getCorrectAnswersForParts()
+        "jsparams" => $jsparams,
+        "vars" => $vars,
+        "answers" => $answers
     );
 
     // Send response

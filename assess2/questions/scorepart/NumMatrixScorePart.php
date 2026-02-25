@@ -33,7 +33,7 @@ class NumMatrixScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'answersize', 'scoremethod', 'ansprompt'];
@@ -50,7 +50,7 @@ class NumMatrixScorePart implements ScorePart
             }
         }
         $givenans = normalizemathunicode($givenans);
-
+        $answersize = "";
         $ansformats = array_map('trim',explode(',',$answerformat));
 
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {

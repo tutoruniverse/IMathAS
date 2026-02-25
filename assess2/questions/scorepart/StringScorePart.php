@@ -30,7 +30,7 @@ class StringScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'strflags', 'scoremethod', 'answerformat', 'variables', 'requiretimes'];
         foreach ($optionkeys as $optionkey) {
@@ -42,7 +42,7 @@ class StringScorePart implements ScorePart
         }
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }
         $givenans = normalizemathunicode($givenans);
-        
+
         if ($answerformat=='list') {
             $givenans = trim($givenans, " ,");
         }
@@ -130,19 +130,19 @@ class StringScorePart implements ScorePart
             }
             foreach($gaarr as $j=>$givenans) {
                 $givenans = trim($givenans);
-                
+
                 if ($answerformat == "logic") {
                     if (comparelogic($givenans, $answer, $variables)) {
                         $correct += 1;
                         $foundloc = $j;
-                    } 
+                    }
                     continue; // skip normal processing
                 }
                 if ($answerformat == "setexp") {
                     if (comparesetexp($givenans, $answer, $variables)) {
                         $correct += 1;
                         $foundloc = $j;
-                    } 
+                    }
                     continue; // skip normal processing
                 }
                 if (count($torem)>0) {

@@ -287,5 +287,4 @@ if (!isset($nologo) && !empty($smallheaderlogo)) {
 	echo '>'.$smallheaderlogo.'</div>';
 }
 
-
 ?>

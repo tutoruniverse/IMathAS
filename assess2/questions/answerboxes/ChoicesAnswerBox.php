@@ -42,10 +42,11 @@ class ChoicesAnswerBox implements AnswerBox
         $style = '';
         $params = [];
 
-        $optionkeys = ['displayformat', 'answer', 'noshuffle', 'readerlabel', 'ansprompt'];
+        $optionkeys = ['answer', 'noshuffle', 'readerlabel', 'ansprompt'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
+        $displayformat = "";
         $questions = getOptionVal($options, 'questions', $multi, $partnum, 2);
 
         if (!is_array($questions)) {
@@ -198,7 +199,7 @@ class ChoicesAnswerBox implements AnswerBox
             foreach ($anss as $v) {
                 if (isset($questions[intval($v)])) {
                     $sapt[] = $questions[intval($v)];
-                } 
+                }
             }
             $sa = implode(' or ', $sapt); //$questions[$answer];
         }

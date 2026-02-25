@@ -41,6 +41,7 @@ var $AMpreviousSymbolinfix = false;
 var $AMcurrentSymbolinfix = false;
 var $AMnames = array();
 var $AMnestingDepth = 0;
+var $isAnswerMode = false;
 
 var $AMsymbols = array(
 
@@ -184,7 +185,7 @@ array( 'input'=>'cdots'),
 array( 'input'=>'vdots'), 
 array( 'input'=>'ddots'), 
 array( 'input'=>'diamond'),
-array( 'input'=>'square', 'tex'=>'boxempty'),
+array( 'input'=>'square', 'tex'=>'square'),
 array( 'input'=>'|__', 'tex'=>'lfloor'),
 array( 'input'=>'__|', 'tex'=>'rfloor'),
 array( 'input'=>'|~', 'tex'=>'lceil'),
@@ -658,7 +659,11 @@ function AMTparseSexpr($str) {
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
 			return array($texsymbol,$str);
 		} else {
-			return array('{'.$texsymbol.'}',$str);
+			if ($this->isAnswerMode) {
+                return array('\['.$texsymbol.'\]',$str);
+            } else {
+                return array('{'.$texsymbol.'}',$str);
+            }
 		}
 	}
 }
@@ -866,7 +871,6 @@ function AMTparseAMtoTeX($str) {
 	$str = preg_replace('/([a-zA-Z])&#772;/', 'bar$1 ', $str);
 	
 	$result = $this->AMTparseExpr($str, false);
-	$result[0] = '\\displaystyle'.str_replace('$','\\$',$result[0]);
 	return ($result[0]);
 }
 

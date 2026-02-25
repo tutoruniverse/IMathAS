@@ -45,7 +45,7 @@ class MatrixAnswerBox implements AnswerBox
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
-
+        $answersize = "";
         $ansformats = array_map('trim', explode(',', $answerformat));
         $dispformats = array_map('trim', explode(',', $displayformat));
 
@@ -151,14 +151,14 @@ class MatrixAnswerBox implements AnswerBox
             if (empty($answerboxsize)) {$answerboxsize = 20;}
             if ($anstype === 'complexmatrix') {
                 if (in_array('allowjcomplex', $ansformats)) {
-                    $tip = _('Enter your answer as a matrix filled with complex numbers in a+bj form, like [(2,3+j),(1-j,j)]') . "<br/>";
+                    $tip = _('Enter your answer as a matrix filled with complex numbers in a+bj form, like \\[\\left[\\begin{smallmatrix} 2 & 3+j \\\\ 1-j & j \\end{smallmatrix}\\right]\\]') . "<br/>";
                 } else {
-                    $tip = _('Enter your answer as a matrix filled with complex numbers in a+bi form, like [(2,3+i),(1-i,i)]') . "<br/>";
+                    $tip = _('Enter your answer as a matrix filled with complex numbers in a+bi form, like \\[\\left[\\begin{smallmatrix} 2 & 3+i \\\\ 1-i & i \\end{smallmatrix}\\right]\\]') . "<br/>";
                 }
                 $shorttip = _('Enter a matrix of complex numbers');    
             } else {
                 $shorttip = _('Enter a matrix of integer or decimal numbers');
-                $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like [(2,3,4),(3,4,5)]');
+                $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
             }
             if ($reqdecimals !== '') {
                 list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
@@ -199,6 +199,7 @@ class MatrixAnswerBox implements AnswerBox
                 $preview .= '</button> &nbsp;';
             }
             $preview .= "<span id=p$qn></span> ";
+            $params['calcformat'] = 'decimal';
         }
 
         $nosolntype = 0;

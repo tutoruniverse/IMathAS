@@ -69,7 +69,6 @@ class CalculatedIntervalAnswerBox implements AnswerBox
                 $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
                 $shorttip = _('Enter an interval using interval notation');
             }
-
         }
         //$tip .= "Enter values as numbers (like 5, -3, 2.2) or as calculations (like 5/3, 2^3, 5+4)<br/>";
         //$tip .= "Enter DNE for an empty set, oo for Infinity";

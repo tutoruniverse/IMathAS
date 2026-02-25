@@ -2678,6 +2678,7 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if (isset($options['answer'])) {if (is_array($options['answer'])) {$answer = $options['answer'][$qn];} else {$answer = $options['answer'];}}
 		if (isset($options['reqdecimals'])) {if (is_array($options['reqdecimals'])) {$reqdecimals = $options['reqdecimals'][$qn];} else {$reqdecimals = $options['reqdecimals'];}}
 		if (isset($options['answerformat'])) {if (is_array($options['answerformat'])) {$answerformat = $options['answerformat'][$qn];} else {$answerformat = $options['answerformat'];}} else {$answerformat = '';}
+		if (isset($options['variables'])) {if (is_array($options['variables'])) {$variables = $options['variables'][$qn];} else {$variables = $options['variables'];}}
 
 		if (!isset($sz)) { $sz = 20;}
 		if (isset($ansprompt)) {$out .= "<label for=\"qn$qn\">$ansprompt</label>";}
@@ -2689,9 +2690,25 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$top = _('Enter your answer by selecting the shade type, and by clicking and dragging the sliders on the normal curve');
 			$shorttip = _('Adjust the sliders');
 		} else {
-
-			$tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
-			$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+			if (in_array('inequality', $ansformats)) {
+                $tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+                $tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+                $tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
+                $shorttip = _('Enter an interval using inequalities');
+            } else {
+                if (in_array('nodecimal', $ansformats)) {
+                    $tip = _('Enter your answer in interval notation using integers (no decimals). Example: [2,5)') . " <br/>";
+                } else {
+                    $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
+                }
+                if (in_array('list', $ansformats)) {
+                    $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "<br/>";
+                    $shorttip = _('Enter a list of intervals using interval notation');
+                } else {
+                    $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+                    $shorttip = _('Enter an interval using interval notation');
+                }
+            }
 			if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
 				$tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
 			} else {
@@ -7736,6 +7753,9 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a reduced mixed number, proper or improper fraction, or integer');
 		}
+	} else if (in_array('sloppymixednumber',$ansformats)) {
+		$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, integers or exact decimals'), $listtype):_('Enter a mixed number, fraction, integer or exact decimal');
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
 			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
@@ -7747,11 +7767,14 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 	} else if (in_array('decimal',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as an integer or decimal value (like 5 or 3.72)'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer or decimal values'), $listtype):_('Enter an integer or decimal value');
+	} else if (in_array('integer',$ansformats)) {
+		$tip .= sprintf(_('Enter %s as an integer value (like 5 or -2)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of integer values'), $listtype):_('Enter an integer value');
 	} else if (in_array('scinotordec',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2 = 3 &middot; 10<sup>2</sup>'), $eword);
+		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using decimals or scientific notation'), $listtype):_('Enter a number using decimals or scientific notation');
 	} else if (in_array('scinot',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2 = 3 &middot; 10<sup>2</sup>'), $eword);
+		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else {
 		$tip .= sprintf(_('Enter %s as a number (like 5, -3, 2.2172) or as a calculation (like 5/3, 2^3, 5+4)'), $eword);
@@ -7859,10 +7882,10 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 	$out .= '</div>';
 
 	if (preg_match('/^inf/',$answer) || $answer==='oo' || $answer===$infsoln) {
-		$answer = '"'.$infsoln.'"';
+		$answer = 'infsoln';
 	}
 	if (preg_match('/^no\s*solution/',$answer) || $answer==='DNE' || $answer===$nosoln) {
-		$answer = '"'.$nosoln.'"';
+		$answer = 'nosoln';
 	}
 
 	return array($out,$answer);

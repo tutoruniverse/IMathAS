@@ -63,6 +63,9 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a reduced mixed number, proper or improper fraction, or integer');
 		}
+	} else if (in_array('sloppymixednumber',$ansformats)) {
+		$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, integers or exact decimals'), $listtype):_('Enter a mixed number, fraction, integer or exact decimal');
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
 			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or decimal (like 0.5 or 1.25)'), $eword);
@@ -78,10 +81,10 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		$tip .= sprintf(_('Enter %s as an integer value (like 5 or -2)'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer values'), $listtype):_('Enter an integer value');
 	} else if (in_array('scinotordec',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2 = 3 &middot; 10<sup>2</sup>'), $eword);
+		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using decimals or scientific notation'), $listtype):_('Enter a number using decimals or scientific notation');
 	} else if (in_array('scinot',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2 = 3 &middot; 10<sup>2</sup>'), $eword);
+		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else if (in_array('generalcomplex',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as a complex number (like 2+3i) or as a calculation (like e^(3i))'), $eword);
@@ -181,7 +184,8 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 			$infsoln = $anspromptp[2];
 		}
 	}
-	$out .= '<div id="qnwrap'.$qn.'" class="'.$colorbox.'" role="group" ';
+	$soln_type = $includeinf ? '-nosolninf' : '-nosoln';
+	$out .= '<div id="qnwrap'.$qn.$soln_type.'" class="'.$colorbox.'" role="group" ';
   if (preg_match('/aria-label=".*?"/', $answerbox, $arialabel)) {
     $answerbox = preg_replace('/aria-label=".*?"/',
       'aria-label="'.Sanitize::encodeStringForDisplay(str_replace('`','',$specsoln)).'"', $answerbox);
@@ -190,7 +194,7 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
   $out .= '>';
   
 	$out .= '<ul class="likelines">';
-	$out .= '<li><input type="radio" id="qs'.$qn.'-s" name="qs'.$qn.'" value="spec" ' .
+	$out .= '<li><input type="radio" id="qs'.$qn.'-s" name="qs'.$qn.'" value="\\[\\]" ' .
         (($la!='DNE' && (!$includeinf || $la!='oo'))?'checked':'') . 
         '><label for="qs'.$qn.'-s">'.$specsoln.'</label>';
 	if ($la=='DNE' || ($includeinf && $la=='oo')) {
@@ -205,9 +209,9 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 	$out .= '<span id="previewloctemp'.$partnum.'"></span>';
 	$out .= '</li>';
 
-	$out .= '<li><input type="radio" id="qs'.$qn.'-d" name="qs'.$qn.'" value="DNE" '.($laqs=='DNE'?'checked':'').'><label for="qs'.$qn.'-d">'.$nosoln.'</label></li>';
+	$out .= '<li><input type="radio" id="qs'.$qn.'-d" name="qs'.$qn.'" value="nosoln" '.($laqs=='DNE'?'checked':'').'><label for="qs'.$qn.'-d">'.$nosoln.'</label></li>';
 	if ($includeinf) {
-		$out .= '<li><input type="radio" id="qs'.$qn.'-i" name="qs'.$qn.'" value="inf" '.($laqs=='oo'?'checked':'').'><label for="qs'.$qn.'-i">'.$infsoln.'</label></li>';
+		$out .= '<li><input type="radio" id="qs'.$qn.'-i" name="qs'.$qn.'" value="infsoln" '.($laqs=='oo'?'checked':'').'><label for="qs'.$qn.'-i">'.$infsoln.'</label></li>';
 	}
 	$out .= '</ul>';
 	//$out .= '<span class="floatright">'.getcolormark($colorbox).'</span>';
@@ -215,12 +219,12 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 
     $answertype = 0;
 	if (preg_match('/^inf/',$answer) || $answer==='oo' || $answer===$infsoln) {
-		$answer = $infsoln;
-        $answertype = 2;
+		$answer = 'infsoln';
+		$answertype = 2;
 	}
 	if (preg_match('/^no\s*solution/',$answer) || $answer==='DNE' || $answer===$nosoln) {
-		$answer = $nosoln;
-        $answertype = 1;
+		$answer = 'nosoln';
+		$answertype = 1;
 	}
 
 	return array($out,$answer,$answertype);

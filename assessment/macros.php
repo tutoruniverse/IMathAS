@@ -23,7 +23,7 @@ array_push($GLOBALS['allowedmacros'],"exp","nthlog",
  "randnames","randmalenames","randfemalenames","randcity","randcities","prettytime",
  "definefunc","evalfunc","evalnumstr","safepow","arrayfindindices","stringtoarray","strtoupper",
  "strtolower","ucfirst","makereducedfraction","makereducedmixednumber","stringappend",
- "stringprepend","textonimage","addplotborder","addlabelabs","makescinot","today",
+ "stringprepend","textonimage_deprecated","textonimage","addplotborder","addlabelabs","makescinot","today",
  "numtoroman","sprintf","arrayhasduplicates","addfractionaxislabels","decimaltofraction",
  "ifthen","multicalconarray","htmlentities","formhoverover","formpopup","connectthedots",
  "jointsort","stringpos","stringlen","stringclean","substr","substr_count","str_replace",
@@ -3040,7 +3040,9 @@ function evalfunc($farr) {
 	}
 }
 
-function textonimage() {
+// This function is deprecated and will be removed in a future version. 
+// Use textonimage() instead, which is more flexible and responsive.
+function textonimage_deprecated() {
 	$args = func_get_args();
     $img = array_shift($args);
 
@@ -3062,15 +3064,82 @@ function textonimage() {
 	return $out;
 }
 
-function changeimagesize($img,$w,$h='') {
-	$img = preg_replace('/(width|height)\s*=\s*"?\d+"?/','',$img);
-	$img = preg_replace('/(width|height):\s*\w+;/','',$img);
-	$sizestr = 'width='.Sanitize::onlyInt($w);
-	if ($h != '') {
-		$sizestr .= ' height='.Sanitize::onlyInt($h);
+// Text on image macro 
+// When $img not URL and provide both width and height, use percent position 
+// Otherwise, use pixel position
+function textonimage() {
+	$args = func_get_args();
+	$img = array_shift($args);
+	$use_percent = true; //default to true
+	$width = 0;
+	$height = 0;
+
+	if (substr($img,0,4)=='http') {
+		$use_percent = false;
+		$img = '<img src="'.Sanitize::encodeStringForDisplay($img).'" alt="" />';
 	}
-	$img = str_replace('<img', '<img '.$sizestr, $img);
-	return $img;
+
+	if ($use_percent) {
+		if (preg_match('/width\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
+			$width = (int)$matches[1];
+		}
+		if (preg_match('/height\s*=\s*["\']?(\d+)["\']?/i', $img, $matches)) {
+			$height = (int)$matches[1];
+		}
+	}
+	
+	$out = '<div style="position: relative; width: fit-content;" class="txtimgwrap element-to-render-as-image">';
+	$out .= '<div class="txtimgwrap" style="position:relative;top:0px;left:0px;">'.$img.'</div>';
+	
+	while (count($args)>2) {
+		$text = array_shift($args);
+		$left = array_shift($args);
+		$top = array_shift($args);
+		$hidden = (strpos($text,'[AB')===false)?'aria-hidden=true':'';
+		$text = Sanitize::encodeStringForDisplay($text);
+		if($use_percent && $width > 0 && $height > 0) {
+			$topPercent = ($top / $height * 100);
+			$leftPercent = ($left / $width * 100);
+			$out .= "<div $hidden style=\"position:absolute;top:{$topPercent}%;left:{$leftPercent}%;\">$text</div>";
+		} else {
+			$out .= "<div $hidden style=\"position:absolute;top:{$top}px;left:{$left}px;\">$text</div>";
+		}
+	}
+	$out .= '</div>';
+	return $out;
+}
+
+function changeimagesize($img,$w,$h='') {
+	if (strpos($img,'data-container="txtimg-wrapper"')!==false) {
+		if (preg_match('/(<div[^>]*data-container="txtimg-wrapper"[^>]*style\s*=\s*["\'])([^"\']*)(["\'])/i', $img, $matches)) {
+			$style = $matches[2];
+			$style = preg_replace('/(width|height)\s*:\s*\d+px\s*;?\s*/i', '', $style);
+			$style = trim($style, '; ');
+			$newWidth = 'width: '.intval($w).'px;';
+			$newHeight = ($h != '') ? ' height: '.intval($h).'px;' : '';
+			$style = $newWidth . $newHeight . ($style ? ' ' . $style : '');
+			$style = preg_replace('/\s+/', ' ', $style);
+			$img = preg_replace('/(<div[^>]*data-container="txtimg-wrapper"[^>]*style\s*=\s*["\'])([^"\']*)(["\'])/i', '$1'.$style.'$3', $img);
+		}
+		
+		$img = preg_replace('/(width|height)\s*=\s*["\']?\d+["\']?/i', '', $img);
+		$img = preg_replace('/\s+/', ' ', $img);
+		$sizestr = 'width="'.Sanitize::onlyInt($w).'"';
+		if ($h != '') {
+			$sizestr .= ' height="'.Sanitize::onlyInt($h).'"';
+		}
+		$img = str_replace('<img', '<img '.$sizestr, $img);
+		return $img;
+	} else {
+		$img = preg_replace('/(width|height)\s*=\s*"?\d+"?/','',$img);
+		$img = preg_replace('/(width|height):\s*\w+;/','',$img);
+		$sizestr = 'width='.Sanitize::onlyInt($w);
+		if ($h != '') {
+			$sizestr .= ' height='.Sanitize::onlyInt($h);
+		}
+		$img = str_replace('<img', '<img '.$sizestr, $img);
+		return $img;
+	}
 }
 
 function addimageborder($img, $w=1, $m=0) {

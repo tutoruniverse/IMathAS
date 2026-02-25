@@ -205,8 +205,10 @@ class QuestionHtmlGenerator
         // Eval the question writer's question code.
         // In older questions, code is broken up into three parts.
         // In "modern" questions, the last two parts are empty.
+        $controlVars = NULL;
         try {
           eval(interpret('control', $quesData['qtype'], $quesData['control']));
+          $controlVars = $varsOutput;
           eval(interpret('qcontrol', $quesData['qtype'], $quesData['qcontrol']));
           eval(interpret('answer', $quesData['qtype'], $quesData['answer']));
         } catch (\Throwable $t) {
@@ -515,10 +517,10 @@ class QuestionHtmlGenerator
                     }
                 }
                 // enact hidetips if set
-                if (!empty($hidetips) && (!is_array($hidetips) || !empty($hidetips[$atIdx]))) {
-                  unset($jsParams[$qnRef]['tip']);
-                  unset($jsParams[$qnRef]['longtip']);
-                }
+                // if (!empty($hidetips) && (!is_array($hidetips) || !empty($hidetips[$atIdx]))) {
+                //   unset($jsParams[$qnRef]['tip']);
+                //   unset($jsParams[$qnRef]['longtip']);
+                // }
             }
             $scoremethodwhole = '';
             if (isset($scoremethod)) {
@@ -599,10 +601,10 @@ class QuestionHtmlGenerator
             }
 
             // enact hidetips if set
-            if (!empty($hidetips)) {
-              unset($jsParams[$qnRef]['tip']);
-              unset($jsParams[$qnRef]['longtip']);
-            }
+            // if (!empty($hidetips)) {
+            //   unset($jsParams[$qnRef]['tip']);
+            //   unset($jsParams[$qnRef]['longtip']);
+            // }
         }
 
 
@@ -907,7 +909,7 @@ class QuestionHtmlGenerator
             $displayedAnswersForParts,
             $externalReferences
         );
-
+        $question->setVarsOutput($controlVars);
         $question->setQuestionLastMod($quesData['lastmoddate']);
 
         if (isset($onGetQuestion) && is_callable($onGetQuestion)) {

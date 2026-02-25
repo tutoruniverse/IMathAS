@@ -45,11 +45,11 @@ class MatchingAnswerBox implements AnswerBox
         $sa = '';
         $preview = '';
 
-        $optionkeys = ['questiontitle', 'answertitle', 'matchlist', 'noshuffle',
-            'displayformat', 'readerlabel'];
+        $optionkeys = ['questiontitle', 'answertitle', 'matchlist', 'noshuffle', 'readerlabel'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
+        $displayformat = "";
         $questions = getOptionVal($options, 'questions', $multi, $partnum, 2);
         $answers = getOptionVal($options, 'answers', $multi, $partnum, 2);
 

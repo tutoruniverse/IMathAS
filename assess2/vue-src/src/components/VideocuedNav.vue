@@ -16,7 +16,7 @@
 <script>
 import MenuButton from '@/components/widgets/MenuButton.vue';
 import VideocuedNavListItem from '@/components/VideocuedNavListItem.vue';
-import { store } from '../basicstore';
+import { store } from '@/basicstore';
 
 export default {
   name: 'VideocuedNav',
@@ -49,13 +49,16 @@ export default {
       */
       for (let i = 0; i < store.assessInfo.videocues.length; i++) {
         const cuedata = store.assessInfo.videocues[i];
-        out.push({
-          // internallink: '/videocued/' + cuen + '/v',
-          onclick: () => this.$emit('jumpto', i, 'v'),
-          type: 'v',
-          title: cuedata.title,
-          cue: i
-        });
+
+        if (!cuedata.skipseg) {
+          out.push({
+            // internallink: '/videocued/' + cuen + '/v',
+            onclick: () => this.$emit('jumpto', i, 'v'),
+            type: 'v',
+            title: cuedata.title,
+            cue: i
+          });
+        }
         if (cuedata.hasOwnProperty('qn')) {
           out.push({
             // internallink: '/videocued/' + cuen + '/q',

@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <a href="#" class="sr-only" @click.prevent="$refs.scrollpane.focus()">
+    <a href="#" class="sr-only" @click.prevent="jumpFocus">
       {{ $t('jumptocontent') }}
     </a>
     <assess-header></assess-header>
@@ -23,7 +23,6 @@
       class="scrollpane"
       role="region"
       ref="scrollpane"
-      tabindex="-1"
       :aria-label="$t('regions-q_and_vid')"
     >
       <intro-text
@@ -102,7 +101,7 @@ import InterQuestionTextList from '@/components/InterQuestionTextList.vue';
 import VideocuedResultNav from '@/components/VideocuedResultNav.vue';
 import Question from '@/components/question/Question.vue';
 import IntroText from '@/components/IntroText.vue';
-import { store } from '../basicstore';
+import { store } from '@/basicstore';
 
 export default {
   name: 'videocued',
@@ -309,6 +308,10 @@ export default {
           store.errorMsg = null;
         }
         const newCue = store.assessInfo.videocues[newCueNum];
+        if (newCue.skipseg && store.assessInfo.videocues.hasOwnProperty(newCueNum+1)) {
+          this.jumpTo(newCueNum + 1, newToshow, 1);
+          return;
+        }
         let seektime = 0;
         if (newToshow === 'v') {
           if (newCueNum > 0) {
@@ -334,6 +337,11 @@ export default {
     },
     addShowFollowup (val) {
       this.showfolloup.push(val);
+    },
+    jumpFocus () {
+      this.$refs.scrollpane.setAttribute("tabindex","-1");
+      this.$refs.scrollpane.focus();
+      this.$refs.scrollpane.removeAttribute("tabindex");
     }
   },
   mounted () {
@@ -357,6 +365,10 @@ export default {
     if (store.assessInfo.intro !== '') {
       this.cue = -1;
       this.toshow = 'i';
+    } else {
+      while (store.assessInfo.videocues[this.cue].skipseg) {
+        this.cue++;
+      }
     }
   }
 };

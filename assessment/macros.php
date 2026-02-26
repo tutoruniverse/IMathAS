@@ -716,10 +716,36 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
 	$commands = "setBorder(5); initPicture({$winxmin},{$winxmax},{$ymin},{$ymax});".$commands;
 	$alt = "Graphing window shows horizontal axis: {$winxmin} to {$winxmax}, vertical axis: {$ymin} to {$ymax}. ".$alt;
 
+	// Adding function list to $commands(For testing purposes)
+	$function_names = [];
+	foreach ($funcs as $f) {
+		if ($f === '') continue;
+		$parts = explode(',', $f);
+		foreach ($parts as &$part){
+			if(substr($part, 0, 1) === '[') {
+				$temp =  '[' . makexxpretty(substr($part, 1));
+				$part = $temp;
+			}
+			else {
+				$part = makexxpretty($part);
+			}
+
+			$part = trim($part);
+		}
+		$new_f = implode(',', $parts);
+		$function_names[] = trim($new_f);
+
+	}
+	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
+	// $function_list_str = makepretty($function_list_str);
+	// $function_list_str = makexpretty($function_list_str);
+	// $function_list_str = makexxpretty($function_list_str);
+	// $commands = "var function_list = $function_list_str; " . $commands;
+
 	if ($_SESSION['graphdisp']==0) {
 		return $alt;
 	} else {
-		return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' script='$commands' />\n";
+		return "<embed type='image/svg+xml' align='middle' width='$plotwidth' func_pic height='$plotheight' function_list='$function_list_str' script='$commands' />\n";
 	}
 }
 

@@ -486,8 +486,8 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		var assessver = '$aver';
 		</script>";
 	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addquestions.js?v=042220\"></script>";
-	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addqsort.js?v=080925\"></script>";
-	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/junkflag.js\"></script>";
+	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addqsort.js?v=021326\"></script>";
+	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/junkflag.js?v=021326\"></script>";
 	$placeinhead .= "<script type=\"text/javascript\">var JunkFlagsaveurl = '". $GLOBALS['basesiteurl'] . "/course/savelibassignflag.php';</script>";
 	$placeinhead .= "<link rel=\"stylesheet\" href=\"$staticroot/course/addquestions.css?v=080925\" type=\"text/css\" />";
 	$loadiconfont = true;
@@ -1227,9 +1227,9 @@ if ($overwriteBody==1) {
 
 	<div class="breadcrumb"><?php echo $curBreadcrumb ?></div>
 
-	<div id="headeraddquestions" class="pagetitle"><h1><?php echo _('Add/Remove Questions'); ?>
-		<img src="<?php echo $staticroot ?>/img/help.gif" alt="Help" onClick="window.open('<?php echo $imasroot ?>/help.php?section=addingquestionstoanassessment','help','top=0,width=400,height=500,scrollbars=1,left='+(screen.width-420))"/>
-    </h1></div>
+	<div id="headeraddquestions" class="pagetitle">
+		<h1><?php echo _('Add/Remove Questions'); ?></h1>
+	</div>
     <div class="cp">
         <span class="column">
 <?php
@@ -1269,7 +1269,6 @@ if ($overwriteBody==1) {
 		echo "<p>"._("No Questions currently in assessment")."</p>\n";
 
 		echo '<a href="#" onclick="this.style.display=\'none\';document.getElementById(\'helpwithadding\').style.display=\'block\';return false;">';
-		echo "<img src=\"$staticroot/img/help.gif\" alt=\"Help\"/> ";
 		echo _('How do I find questions to add?'),'</a>';
 		echo '<div id="helpwithadding" style="display:none">';
 		if ($_SESSION['selfrom'.$aid]=='lib') {
@@ -1465,9 +1464,9 @@ if ($overwriteBody==1) {
 					</td>
 					<?php if ($searchall==0) {
 						if ($page_questionTable[$qid]['junkflag']==1) {
-							echo "<td class=c><img class=\"pointer\" id=\"tag{$page_questionTable[$qid]['libitemid']}\" src=\"$staticroot/img/flagfilled.gif\" onClick=\"toggleJunkFlag({$page_questionTable[$qid]['libitemid']});return false;\" alt=\"Flagged\" /></td>";
+							echo "<td class=c><img class=\"pointer\" id=\"tag{$page_questionTable[$qid]['libitemid']}\" src=\"$staticroot/img/flagfilled.svg\" onClick=\"toggleJunkFlag({$page_questionTable[$qid]['libitemid']});return false;\" alt=\"Flagged\" /></td>";
 						} else {
-							echo "<td class=c><img class=\"pointer\" id=\"tag{$page_questionTable[$qid]['libitemid']}\" src=\"$staticroot/img/flagempty.gif\" onClick=\"toggleJunkFlag({$page_questionTable[$qid]['libitemid']});return false;\" alt=\"Not flagged\" /></td>";
+							echo "<td class=c><img class=\"pointer\" id=\"tag{$page_questionTable[$qid]['libitemid']}\" src=\"$staticroot/img/flagempty.svg\" onClick=\"toggleJunkFlag({$page_questionTable[$qid]['libitemid']});return false;\" alt=\"Not flagged\" /></td>";
 						}
 					} ?>
 				</tr>

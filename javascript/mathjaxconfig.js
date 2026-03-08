@@ -59,6 +59,7 @@ if (mathjaxdisp == 8) {
     window.MathJax.options['sre'] = {speech:"shallow"};
 } else if (mathjaxdisp > 8) { // MJ4
     window.MathJax.loader.load.push("a11y/explorer");
+    //window.MathJax.loader.load.push("ui/no-dark-mode");
 }
 if (uselocaljs) {
     window.MathJax.output.fontPath = staticroot+'/javascript/mathjax4/mathjax-newcm-font';

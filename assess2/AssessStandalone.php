@@ -18,6 +18,9 @@ Ideally handle both
 */
 
 require_once __DIR__ . '/AssessUtils.php';
+// Ensure $useeqnhelper is globally set so "helper" appears in jsparams
+global $useeqnhelper;
+$useeqnhelper = 4;
 require_once __DIR__ . '/../filter/filter.php';
 require_once __DIR__ . '/questions/QuestionGenerator.php';
 require_once __DIR__ . '/questions/models/QuestionParams.php';

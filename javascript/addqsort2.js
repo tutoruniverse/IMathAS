@@ -2009,7 +2009,9 @@ function confirm_textseg_dirty() {
     return discard_other_changes;
 }
 
+var inTransit = false;
 function submitChanges() {
+    if (inTransit) { return; }
     var target = "submitnotice";
     check_textseg_itemarray();
     document.getElementById(target).textContent = _(" Saving Changes... ");
@@ -2027,6 +2029,7 @@ function submitChanges() {
     } else {
         outdata["extracredit"] = JSON.stringify(data[3]);
     }
+    inTransit = true;
     $.ajax({
         type: "POST",
         url: AHAHsaveurl,
@@ -2057,6 +2060,7 @@ function submitChanges() {
             ) {
                 $(window).scrollTop(0);
             }
+            inTransit = false;
         })
         .fail(function (xhr, status, errorThrown) {
             document.getElementById(target).textContent =
@@ -2069,6 +2073,7 @@ function submitChanges() {
             document.getElementById("statusmsg").textContent = _("Error saving");
             itemarray = olditemarray.slice();
             refreshTable();
+            inTransit = false;
         });
 }
 

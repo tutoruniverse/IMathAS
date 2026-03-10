@@ -66,6 +66,10 @@ class ConditionalScorePart implements ScorePart
             } else if ($answer===false || $answer===null) {
                 $scorePartResult->setRawScore(0);
                 return $scorePartResult;
+            } else if ($answer === 'manual') {
+                $GLOBALS['questionmanualgrade'] = true;
+                $scorePartResult->setRawScore(-2);
+                return $scorePartResult;
             } else {
                 if ($answer < 0) {
                   $answer = 0;

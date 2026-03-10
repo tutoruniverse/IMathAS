@@ -28,7 +28,6 @@ function checkreqtimes($tocheck,$rtimes) {
 	}
 
 	if (strpos($rtimes, "ignore_spaces,true") !== 0) {
-		error_log("Checking with ignore spaces");
 		$ignore_spaces_check_result = checkreqtimes($tocheck, "ignore_spaces,true," . $rtimes);
 		if ($ignore_spaces_check_result == 1) {
 			return 1;

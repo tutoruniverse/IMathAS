@@ -25,10 +25,10 @@
 	if (isset($_POST['action'])) {
 		require_once "../includes/updateptsposs.php";
 		if ($_POST['action'] == 'add') { //adding new questions
-			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints,ver FROM imas_assessments WHERE id=:id");
+			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints,ver,intro FROM imas_assessments WHERE id=:id");
 			$stm->execute(array(':id'=>$aid));
-            list($itemorder, $viddata, $defpoints, $aver) = $stm->fetch(PDO::FETCH_NUM);
-            if (!isset($_POST['lastitemhash']) || $_POST['lastitemhash'] !== md5($itemorder)) {
+            list($itemorder, $viddata, $defpoints, $aver, $intro) = $stm->fetch(PDO::FETCH_NUM);
+            if (!isset($_POST['lastitemhash']) || $_POST['lastitemhash'] !== md5($itemorder . $intro)) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo '{"error": "Assessment content has changed since last loaded. Reload the page and try again"}';
                 exit;
@@ -120,7 +120,7 @@
 			$stm = $DBH->prepare("SELECT itemorder,defpoints,ver,intro FROM imas_assessments WHERE id=:id");
 			$stm->execute(array(':id'=>$aid));
 			list($itemorder, $defpoints, $aver, $intro) = $stm->fetch(PDO::FETCH_NUM);
-            if (!isset($_POST['lastitemhash']) || $_POST['lastitemhash'] !== md5($itemorder)) {
+            if (!isset($_POST['lastitemhash']) || $_POST['lastitemhash'] !== md5($itemorder . $intro)) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo '{"error": "Assessment content has changed since last loaded. Reload the page and try again"}';
                 exit;
@@ -205,7 +205,7 @@
         list($jsarr,$existingqs) = getQuestionsAsJSON($cid, $aid);
         
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['itemarray'=>$jsarr, 'lastitemhash'=>md5($itemorder)], 
+        echo json_encode(['itemarray'=>$jsarr, 'lastitemhash'=>md5($itemorder . $intro)], 
             JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE);
         exit;
 

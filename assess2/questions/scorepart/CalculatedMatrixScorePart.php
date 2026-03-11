@@ -71,13 +71,17 @@ class CalculatedMatrixScorePart implements ScorePart
             if ($isRescore) {
               $givenanslist = explode('|', $givenans);
               foreach ($givenanslist as $i=>$v) {
+                    // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
+                    $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
                     $givenanslistvals[$i] = evalMathParser($v);
               }
             } else {
               for ($i=0; $i<$sizeparts[0]*$sizeparts[1]; $i++) {
                   $givenanslist[$i] = $_POST["qn$qn-$i"];
                   if (!$hasNumVal && $_POST["qn$qn-$i"] !== '') {
-                      $givenanslistvals[$i] = evalMathParser($_POST["qn$qn-$i"]);
+                      // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
+                      $cellval = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $_POST["qn$qn-$i"]);
+                      $givenanslistvals[$i] = evalMathParser($cellval);
                   }
               }
             }
@@ -105,6 +109,8 @@ class CalculatedMatrixScorePart implements ScorePart
                 $givenanslistvals = explode('|', $givenansval);
             } else {
                 foreach ($givenanslist as $j=>$v) {
+                    // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
+                    $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
                     $givenanslistvals[$j] = evalMathParser($v);
                 }
             }

@@ -137,7 +137,7 @@ if (!isset($_SESSION['mathdisp'])) {
 } else if ($_SESSION['mathdisp']==0) { // none
 	echo "<script type=\"text/javascript\">var usingASCIIMath = false; var AMnoMathML=true; var MathJaxCompatible = false; var mathRenderer=\"none\";function rendermathnode(el,callback) {if(typeof callback=='function'){callback();}}</script>";
 }
-echo "<script src=\"$staticroot/javascript/mathparser_min.js?v=100125\" type=\"text/javascript\"></script>\n";
+echo "<script src=\"$staticroot/javascript/mathparser_min.js?v=031126\" type=\"text/javascript\"></script>\n";
 if (isset($_SESSION['graphdisp']) && $_SESSION['graphdisp']==1) {
 	echo "<script src=\"$staticroot/javascript/ASCIIsvg_min.js?v=122025\" type=\"text/javascript\"></script>\n";
 	echo "<script type=\"text/javascript\">var usingASCIISvg = true;</script>";

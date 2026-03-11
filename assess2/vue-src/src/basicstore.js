@@ -1356,7 +1356,7 @@ export const actions = {
     if (data.hasOwnProperty('livepoll_server') && store.livepollServer === '') {
       // inject socket script.
       const scriptEl = document.createElement('script');
-      scriptEl.src = 'https://' + data.livepoll_server + ':3000/socket.io/socket.io.js';
+      scriptEl.src = 'https://' + data.livepoll_server + '/socket.io/socket.io.js';
       document.head.appendChild(scriptEl);
       // save for later
       store.livepollServer = data.livepoll_server;

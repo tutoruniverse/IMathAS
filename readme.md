@@ -278,7 +278,7 @@ Options:
 ## Additional Feature Setup
 ### LivePoll
 IMathAS supports a clicker-style assessment format called LivePoll.  To use it, a Node websocket server must be set up to handle the live syncing.  You can find the code and basic setup instructions on the [IMathAS-Extras](https://github.com/drlippman/imathas-extras) Github page.  Once set up, define:
-- `$CFG['GEN']['livepollserver']`: The address for the websocket server, like `livepoll.mysite.com`.  The system assumes the server is running on port 3000.
+- `$CFG['GEN']['livepollserver']`: The address for the websocket server, like `livepoll.mysite.com`.  The system assumes the server is running on port 3000, which you can override using `$CFG['GEN']['livepollserverport']`.
 - `$CFG['GEN']['livepollpassword']`:  This can optionally be defined to provide additional security to livepoll by signing all messages sent via sockets.
 
 ### Pandoc

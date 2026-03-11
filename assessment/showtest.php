@@ -1169,15 +1169,16 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 		$placeinhead .= '<script src="'.$staticroot.'/javascript/ytapi.js?v=101817"></script>';
 	}
 	if ($testsettings['displaymethod'] == "LivePoll") {
-		$placeinhead = '<script src="https://'.$CFG['GEN']['livepollserver'].':3000/socket.io/socket.io.js"></script>';
-		$placeinhead .= '<script src="'.$staticroot.'/javascript/livepoll.js?v=102518"></script>';
+		$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+		$placeinhead = '<script src="https://'.$CFG['GEN']['livepollserver'].':'.$port.'/socket.io/socket.io.js"></script>';
+		$placeinhead .= '<script src="'.$staticroot.'/javascript/livepoll.js?v=031126"></script>';
 		$livepollroom = $testsettings['id'].'-'.($_SESSION['isteacher'] ? 'teachers':'students');
 		$now = time();
 		if (isset($CFG['GEN']['livepollpassword'])) {
 			$livepollsig = base64_encode(hash('sha256',$livepollroom . $CFG['GEN']['livepollpassword'] . $now,true));
 		}
 		$placeinhead .= '<script type="text/javascript">
-				if (typeof io != "undefined") {livepoll.init("'.$CFG['GEN']['livepollserver'].'","'.$livepollroom.'","'.$now.'","'.$livepollsig.'");}
+				if (typeof io != "undefined") {livepoll.init("'.$CFG['GEN']['livepollserver'].':'.$port.'","'.$livepollroom.'","'.$now.'","'.$livepollsig.'");}
 				else { $(function() {$("#livepollqcontent").html("<p>' . _("Unable to connect to LivePoll Hub.  Please try again later.") . '</p>");});}</script>';
 
 		$placeinhead .= '<style type="text/css">
@@ -2414,8 +2415,8 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				if (isset($CFG['GEN']['livepollpassword'])) {
 					$livepollsig = Sanitize::encodeUrlParam(base64_encode(hash('sha256',$tocheck . $CFG['GEN']['livepollpassword'] . $now,true)));
 				}
-
-				$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/qscored?aid='.$aid.'&qn='.$qn.'&user='.Sanitize::encodeUrlParam($userid).'&score='.Sanitize::encodeUrlParam($rawscore).'&now='.$now.'&la='.Sanitize::encodeUrlParam($arv).'&sig='.$livepollsig);
+				$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+				$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/qscored?aid='.$aid.'&qn='.$qn.'&user='.Sanitize::encodeUrlParam($userid).'&score='.Sanitize::encodeUrlParam($rawscore).'&now='.$now.'&la='.Sanitize::encodeUrlParam($arv).'&sig='.$livepollsig);
 				echo '{success: true}';
 			//}
 			exit;
@@ -2436,8 +2437,8 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 			}
 			$regenstr = '';
 
-
-			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/startq?aid='.$aid.'&qn='.$qn.'&seed='.$seed.'&startt='.$startt.'&now='.$now.'&sig='.$livepollsig);
+			$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/startq?aid='.$aid.'&qn='.$qn.'&seed='.$seed.'&startt='.$startt.'&now='.$now.'&sig='.$livepollsig);
 
 			if ($r=='success') {
 				echo '{success: true}';
@@ -2473,8 +2474,8 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 			}
 			$stm = $DBH->prepare("UPDATE imas_livepoll_status SET curquestion=:curquestion,curstate=:curstate WHERE assessmentid=:assessmentid");
 			$stm->execute(array(':curquestion'=>$qn, ':curstate'=>$newstate, ':assessmentid'=>$aid));
-
-			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/stopq?aid='.$aid.'&qn='.$qn.'&newstate='.$newstate.'&now='.$now.'&sig='.$livepollsig);
+			$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/stopq?aid='.$aid.'&qn='.$qn.'&newstate='.$newstate.'&now='.$now.'&sig='.$livepollsig);
 
 			if ($r=='success') {
 				echo '{success: true}';

@@ -277,7 +277,7 @@ export default {
     if (LPdata.sig) {
       querystr += '&sig=' + encodeURIComponent(LPdata.sig);
     }
-    this.socket = window.io('https://' + server + ':3000', { query: querystr });
+    this.socket = window.io('https://' + server, { query: querystr });
     this.socket.off();
     this.socket.on('livepoll usercount', (data) => this.updateUsercount(data));
     if (store.assessInfo.is_teacher) {

@@ -21,7 +21,7 @@ var livepoll = new function() {
 		isteacher = room.match(/teacher/);
 
 		var querystr = 'room='+room+'&now='+timestamp+'&sig='+encodeURIComponent(sig);
-		socket = io('https://'+server+':3000', {query: querystr});
+		socket = io('https://'+server, {query: querystr});
 		socket.on('livepoll usercount', updateUsercount);
 
 		if (isteacher) {

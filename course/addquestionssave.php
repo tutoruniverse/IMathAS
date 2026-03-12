@@ -166,13 +166,15 @@
 	$submitted = $_REQUEST['order'];
 	$submitted = str_replace('~',',',$submitted);
 	$newitems = array();
-	foreach (explode(',',$submitted) as $qid) {
-		if (strpos($qid,'|')===false) {
-			$newitems[] = Sanitize::onlyInt($qid);
+	if ($submitted !== '') {
+		foreach (explode(',',$submitted) as $qid) {
+			if (strpos($qid,'|')===false) {
+				$newitems[] = Sanitize::onlyInt($qid);
+			}
 		}
 	}
 	$toremove = array_diff($curitems,$newitems);
-	if (array_diff($newitems, $curitems)) {
+	if (!empty(array_diff($newitems, $curitems))) {
 		// this would mean there's a qid in the itemorder that didn't previously exist
 		echo "error: invalid item in order";
         exit;

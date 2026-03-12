@@ -36,15 +36,15 @@
 
 			$newitemorder = '';
             $points = '';
-			if (isset($_POST['addasgroup'])) {
+			if (!empty($_POST['addasgroup'])) {
 				$newitemorder = '1|0';
 			}
-			if (isset($_POST['addasgroup'])) {
+			if (!empty($_POST['addasgroup'])) {
 				$points = trim($_POST['points'.$_POST['firstqsetid']]);
 			}
 			foreach (explode(',',$_POST['qsetids']) as $k=>$qsetid) {
 				for ($i=0; $i<$_POST['copies'.$qsetid];$i++) {
-					if (!isset($_POST['addasgroup'])) {
+					if (empty($_POST['addasgroup'])) {
 						$points = trim($_POST['points'.$qsetid]);
 					}
 					$attempts = trim($_POST['attempts'.$qsetid]);
@@ -56,7 +56,7 @@
                     $showwork = intval($_POST['showwork'.$qsetid]);
 					if ($points=='' || $points==$defpoints) { $points = 9999;}
 					if ($attempts=='' || intval($attempts)==0) {$attempts = 9999;}
-					if ($points==9999 && isset($_POST['pointsforparts']) && $_POST['qparts'.$qsetid]>1 && !isset($_POST['addasgroup'])) {
+					if ($points==9999 && isset($_POST['pointsforparts']) && $_POST['qparts'.$qsetid]>1 && empty($_POST['addasgroup'])) {
 						$points = intval($_POST['qparts'.$qsetid]);
 					}
 					$query = "INSERT INTO imas_questions (assessmentid,points,attempts,showhints,showwork,penalty,regen,showans,questionsetid) ";
@@ -69,7 +69,7 @@
 					if ($newitemorder=='') {
 						$newitemorder = $qid;
 					} else {
-						if (isset($_POST['addasgroup'])) {
+						if (!empty($_POST['addasgroup'])) {
 							$newitemorder = $newitemorder . "~$qid";
 						} else {
 							$newitemorder = $newitemorder . ",$qid";
@@ -475,8 +475,9 @@
 			echo '</tbody></table>';
 			echo '<input type=hidden name="qsetids" value="'.Sanitize::encodeStringForDisplay($addqs).'" />';
 			echo '<input type=hidden name="action" value="add" />';
-
-			echo '<p><label><input type=checkbox name="addasgroup" value="1" onclick="chgisgrouped()"/> Add as a question group?</label></p>';
+			if ($cnt > 1) {
+				echo '<p><label><input type=checkbox name="addasgroup" value="1" onclick="chgisgrouped()"/> Add as a question group?</label></p>';
+			}
 			echo '<p><label><input type=checkbox name="pointsforparts" value="1" /> Set the points equal to the number of parts for multipart?</label></p>';
 			echo '<div class="submit"><input type="submit" value="'._('Add Questions').'"></div>';
 		}

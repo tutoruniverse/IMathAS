@@ -2085,6 +2085,7 @@ function addusingdefaults(asgroup) {
         checked.push(this.value);
     });
     if (checked.length == 0) { return; }
+    if (checked.length == 1) { asgroup = false; }
     document.getElementById("statusmsg").textContent = _("Adding questions");
     $.ajax({
         type: "POST",

@@ -363,9 +363,10 @@ if ($end_attempt) {
         'now' => $now,
         'sig' => $livepollsig
       ));
-      $r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/qscored?'.$qs);
+      $port = $CFG['GEN']['livepollserverport'] ?? '3000';
+      $r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/qscored?'.$qs);
       $assessInfoOut['lpres'] = $r;
-      $assessInfoOut['lpq'] = 'https://'.$CFG['GEN']['livepollserver'].':3000/qscored?'.$qs;
+      $assessInfoOut['lpq'] = 'https://'.$CFG['GEN']['livepollserver'].':'.$port.'/qscored?'.$qs;
     }
   } else {
     // grab question settings data with HTML

@@ -77,7 +77,8 @@ $assessInfoOut = $assess_info->extractSettings($include_from_assess_info);
 
 // livepoll server location, if needed
 if ($assessInfoOut['displaymethod'] === 'livepoll') {
-  $assessInfoOut['livepoll_server'] = $CFG['GEN']['livepollserver'];
+  $port = $CFG['GEN']['livepollserverport'] ?? '3000';
+  $assessInfoOut['livepoll_server'] = $CFG['GEN']['livepollserver'] . ':' . $port;
 }
 
 // indicate if teacher or tutor user

@@ -5760,6 +5760,7 @@ function comparesetexp($a,$b,$vars) {
 
 	$ab = [$a,$b];
 	foreach($ab as &$str){
+		$str = preg_replace('/([A-Za-z0-9_\)\]])\^\(c\)/', '$1^c', $str);
 		$str = str_replace($keywords,$replace,$str);	
 
 		// Since complement symbols in set expresions are unary operations *after* the operand, we will shift the complement operator to before the operand here, rather than overcomplicating MathParser

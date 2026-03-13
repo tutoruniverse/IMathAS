@@ -2456,7 +2456,7 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
         $la = str_replace('&tilde;', '~', $la);
 
 		if ($answerformat=='list') {
-			$tip = _('Enter your answer as a list of text separated by commas. Example:  dog, cat, rabbit.') . "<br/>";
+			$tip = _('Enter your answer as a list of text separated by commas. Example: dog, cat, rabbit.') . "<br/>";
 			$shorttip = _('Enter a list of text');
 		} else {
 			$tip .= _('Enter your answer as letters. Examples: A B C, linear, a cat');

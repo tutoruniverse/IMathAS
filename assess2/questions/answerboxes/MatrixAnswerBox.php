@@ -45,7 +45,7 @@ class MatrixAnswerBox implements AnswerBox
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
-
+        $answersize = "";
         $ansformats = array_map('trim', explode(',', $answerformat));
         $dispformats = array_map('trim', explode(',', $displayformat));
 
@@ -131,7 +131,8 @@ class MatrixAnswerBox implements AnswerBox
             }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
             $shorttip = _('Enter a matrix of integer or decimal numbers');
-            $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like [(2,3,4),(3,4,5)]');
+            // Convert [(2,3,4),(3,4,5)] to latex
+            $tip = _('Enter your answer as a matrix filled with integer or decimal numbers, like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
             if ($reqdecimals !== '') {
                 $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
             }
@@ -161,7 +162,6 @@ class MatrixAnswerBox implements AnswerBox
             if (empty($hidepreview)) {
                 if ($useeqnhelper) {
                     $params['helper'] = 1;
-                    $params['calcformat'] = 'decimal';
                 }
                 $params['preview'] = 1;
                 $preview .= '<button type=button class=btn id="pbtn' . $qn . '">';
@@ -169,6 +169,7 @@ class MatrixAnswerBox implements AnswerBox
                 $preview .= '</button> &nbsp;';
             }
             $preview .= "<span id=p$qn></span> ";
+            $params['calcformat'] = 'decimal';
         }
 
         if (in_array('nosoln', $ansformats) || in_array('nosolninf', $ansformats)) {

@@ -45,7 +45,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
-
+        $answersize = "";
         $ansformats = array_map('trim', explode(',', $answerformat));
         $dispformats = array_map('trim', explode(',', $displayformat));
 
@@ -125,7 +125,8 @@ class CalculatedMatrixAnswerBox implements AnswerBox
                 $qnref = ($multi - 1) . '-' . ($qn % 1000);
             }
             $shorttip = _('Enter your answer as a matrix');
-            $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
+            // convert [(2,3,4),(1,4,5)] to latex
+            $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 1 & 4 & 5 \\end{smallmatrix}\\right]\\]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcmatrix');
             if (empty($answerboxsize)) {$answerboxsize = 20;}
 
             $classes = ['text'];

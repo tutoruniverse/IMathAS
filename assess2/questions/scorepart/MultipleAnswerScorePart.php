@@ -31,7 +31,7 @@ class MultipleAnswerScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answers', 'noshuffle', 'scoremethod', 'answerformat'];
         foreach ($optionkeys as $optionkey) {
@@ -39,14 +39,14 @@ class MultipleAnswerScorePart implements ScorePart
         }
         $questions = getOptionVal($options, 'questions', $multi, $partnum, 2);
         $answers = trim($answers, ' ,');
-        
+
         if (!is_array($questions)) {
             $scorePartResult->addScoreMessage(_('Eeek!  $questions is not defined or needs to be an array.  Make sure $questions is defined in the Common Control section.'));
             $scorePartResult->setRawScore(0);
             return $scorePartResult;
         }
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }
-        
+
         if ($noshuffle == "last") {
             $randqkeys = (array) $RND->array_rand(array_slice($questions,0,count($questions)-1),count($questions)-1);
             $RND->shuffle($randqkeys);
@@ -80,7 +80,7 @@ class MultipleAnswerScorePart implements ScorePart
         }
         $ansor = explode(' or ', $answers);
 
-        
+
         $origla = array();
         if ($isRescore) {
           $origla = explode('|', $givenans);

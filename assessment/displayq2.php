@@ -1163,10 +1163,10 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			}
 		} else {
 			if (in_array('integer',$ansformats)) {
-				$tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . "<br/>";
+				$tip = _('Enter your answer as an integer. Examples: 3, -4, 0') . "<br/>";
 				$shorttip = _('Enter an integer');
 			} else {
-				$tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . "<br/>";
+				$tip = _('Enter your answer as an integer or decimal number. Examples: 3, -4, 5.5172') . "<br/>";
 				$shorttip = _('Enter an integer or decimal number');
 			}
 		}
@@ -2145,9 +2145,9 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		$out .= "<script type=\"text/javascript\">pts[$qn]=\"$points\";</script>\n";
 		if (in_array('equation',$ansformats)) {
 			$out .= "<script type=\"text/javascript\">iseqn[$qn] = 1;</script>\n";
-			$tip = _('Enter your answer as an equation.  Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
+			$tip = _('Enter your answer as an equation. Example: y=3x^2+1, 2+x+y=3') . "\n<br/>" . _('Be sure your variables match those in the question');
 		} else {
-			$tip = _('Enter your answer as an expression.  Example: 3x^2+1, x/5, (a+b)/c') . "\n<br/>" . _('Be sure your variables match those in the question');
+			$tip = _('Enter your answer as an expression. Example: 3x^2+1, x/5, (a+b)/c') . "\n<br/>" . _('Be sure your variables match those in the question');
 		}
 		if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {
 			list($out,$answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
@@ -2198,25 +2198,25 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if ($multi>0) { $qn = $multi*1000+$qn;}
 
 		if ($displayformat == 'point') {
-			$tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
+			$tip = _('Enter your answer as a point. Example: (2,5.5172)') . "<br/>";
 			$shorttip = _('Enter a point');
 		} else if ($displayformat == 'pointlist') {
-			$tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
+			$tip = _('Enter your answer a list of points separated with commas. Example: (1,2), (3.5172,5)') . "<br/>";
 			$shorttip = _('Enter a list of points');
 		} else if ($displayformat == 'vector') {
-			$tip = _('Enter your answer as a vector.  Example: <2,5.5>') . "<br/>";
+			$tip = _('Enter your answer as a vector. Example: <2,5.5>') . "<br/>";
 			$shorttip = _('Enter a vector');
 		} else if ($displayformat == 'vectorlist') {
-			$tip = _('Enter your answer a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
+			$tip = _('Enter your answer a list of vectors separated with commas. Example: <1,2>, <3.5172,5>') . "<br/>";
 			$shorttip = _('Enter a list of vectors');
 		} else if ($displayformat == 'set') {
-			$tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
+			$tip = _('Enter your answer as a set of numbers. Example: {1,2,3}') . "<br/>";
 			$shorttip = _('Enter a set');
 		} else if ($displayformat == 'list') {
 			$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
 			$shorttip = _('Enter a list of n-tuples');
 		} else {
-			$tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
+			$tip = _('Enter your answer as an n-tuple of numbers. Example: (2,5.5172)') . "<br/>";
 			$shorttip = _('Enter an n-tuple');
 		}
 		if (isset($reqdecimals)) {
@@ -2270,25 +2270,25 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if ($multi>0) { $qn = $multi*1000+$qn;}
 
 		if ($displayformat == 'point') {
-			$tip = _('Enter your answer as a point.  Example: (2,5.5172)') . "<br/>";
+			$tip = _('Enter your answer as a point. Example: (2,5.5172)') . "<br/>";
 			$shorttip = _('Enter a point');
 		} else if ($displayformat == 'pointlist') {
-			$tip = _('Enter your answer a list of points separated with commas.  Example: (1,2), (3.5172,5)') . "<br/>";
+			$tip = _('Enter your answer a list of points separated with commas. Example: (1,2), (3.5172,5)') . "<br/>";
 			$shorttip = _('Enter a list of points');
 		} else if ($displayformat == 'vector') {
-			$tip = _('Enter your answer as a vector.  Example: <2,5.5172>') . "<br/>";
+			$tip = _('Enter your answer as a vector. Example: <2,5.5172>') . "<br/>";
 			$shorttip = _('Enter a vector');
 		} else if ($displayformat == 'vectorlist') {
-			$tip = _('Enter your answer a list of vectors separated with commas.  Example: <1,2>, <3.5172,5>') . "<br/>";
+			$tip = _('Enter your answer a list of vectors separated with commas. Example: <1,2>, <3.5172,5>') . "<br/>";
 			$shorttip = _('Enter a list of vectors');
 		} else if ($displayformat == 'set') {
-			$tip = _('Enter your answer as a set of numbers.  Example: {1,2,3}') . "<br/>";
+			$tip = _('Enter your answer as a set of numbers. Example: {1,2,3}') . "<br/>";
 			$shorttip = _('Enter a set');
 		} else if ($displayformat == 'list') {
 			$tip = _('Enter your answer as a list of n-tuples of numbers separated with commas: Example: (1,2),(3.5172,4)') . "<br/>";
 			$shorttip = _('Enter a list of n-tuples');
 		} else {
-			$tip = _('Enter your answer as an n-tuple of numbers.  Example: (2,5.5172)') . "<br/>";
+			$tip = _('Enter your answer as an n-tuple of numbers. Example: (2,5.5172)') . "<br/>";
 			$shorttip = _('Enter an n-tuple');
 		}
 		$tip .= formathint('each value',$ansformats,isset($reqdecimals)?$reqdecimals:null,'calcntuple');
@@ -2345,10 +2345,10 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 
 
 		if (in_array('list',$ansformats)) {
-			$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5.5172i,-3-4i') . "<br/>";
+			$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas. Example: 2+5.5172i,-3-4i') . "<br/>";
 			$shorttip = _('Enter a list of complex numbers');
 		} else {
-			$tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5.5172i') . "<br/>";
+			$tip = _('Enter your answer as a complex number in a+bi form. Example: 2+5.5172i') . "<br/>";
 			$shorttip = _('Enter a complex number');
 		}
 		if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
@@ -2393,10 +2393,10 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		$ansformats = array_map('trim',explode(',',$answerformat));
 
 		if (in_array('list',$ansformats) || in_array('exactlist',$ansformats)) {
-			$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5i,-3-4i') . "<br/>";
+			$tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas. Example: 2+5i,-3-4i') . "<br/>";
 			$shorttip = _('Enter a list of complex numbers');
 		} else {
-			$tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5i') . "<br/>";
+			$tip = _('Enter your answer as a complex number in a+bi form. Example: 2+5i') . "<br/>";
 			$shorttip = _('Enter a complex number');
 		}
 		$tip .= formathint('each value',$ansformats,isset($reqdecimals)?$reqdecimals:null,'calccomplex');
@@ -2456,10 +2456,10 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
         $la = str_replace('&tilde;', '~', $la);
 
 		if ($answerformat=='list') {
-			$tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "<br/>";
+			$tip = _('Enter your answer as a list of text separated by commas. Example: dog, cat, rabbit.') . "<br/>";
 			$shorttip = _('Enter a list of text');
 		} else {
-			$tip .= _('Enter your answer as letters.  Examples: A B C, linear, a cat');
+			$tip .= _('Enter your answer as letters. Examples: A B C, linear, a cat');
 			$shorttip = _('Enter text');
 		}
 		if ($displayformat=='select') {
@@ -2677,6 +2677,7 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if (isset($options['answer'])) {if (is_array($options['answer'])) {$answer = $options['answer'][$qn];} else {$answer = $options['answer'];}}
 		if (isset($options['reqdecimals'])) {if (is_array($options['reqdecimals'])) {$reqdecimals = $options['reqdecimals'][$qn];} else {$reqdecimals = $options['reqdecimals'];}}
 		if (isset($options['answerformat'])) {if (is_array($options['answerformat'])) {$answerformat = $options['answerformat'][$qn];} else {$answerformat = $options['answerformat'];}} else {$answerformat = '';}
+		if (isset($options['variables'])) {if (is_array($options['variables'])) {$variables = $options['variables'][$qn];} else {$variables = $options['variables'];}}
 
 		if (!isset($sz)) { $sz = 20;}
 		if (isset($ansprompt)) {$out .= "<label for=\"qn$qn\">$ansprompt</label>";}
@@ -2688,9 +2689,25 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$top = _('Enter your answer by selecting the shade type, and by clicking and dragging the sliders on the normal curve');
 			$shorttip = _('Adjust the sliders');
 		} else {
-
-			$tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
-			$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+			if (in_array('inequality', $ansformats)) {
+                $tip = sprintf(_('Enter your answer using inequality notation. Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+                $tip .= sprintf(_('Use or to combine intervals. Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+                $tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
+                $shorttip = _('Enter an interval using inequalities');
+            } else {
+                if (in_array('nodecimal', $ansformats)) {
+                    $tip = _('Enter your answer in interval notation using integers (no decimals). Example: [2,5)') . " <br/>";
+                } else {
+                    $tip = _('Enter your answer using interval notation. Example: [2.1,5.6172)') . " <br/>";
+                }
+                if (in_array('list', $ansformats)) {
+                    $tip .= _('Separate intervals by a comma. Example: (-oo,2],[4,oo)') . "<br/>";
+                    $shorttip = _('Enter a list of intervals using interval notation');
+                } else {
+                    $tip .= _('Use U for union to combine intervals. Example: (-oo,2] U [4,oo)') . "<br/>";
+                    $shorttip = _('Enter an interval using interval notation');
+                }
+            }
 			if (!in_array('nosoln',$ansformats) && !in_array('nosolninf',$ansformats))  {
 				$tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
 			} else {
@@ -2794,17 +2811,17 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 		if ($multi>0) { $qn = $multi*1000+$qn;}
 
 		if (in_array('inequality',$ansformats)) {
-			$tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
-			$tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+			$tip = sprintf(_('Enter your answer using inequality notation. Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+			$tip .= sprintf(_('Use or to combine intervals. Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
 			$tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
 			$shorttip = _('Enter an interval using inequalities');
 		} else {
-			$tip = _('Enter your answer using interval notation.  Example: [2,5)') . " <br/>";
+			$tip = _('Enter your answer using interval notation. Example: [2,5)') . " <br/>";
 			if (in_array('list',$ansformats)) {
-				$tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "<br/>";
+				$tip .= _('Separate intervals by a comma. Example: (-oo,2],[4,oo)') . "<br/>";
 				$shorttip = _('Enter a list of intervals using interval notation');
 			} else {
-				$tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+				$tip .= _('Use U for union to combine intervals. Example: (-oo,2] U [4,oo)') . "<br/>";
 				$shorttip = _('Enter an interval using interval notation');
 			}
 
@@ -8044,19 +8061,22 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		}
 	} else if (in_array('mixednumber',$ansformats)) {
 		if (in_array("allowunreduced",$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a mixed number or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a mixed number or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 		} else {
-			$tip .= sprintf(_('Enter %s as a reduced mixed number or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced mixed number or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 		}
 		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers or integers'), $listtype):_('Enter a mixed number or integer');
 	} else if (in_array('mixednumberorimproper',$ansformats)) {
 		if (in_array("allowunreduced",$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a mixed number, proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a mixed number, proper or improper fraction, or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a mixed number, proper or improper fraction, or integer');
 		} else {
-			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a reduced mixed number, proper or improper fraction, or integer');
 		}
+	} else if (in_array('sloppymixednumber',$ansformats)) {
+		$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, integers or exact decimals'), $listtype):_('Enter a mixed number, fraction, integer or exact decimal');
 	} else if (in_array('fracordec',$ansformats)) {
 		if (in_array("allowmixed",$ansformats)) {
 			$tip .= sprintf(_('Enter %s as a mixed number (like 2 1/2), fraction (like 3/5), an integer (like 4 or -2), or exact decimal (like 0.5 or 1.25)'), $eword);
@@ -8068,11 +8088,14 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 	} else if (in_array('decimal',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as an integer or decimal value (like 5 or 3.72)'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer or decimal values'), $listtype):_('Enter an integer or decimal value');
+	} else if (in_array('integer',$ansformats)) {
+		$tip .= sprintf(_('Enter %s as an integer value (like 5 or -2)'), $eword);
+		$shorttip = $islist?sprintf(_('Enter a %s of integer values'), $listtype):_('Enter an integer value');
 	} else if (in_array('scinotordec',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2 = 3 &middot; 10<sup>2</sup>'), $eword);
+		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation. Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using decimals or scientific notation'), $listtype):_('Enter a number using decimals or scientific notation');
 	} else if (in_array('scinot',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2 = 3 &middot; 10<sup>2</sup>'), $eword);
+		$tip .= sprintf(_('Enter %s as in scientific notation. Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else {
 		$tip .= sprintf(_('Enter %s as a number (like 5, -3, 2.2172) or as a calculation (like 5/3, 2^3, 5+4)'), $eword);
@@ -8101,7 +8124,7 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		}
 	}
 	if (in_array('notrig',$ansformats)) {
-		$tip .= "<br/>" . _('Trig functions (sin,cos,etc.) are not allowed');
+		$tip .= "<br/>" . _('Trig functions (sin, cos, etc.) are not allowed');
 	}
 	if ($doshort) {
 		return array($tip,$shorttip);
@@ -8180,10 +8203,10 @@ function setupnosolninf($qn, $answerbox, $answer, $ansformats, $la, $ansprompt, 
 	$out .= '</div>';
 
 	if (preg_match('/^inf/',$answer) || $answer==='oo' || $answer===$infsoln) {
-		$answer = '"'.$infsoln.'"';
+		$answer = 'infsoln';
 	}
 	if (preg_match('/^no\s*solution/',$answer) || $answer==='DNE' || $answer===$nosoln) {
-		$answer = '"'.$nosoln.'"';
+		$answer = 'nosoln';
 	}
 
 	return array($out,$answer);

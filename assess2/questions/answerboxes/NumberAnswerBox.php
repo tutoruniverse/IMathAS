@@ -102,10 +102,10 @@ class NumberAnswerBox implements AnswerBox
             }
         } else {
             if (in_array('integer', $ansformats)) {
-                $tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . "<br/>";
+                $tip = _('Enter your answer as an integer. Examples: 3, -4, 0') . "<br/>";
                 $shorttip = _('Enter an integer');
             } else {
-                $tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . "<br/>";
+                $tip = _('Enter your answer as an integer or decimal number. Examples: 3, -4, 5.5172') . "<br/>";
                 $shorttip = _('Enter an integer or decimal number');
             }
         }

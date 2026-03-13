@@ -31,7 +31,7 @@ class ComplexScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $anstype = $this->scoreQuestionParams->getAnswerType();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance',
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt'];
@@ -104,7 +104,7 @@ class ComplexScorePart implements ScorePart
                 }
                 $answer = rewritePlusMinus($answer);
                 $givenans = rewritePlusMinus($givenans);
-                $gaarr = array_map('trim', explode(',', $givenans));    
+                $gaarr = array_map('trim', explode(',', $givenans));
             }
 
             $normalizedGivenAnswers = [];

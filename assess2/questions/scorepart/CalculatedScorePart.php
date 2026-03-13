@@ -30,10 +30,10 @@ class CalculatedScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
-        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqsigfigs', 
-            'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt', 
+        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqsigfigs',
+            'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt',
             'formatfeedbackon'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
@@ -86,7 +86,7 @@ class CalculatedScorePart implements ScorePart
                 $ansformats[] = 'list';
             }
             $answer = rewritePlusMinus($answer);
-            $givenans = rewritePlusMinus($givenans);    
+            $givenans = rewritePlusMinus($givenans);
         }
 
         if ($reqsigfigs !== '') {
@@ -151,7 +151,7 @@ class CalculatedScorePart implements ScorePart
                                 $aarr[$j] = '';
                             }
                         }
-                    } 
+                    }
                 }
                 $anarr[$k] = $aarr;
             }
@@ -366,7 +366,7 @@ class CalculatedScorePart implements ScorePart
                             } else if ($exactsigfig && checksigfigs($tocheck, $anans, $reqsigfigs, false, $reqsigfigoffset, $sigfigscoretype)) {
                                 //see if it'd be right aside from exact sigfigs
                                 $formatok = "nopart";  $partformatok = false; $correctanyformat++; $foundloc = $j; break 2;
-                            } 
+                            }
                         } else if ($abstolerance !== '') {
                             if (abs($anans-$numericans) < $abstolerance+(($anans==0||abs($anans)>1)?1E-12:(abs($anans)*1E-12))) {
                                 if (!empty($requiretimeslistpart) && is_array($requiretimeslistpart) && checkreqtimes($givenans,$requiretimeslistpart[$i])==0) {

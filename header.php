@@ -387,5 +387,4 @@ if (!isset($nologo) && !empty($smallheaderlogo)) {
 
 }
 
-
 ?>

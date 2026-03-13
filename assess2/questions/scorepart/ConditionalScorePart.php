@@ -30,7 +30,7 @@ class ConditionalScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $answer = $options['answer'] ?? false;
         if (isset($options['abstolerance'])) {$abstolerance = $options['abstolerance'];}

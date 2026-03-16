@@ -261,7 +261,7 @@ MathParser.prototype.parse = function (str) {
   this.origstr = str;
   str = str.replace(/Math\./g,'');
   str = str.replace(/(ar|arg)(sinh|cosh|tanh|sech|csch|coth)/g, 'arc$2');
-  str = str.replace(/[\\[\]`]/g, '').replace(/[\[\]]/g, '()');
+  str = str.replace(/[\\`]/g, '').replace(/\[/g, '(').replace(/\]/g, ')');
   // Handle |x| as abs(x)
   // ES2018; not all support yet
   // str = str.replace(/(?<!\|)\|([^|]+?)\|(?!\|)/g, 'abs($1)');

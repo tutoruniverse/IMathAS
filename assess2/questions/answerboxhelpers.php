@@ -317,10 +317,12 @@ function normalizemathunicode($str) {
 		array("'", "'", '"', '"', '-', '-', '...'),
 		$str);
 	// Next, replace their Windows-1252 equivalents.
+	/*
+	// Removed because it was breaking some unicode
 	$str = str_replace(
 		array(chr(145), chr(146), chr(147), chr(148), chr(150), chr(151), chr(133)),
 		array("'", "'", '"', '"', '-', '-', '...'),
-		$str);
+		$str);*/
 
     $str = preg_replace('/\b(OO|infty)\b/i','oo', $str);
     $str = str_replace('&ZeroWidthSpace;', '', $str);
@@ -402,7 +404,9 @@ function numfuncPrepShowanswer($string, $variables) {
             $varlower = strtolower($variables[$i]);
             $isgreek = in_array($varlower, $greekletters);
             
-            if (!$isgreek && preg_match('/^(\w+)_(\w+|\(.*?\))$/', $variables[$i], $matches)) {
+			if ($varlower[-1]=="'" && in_array(substr($varlower, 0, -1), $greekletters)) {
+				continue;
+			} else if (!$isgreek && preg_match('/^(\w+)_(\w+|\(.*?\))$/', $variables[$i], $matches)) {
                 $chg = false;
                 if (strlen($matches[1]) > 1 && !in_array(strtolower($matches[1]), $greekletters)) {
                     $matches[1] = '"' . $matches[1] . '"';

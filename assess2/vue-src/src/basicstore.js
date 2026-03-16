@@ -130,7 +130,6 @@ export const actions = {
         // overwrite properties with those from response
         response = this.processSettings(response);
         store.assessInfo = Object.assign({}, store.assessInfo, response);
-
         // clear out trackers, in case we're retaking
         store.autosaveQueue = {};
         store.autosaveTimeactive = {};
@@ -855,9 +854,9 @@ export const actions = {
         store.inTransit = false;
       });
   },
-  getScores () {
+  getScores (callback) {
     if (store.inTransit) {
-      window.setTimeout(() => this.getScores(), 20);
+      window.setTimeout(() => this.getScores(callback), 20);
       return;
     }
     store.inTransit = true;
@@ -877,6 +876,9 @@ export const actions = {
         }
         response = this.processSettings(response);
         this.copySettings(response);
+        if (typeof callback === 'function') {
+          callback();
+        }
       })
       .fail((xhr, textStatus, errorThrown) => {
         this.handleError(textStatus === 'parsererror' ? 'parseerror' : 'noserver');
@@ -1354,7 +1356,7 @@ export const actions = {
     if (data.hasOwnProperty('livepoll_server') && store.livepollServer === '') {
       // inject socket script.
       const scriptEl = document.createElement('script');
-      scriptEl.src = 'https://' + data.livepoll_server + ':3000/socket.io/socket.io.js';
+      scriptEl.src = 'https://' + data.livepoll_server + '/socket.io/socket.io.js';
       document.head.appendChild(scriptEl);
       // save for later
       store.livepollServer = data.livepoll_server;

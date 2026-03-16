@@ -100,6 +100,7 @@ var hasTouch = false;
 var didMultiTouch = false;
 var clickmightbenewcurve = false;
 var hasTouchTimer = null;
+var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 var tpModeN = {
 	"5": 2, "5.1": 2, "5.2": 2, "5.3": 2, "5.4": 2,
 	"6": 2, "6.1": 2, "6.2": 2, "6.3": 2, "6.5": 2, "6.6": 2, "6.7": 3,
@@ -2638,12 +2639,13 @@ function setCursor(cursor, target) {
 	target = target || curTarget;
 
 	if (targets[target].cursor != cursor) {
+		var fmt = isSafari ? 'png' : 'svg';
 		if (cursor=='move') {
 			targets[target].el.style.cursor = cursor;
 		} else if (cursor=='pen') {
-			targets[target].el.style.cursor = 'url('+staticroot+'/img/penup.svg) 0 0, auto';
+			targets[target].el.style.cursor = 'url('+staticroot+'/img/penup.'+fmt+') 0 0, auto';
 		} else if (cursor=='pendown') {
-			targets[target].el.style.cursor = 'url('+staticroot+'/img/pendown.svg) 0 20, auto';
+			targets[target].el.style.cursor = 'url('+staticroot+'/img/pendown.'+fmt+') 0 20, auto';
 		}
 		targets[target].cursor = cursor;
 	}

@@ -140,7 +140,7 @@ import SummaryGbScore from '@/components/summary/SummaryGbScore.vue';
 
 import Icons from '@/components/widgets/Icons.vue';
 
-import { store, actions } from '../basicstore';
+import { store, actions } from '@/basicstore';
 
 export default {
   name: 'Launch',
@@ -303,7 +303,7 @@ export default {
     if (this.aInfo.displaymethod === 'livepoll') {
       // inject socket javascript
       var script = document.createElement('script');
-      script.src = 'https://' + this.aInfo.livepoll_server + ':3000/socket.io/socket.io.js';
+      script.src = 'https://' + this.aInfo.livepoll_server + '/socket.io/socket.io.js';
       document.getElementsByTagName('head')[0].appendChild(script);
     } else if (this.aInfo.displaymethod === 'video_cued' && !window.YT) {
       const tag = document.createElement('script');

@@ -160,7 +160,8 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
     'sig' => $livepollsig
   ));
 
-  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/startq?' . $qs);
+  $port = $CFG['GEN']['livepollserverport'] ?? '3000';
+  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/startq?' . $qs);
 
   if ($result !== 'success') {
     echo '{"error": "'.Sanitize::encodeStringForDisplay($r).'"}';
@@ -203,7 +204,8 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
     'now' => $now,
     'sig' => $livepollsig
   ));
-  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/stopq?' . $qs);
+  $port = $CFG['GEN']['livepollserverport'] ?? '3000';
+  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/stopq?' . $qs);
 
   if ($result !== 'success') {
     echo '{"error": "'.Sanitize::encodeStringForDisplay($r).'"}';

@@ -14,7 +14,7 @@ window.MathJax = {
     output: {
         linebreaks: {
             inline: false
-        }
+        },
     },
     addDataAttr: function (math, doc) {
         math.typesetRoot.setAttribute("data-asciimath", math.math);
@@ -26,6 +26,8 @@ window.MathJax = {
         AM.newsymbol({input: "ominus", tag:"mo", output:"\u2296", ttype:AM.TOKEN.CONST});
         AM.newsymbol({input: "rightleftharpoons", tag:"mo", output:"\u21CC", ttype:AM.TOKEN.CONST});
         AM.newsymbol({input: "hbar", tag:"mi", output:"\u210F", ttype:AM.TOKEN.CONST});
+        AM.newsymbol({input: "iint", tag:"mo", output:"\u222C", ttype:AM.TOKEN.CONST});
+        AM.newsymbol({input: "iiint", tag:"mo", output:"\u222D", ttype:AM.TOKEN.CONST});
         ["arcsec","arccsc","arccot"].forEach(function(v) {
             AM.newsymbol({input:v, tag:"mi", output:v, ttype:AM.TOKEN.UNARY, func:true});
         });
@@ -57,6 +59,10 @@ if (mathjaxdisp == 8) {
     window.MathJax.options['sre'] = {speech:"shallow"};
 } else if (mathjaxdisp > 8) { // MJ4
     window.MathJax.loader.load.push("a11y/explorer");
+    //window.MathJax.loader.load.push("ui/no-dark-mode");
+}
+if (uselocaljs) {
+    window.MathJax.output.fontPath = staticroot+'/javascript/mathjax4/mathjax-newcm-font';
 }
 
 var noMathRender = false; var usingASCIIMath = true; var AMnoMathML = true; 

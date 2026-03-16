@@ -51,6 +51,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
     $assessmentname = $row['name'];
     $displaymethod = $row['displaymethod'];
     $itemorder = $row['itemorder'];
+	$rawintro = $row['intro'];
     $row['showwork'] = ($row['showwork'] & 3);
 
 	if (isset($_GET['grp'])) { $_SESSION['groupopt'.$aid] = Sanitize::onlyInt($_GET['grp']);}
@@ -387,9 +388,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		var addqaddr = '$address';
         var assessver = '$aver';
 		</script>";
-    $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addqsort2.js?v=121025\"></script>";
+    $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addqsort2.js?v=031226\"></script>";
     $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/qsearch.js?v=111925\"></script>";
-    $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/junkflag.js\"></script>";
+    $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/junkflag.js?v=021326\"></script>";
     $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/DatePicker.js?v=080818\"></script>";
 	$placeinhead .= "<script type=\"text/javascript\">var JunkFlagsaveurl = '". $GLOBALS['basesiteurl'] . "/course/savelibassignflag.php';</script>";
     $placeinhead .= "<link rel=\"stylesheet\" href=\"$staticroot/course/addquestions2.css?v=012426\" type=\"text/css\" />";
@@ -498,9 +499,9 @@ if ($overwriteBody==1) {
 
 	<div class="breadcrumb"><?php echo $curBreadcrumb ?></div>
 
-	<div id="headeraddquestions" class="pagetitle"><h1><?php echo _('Add/Remove Questions'); ?>
-		<img src="<?php echo $staticroot ?>/img/help.gif" alt="Help" onClick="window.open('<?php echo $imasroot ?>/help.php?section=addingquestionstoanassessment','help','top=0,width=400,height=500,scrollbars=1,left='+(screen.width-420))"/>
-    </h1></div>
+	<div id="headeraddquestions" class="pagetitle">
+		<h1><?php echo _('Add/Remove Questions'); ?></h1>
+	</div>
     <div class="cp">
         <span class="column">
 <?php
@@ -542,7 +543,6 @@ if ($overwriteBody==1) {
     echo "<p>"._("No Questions currently in assessment")."</p>\n";
 
     echo '<a href="#" onclick="this.style.display=\'none\';document.getElementById(\'helpwithadding\').style.display=\'block\';return false;">';
-    echo "<img src=\"$staticroot/img/help.gif\" alt=\"Help\"/> ";
     echo _('How do I find questions to add?'),'</a>';
     echo '<div id="helpwithadding" style="display:none">';
     echo '<p>',_('Under Potential Questions below, use the selector on the left to decide whether you want to select specific libraries, search all libraries, or select assessments to choose from.'),'</p>';
@@ -600,7 +600,7 @@ if ($overwriteBody==1) {
 		var itemarray = <?php echo json_encode($jsarr, JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE); ?>;
 		var beentaken = <?php echo ($beentaken) ? 1:0; ?>;
         var displaymethod = "<?php echo Sanitize::encodeStringForDisplay($displaymethod); ?>";
-        var lastitemhash = "<?php echo md5($itemorder); ?>";
+        var lastitemhash = "<?php echo md5($itemorder . $rawintro); ?>";
 		var useed = <?php echo Sanitize::onlyInt($_SESSION['userprefs']['useed']);?>;
 		//$(refreshTable);
 		refreshTable();

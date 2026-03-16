@@ -978,7 +978,7 @@ class DrawingScorePart implements ScorePart
                         }
                     } else if ($pts[0]==9.2) {
                         // second point is x,y at 1/4 period, where tan==1
-                        if ($pts[3] != $pts[1]) {
+                        if ($pts[3] != $pts[1] && $pts[1] != $pts[5]) {
                             $b = M_PI/(2*abs($pts[3] - $pts[1]));
                             $amp = ($pts[6]-$pts[2])/tan($b*($pts[5]-$pts[1]));
                             $xt = $pts[1] + 0.5*abs($pts[3] - $pts[1]);

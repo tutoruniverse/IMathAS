@@ -1066,7 +1066,8 @@ class AssessInfo
         'title' => $data[0]
       );
       if (isset($data[1])) {
-        $out['cues'][$cue]['time'] = intval($data[1]);
+        $out['cues'][$cue]['time'] = abs(intval($data[1]));
+        $out['cues'][$cue]['skipseg'] = (is_numeric($data[1]) && $data[1] < 0);
       }
       if (isset($data[2])) {
         $out['cues'][$cue]['qn'] = intval($data[2]);

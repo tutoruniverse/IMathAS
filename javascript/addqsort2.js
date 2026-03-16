@@ -1910,14 +1910,14 @@ function generateTable() {
             _("Collapse All") +
             '" class="text-segment-button text-segment-button-global"><span id="collapse-button-spanglobal" class="icon-shrink2"></span></button></div>';
     }
-    html +=
+    /*html +=
         '<div class="text-segment-iconglobal"><img src="' +
         staticroot +
         '/img/help.gif" alt="Help" onClick="window.open(\'' +
         imasroot +
         "/help.php?section=addingquestionstoanassessment','help','top=0,width=400,height=500,scrollbars=1,left=" +
         (screen.width - 420) +
-        "')\"/></div>";
+        "')\"/></div>";*/
     html += "</td><td></td><td></td></tr>";
 
     html += "</tbody></table>";
@@ -2009,7 +2009,9 @@ function confirm_textseg_dirty() {
     return discard_other_changes;
 }
 
+var inTransit = false;
 function submitChanges() {
+    if (inTransit) { return; }
     var target = "submitnotice";
     check_textseg_itemarray();
     document.getElementById(target).textContent = _(" Saving Changes... ");
@@ -2027,6 +2029,7 @@ function submitChanges() {
     } else {
         outdata["extracredit"] = JSON.stringify(data[3]);
     }
+    inTransit = true;
     $.ajax({
         type: "POST",
         url: AHAHsaveurl,
@@ -2057,6 +2060,7 @@ function submitChanges() {
             ) {
                 $(window).scrollTop(0);
             }
+            inTransit = false;
         })
         .fail(function (xhr, status, errorThrown) {
             document.getElementById(target).textContent =
@@ -2069,6 +2073,7 @@ function submitChanges() {
             document.getElementById("statusmsg").textContent = _("Error saving");
             itemarray = olditemarray.slice();
             refreshTable();
+            inTransit = false;
         });
 }
 
@@ -2080,6 +2085,7 @@ function addusingdefaults(asgroup) {
         checked.push(this.value);
     });
     if (checked.length == 0) { return; }
+    if (checked.length == 1) { asgroup = false; }
     document.getElementById("statusmsg").textContent = _("Adding questions");
     $.ajax({
         type: "POST",

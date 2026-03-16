@@ -32,7 +32,7 @@ function linegraph($intvs) {
 	if (!is_array($intvs)) {
 		settype($intvs,"array");
 	}
-	$settings = array(-5,5,1,300,70);
+	$settings = array(-5,5,1,300,70,null);
 	for ($i = 1; $i < func_num_args(); $i++) {
 		$settings[$i-1] = func_get_arg($i);
 	}
@@ -106,7 +106,8 @@ function linegraph($intvs) {
 	if ($_SESSION['graphdisp']==0) {
 		return $alt;
 	} else {
-		return "<embed type='image/svg+xml' align='middle' width='$settings[3]' height='$settings[4]' src='{$GLOBALS['imasroot']}/javascript/d.svg' script='$commands' />\n";
+		$embedalt = ($settings[5] !== null) ? $settings[5] : $alt;
+		return "<embed type='image/svg+xml' align='middle' width='$settings[3]' height='$settings[4]' src='{$GLOBALS['imasroot']}/javascript/d.svg' script='$commands' alt=\"" . Sanitize::encodeStringForDisplay($embedalt) . "\" />\n";
 	}
 
 }
@@ -118,7 +119,7 @@ function linegraphbrackets($intvs) {
 	if (!is_array($intvs)) {
 		settype($intvs,"array");
 	}
-	$settings = array(-5,5,1,300,70);
+	$settings = array(-5,5,1,300,70,null);
 	for ($i = 1; $i < func_num_args(); $i++) {
 		$settings[$i-1] = func_get_arg($i);
 	}
@@ -182,7 +183,8 @@ function linegraphbrackets($intvs) {
 	if ($_SESSION['graphdisp']==0) {
 		return $alt;
 	} else {
-		return "<embed type='image/svg+xml' align='middle' width='$settings[3]' height='$settings[4]' src='{$GLOBALS['imasroot']}/javascript/d.svg' script='$commands' />\n";
+		$embedalt = ($settings[5] !== null) ? $settings[5] : $alt;
+		return "<embed type='image/svg+xml' align='middle' width='$settings[3]' height='$settings[4]' src='{$GLOBALS['imasroot']}/javascript/d.svg' script='$commands' alt=\"" . Sanitize::encodeStringForDisplay($embedalt) . "\" />\n";
 	}
 
 }

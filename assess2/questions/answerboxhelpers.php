@@ -81,10 +81,10 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		$tip .= sprintf(_('Enter %s as an integer value (like 5 or -2)'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer values'), $listtype):_('Enter an integer value');
 	} else if (in_array('scinotordec',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation. Example: 3*10^2'), $eword);
+		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation. Example: 3*10^2 = \\[3 \\cdot 10^2\\]'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using decimals or scientific notation'), $listtype):_('Enter a number using decimals or scientific notation');
 	} else if (in_array('scinot',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as in scientific notation. Example: 3*10^2'), $eword);
+		$tip .= sprintf(_('Enter %s as in scientific notation. Example: 3*10^2 = \\[3 \\cdot 10^2\\]'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else if (in_array('generalcomplex',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as a complex number (like 2+3i) or as a calculation (like e^(3i))'), $eword);

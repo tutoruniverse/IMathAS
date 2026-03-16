@@ -75,16 +75,19 @@ class NumMatrixScorePart implements ScorePart
               $givenanslist = explode('|', $givenans);
               if ($anstype === 'calcmatrix') {
                 foreach ($givenanslist as $i=>$v) {
-                        $givenanslistvals[$i] = evalMathParser($v);
+                    // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
+                    $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
+                    $givenanslistvals[$i] = evalMathParser($v);
                 }
               }
             } else {
-              for ($i=0; $i<$sizeparts[0]*$sizeparts[1]; $i++) {
-                  $givenanslist[$i] = $_POST["qn$qn-$i"];
-                  if ($anstype === 'calcmatrix' && !$hasNumVal && $_POST["qn$qn-$i"] !== '') {
-                      $givenanslistvals[$i] = evalMathParser($_POST["qn$qn-$i"]);
-                  }
-              }
+            for ($i=0; $i<$sizeparts[0]*$sizeparts[1]; $i++) {
+                $givenanslist[$i] = $_POST["qn$qn-$i"];
+                if ($anstype === 'calcmatrix' && !$hasNumVal && $_POST["qn$qn-$i"] !== '') {
+                $cellval = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $_POST["qn$qn-$i"]);
+                $givenanslistvals[$i] = evalMathParser($cellval);
+                }
+            }
             }
             $scorePartResult->setLastAnswerAsGiven(implode('|',$givenanslist));
             if ($anstype === 'calcmatrix') {
@@ -106,6 +109,8 @@ class NumMatrixScorePart implements ScorePart
                 } else {
                     $givenanslistvals = [];
                     foreach ($givenanslist as $j=>$v) {
+                        // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
+                        $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
                         $givenanslistvals[$j] = evalMathParser($v);
                     }
                 }

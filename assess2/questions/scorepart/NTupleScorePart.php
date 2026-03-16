@@ -165,7 +165,12 @@ class NTupleScorePart implements ScorePart
                                 if ($anfunc === false) { // parse error
                                     $normalizedGivenAnswer[$i]['vals'][$k] = '';
                                 } else {
-                                    $normalizedGivenAnswer[$i]['vals'][$k] = $anfunc->normalizeTreeString();
+                                    try {
+                                        $normalizedGivenAnswer[$i]['vals'][$k] = $anfunc->normalizeTreeString();
+                                    } catch (\Throwable $e) {
+                                        // Failed to normalize tree; set fallback
+                                        $normalizedGivenAnswer[$i]['vals'][$k] = null;
+                                    }
                                 }
                             }
                         }
@@ -197,7 +202,12 @@ class NTupleScorePart implements ScorePart
                             if ($anfunc === false) {
                                 $normalizedAnswer[$ai][$ao]['vals'][$k] = '';
                             } else {
-                                $normalizedAnswer[$ai][$ao]['vals'][$k] = $anfunc->normalizeTreeString();
+                                try {
+                                    $normalizedAnswer[$ai][$ao]['vals'][$k] = $anfunc->normalizeTreeString();
+                                } catch (\Throwable $e) {
+                                    // Failed to normalize tree; set fallback
+                                    $normalizedAnswer[$ai][$ao]['vals'][$k] = null;
+                                }
                             }
                         }
                     }

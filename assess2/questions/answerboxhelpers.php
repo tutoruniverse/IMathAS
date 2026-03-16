@@ -116,7 +116,7 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		}
 	}
 	if (in_array('notrig',$ansformats)) {
-		$tip .= "<br/>" . _('Trig functions (sin,cos,etc.) are not allowed');
+		$tip .= "<br/>" . _('Trig functions (sin, cos, etc.) are not allowed');
     }
     if (in_array('allowdegrees',$ansformats)) {
 		$tip .= "<br/>" . _('Degrees are allowed');

@@ -72,7 +72,7 @@ class StringAnswerBox implements AnswerBox
             $shorttip = _('Enter a set expression');
             $tip = _('Enter a set expression using the editor buttons, or use "and", "or", "ominus", and "-"');
         } else {
-            $tip .= _('Enter your answer as letters.  Examples: A B C, linear, a cat');
+            $tip .= _('Enter your answer as letters. Examples: A B C, linear, a cat');
             $shorttip = _('Enter text');
         }
 

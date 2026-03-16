@@ -1164,10 +1164,10 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			}
 		} else {
 			if (in_array('integer',$ansformats)) {
-				$tip = _('Enter your answer as an integer.  Examples: 3, -4, 0') . "<br/>";
+				$tip = _('Enter your answer as an integer. Examples: 3, -4, 0') . "<br/>";
 				$shorttip = _('Enter an integer');
 			} else {
-				$tip = _('Enter your answer as an integer or decimal number.  Examples: 3, -4, 5.5172') . "<br/>";
+				$tip = _('Enter your answer as an integer or decimal number. Examples: 3, -4, 5.5172') . "<br/>";
 				$shorttip = _('Enter an integer or decimal number');
 			}
 		}
@@ -2460,7 +2460,7 @@ function makeanswerbox($anstype, $qn, $la, $options,$multi,$colorbox='') {
 			$tip = _('Enter your answer as a list of text separated by commas. Example: dog, cat, rabbit.') . "<br/>";
 			$shorttip = _('Enter a list of text');
 		} else {
-			$tip .= _('Enter your answer as letters.  Examples: A B C, linear, a cat');
+			$tip .= _('Enter your answer as letters. Examples: A B C, linear, a cat');
 			$shorttip = _('Enter text');
 		}
 		if ($displayformat=='select') {
@@ -7803,7 +7803,7 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		}
 	}
 	if (in_array('notrig',$ansformats)) {
-		$tip .= "<br/>" . _('Trig functions (sin,cos,etc.) are not allowed');
+		$tip .= "<br/>" . _('Trig functions (sin, cos, etc.) are not allowed');
 	}
 	if ($doshort) {
 		return array($tip,$shorttip);

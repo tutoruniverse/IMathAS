@@ -70,11 +70,6 @@ class FunctionExpressionScorePart implements ScorePart
 
         $givenans = numfuncPrepForEval($givenans, $variables);
         $answer = numfuncPrepForEval($answer, $variables);
-        
-        error_log("DEBUG");
-        error_log($givenans);
-        error_log($answer);
-        error_log("END DEBUG");
 
         $vlist = implode(",",$variables);
 
@@ -180,10 +175,6 @@ class FunctionExpressionScorePart implements ScorePart
             }
             $givenanslistvals[] = $givenansvals;
 
-            error_log("DEBUG");
-            error_log(json_encode($givenansvals));
-            error_log("END DEBUG");
-
             if (isset($givenInequality)) {
                 $givenanslistineq[] = $givenInequality;
             }
@@ -268,9 +259,7 @@ class FunctionExpressionScorePart implements ScorePart
                     $realans = $answerfunc->evaluateQuiet($varvals);
                     $realanstmp[] = $realans;
                 }
-                error_log("DEBUG");
-                error_log(json_encode($realanstmp));
-                error_log("END DEBUG");
+
                 foreach ($givenanslistvals as $gaidx => $givenansvals) {
                     if (isset($givenansused[$gaidx])) {
                         continue; // already used this givenans

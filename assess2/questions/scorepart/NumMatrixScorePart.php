@@ -77,6 +77,7 @@ class NumMatrixScorePart implements ScorePart
                 foreach ($givenanslist as $i=>$v) {
                     // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
                     $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
+                    $v = str_replace('xx', '*', $v);
                     $givenanslistvals[$i] = evalMathParser($v);
                 }
               }
@@ -85,6 +86,7 @@ class NumMatrixScorePart implements ScorePart
                 $givenanslist[$i] = $_POST["qn$qn-$i"];
                 if ($anstype === 'calcmatrix' && !$hasNumVal && $_POST["qn$qn-$i"] !== '') {
                 $cellval = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $_POST["qn$qn-$i"]);
+                $cellval = str_replace('xx', '*', $cellval);
                 $givenanslistvals[$i] = evalMathParser($cellval);
                 }
             }
@@ -111,6 +113,7 @@ class NumMatrixScorePart implements ScorePart
                     foreach ($givenanslist as $j=>$v) {
                         // Convert mixed numbers before evaluation (e.g., "1 1/2" -> "(1+1/2)")
                         $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
+                        $v = str_replace('xx', '*', $v);
                         $givenanslistvals[$j] = evalMathParser($v);
                     }
                 }

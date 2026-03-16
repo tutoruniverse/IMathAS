@@ -57,9 +57,9 @@ class MatrixAnswerBox implements AnswerBox
         if (!empty($answersize)) {
             if ($anstype === 'complexmatrix') {
                 if (in_array('allowjcomplex', $ansformats)) {
-                    $tip = _('Enter each element of the matrix as a complex number in a+bj form.  Example: -3-4j') . "<br/>";
+                    $tip = _('Enter each element of the matrix as a complex number in a+bj form. Example: -3-4j') . "<br/>";
                 } else {
-                    $tip = _('Enter each element of the matrix as a complex number in a+bi form.  Example: -3-4i') . "<br/>";
+                    $tip = _('Enter each element of the matrix as a complex number in a+bi form. Example: -3-4i') . "<br/>";
                 }
                 $shorttip = _('Enter a complex number');
             } else {

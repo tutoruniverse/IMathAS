@@ -52,28 +52,28 @@ class AlgebraicNTupleAnswerBox implements AnswerBox
         if ($multi) {$qn = ($qn + 1) * 1000 + $partnum;}
 
         if ($displayformat == 'point') {
-            $tip = _('Enter your answer as an algebraic point.  Example: (x,x^2)') . "<br/>";
+            $tip = _('Enter your answer as an algebraic point. Example: (x,x^2)') . "<br/>";
             $shorttip = _('Enter an algebraic point');
         } else if ($displayformat == 'pointlist') {
-            $tip = _('Enter your answer a list of algebraic points separated with commas.  Example: (x,x^2), (3,4x)') . "<br/>";
+            $tip = _('Enter your answer a list of algebraic points separated with commas. Example: (x,x^2), (3,4x)') . "<br/>";
             $shorttip = _('Enter a list of algebraic points');
         } else if ($displayformat == 'vector') {
-            $tip = _('Enter your answer as an algebraic vector.  Example: &lt;x,x^2&gt;') . "<br/>";
+            $tip = _('Enter your answer as an algebraic vector. Example: &lt;x,x^2&gt;') . "<br/>";
             $shorttip = _('Enter an algebraic vector');
         } else if ($displayformat == 'vectorlist') {
-            $tip = _('Enter your answer a list of algebraic vectors separated with commas.  Example: &lt;x,x^2&gt;, &lt;3,x&gt;') . "<br/>";
+            $tip = _('Enter your answer a list of algebraic vectors separated with commas. Example: &lt;x,x^2&gt;, &lt;3,x&gt;') . "<br/>";
             $shorttip = _('Enter a list of algebraic vectors');
         } else if ($displayformat == 'set') {
-            $tip = _('Enter your answer as a set of algebraic expressions.  Example: {x,x^2,3x}') . "<br/>";
+            $tip = _('Enter your answer as a set of algebraic expressions. Example: {x,x^2,3x}') . "<br/>";
             $shorttip = _('Enter an algebraic set');
         } else if ($displayformat == 'setlist') {
-            $tip = _('Enter your answer as a list of sets separated with commas.  Example: {x,3,x^2},{2x,5}') . "<br/>";
+            $tip = _('Enter your answer as a list of sets separated with commas. Example: {x,3,x^2},{2x,5}') . "<br/>";
             $shorttip = _('Enter a list of algebraic sets');
         } else if ($displayformat == 'list') {
             $tip = _('Enter your answer as a list of n-tuples of algebraic expressions separated with commas: Example: (x,x^2),(3,4x)') . "<br/>";
             $shorttip = _('Enter a list of algebraic n-tuples');
         } else {
-            $tip = _('Enter your answer as an n-tuple of algebraic expressions.  Example: (x,x^2)') . "<br/>";
+            $tip = _('Enter your answer as an n-tuple of algebraic expressions. Example: (x,x^2)') . "<br/>";
             $shorttip = _('Enter an algebraic n-tuple');
         }
         if (in_array('generalcomplex', $ansformats)) {

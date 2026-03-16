@@ -50,17 +50,17 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		}
 	} else if (in_array('mixednumber',$ansformats)) {
 		if (in_array("allowunreduced",$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a mixed number or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a mixed number or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 		} else {
-			$tip .= sprintf(_('Enter %s as a reduced mixed number or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced mixed number or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 		}
 		$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers or integers'), $listtype):_('Enter a mixed number or integer');
 	} else if (in_array('mixednumberorimproper',$ansformats)) {
 		if (in_array("allowunreduced",$ansformats)) {
-			$tip .= sprintf(_('Enter %s as a mixed number, proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a mixed number, proper or improper fraction, or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a mixed number, proper or improper fraction, or integer');
 		} else {
-			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer.  Example: 2 1/2 = 2 &frac12;'), $eword);
+			$tip .= sprintf(_('Enter %s as a reduced mixed number, reduced proper or improper fraction, or as an integer. Example: 2 1/2 = 2 &frac12;'), $eword);
 			$shorttip = $islist?sprintf(_('Enter a %s of mixed numbers, fractions, or integers'), $listtype):_('Enter a reduced mixed number, proper or improper fraction, or integer');
 		}
 	} else if (in_array('sloppymixednumber',$ansformats)) {
@@ -81,10 +81,10 @@ function formathint($eword,$ansformats,$reqdecimals,$calledfrom, $islist=false,$
 		$tip .= sprintf(_('Enter %s as an integer value (like 5 or -2)'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of integer values'), $listtype):_('Enter an integer value');
 	} else if (in_array('scinotordec',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation.  Example: 3*10^2'), $eword);
+		$tip .= sprintf(_('Enter %s as a decimal or in scientific notation. Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using decimals or scientific notation'), $listtype):_('Enter a number using decimals or scientific notation');
 	} else if (in_array('scinot',$ansformats)) {
-		$tip .= sprintf(_('Enter %s as in scientific notation.  Example: 3*10^2'), $eword);
+		$tip .= sprintf(_('Enter %s as in scientific notation. Example: 3*10^2'), $eword);
 		$shorttip = $islist?sprintf(_('Enter a %s of numbers using scientific notation'), $listtype):_('Enter a number using scientific notation');
 	} else if (in_array('generalcomplex',$ansformats)) {
 		$tip .= sprintf(_('Enter %s as a complex number (like 2+3i) or as a calculation (like e^(3i))'), $eword);

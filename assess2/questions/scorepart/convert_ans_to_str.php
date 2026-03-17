@@ -109,7 +109,7 @@ function fans_polygons($mh, $mk, $mx, $my, $type, $pixtox, $pixtoy) {
     }
 
     $line_eq = fmt($ma) === '0' ? "y = " . fmt($mb) : "y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
-    $ans = "This $l_type includes a line: $line_eq from $l_range";
+    $ans = "$l_type: $line_eq from $l_range";
 
     return array($ans);
 }
@@ -124,7 +124,7 @@ function fans_vecs($mh, $mk, $mx, $my, $type, $pixtox, $pixtoy) {
         $v_range = sprintf("x = %s, ", fmt($mh));
     }
     elseif ($type === 'ls') {
-        $v_type = "line segment";
+        $v_type = "segment";
         $v_range = sprintf("x = %s -> %s, ", fmt($mh), fmt($mx));
     }
     else {
@@ -135,7 +135,7 @@ function fans_vecs($mh, $mk, $mx, $my, $type, $pixtox, $pixtoy) {
     $mb = $mk - ($ma * $mh);
 
     $line_eq = fmt($ma) === '0' ? "y = " . fmt($mb) : "y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
-    $ans = "This includes a $v_type: $line_eq from $v_range";
+    $ans = "$v_type: $line_eq from $v_range";
 
     return array($ans);
 }
@@ -147,19 +147,20 @@ function fans_circs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     $ma = floatval(($mx - $mh)*($mx - $mh) + ($my-$mk)*($my-$mk));
 
-    $ans = "This includes a circle: " . fmt_xterm($mh) . "^2 + " . fmt_xterm($mk, 'y') . "^2 = " . fmt($ma);
+    $ans = "circle: " . fmt_xterm($mh) . "^2 + " . fmt_xterm($mk, 'y') . "^2 = " . fmt($ma);
 
     return array($ans);
 }
 
-function fans_parabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
+function fans_parabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy, $is_half = false) {
 
     list($mh, $mk, $mx, $my) = clean_up(array($mh, $mk, $mx, $my));
     list(list($mh, $mx), list($mk, $my)) = change_to_math(array($mh, $mx), array($mk, $my), $pixtox, $pixtoy);
 
     $ma = floatval(($my - $mk) / (($mx-$mh)*($mx-$mh)));
+    $label = $is_half ? "half parabola" : "parabola";
 
-    $ans = "This includes a parabola: y = " . fmt_coeff($ma) . fmt_xterm($mh) . "^2" . fmt_kterm($mk);
+    $ans = "$label: y = " . fmt_coeff($ma) . fmt_xterm($mh) . "^2" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -171,7 +172,7 @@ function fans_hparabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     $ma = floatval(($mx - $mh) / (($my-$mk)*($my-$mk)));
 
-    $ans = "This includes a horizontal parabola: x = " . fmt_coeff($ma) . fmt_xterm($mk, 'y') . "^2" . fmt_kterm($mh);
+    $ans = "horizontal parabola: x = " . fmt_coeff($ma) . fmt_xterm($mk, 'y') . "^2" . fmt_kterm($mh);
 
     return array($ans);
 }
@@ -184,7 +185,7 @@ function fans_sqrts ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $flip = ($mx < $mh) ? -1 : 1;
     $ma = floatval(($my - $mk) / sqrt($flip * ($mx - $mh)));
 
-    $ans = "This includes a square root function: y = " . fmt_coeff($ma) . "sqrt(" . fmt_inner($mh) . ")" . fmt_kterm($mk);
+    $ans = "sqrt: y = " . fmt_coeff($ma) . "sqrt(" . fmt_inner($mh) . ")" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -207,7 +208,7 @@ function fans_cubics ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
         $inner = fmt_inner($mh);
         $base = "({$sign_a}{$fabs_a} * ($inner))";
     }
-    $ans = "This includes a cubic function: y = {$base}^3" . fmt_kterm($mk);
+    $ans = "cubic: y = {$base}^3" . fmt_kterm($mk);
     return array($ans);
 }
 
@@ -222,7 +223,7 @@ function fans_cuberoots ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $sign_a = $ma < 0 ? '-' : '';
     $yterm = fmt_xterm($mk, 'y');
     $cube = $sign_a . $yterm . '^3' . ($fa === '1' ? '' : " / $fa");
-    $ans = "This includes a cube root function: x = $cube" . fmt_kterm($mh);
+    $ans = "cube root: x = $cube" . fmt_kterm($mh);
     return array($ans);
 }
 
@@ -234,7 +235,7 @@ function fans_ellipses ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $ma = floatval(abs($mx - $mh));
     $mb = floatval(abs($my - $mk));
 
-    $ans = "This includes an ellipse: " . fmt_squared_term($mh, $ma) . " + " . fmt_squared_term($mk, $mb, 'y') . " = 1";
+    $ans = "ellipse: " . fmt_squared_term($mh, $ma) . " + " . fmt_squared_term($mk, $mb, 'y') . " = 1";
 
     return array($ans);
 }
@@ -247,7 +248,7 @@ function fans_hhyperbolas ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $ma = floatval(abs($mx - $mh));
     $mb = floatval(abs($my - $mk));
 
-    $ans = "This includes a horizontal hyperbola: " . fmt_squared_term($mh, $ma) . " - " . fmt_squared_term($mk, $mb, 'y') . " = 1";
+    $ans = "horizontal hyperbola: " . fmt_squared_term($mh, $ma) . " - " . fmt_squared_term($mk, $mb, 'y') . " = 1";
 
     return array($ans);
 }
@@ -260,7 +261,7 @@ function fans_vhyperbolas ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $ma = floatval(abs($mx - $mh));
     $mb = floatval(abs($my - $mk));
 
-    $ans = "This includes a vertical hyperbola: " . fmt_squared_term($mk, $mb, 'y') . " - " . fmt_squared_term($mh, $ma) . " = 1";
+    $ans = "vertical hyperbola: " . fmt_squared_term($mk, $mb, 'y') . " - " . fmt_squared_term($mh, $ma) . " = 1";
 
     return array($ans);
 }
@@ -279,7 +280,7 @@ function fans_abs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
         }
     }
 
-    $ans = "This includes an absolute value function: y = " . fmt_coeff($ma) . "abs(" . fmt_inner($mh) . ")" . fmt_kterm($mk);
+    $ans = "abs: y = " . fmt_coeff($ma) . "abs(" . fmt_inner($mh) . ")" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -317,11 +318,20 @@ function fans_exps ($mh, $mk, $mx, $my, $m4, $m5, $type, $xop, $yop, $pixtox, $p
 
         $exp_x = fmt($xop) === '0' ? 'x' : "x $sign2 " . fmt($xop);
         $fh = fmt($horizasy);
+        $fstr = fmt($str);
+        $sign_prefix = $sign1 === '-' ? '-' : '';
         if ($fh === '0') {
-            $coeff_str = ($sign1 === '-' ? '-' : '') . fmt($str);
-            $ans = sprintf("This includes an exponential function: y = %s * %s^(%s)", $coeff_str, fmt($base), $exp_x);
+            if ($fstr === '1') {
+                $ans = sprintf("exponential: y = %s%s^(%s)", $sign_prefix, fmt($base), $exp_x);
+            } else {
+                $ans = sprintf("exponential: y = %s%s * %s^(%s)", $sign_prefix, $fstr, fmt($base), $exp_x);
+            }
         } else {
-            $ans = sprintf("This includes an exponential function: y = %s %s %s * %s^(%s)", $fh, $sign1, fmt($str), fmt($base), $exp_x);
+            if ($fstr === '1') {
+                $ans = sprintf("exponential: y = %s %s %s^(%s)", $fh, $sign1, fmt($base), $exp_x);
+            } else {
+                $ans = sprintf("exponential: y = %s %s %s * %s^(%s)", $fh, $sign1, $fstr, fmt($base), $exp_x);
+            }
         }
 
         return array($ans);
@@ -361,11 +371,20 @@ function fans_logs ($mh, $mk, $mx, $my, $m4, $m5, $type, $xop, $yop, $pixtox, $p
 
         $exp_y = fmt($yop) === '0' ? 'y' : "y $sign2 " . fmt($yop);
         $fv = fmt($vertasy);
+        $fstr = fmt($str);
+        $sign_prefix = $sign1 === '-' ? '-' : '';
         if ($fv === '0') {
-            $coeff_str = ($sign1 === '-' ? '-' : '') . fmt($str);
-            $ans = sprintf("This includes a logarithmic function: x = %s * %s^(%s)", $coeff_str, fmt($base), $exp_y);
+            if ($fstr === '1') {
+                $ans = sprintf("logarithmic: x = %s%s^(%s)", $sign_prefix, fmt($base), $exp_y);
+            } else {
+                $ans = sprintf("logarithmic: x = %s%s * %s^(%s)", $sign_prefix, $fstr, fmt($base), $exp_y);
+            }
         } else {
-            $ans = sprintf("This includes a logarithmic function: x = %s %s %s * %s^(%s)", $fv, $sign1, fmt($str), fmt($base), $exp_y);
+            if ($fstr === '1') {
+                $ans = sprintf("logarithmic: x = %s %s %s^(%s)", $fv, $sign1, fmt($base), $exp_y);
+            } else {
+                $ans = sprintf("logarithmic: x = %s %s %s * %s^(%s)", $fv, $sign1, $fstr, fmt($base), $exp_y);
+            }
         }
 
         return array($ans);
@@ -381,7 +400,7 @@ function fans_rats ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     $inner = fmt_inner($mh);
     $denom = $inner === 'x' ? 'x' : "($inner)";
-    $ans = "This includes a rational function: y = " . fmt($ma) . " / $denom" . fmt_kterm($mk);
+    $ans = "rational: y = " . fmt($ma) . " / $denom" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -396,7 +415,7 @@ function fans_coss ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $mc = ($mh + $mx + (($mk > $my) - ($mk < $my)) * ($mh - $mx)) / 2;
     $md = ($my + $mk) / 2;
 
-    $ans = "This includes a cosine function: y = " . fmt_coeff($ma) . "cos(" . fmt_trig_arg($mb, $mc) . ")" . fmt_kterm($md);
+    $ans = "cosine: y = " . fmt_coeff($ma) . "cos(" . fmt_trig_arg($mb, $mc) . ")" . fmt_kterm($md);
 
     return array($ans);
 }
@@ -411,7 +430,7 @@ function fans_sins ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $mb = M_PI / (2 * abs($mx - $mh));  // B = π / (2 * quarter-period)
     $md = $mk;  // vertical shift = midline
 
-    $ans = "This includes a sine function: y = " . fmt_coeff($ma) . "sin(" . fmt_trig_arg($mb, $mh) . ")" . fmt_kterm($md);
+    $ans = "sine: y = " . fmt_coeff($ma) . "sin(" . fmt_trig_arg($mb, $mh) . ")" . fmt_kterm($md);
 
     return array($ans);
 }
@@ -424,7 +443,7 @@ function fans_tan ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $amp = $my - $mk;
     $b = M_PI / (4 * abs($mx - $mh));
 
-    $ans = "This includes a tangent function: y = " . fmt_coeff($amp) . "tan(" . fmt_trig_arg($b, $mh) . ")" . fmt_kterm($mk);
+    $ans = "tangent: y = " . fmt_coeff($amp) . "tan(" . fmt_trig_arg($b, $mh) . ")" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -438,8 +457,8 @@ function fans_lines ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $mb = $mk - ($ma * $mh);
 
     $ans = fmt($ma) === '0'
-        ? "This includes a line: y = " . fmt($mb)
-        : "This includes a line: y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
+        ? "line: y = " . fmt($mb)
+        : "line: y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
 
     return array($ans);
 }
@@ -449,7 +468,7 @@ function fans_dots ($mh, $mk, $pixtox, $pixtoy) {
     list($mh, $mk) = clean_up(array($mh, $mk));
     list(list($mh), list($mk)) = change_to_math(array($mh), array($mk), $pixtox, $pixtoy);
 
-    $ans = sprintf("There is a dot at: (%s, %s)", fmt($mh), fmt($mk));
+    $ans = sprintf("dot(%s, %s)", fmt($mh), fmt($mk));
 
     return array($ans);
 }
@@ -459,9 +478,20 @@ function fans_odots ($mh, $mk, $pixtox, $pixtoy) {
     list($mh, $mk) = clean_up(array($mh, $mk));
     list(list($mh), list($mk)) = change_to_math(array($mh), array($mk), $pixtox, $pixtoy);
 
-    $ans = sprintf("There is an open dot at: (%s, %s)", fmt($mh), fmt($mk));
+    $ans = sprintf("open dot(%s, %s)", fmt($mh), fmt($mk));
 
     return array($ans);
+}
+
+function fans_freehand_line ($pts_px, $pixtox, $pixtoy) {
+    $n = count($pts_px);
+    if ($n == 0) return array('');
+    list(list($x1), list($y1)) = change_to_math(array($pts_px[0][0]), array($pts_px[0][1]), $pixtox, $pixtoy);
+    if ($n == 1) {
+        return array(sprintf("dot(%s, %s)", fmt($x1), fmt($y1)));
+    }
+    list(list($xN), list($yN)) = change_to_math(array($pts_px[$n-1][0]), array($pts_px[$n-1][1]), $pixtox, $pixtoy);
+    return array(sprintf("freehand line: (%s, %s) to (%s, %s)", fmt($x1), fmt($y1), fmt($xN), fmt($yN)));
 }
 
 function fans_ineqlines ($mh, $mk, $mx, $my, $mx2, $my2, $type, $pixtox, $pixtoy) {
@@ -481,7 +511,7 @@ function fans_ineqlines ($mh, $mk, $mx, $my, $mx2, $my2, $type, $pixtox, $pixtoy
             else {
                 $l_dir = '>';
             }
-            $ans = sprintf("This includes an inequality: x %s%s %s", $l_dir, $l_drt, fmt($mh));
+            $ans = sprintf("inequality: x %s%s %s", $l_dir, $l_drt, fmt($mh));
 
             return array($ans);
         }
@@ -499,7 +529,7 @@ function fans_ineqlines ($mh, $mk, $mx, $my, $mx2, $my2, $type, $pixtox, $pixtoy
         list($mh, $sign1) = minus_sign($mh, $sign1);
         list($mk, $sign2) = add_sign($mk, $sign2);
 
-        $ans = sprintf("This includes an inequality: y %s%s %s * (x %s %s) %s %s", $l_dir, $l_drt, fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+        $ans = sprintf("inequality: y %s%s %s * (x %s %s) %s %s", $l_dir, $l_drt, fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
 
         return array($ans);
     }
@@ -520,7 +550,7 @@ function fans_ineqlines ($mh, $mk, $mx, $my, $mx2, $my2, $type, $pixtox, $pixtoy
         list($mh, $sign1) = minus_sign($mh, $sign1);
         list($mk, $sign2) = add_sign($mk, $sign2);
 
-        $ans = sprintf("This includes an inequality: y %s%s %s * (x %s %s)^2 %s %s", $l_dir, $l_drt, fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+        $ans = sprintf("inequality: y %s%s %s * (x %s %s)^2 %s %s", $l_dir, $l_drt, fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
 
         return array($ans);
     }
@@ -548,7 +578,7 @@ function fans_ineqlines ($mh, $mk, $mx, $my, $mx2, $my2, $type, $pixtox, $pixtoy
         list($mh, $sign1) = minus_sign($mh, $sign1);
         list($mk, $sign2) = add_sign($mk, $sign2);
 
-        $ans = sprintf("This includes an inequality: y %s%s %s * abs(x %s %s) %s %s", $l_dir, $l_drt, fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+        $ans = sprintf("inequality: y %s%s %s * abs(x %s %s) %s %s", $l_dir, $l_drt, fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
 
         return array($ans);
     }
@@ -560,7 +590,7 @@ function fans_line1d ($mh, $mx, $pixtox, $pixtoy) {
 
     $head = min($mh, $mx);
     $tail = max($mh, $mx);
-    $ans = sprintf("There is a line from: %s to %s", fmt($head), fmt($tail));
+    $ans = sprintf("line: %s to %s", fmt($head), fmt($tail));
 
     return array($ans);
 }
@@ -570,7 +600,7 @@ function fans_dots1d ($mh, $pixtox, $pixtoy) {
     list($mh) = clean_up(array($mh));
     list(list($mh), ) = change_to_math(array($mh), array(), $pixtox, $pixtoy);
 
-    $ans = sprintf("There is a dot at: %s", fmt($mh));
+    $ans = sprintf("dot: %s", fmt($mh));
 
     return array($ans);
 }
@@ -580,7 +610,7 @@ function fans_odots1d ($mh, $pixtox, $pixtoy) {
     list($mh) = clean_up(array($mh));
     list(list($mh), ) = change_to_math(array($mh), array(), $pixtox, $pixtoy);
 
-    $ans = sprintf("There is an open dot at: %s", fmt($mh));
+    $ans = sprintf("open dot: %s", fmt($mh));
 
     return array($ans);
 }

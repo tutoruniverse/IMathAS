@@ -856,7 +856,7 @@ class DrawingScorePart implements ScorePart
                             $x = $pts[1]+sign($a)*sqrt(abs(20/$a));
 
                             //ADD TO ANSWER AS FUNCTION------------------------------------------------------------
-                            $this->functionAnswers[] = fans_parabs($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy);
+                            $this->functionAnswers[] = fans_parabs($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy, $pts[0] == 6.2));
                             
                             $parabs[] = array($pts[1],$pts[2],$y,$x,$leftrightdir);
                         }
@@ -2184,6 +2184,11 @@ class DrawingScorePart implements ScorePart
                 foreach ($odots as $k=>$pt) {
                     $odots[$k] = array_map('floatval', explode(',',$pt));
                     $this->functionAnswers[] = fans_odots($odots[$k][0], $odots[$k][1], $pixtox, $pixtoy);
+                }
+            }
+            foreach ($lines as $line) {
+                if (!empty($line)) {
+                    $this->stu_func_ans[] = fans_freehand_line($line, $pixtox, $pixtoy);
                 }
             }
 

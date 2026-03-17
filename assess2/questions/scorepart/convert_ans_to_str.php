@@ -108,7 +108,8 @@ function fans_polygons($mh, $mk, $mx, $my, $type, $pixtox, $pixtoy) {
         $l_type = "polygon";
     }
 
-    $ans = "This $l_type includes a line: y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb) . " from $l_range";
+    $line_eq = fmt($ma) === '0' ? "y = " . fmt($mb) : "y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
+    $ans = "This $l_type includes a line: $line_eq from $l_range";
 
     return array($ans);
 }
@@ -133,7 +134,8 @@ function fans_vecs($mh, $mk, $mx, $my, $type, $pixtox, $pixtoy) {
     $ma = ($my - $mk) / ($mx - $mh);
     $mb = $mk - ($ma * $mh);
 
-    $ans = "This includes a $v_type: y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb) . " from $v_range";
+    $line_eq = fmt($ma) === '0' ? "y = " . fmt($mb) : "y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
+    $ans = "This includes a $v_type: $line_eq from $v_range";
 
     return array($ans);
 }
@@ -313,7 +315,14 @@ function fans_exps ($mh, $mk, $mx, $my, $m4, $m5, $type, $xop, $yop, $pixtox, $p
         list($str, $sign1) = add_sign($str, $sign1);
         list($xop, $sign2) = minus_sign($xop, $sign2);
 
-        $ans = sprintf("This includes an exponential function: y = %s %s %s * %s^(x %s %s)", fmt($horizasy), $sign1, fmt($str), fmt($base), $sign2, fmt($xop));
+        $exp_x = fmt($xop) === '0' ? 'x' : "x $sign2 " . fmt($xop);
+        $fh = fmt($horizasy);
+        if ($fh === '0') {
+            $coeff_str = ($sign1 === '-' ? '-' : '') . fmt($str);
+            $ans = sprintf("This includes an exponential function: y = %s * %s^(%s)", $coeff_str, fmt($base), $exp_x);
+        } else {
+            $ans = sprintf("This includes an exponential function: y = %s %s %s * %s^(%s)", $fh, $sign1, fmt($str), fmt($base), $exp_x);
+        }
 
         return array($ans);
     }
@@ -350,7 +359,14 @@ function fans_logs ($mh, $mk, $mx, $my, $m4, $m5, $type, $xop, $yop, $pixtox, $p
         list($str, $sign1) = add_sign($str, $sign1);
         list($yop, $sign2) = minus_sign($yop, $sign2);
 
-        $ans = sprintf("This includes a logarithmic function: x = %s %s %s * %s^(y %s %s)", fmt($vertasy), $sign1, fmt($str), fmt($base), $sign2, fmt($yop));
+        $exp_y = fmt($yop) === '0' ? 'y' : "y $sign2 " . fmt($yop);
+        $fv = fmt($vertasy);
+        if ($fv === '0') {
+            $coeff_str = ($sign1 === '-' ? '-' : '') . fmt($str);
+            $ans = sprintf("This includes a logarithmic function: x = %s * %s^(%s)", $coeff_str, fmt($base), $exp_y);
+        } else {
+            $ans = sprintf("This includes a logarithmic function: x = %s %s %s * %s^(%s)", $fv, $sign1, fmt($str), fmt($base), $exp_y);
+        }
 
         return array($ans);
     }
@@ -385,6 +401,21 @@ function fans_coss ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     return array($ans);
 }
 
+function fans_sins ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
+
+    list($mh, $mk, $mx, $my) = clean_up(array($mh, $mk, $mx, $my));
+    list(list($mh, $mx), list($mk, $my)) = change_to_math(array($mh, $mx), array($mk, $my), $pixtox, $pixtoy);
+
+    // mh,mk = zero crossing (midline); mx,my = peak or trough
+    $ma = $my - $mk;  // signed amplitude
+    $mb = M_PI / (2 * abs($mx - $mh));  // B = π / (2 * quarter-period)
+    $md = $mk;  // vertical shift = midline
+
+    $ans = "This includes a sine function: y = " . fmt_coeff($ma) . "sin(" . fmt_trig_arg($mb, $mh) . ")" . fmt_kterm($md);
+
+    return array($ans);
+}
+
 function fans_tan ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     list($mh, $mk, $mx, $my) = clean_up(array($mh, $mk, $mx, $my));
@@ -406,7 +437,9 @@ function fans_lines ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $ma = ($my - $mk) / ($mx - $mh);
     $mb = $mk - ($ma * $mh);
 
-    $ans = "This includes a line: y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
+    $ans = fmt($ma) === '0'
+        ? "This includes a line: y = " . fmt($mb)
+        : "This includes a line: y = " . fmt_coeff($ma) . "x" . fmt_kterm($mb);
 
     return array($ans);
 }

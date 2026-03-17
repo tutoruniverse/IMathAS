@@ -1054,11 +1054,13 @@ class DrawingScorePart implements ScorePart
                             $rats[] = array($pts[1],$pts[2],$yp);
                         }
                     } else if ($pts[0]==9 || $pts[0]==9.1) {
-                        if ($pts[0]==9.1) { // sine, convert to cos points
+                        if ($pts[0]==9.1) { // sine, convert to cos points for scoring
+                            $this->stu_func_ans[] = fans_sins($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy);
                             $pts[1] -= ($pts[3] - $pts[1]);
                             $pts[2] -= ($pts[4] - $pts[2]);
+                        } else {
+                            $this->stu_func_ans[] = fans_coss($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy);
                         }
-                        $this->stu_func_ans[] = fans_coss($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy);
 
                         if ($pts[4]>$pts[2]) {
                             // //ADD TO ANSWER AS FUNCTION------------------------------------------------------------

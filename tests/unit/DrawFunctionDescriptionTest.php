@@ -95,6 +95,13 @@ final class DrawFunctionDescriptionTest extends TestCase
         $this->assertEquals("This includes a line: y = -2 * x - 1", $result[0]);
     }
 
+    public function testFansLinesZeroSlope()
+    {
+        // Horizontal line through (0, 8): slope=0, intercept=8 → y = 8
+        $result = fans_lines(-2, 8, 4, 8, $this->pixtox, $this->pixtoy);
+        $this->assertEquals("This includes a line: y = 8", $result[0]);
+    }
+
     // -------------------------------------------------------------------------
     // fans_vecs — types 5.2 (ray), 5.3 (segment), 5.4 (vector)
     // -------------------------------------------------------------------------
@@ -421,6 +428,34 @@ final class DrawFunctionDescriptionTest extends TestCase
         // non-trivial b shows full coefficient; trivial mc=0 and md in kterm
         $result = fans_coss(0, 3, 2, -1, $this->pixtox, $this->pixtoy);
         $this->assertEquals("This includes a cosine function: y = 2 * cos(1.570796 * x) + 1", $result[0]);
+    }
+
+    // -------------------------------------------------------------------------
+    // fans_sins — type 9.1 (sine)
+    // -------------------------------------------------------------------------
+
+    public function testFansSinsBasic()
+    {
+        // Zero crossing at (0,0), peak at (1,2): amp=2, B=π/2≈1.570796, md=0
+        // y = 2 * sin(1.570796 * x)
+        $result = fans_sins(0, 0, 1, 2, $this->pixtox, $this->pixtoy);
+        $this->assertEquals("This includes a sine function: y = 2 * sin(1.570796 * x)", $result[0]);
+    }
+
+    public function testFansSinsNegativeAmplitude()
+    {
+        // Zero crossing at (0,0), trough at (1,-3): amp=-3, B=π/2≈1.570796
+        // y = -3 * sin(1.570796 * x)
+        $result = fans_sins(0, 0, 1, -3, $this->pixtox, $this->pixtoy);
+        $this->assertEquals("This includes a sine function: y = -3 * sin(1.570796 * x)", $result[0]);
+    }
+
+    public function testFansSinsWithOffset()
+    {
+        // Zero crossing at (-1, 3), peak at (1, 5): amp=2, B=π/4≈0.785398, md=3
+        // y = 2 * sin(0.785398 * (x + 1)) + 3
+        $result = fans_sins(-1, 3, 1, 5, $this->pixtox, $this->pixtoy);
+        $this->assertEquals("This includes a sine function: y = 2 * sin(0.785398 * (x + 1)) + 3", $result[0]);
     }
 
     // -------------------------------------------------------------------------

@@ -5,6 +5,35 @@ function fmt($n) {
     return rtrim(rtrim(sprintf('%f', $n), '0'), '.');
 }
 
+/** Coefficient prefix: '', '-', '2 * ', '-2 * ' — omits '1 *' and '-1 *'. */
+function fmt_coeff($a) {
+    $fabs = fmt(abs($a));
+    if ($fabs === '1') {
+        return $a < 0 ? '-' : '';
+    }
+    return ($a < 0 ? '-' : '') . $fabs . ' * ';
+}
+
+/** Inner expression without outer parens: 'x', 'x - 3', 'x + 2'. */
+function fmt_inner($h, $var = 'x') {
+    $fh = fmt(abs($h));
+    if ($fh === '0') return $var;
+    return $h > 0 ? "$var - $fh" : "$var + $fh";
+}
+
+/** (x - h) with outer parens when needed: 'x', '(x - 3)', '(x + 2)'. */
+function fmt_xterm($h, $var = 'x') {
+    $inner = fmt_inner($h, $var);
+    return $inner === $var ? $var : "($inner)";
+}
+
+/** Vertical offset: '', ' + 3', ' - 2' — omits '+ 0' and '- 0'. */
+function fmt_kterm($k) {
+    $fk = fmt(abs($k));
+    if ($fk === '0') return '';
+    return $k > 0 ? " + $fk" : " - $fk";
+}
+
 function add_sign($num, $sign) {
     if ($num >= 0) {
         $sign = "+";
@@ -117,11 +146,7 @@ function fans_parabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     $ma = floatval(($my - $mk) / (($mx-$mh)*($mx-$mh)));
 
-    $sign1 = ''; $sign2 = '';
-    list($mh, $sign1) = minus_sign($mh, $sign1);
-    list($mk, $sign2) = add_sign($mk, $sign2);
-
-    $ans = sprintf("This includes function: y = %s * (x %s %s)^2 %s %s", fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+    $ans = "This includes function: y = " . fmt_coeff($ma) . fmt_xterm($mh) . "^2" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -133,11 +158,7 @@ function fans_hparabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     $ma = floatval(($mx - $mh) / (($my-$mk)*($my-$mk)));
 
-    $sign1 = ''; $sign2 = '';
-    list($mk, $sign1) = minus_sign($mk, $sign1);
-    list($mh, $sign2) = add_sign($mh, $sign2);
-
-    $ans = sprintf("This includes function: x = %s * (y %s %s)^2 %s %s", fmt($ma), $sign1, fmt($mk), $sign2, fmt($mh));
+    $ans = "This includes function: x = " . fmt_coeff($ma) . fmt_xterm($mk, 'y') . "^2" . fmt_kterm($mh);
 
     return array($ans);
 }
@@ -150,11 +171,7 @@ function fans_sqrts ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     $flip = ($mx < $mh) ? -1 : 1;
     $ma = floatval(($my - $mk) / sqrt($flip * ($mx - $mh)));
 
-    $sign1 = ''; $sign2 = '';
-    list($mh, $sign1) = minus_sign($mh, $sign1);
-    list($mk, $sign2) = add_sign($mk, $sign2);
-
-    $ans = sprintf("This includes function: y = %s * sqrt(x %s %s) %s %s", fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+    $ans = "This includes function: y = " . fmt_coeff($ma) . "sqrt(" . fmt_inner($mh) . ")" . fmt_kterm($mk);
 
     return array($ans);
 }
@@ -166,11 +183,18 @@ function fans_cubics ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
 
     $ma = floatval(safepow($my-$mk, 1/3)/($mx-$mh));
 
-    $sign1 = ''; $sign2 = '';
-    list($mh, $sign1) = minus_sign($mh, $sign1);
-    list($mk, $sign2) = add_sign($mk, $sign2);
-
-    $ans = sprintf("This includes function: y = (%s * (x %s %s))^3 %s %s", fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+    $fabs_a = fmt(abs($ma));
+    $sign_a = $ma < 0 ? '-' : '';
+    if ($fabs_a === '1') {
+        $xterm = fmt_xterm($mh);
+        $base = ($ma < 0 && $xterm !== 'x') ? "(-$xterm)" : ($ma < 0 ? '(-x)' : $xterm);
+    } elseif (fmt(abs($mh)) === '0') {
+        $base = "({$sign_a}{$fabs_a} * x)";
+    } else {
+        $inner = fmt_inner($mh);
+        $base = "({$sign_a}{$fabs_a} * ($inner))";
+    }
+    $ans = "This includes function: y = {$base}^3" . fmt_kterm($mk);
     return array($ans);
 }
 
@@ -254,11 +278,7 @@ function fans_abs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
         }
     }
 
-    $sign1 = ''; $sign2 = '';
-    list($mh, $sign1) = minus_sign($mh, $sign1);
-    list($mk, $sign2) = add_sign($mk, $sign2);
-
-    $ans = sprintf("This includes function: y = %s * abs(x %s %s) %s %s", fmt($ma), $sign1, fmt($mh), $sign2, fmt($mk));
+    $ans = "This includes function: y = " . fmt_coeff($ma) . "abs(" . fmt_inner($mh) . ")" . fmt_kterm($mk);
 
     return array($ans);
 }

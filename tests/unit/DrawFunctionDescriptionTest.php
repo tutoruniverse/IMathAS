@@ -120,14 +120,14 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (0,0), passes through (2,4): a = (4-0)/(2-0)^2 = 1
         $result = fans_parabs(0, 0, 2, 4, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = 1 * (x - 0)^2 + 0", $result[0]);
+        $this->assertEquals("This includes function: y = x^2", $result[0]);
     }
 
     public function testFansParabsWithOffset()
     {
         // vertex (-1, 2), passes through (1, 6): a = (6-2)/(1-(-1))^2 = 4/4 = 1
         $result = fans_parabs(-1, 2, 1, 6, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = 1 * (x + 1)^2 + 2", $result[0]);
+        $this->assertEquals("This includes function: y = (x + 1)^2 + 2", $result[0]);
     }
 
     public function testFansParabsPositiveAWithOffset()
@@ -141,7 +141,7 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (-2,1), through (1,-8): a=(−8−1)/(1−(−2))²=−9/9=−1
         $result = fans_parabs(-2, 1, 1, -8, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = -1 * (x + 2)^2 + 1", $result[0]);
+        $this->assertEquals("This includes function: y = -(x + 2)^2 + 1", $result[0]);
     }
 
     public function testFansParabsNoTrailingZeros()
@@ -159,7 +159,7 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (0,0), passes through (4,2): x = a*(y-k)^2 + h, a=(4-0)/(2-0)^2=1
         $result = fans_hparabs(0, 0, 4, 2, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: x = 1 * (y - 0)^2 + 0", $result[0]);
+        $this->assertEquals("This includes function: x = y^2", $result[0]);
     }
 
     public function testFansHparabsNonIntegerA()
@@ -177,7 +177,7 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (0,0), ref (4,2): flip=1, a=(2-0)/sqrt(4-0)=1
         $result = fans_sqrts(0, 0, 4, 2, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = 1 * sqrt(x - 0) + 0", $result[0]);
+        $this->assertEquals("This includes function: y = sqrt(x)", $result[0]);
     }
 
     public function testFansSqrtsWithOffsetAndScaling()
@@ -334,7 +334,7 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (0,0), ref (2,2): a=1
         $result = fans_abs(0, 0, 2, 2, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = 1 * abs(x - 0) + 0", $result[0]);
+        $this->assertEquals("This includes function: y = abs(x)", $result[0]);
     }
 
     public function testFansAbsNegativeSlope()
@@ -349,7 +349,7 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (-3,1), through (1,5): a=(5−1)/(1−(−3))=1, mh<mx no flip
         $result = fans_abs(-3, 1, 1, 5, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = 1 * abs(x + 3) + 1", $result[0]);
+        $this->assertEquals("This includes function: y = abs(x + 3) + 1", $result[0]);
     }
 
     public function testFansAbsFractionalSlope()
@@ -363,7 +363,7 @@ final class DrawFunctionDescriptionTest extends TestCase
     {
         // vertex (1,4), through (-1,2): a=(2−4)/(−1−1)=1, mh(1)>mx(−1) → flip → a=−1
         $result = fans_abs(1, 4, -1, 2, $this->pixtox, $this->pixtoy);
-        $this->assertEquals("This includes function: y = -1 * abs(x - 1) + 4", $result[0]);
+        $this->assertEquals("This includes function: y = -abs(x - 1) + 4", $result[0]);
     }
 
     // -------------------------------------------------------------------------

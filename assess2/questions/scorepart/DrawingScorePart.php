@@ -886,6 +886,10 @@ class DrawingScorePart implements ScorePart
                             $k  = (4*$a*$c - $b*$b)/(4*$a);
                             $y = $k+$a*400;
                             $x = $h+sign($a)*sqrt(abs(20/$a));
+
+                            //ADD TO ANSWER AS FUNCTION------------------------------------------------------------
+                            $this->stu_func_ans[] = fans_parabs($h, $k, $x, $y, $pixtox, $pixtoy);
+
                             $parabs[] = array($h,$k,$y,$x,$leftrightdir);
                         }
                     } else if ($pts[0]==6.5) {//sqrt
@@ -1075,6 +1079,10 @@ class DrawingScorePart implements ScorePart
                             $amp = ($pts[6]-$pts[2])/tan($b*($pts[5]-$pts[1]));
                             $xt = $pts[1] + 0.5*abs($pts[3] - $pts[1]);
                             $yt = $pts[2] + $amp;
+
+                            //ADD TO ANSWER AS FUNCTION------------------------------------------------------------
+                            $this->stu_func_ans[] = fans_tan($pts[1], $pts[2], $xt, $yt, $pixtox, $pixtoy);
+
                             $tans[] = array($pts[1], $pts[2], $xt, $yt);
                         }
                     }

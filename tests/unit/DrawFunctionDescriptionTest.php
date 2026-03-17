@@ -404,6 +404,18 @@ final class DrawFunctionDescriptionTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // fans_exps — types 8.3 / 8.5 (exponential)
+    // -------------------------------------------------------------------------
+
+    public function testFansExpsUnitCoefficient()
+    {
+        // y = 2^x: horizasy=0, through (0,1) and (1,2), xop=0
+        // str=1 after computation → coefficient omitted; y = 2^(x)
+        $result = fans_exps(0, 1, 1, 2, 0, 0, 8.3, 0, 0, $this->pixtox, $this->pixtoy);
+        $this->assertEquals("This includes an exponential function: y = 2^(x)", $result[0]);
+    }
+
+    // -------------------------------------------------------------------------
     // fans_coss — type 9 (cosine)
     // -------------------------------------------------------------------------
 

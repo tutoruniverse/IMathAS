@@ -317,11 +317,20 @@ function fans_exps ($mh, $mk, $mx, $my, $m4, $m5, $type, $xop, $yop, $pixtox, $p
 
         $exp_x = fmt($xop) === '0' ? 'x' : "x $sign2 " . fmt($xop);
         $fh = fmt($horizasy);
+        $fstr = fmt($str);
+        $sign_prefix = $sign1 === '-' ? '-' : '';
         if ($fh === '0') {
-            $coeff_str = ($sign1 === '-' ? '-' : '') . fmt($str);
-            $ans = sprintf("This includes an exponential function: y = %s * %s^(%s)", $coeff_str, fmt($base), $exp_x);
+            if ($fstr === '1') {
+                $ans = sprintf("This includes an exponential function: y = %s%s^(%s)", $sign_prefix, fmt($base), $exp_x);
+            } else {
+                $ans = sprintf("This includes an exponential function: y = %s%s * %s^(%s)", $sign_prefix, $fstr, fmt($base), $exp_x);
+            }
         } else {
-            $ans = sprintf("This includes an exponential function: y = %s %s %s * %s^(%s)", $fh, $sign1, fmt($str), fmt($base), $exp_x);
+            if ($fstr === '1') {
+                $ans = sprintf("This includes an exponential function: y = %s %s %s^(%s)", $fh, $sign1, fmt($base), $exp_x);
+            } else {
+                $ans = sprintf("This includes an exponential function: y = %s %s %s * %s^(%s)", $fh, $sign1, $fstr, fmt($base), $exp_x);
+            }
         }
 
         return array($ans);
@@ -361,11 +370,20 @@ function fans_logs ($mh, $mk, $mx, $my, $m4, $m5, $type, $xop, $yop, $pixtox, $p
 
         $exp_y = fmt($yop) === '0' ? 'y' : "y $sign2 " . fmt($yop);
         $fv = fmt($vertasy);
+        $fstr = fmt($str);
+        $sign_prefix = $sign1 === '-' ? '-' : '';
         if ($fv === '0') {
-            $coeff_str = ($sign1 === '-' ? '-' : '') . fmt($str);
-            $ans = sprintf("This includes a logarithmic function: x = %s * %s^(%s)", $coeff_str, fmt($base), $exp_y);
+            if ($fstr === '1') {
+                $ans = sprintf("This includes a logarithmic function: x = %s%s^(%s)", $sign_prefix, fmt($base), $exp_y);
+            } else {
+                $ans = sprintf("This includes a logarithmic function: x = %s%s * %s^(%s)", $sign_prefix, $fstr, fmt($base), $exp_y);
+            }
         } else {
-            $ans = sprintf("This includes a logarithmic function: x = %s %s %s * %s^(%s)", $fv, $sign1, fmt($str), fmt($base), $exp_y);
+            if ($fstr === '1') {
+                $ans = sprintf("This includes a logarithmic function: x = %s %s %s^(%s)", $fv, $sign1, fmt($base), $exp_y);
+            } else {
+                $ans = sprintf("This includes a logarithmic function: x = %s %s %s * %s^(%s)", $fv, $sign1, $fstr, fmt($base), $exp_y);
+            }
         }
 
         return array($ans);

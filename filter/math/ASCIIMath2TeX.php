@@ -41,6 +41,7 @@ var $AMpreviousSymbolinfix = false;
 var $AMcurrentSymbolinfix = false;
 var $AMnames = array();
 var $AMnestingDepth = 0;
+var $isAnswerMode = false;
 
 var $AMsymbols = array(
 
@@ -158,6 +159,8 @@ array( 'input'=>'|--', 'tex'=>'vdash'),
 
 // Miscellaneous symbols
 array( 'input'=>'int'),
+array( 'input'=>'iint'),
+array( 'input'=>'iiint'),
 array( 'input'=>'dx', 'output'=>'{:d x:}', 'definition'=>TRUE),
 array( 'input'=>'dy', 'output'=>'{:d y:}', 'definition'=>TRUE), 
 array( 'input'=>'dz', 'output'=>'{:d z:}', 'definition'=>TRUE), 
@@ -184,7 +187,7 @@ array( 'input'=>'cdots'),
 array( 'input'=>'vdots'), 
 array( 'input'=>'ddots'), 
 array( 'input'=>'diamond'),
-array( 'input'=>'square', 'tex'=>'boxempty'),
+array( 'input'=>'square', 'tex'=>'square'),
 array( 'input'=>'|__', 'tex'=>'lfloor'),
 array( 'input'=>'__|', 'tex'=>'rfloor'),
 array( 'input'=>'|~', 'tex'=>'lceil'),
@@ -206,6 +209,9 @@ array( 'input'=>'tan', 'unary'=>TRUE, 'func'=>TRUE),
 array( 'input'=>'arcsin', 'unary'=>TRUE, 'func'=>TRUE), 
 array( 'input'=>'arccos', 'unary'=>TRUE, 'func'=>TRUE), 
 array( 'input'=>'arctan', 'unary'=>TRUE, 'func'=>TRUE), 
+array( 'input'=>'arcsec', 'tex'=>'text{arcsec}', 'unary'=>TRUE, 'func'=>TRUE),
+array( 'input'=>'arccsc', 'tex'=>'text{arccsc}', 'unary'=>TRUE, 'func'=>TRUE),
+array( 'input'=>'arccot', 'tex'=>'text{arccot}',  'unary'=>TRUE, 'func'=>TRUE),
 array( 'input'=>'sinh', 'tex'=>'text{sinh}', 'unary'=>TRUE, 'func'=>TRUE),
 array( 'input'=>'cosh', 'tex'=>'text{cosh}', 'unary'=>TRUE, 'func'=>TRUE),
 array( 'input'=>'tanh', 'tex'=>'text{tanh}',  'unary'=>TRUE, 'func'=>TRUE),
@@ -655,7 +661,11 @@ function AMTparseSexpr($str) {
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
 			return array($texsymbol,$str);
 		} else {
-			return array('{'.$texsymbol.'}',$str);
+			if ($this->isAnswerMode) {
+                return array('\['.$texsymbol.'\]',$str);
+            } else {
+                return array('{'.$texsymbol.'}',$str);
+            }
 		}
 	}
 }
@@ -863,7 +873,6 @@ function AMTparseAMtoTeX($str) {
 	$str = preg_replace('/([a-zA-Z])&#772;/', 'bar$1 ', $str);
 	
 	$result = $this->AMTparseExpr($str, false);
-	$result[0] = '\\displaystyle'.str_replace('$','\\$',$result[0]);
 	return ($result[0]);
 }
 

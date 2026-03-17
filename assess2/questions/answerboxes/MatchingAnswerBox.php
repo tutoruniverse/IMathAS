@@ -45,7 +45,8 @@ class MatchingAnswerBox implements AnswerBox
         $sa = '';
         $preview = '';
 
-        $optionkeys = ['questiontitle', 'answertitle', 'matchlist', 'noshuffle', 'readerlabel'];
+        $optionkeys = ['questiontitle', 'answertitle', 'matchlist', 'noshuffle',
+            'displayformat', 'readerlabel', 'ansprompt'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
@@ -152,7 +153,7 @@ class MatchingAnswerBox implements AnswerBox
             if ($laval == '-' || strcmp($laval, '') == 0) {
                 $out .= 'selected="1"';
             }
-            $out .= '>-</option>';
+            $out .= '>' . ($ansprompt !== '' ? $ansprompt : '-') . '</option>';
             if ($displayformat == "select") {
                 for ($j = 0; $j < count($randakeys); $j++) {
                     $out .= "<option value=\"" . $j . "\" ";
@@ -206,14 +207,30 @@ class MatchingAnswerBox implements AnswerBox
         if (!$isConditional) {
             for ($i = 0; $i < count($randqkeys); $i++) {
                 if (!empty($matchlist)) {
-                    $akey = array_search($matchlist[$randqkeys[$i]], $randakeys);
+                    $anss = array_map('trim', explode(' or ', $matchlist[$randqkeys[$i]]));
+                    $ansopts = [];
+                    foreach ($anss as $v) {
+                        $akey = array_search($v, $randakeys);
+                        if ($displayformat == "select") {
+                            $ansopts[] = $answers[$randakeys[$akey]];
+                        } else {
+                            $ansopts[] = chr($akey + 97);
+                        }
+                    }
+                    if ($displayformat == "select") {
+                        $sa .= '<br/>' . implode(' or ', $ansopts);
+                    } else if (count($ansopts) > 1) {
+                        $sa .= '(' . implode(' or ', $ansopts) . ') ';
+                    } else {
+                        $sa .= $ansopts[0] . ' ';
+                    }
                 } else {
                     $akey = array_search($randqkeys[$i], $randakeys);
-                }
-                if ($displayformat == "select") {
-                    $sa .= '<br/>' . $answers[$randakeys[$akey]];
-                } else {
-                    $sa .= chr($akey + 97) . " ";
+                    if ($displayformat == "select") {
+                        $sa .= '<br/>' . $answers[$randakeys[$akey]];
+                    } else {
+                        $sa .= chr($akey + 97) . " ";
+                    }
                 }
             }
         }

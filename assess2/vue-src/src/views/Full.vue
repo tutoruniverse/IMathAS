@@ -1,17 +1,17 @@
 <template>
   <div class="home">
-    <a href="#" class="sr-only" id="skipnav" @click.prevent="$refs.scrollpane.focus()">
+    <a href="#" class="sr-only" id="skipnav" @click.prevent="jumpFocus">
       {{ $t('jumptocontent') }}
     </a>
     <assess-header></assess-header>
     <p v-if="isPreviewAll" class="headerpane noticetext">
-      {{ $t("header.preview_all") }}
+      {{ $t("header-preview_all") }}
       <button
         type="button"
         class = "secondary"
         @click="showAllAns"
       >
-        {{ $t("gradebook.show_all_ans") }}
+        {{ $t("gradebook-show_all_ans") }}
       </button>
       <button
         type="button"
@@ -20,15 +20,14 @@
       >
         {{ textToggleLabel }}
       </button>
-      <a :href="settingsLink">{{ $t("links.settings") }}</a>&nbsp;
-      <a :href="questionsLink">{{ $t("links.questions") }}</a>
+      <a :href="settingsLink">{{ $t("links-settings") }}</a>&nbsp;
+      <a :href="questionsLink">{{ $t("links-questions") }}</a>
     </p>
     <div
       class="scrollpane fulldisp"
       role="region"
       ref="scrollpane"
-      tabindex="-1"
-      :aria-label="$t('regions.questions')"
+      :aria-label="$t('regions-questions')"
     >
       <intro-text
         v-if = "hasIntro"
@@ -71,7 +70,7 @@
         class = "primary"
         @click = "submitAssess"
       >
-        {{ $t('header.assess_submit') }}
+        {{ $t('header-assess_submit') }}
       </button>
     </p>
   </div>
@@ -83,7 +82,7 @@ import FullQuestionHeader from '@/components/FullQuestionHeader.vue';
 import Question from '@/components/question/Question.vue';
 import InterQuestionTextList from '@/components/InterQuestionTextList.vue';
 import IntroText from '@/components/IntroText.vue';
-import { store, actions } from '../basicstore';
+import { store, actions } from '@/basicstore';
 
 export default {
   name: 'Full',
@@ -123,7 +122,7 @@ export default {
       return (store.assessInfo.submitby === 'by_assessment');
     },
     textToggleLabel () {
-      return this.showTexts ? this.$t('print.hide_text') : this.$t('print.show_text');
+      return this.showTexts ? this.$t('print-hide_text') : this.$t('print-show_text');
     },
     textList () {
       if (!store.assessInfo.hasOwnProperty('interquestion_text')) {
@@ -146,6 +145,11 @@ export default {
     showAllAns () {
       window.$("span[id^='ans']").removeClass('hidden').toggle();
       window.$('.keybtn').attr('aria-expanded', function (i, v) { return !JSON.parse(v); });
+    },
+    jumpFocus () {
+      this.$refs.scrollpane.setAttribute("tabindex","-1");
+      this.$refs.scrollpane.focus();
+      this.$refs.scrollpane.removeAttribute("tabindex");
     }
   }
 };

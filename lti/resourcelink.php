@@ -12,16 +12,16 @@ function link_to_resource($launch, $localuserid, $localcourse, $db) {
   $contextid = $launch->get_platform_context_id();
   $platform_id = $launch->get_platform_id();
   $resource_link = $launch->get_resource_link();
-  $target = parse_target_link($launch->get_target_link(), $db);
-
-  if (empty($target)) {
-    echo "Error parsing requested resource. Make sure that the launch URL contains a resource identifier. If it does not, you will either need to use the export/import process to bring in the link, or use the LMS's content selection / deep linking tools.";
-    exit;
-  }
-
+  
   // look to see if we already know where this link should point
   $link = $db->get_link_assoc($resource_link['id'], $contextid, $platform_id);
   if ($link === null) {
+    $target = parse_target_link($launch->get_target_link(), $db);
+
+    if (empty($target)) {
+      echo "Error parsing requested resource. Make sure that the launch URL contains a resource identifier. If it does not, you will either need to use the export/import process to bring in the link, or use the LMS's content selection / deep linking tools.";
+      exit;
+    }
     // no link yet - establish one
     if ($target['type'] === 'aid') {
       $sourceaid = $target['refaid'];
@@ -31,6 +31,10 @@ function link_to_resource($launch, $localuserid, $localcourse, $db) {
         // see if aid is in the current course, we just use it
         $link = $db->make_link_assoc($sourceaid,'assess',$resource_link['id'],$contextid,$platform_id);
         $iteminfo = $db->get_assess_info($sourceaid);
+        if ($iteminfo === false) {
+          echo 'Assessment this link points to no longer exists';
+          exit;
+        }
         $db->set_or_create_lineitem($launch, $link, $iteminfo, $localcourse);
       } else {
         // need to find the assessment
@@ -99,7 +103,7 @@ function link_to_resource($launch, $localuserid, $localcourse, $db) {
       //no default due date set yet, or is the instructor:  set the default due date
       $db->set_assessment_dates($link->get_typeid(), $lms_duedate, $newdatebylti);
     }
-    if ($lms_duedate !== false && $role == 'Learner') {
+    if ($lms_duedate !== false && $role == 'Learner' && $link->get_date_by_lti() > 0) {
       $db->set_or_update_duedate_exception($localuserid, $link, $lms_duedate);
     }
     // if no due date provided, but we're expecting one, throw error

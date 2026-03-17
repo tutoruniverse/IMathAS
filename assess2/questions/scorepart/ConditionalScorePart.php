@@ -44,9 +44,19 @@ class ConditionalScorePart implements ScorePart
         }
 
         if (isset($abstolerance)) {
-            $tol = '|'.$abstolerance;
+            if (is_array($abstolerance)) {
+                // this can happen if $reqdecimals[pn] was used for answertip purposes
+                // we'll just use the first value
+                $tol = '|'.$abstolerance[0];
+            } else {
+                $tol = '|'.$abstolerance;
+            }
         } else {
-            $tol = $reltolerance;
+            if (is_array($reltolerance)) {
+                $tol = $reltolerance[0];
+            } else {
+                $tol = $reltolerance;
+            }
         }
         $correct = true;
         if (!is_array($answer)) { //single boolean or decimal score
@@ -55,6 +65,10 @@ class ConditionalScorePart implements ScorePart
                 return $scorePartResult;
             } else if ($answer===false || $answer===null) {
                 $scorePartResult->setRawScore(0);
+                return $scorePartResult;
+            } else if ($answer === 'manual') {
+                $GLOBALS['questionmanualgrade'] = true;
+                $scorePartResult->setRawScore(-2);
                 return $scorePartResult;
             } else {
                 if ($answer < 0) {
@@ -81,6 +95,8 @@ class ConditionalScorePart implements ScorePart
                     $pt = comparenumbers($ans[1],$ans[2],$tol);
                 } else if ($ans[0]=='function') {
                     $pt = comparefunctions($ans[1],$ans[2],$variables,$tol,$domain);
+                } else {
+                    continue;
                 }
                 if ($flip) {
                     $pt = !$pt;

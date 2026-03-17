@@ -1,9 +1,11 @@
 <?php
 //A collection of functions for working with radicals
+//reduceradicalfrac3 added 10/7/24
 //Version 3 Nov 27 2017
 
 global $allowedmacros;
-array_push($allowedmacros,"reduceradical","reduceradicalfrac","reduceradicalfrac2","reducequadraticform");
+array_push($allowedmacros,"reduceradical","reduceradicalfrac","reduceradicalfrac2",
+  "reduceradicalfrac3","reducequadraticform");
 
 //reduceradical(inside,[root,format])
 //given the inside of a radical, reduces it to Aroot(B)
@@ -18,27 +20,43 @@ function reduceradical($in,$root=2,$format="string") {
 		return;
 	}
 	$in = (int)round($in);
-
-	if ($in > 10000000) {
+	$err = false;
+	if ($in > 1E10) {
 		if ($GLOBALS['myrights'] > 10) {
 			echo 'Input to reduceradical was too large';
 		}
-		return;
+		$err = true;
 	} else if ($root==0) {
 		if (is_string($root)) {
 			echo "can't provide a string as the root value - check your parameters";
-			return;
 		} else {
 			echo "can't take the zero'th root";
-			return;
 		}
+		$err = true;
 	} else if ($root < 0) {
 		echo "can't handle negative roots";
-		return;
+		$err = true;
 	} else if ($in < 0 && $root%2==0 && $root>3) {
         echo "can't handle higher even roots of negative values";
-		return;
+		$err = true;
     }
+
+	if ($err) {
+		if ($format=='string' || $format=='disp') {
+			if ($root==2) {
+				$outstr = "sqrt($in)";
+			} else {
+				$outstr = "root($root)($in)";
+			}
+			if ($format=='disp') {
+				return '`'.$outstr.'`';
+			} else {
+				return $outstr;
+			}
+		} else {
+			return [1,$in];
+		}
+	}
 
 	$root = (int)round($root);
 
@@ -57,12 +75,29 @@ function reduceradical($in,$root=2,$format="string") {
 	$out = 1;
 
 	//look for biggest perfect power first
-	for ($i=floor($max+.01);$i>1 && $in>1;$i--) {
+	// swapped out for method below
+	/*for ($i=floor($max+.01);$i>1 && $in>1;$i--) {
+		$cnt++;
 		if ($in%(pow($i,$root))==0) {
 			$out *= $i;
 			$in /= pow($i,$root);
+			//echo "at $i in $in ";
+			$i = min($i, floor(pow($in,1/$root)+.01));
+			//echo "new i $i.";
+		}
+	}*/
+
+	$i = 2;
+	while ($i<=$max && $in>1) {
+		if ($in%(pow($i,$root))==0) {
+			$out *= $i;
+			$in /= pow($i,$root);
+			$max /= $i; 
+		} else {
+			$i += ($i>2)?2:1;
 		}
 	}
+
 	if ($format=='string' || $format=='disp') {
 		$outstr = '';
 		if ($format=='disp') {
@@ -182,11 +217,11 @@ function reduceradicalfrac($n,$rootnum,$d,$root=2,$format="string") {
 //format: default is "string", which returns "2/(3sqrt(5))"
 //                   "disp", returns the string wrapped in backticks for display
 //                   "parts", returns an array of the parts:  array(2,3,5)
-function reduceradicalfrac2($n,$d,$rootnum,$rat=false,$root=2,$format="string") {
+function reduceradicalfrac2($n,$d,$rootdenom,$rat=false,$root=2,$format="string") {
 	if ($rat==true) {
-		return reduceradicalfrac($n, pow($rootnum, $root-1), $d*$rootnum, $root, $format);
+		return reduceradicalfrac($n, pow($rootdenom, $root-1), $d*$rootdenom, $root, $format);
 	}
-	list($rootA,$in) = reduceradical($rootnum,$root,"parts");
+	list($rootA,$in) = reduceradical($rootdenom,$root,"parts");
 	$d *= $rootA;
 	$g = gcd($n,$d);
 	$n = $n/$g;
@@ -228,6 +263,105 @@ function reduceradicalfrac2($n,$d,$rootnum,$rat=false,$root=2,$format="string") 
 		return $outstr;
 	} else {
 		return array($n,$d,$in);
+	}
+}
+
+//reduceradicalfrac3(wholenum,rootnum, wholedenom,rootdenom, [rationalize,rootn,rootd,format])
+//given (wholenum*root(rootnum))/(wholedenom*root(rootdenom)), reduces the root then the fraction
+//rationalize: rationalize the denominator. Default is false.
+//rootn: root of numerator radical.  Default is 2 (sqrt)
+//rootd: root of denominator radical. Default is 2 (sqrt)
+//format: default is "string", which returns something like "(2sqrt(3))/5" or "2/3 sqrt(1/2)" or "3/(2 sqrt(5))"
+//                   "disp", returns the string wrapped in backticks for display
+//                   "parts", returns an array of the reduced parts [wholenum,rootnum,wholedenom,rootdenom,root]
+function reduceradicalfrac3($n,$rootnum,$d,$rootdenom,$rat=false,$rootn=2,$rootd=2,$format="string") {
+	if ($rootn == $rootd) {
+        $root = $rootn;
+    } else { // give common root
+        $root = lcm($rootn,$rootd);
+        $rootnum = pow($rootnum, $root/$rootn);
+        $rootdenom = pow($rootdenom, $root/$rootd);
+    }
+    if ($rat) {
+        $d *= $rootdenom;
+        $rootnum *= pow($rootdenom, $root-1);
+        $rootdenom = 1;
+    }
+    $g = gcd($rootnum,$rootdenom);
+    $rootnum /= $g;
+    $rootdenom /= $g;
+	list($outA,$inA) = reduceradical($rootnum,$root,"parts");
+    list($outB,$inB) = reduceradical($rootdenom,$root,"parts");
+	$n *= $outA;
+    $d *= $outB;
+	$g = gcd($n,$d);
+	$n = $n/$g;
+	$d = $d/$g;
+	if ($d<0) {
+		$n = $n*-1;
+		$d = $d*-1;
+	}
+	if ($format=='string' || $format=='disp') {
+		$outstr = '';
+		if ($format=='disp') {
+			$outstr .= '`';
+		}
+        if ($inA > 1 && $inB > 1) {
+            if ($n != 1 || $d > 1) {
+                $outstr .= $n;
+            }
+            if ($d > 1) {
+                $outstr .= '/' . $d;
+            }
+            if ($root == 2) {
+                $outstr .= "sqrt($inA/$inB)";
+            } else {
+                $outstr .= "root($root)($inA/$inB)";
+            }
+        } else {
+            if ($n != 1 && $inA > 1 && ($d > 1 || $inB > 1)) { // need extra parens around num
+                $outstr .= '(';
+            }
+            if ($n != 1 || $inA == 1) {
+                $outstr .= $n;
+            }
+            if ($inA > 1) {
+                if ($root == 2) {
+                    $outstr .= "sqrt($inA)";
+                } else {
+                    $outstr .= "root($root)($inA)";
+                }
+            }
+            if ($n != 1 && $inA > 1 && ($d > 1 || $inB > 1)) { // need extra parens around num
+                $outstr .= ')';
+            }
+            if ($d > 1 || $inB > 1) {
+                $outstr .= '/';
+                if ($d > 1 && $inB > 1) { // need extra parens around denom
+                    $outstr .= '(';
+                }
+                if ($d > 1) {
+                    $outstr .= $d;
+                }
+                if ($inB > 1) {
+                    if ($root == 2) {
+                        $outstr .= "sqrt($inB)";
+                    } else {
+                        $outstr .= "root($root)($inB)";
+                    }
+                }
+                if ($d > 1 && $inB > 1) { // need extra parens around denom
+                    $outstr .= ')';
+                }
+            }
+        }
+
+		if ($format=='disp') {
+			$outstr .= '`';
+		}
+		return $outstr;
+	} else {
+		return array($n,$inA,$d,$inB,$root);
 	}
 }
 

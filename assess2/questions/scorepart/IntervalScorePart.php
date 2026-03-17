@@ -159,6 +159,8 @@ class IntervalScorePart implements ScorePart
         }
         $correct = 0;
         $ansar = explode(' or ',$answer);
+        // Convert mixed numbers before space-stripping (e.g., "1 1/2" -> "(1+1/2)")
+        $givenans = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $givenans);
         $givenans = str_replace(' ','',$givenans);
 
         if (in_array('allowsloppyintervals',$ansformats)) {

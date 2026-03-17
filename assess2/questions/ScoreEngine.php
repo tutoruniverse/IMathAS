@@ -835,7 +835,8 @@ class ScoreEngine
 
         $scoreQuestionParams
             ->setAnswerType($qdata['qtype'])
-            ->setIsMultiPartQuestion(false);
+            ->setIsMultiPartQuestion(false)
+            ->setGivenAnswer($_POST["qn$qnidx"] ?? '');
 
         $scorePartResults = false;
         try {

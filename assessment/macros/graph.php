@@ -806,6 +806,28 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
             ($noyaxis?"":", vertical axis: {$ymin} to {$ymax}.") . '.&nbsp;' . $alt;
     }
 
+    	// Adding function list to $commands(For testing purposes)
+	$function_names = [];
+	foreach ($funcs as $f) {
+		if ($f === '') continue;
+		$parts = explode(',', $f);
+		foreach ($parts as &$part){
+			if(substr($part, 0, 1) === '[') {
+				$temp =  '[' . makexxpretty(substr($part, 1));
+				$part = $temp;
+			}
+			else {
+				$part = makexxpretty($part);
+			}
+
+			$part = trim($part);
+		}
+		$new_f = implode(',', $parts);
+		$function_names[] = trim($new_f);
+
+	}
+	$function_list_str = '["' . implode('","', array_map('addslashes', $function_names)) . '"]';
+
     if ($_SESSION['graphdisp'] == 0) {
         if (count(array_unique($allcolors)) == 1) {
             $alt = str_replace(', color ' . $allcolors[0], '', $alt);
@@ -813,7 +835,7 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
         return ($globalalt == '') ? $alt : $globalalt;
     } else {
         $embedalt = ($globalalt != '') ? $globalalt : $alt;
-        return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' script='$commands' alt=\"" . Sanitize::encodeStringForDisplay($embedalt) . "\" />\n";
+        return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' script='$commands' function_list='$function_list_str' alt=\"" . Sanitize::encodeStringForDisplay($embedalt) . "\" /> \n";
     }
 }
 

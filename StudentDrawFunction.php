@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $a2->setState($state);
 
+    $parts_to_score = true;
     $toscoreqn = getPost("toscoreqn");
     if ($toscoreqn != "") {
         $toscoreqn = json_decode($toscoreqn, true);

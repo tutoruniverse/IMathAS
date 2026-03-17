@@ -2164,6 +2164,7 @@ class DrawingScorePart implements ScorePart
                 $dots = explode('),(', substr($dots,1,strlen($dots)-2));
                 foreach ($dots as $k=>$pt) {
                     $dots[$k] = array_map('floatval', explode(',',$pt));
+                    $this->stu_func_ans[] = fans_dots($dots[$k][0], $dots[$k][1], $pixtox, $pixtoy);
                 }
             }
             if ($odots=='') {
@@ -2172,6 +2173,7 @@ class DrawingScorePart implements ScorePart
                 $odots = explode('),(', substr($odots,1,strlen($odots)-2));
                 foreach ($odots as $k=>$pt) {
                     $odots[$k] = array_map('floatval', explode(',',$pt));
+                    $this->stu_func_ans[] = fans_odots($odots[$k][0], $odots[$k][1], $pixtox, $pixtoy);
                 }
             }
 

@@ -3,7 +3,7 @@
 
 //database access settings
 $dbserver = "host.docker.internal";
-$dbname = "imathasdb";
+$dbname = "imathas";
 $dbusername = "root";
 $dbpassword = "123456";
 
@@ -82,6 +82,7 @@ $CFG['GEN']['newpasswords'] = 'only';
 	 die("<p>Could not connect to database: <b>" . $e->getMessage() . "</b></p></div></body></html>");
 	}
 	$DBH->query("set session sql_mode=''");
+
 	  unset($dbserver);
 	  unset($dbusername);
 	  unset($dbpassword);

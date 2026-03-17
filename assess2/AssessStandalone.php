@@ -44,7 +44,7 @@ class AssessStandalone {
   private $question = null;
   private $student_func;
 
-  public function get_student_func() {
+  public function getFunctionAnswers(): array {
     return $this->student_func;
   }
 
@@ -347,7 +347,7 @@ class AssessStandalone {
         ->setQnpointval(1);
 
     $scoreResult = $scoreEngine->scoreQuestion($scoreQuestionParams);
-    $this->student_func = $scoreEngine->get_temp_func();
+    $this->student_func = $scoreEngine->getFunctionAnswers();
 
     $scores = $scoreResult['scores'];
     $rawparts = $scoreResult['rawScores'];

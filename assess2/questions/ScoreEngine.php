@@ -6,6 +6,7 @@ require_once __DIR__ . '/ErrorHandler.php';
 require_once __DIR__ . '/QuestionHtmlGenerator.php';
 require_once __DIR__ . '/models/ScoreQuestionParams.php';
 require_once __DIR__ . '/scorepart/ScorePartFactory.php';
+require_once __DIR__ . '/scorepart/DrawingScorePart.php';
 
 use PDO;
 use RuntimeException;
@@ -15,6 +16,7 @@ use Rand;
 use Sanitize;
 
 use IMathAS\assess2\questions\models\ScoreQuestionParams;
+use IMathAS\assess2\questions\scorepart\DrawingScorePart;
 use IMathAS\assess2\questions\scorepart\ScorePartFactory;
 
 /**
@@ -68,7 +70,7 @@ class ScoreEngine
     private $temp_func = array();
     private $score_ob_level = 0;
 
-    public function get_temp_func() {
+    public function getFunctionAnswers(): array {
         return $this->temp_func;
     }
 
@@ -729,7 +731,7 @@ class ScoreEngine
                 $scorePart = ScorePartFactory::getScorePart($scoreQuestionParams);
                 $scorePartResult = $scorePart->getResult();
                  //TESTING---------------------------------------------
-                $this->temp_func[] = array($inputReferenceNumber,$scorePart->get_student_function());
+                $this->temp_func[] = array($inputReferenceNumber, $scorePart instanceof DrawingScorePart ? $scorePart->getFunctionAnswer() : null);
 
             } catch (\Throwable $t) {
                 $this->addError(
@@ -854,8 +856,7 @@ class ScoreEngine
                 );
         }
 
-        //TESTING---------------------------------------------
-        $this->temp_func[] =  array(27,$scorePart->get_student_function());
+        $this->temp_func[] = array(27, $scorePart instanceof DrawingScorePart ? $scorePart->getFunctionAnswer() : null);
 
         if (isset($scoremethod) && $scoremethod == "allornothing") {
             if ($score < .98) {

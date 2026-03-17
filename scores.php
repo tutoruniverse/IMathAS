@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $result = $a2->scoreQuestion($qn, $parts_to_score);
-    // $student_func = $a2->get_student_func();
+    // $student_func = $a2->getFunctionAnswers();
 
     // Send response
     header('Content-Type: application/json');

@@ -482,6 +482,17 @@ function fans_odots ($mh, $mk, $pixtox, $pixtoy) {
     return array($ans);
 }
 
+function fans_freehand_line ($pts_px, $pixtox, $pixtoy) {
+    $n = count($pts_px);
+    if ($n == 0) return array('');
+    list(list($x1), list($y1)) = change_to_math(array($pts_px[0][0]), array($pts_px[0][1]), $pixtox, $pixtoy);
+    if ($n == 1) {
+        return array(sprintf("dot(%s, %s)", fmt($x1), fmt($y1)));
+    }
+    list(list($xN), list($yN)) = change_to_math(array($pts_px[$n-1][0]), array($pts_px[$n-1][1]), $pixtox, $pixtoy);
+    return array(sprintf("freehand line: (%s, %s) to (%s, %s)", fmt($x1), fmt($y1), fmt($xN), fmt($yN)));
+}
+
 function fans_ineqlines ($mh, $mk, $mx, $my, $mx2, $my2, $type, $pixtox, $pixtoy) {
 
     list($mh, $mk, $mx, $my, $mx2, $my2) = clean_up(array($mh, $mk, $mx, $my, $mx2, $my2));

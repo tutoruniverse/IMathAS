@@ -2186,6 +2186,11 @@ class DrawingScorePart implements ScorePart
                     $this->stu_func_ans[] = fans_odots($odots[$k][0], $odots[$k][1], $pixtox, $pixtoy);
                 }
             }
+            foreach ($lines as $line) {
+                if (!empty($line)) {
+                    $this->stu_func_ans[] = fans_freehand_line($line, $pixtox, $pixtoy);
+                }
+            }
 
             //interp the lines
             $linedata = array();

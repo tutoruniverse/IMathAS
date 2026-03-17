@@ -152,14 +152,15 @@ function fans_circs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
     return array($ans);
 }
 
-function fans_parabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy) {
+function fans_parabs ($mh, $mk, $mx, $my, $pixtox, $pixtoy, $is_half = false) {
 
     list($mh, $mk, $mx, $my) = clean_up(array($mh, $mk, $mx, $my));
     list(list($mh, $mx), list($mk, $my)) = change_to_math(array($mh, $mx), array($mk, $my), $pixtox, $pixtoy);
 
     $ma = floatval(($my - $mk) / (($mx-$mh)*($mx-$mh)));
+    $label = $is_half ? "half parabola" : "parabola";
 
-    $ans = "parabola: y = " . fmt_coeff($ma) . fmt_xterm($mh) . "^2" . fmt_kterm($mk);
+    $ans = "$label: y = " . fmt_coeff($ma) . fmt_xterm($mh) . "^2" . fmt_kterm($mk);
 
     return array($ans);
 }

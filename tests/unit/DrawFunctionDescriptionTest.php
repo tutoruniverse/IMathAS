@@ -166,6 +166,13 @@ final class DrawFunctionDescriptionTest extends TestCase
         $this->assertEquals("parabola: y = 0.25 * (x - 5)^2 + 4", $result[0]);
     }
 
+    public function testFansParabsHalf()
+    {
+        // half parabola: vertex (-6.5,-0.5), through (-5.5,0): a=0.5/(1)^2=0.5
+        $result = fans_parabs(-6.5, -0.5, -5.5, 0, $this->pixtox, $this->pixtoy, true);
+        $this->assertEquals("half parabola: y = 0.5 * (x + 6.5)^2 - 0.5", $result[0]);
+    }
+
     // -------------------------------------------------------------------------
     // fans_hparabs — type 6.1 (horizontal parabola)
     // -------------------------------------------------------------------------

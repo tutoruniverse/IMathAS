@@ -856,8 +856,8 @@ class DrawingScorePart implements ScorePart
                             $x = $pts[1]+sign($a)*sqrt(abs(20/$a));
 
                             //ADD TO ANSWER AS FUNCTION------------------------------------------------------------
-                            $this->stu_func_ans[] = fans_parabs($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy);
-                            
+                            $this->stu_func_ans[] = fans_parabs($pts[1],$pts[2],$pts[3],$pts[4], $pixtox, $pixtoy, $pts[0] == 6.2);
+
                             $parabs[] = array($pts[1],$pts[2],$y,$x,$leftrightdir);
                         }
                     } else if ($pts[0]==6.1) {

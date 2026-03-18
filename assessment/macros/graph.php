@@ -7,7 +7,6 @@ array_push(
     'showplot',
     'addplotborder',
     'replacealttext',
-    'replacetextonimagealt',
     'addlabel',
     'addlabelabs',
     'adddrawcommand',
@@ -828,8 +827,8 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
             $function_names[] = trim(implode(',', $parts));
         }
         $function_list_str = json_encode($function_names);
-        $embedalt = ($globalalt != '') ? $globalalt : $alt;
-        return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' script='$commands' function_list='$function_list_str' alt=\"" . Sanitize::encodeStringForDisplay($embedalt) . "\" /> \n";
+
+        return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' script='$commands' function_list='$function_list_str' /> \n";
     }
 }
 
@@ -850,20 +849,6 @@ function replacealttext($plot, $alttext) {
         }
         return $plot;
     }
-}
-
-function replacetextonimagealt($html, $alttext) {
-    if ($_SESSION['graphdisp'] == 0) {
-        return $alttext;
-    }
-    $encoded = Sanitize::encodeStringForDisplay($alttext);
-    // Inject role="img" and aria-label into the outer txtimgwrap wrapper
-    return preg_replace(
-        '/(class="txtimgwrap element-to-render-as-image")/',
-        'role="img" aria-label="' . $encoded . '" $1',
-        $html,
-        1
-    );
 }
 
 function addlabel($plot, $x, $y, $lbl, $color = "black", $loc = "", $angle = 0, $size = 0, $alt = null) {
@@ -914,7 +899,11 @@ function addlabelabs($plot, $x, $y, $lbl, $color='black', $loc='', $angle='', $a
 
 function adddrawcommand($plot, $cmd) {
     $cmd = str_replace("'", '"', $cmd);
-    return preg_replace("/'(\s+alt=\"[^\"]*\")?\s*\/>/", "$cmd'\\1 />", $plot);
+    $end = "' />";
+    if (preg_match("/'(\s+alt=\"[^\"]*\")?\s*\/>/", $cmd, $m)) {
+        $end = $m[0];
+    }
+    return str_replace("' />", $cmd . $end, $plot);
 }
 
 function mergeplots($plota) {

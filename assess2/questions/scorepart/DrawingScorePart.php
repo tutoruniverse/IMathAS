@@ -2188,7 +2188,7 @@ class DrawingScorePart implements ScorePart
             }
             foreach ($lines as $line) {
                 if (!empty($line)) {
-                    $this->stu_func_ans[] = fans_freehand_line($line, $pixtox, $pixtoy);
+                    $this->functionAnswers[] = fans_freehand_line($line, $pixtox, $pixtoy);
                 }
             }
 

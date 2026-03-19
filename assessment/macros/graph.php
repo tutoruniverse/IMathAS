@@ -828,7 +828,10 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
         }
         $function_list_str = json_encode($function_names);
 
-        return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' script='$commands' function_list='$function_list_str' /> \n";
+        // NOTE: script must remain the LAST attribute. Functions like addlabel,
+        // adddrawcommand, and addfractionaxislabels inject draw commands via
+        // str_replace("' />"), which targets the closing quote of the final attribute.
+        return "<embed type='image/svg+xml' align='middle' width='$plotwidth' height='$plotheight' function_list='$function_list_str' script='$commands' />\n";
     }
 }
 

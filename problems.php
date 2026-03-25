@@ -256,12 +256,13 @@ function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) 
 
     // Regex: Find anything between backticks and convert it
     return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
-        $AMT->isAnswerMode = $isAnswerMode;
         $asciimath = $matches[1];
         $tex = $AMT->convert($asciimath);
 
         if ($wrap) {
             return '<math-field read-only="">' . $tex . '</math-field>';
+        } else if ($isAnswerMode) {
+            return '\[' . $tex . '\]';
         } else {
             return $tex;
         }

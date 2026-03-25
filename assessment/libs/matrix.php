@@ -67,10 +67,10 @@ function matrixformat($m, $bracket='[', $asfraction=false) {
 			if ($j!=0) {
 				$out .= ',';
             }
-            if ($asfraction && $m[$i][$j]!=0) {
+            if ($asfraction && $m[$i][$j]!==0) {
                 $out .= decimaltofraction($m[$i][$j]);
             } else {
-                $out .= ($m[$i][$j]==0) ? 0 : $m[$i][$j];
+                $out .= ($m[$i][$j]===0) ? 0 : $m[$i][$j];
             }
 		}
 		$out .= ')';
@@ -430,7 +430,7 @@ function matrixsystemdisp($m,$v=null,$leftbracket=true) {
 			} else {
 				if (!is_numeric($m[$i][$j]) && $firstout) {  //something like a variable coefficient
 					$out .= '+,';
-				} else if ($m[$i][$j]==0) {
+				} else if (is_numeric($m[$i][$j]) && $m[$i][$j]==0) {
 					$out .= ",";
 				} else if ($m[$i][$j]<0) {
 					$out .= "-,";
@@ -1002,7 +1002,7 @@ function matrixreduce($A, $rref = false, $frac = false) {
 
     $r = 0;  $c = 0;
     while ($r < $N && $c < $M) {
-			if (($usefraccalc && $A[$r][$c][0]==0) || (!$usefraccalc && $A[$r][$c]==0)) { //swap only if there's a 0 entry
+			if (($usefraccalc && $A[$r][$c][0]==0) || (!$usefraccalc && $A[$r][$c]===0)) { //swap only if there's a 0 entry
 		    $max = $r;
 		    for ($i = $r+1; $i < $N; $i++) {
 			    if ($usefraccalc && abs($A[$i][$c][0]/$A[$i][$c][1]) > abs($A[$max][$c][0]/$A[$max][$c][1])) {
@@ -1042,7 +1042,7 @@ function matrixreduce($A, $rref = false, $frac = false) {
 						} else {
 							$mult = $A[$i][$c]/$A[$r][$c];
 						}
-	    	    if (($usefraccalc && $mult[0]==0) || (!$usefraccalc && $mult==0)) {continue;}
+	    	    if (($usefraccalc && $mult[0]==0) || (!$usefraccalc && $mult===0)) {continue;}
 	    	    for ($j = $c; $j < $M; $j++) {
 	    	    	 //if ($GLOBALS['myrights']>10) { echo "Entry $i,$j:  ".fractionreduce($A[$i][$j]).' - '.fractionreduce( $mult).'*'.fractionreduce($A[$r][$j]).'<br/>'; }
 							if ($usefraccalc) {
@@ -1139,7 +1139,7 @@ function polyregression($x,$y,$n) {
 //determines if a vector is the 0 vector
 function arrayIsZeroVector($v){
 	for($i=0;$i<count($v);$i++){
-		if($v[$i]!=0){
+		if($v[$i]!==0){
 			return(false);
 		}
 	}

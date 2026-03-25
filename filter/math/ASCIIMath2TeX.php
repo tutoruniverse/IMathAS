@@ -121,9 +121,11 @@ array( 'input'=>':=' ),
 array( 'input'=>'lt', 'tex'=>'<', 'val'=>TRUE),
 array( 'input'=>'<=', 'tex'=>'le'),
 array( 'input'=>'lt=', 'tex'=>'leq'),
+array( 'input'=>'mlt', 'tex'=>'≪', 'val'=>TRUE, 'notexcopy'=>TRUE),
 array( 'input'=>'gt', 'tex'=>'>', 'val'=>TRUE),
 array( 'input'=>'>=', 'tex'=>'ge'),
 array( 'input'=>'gt=', 'tex'=>'geq'),
+array( 'input'=>'mgt', 'tex'=>'≫', 'val'=>TRUE, 'notexcopy'=>TRUE),
 array( 'input'=>'-<', 'tex'=>'prec'),
 array( 'input'=>'-<=', 'tex'=>'preceq'),
 array( 'input'=>'-lt', 'output'=>'-<', 'definition'=>TRUE),
@@ -663,8 +665,8 @@ function AMTparseSexpr($str) {
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
 			return array($texsymbol,$str);
 		} else {
-			if ($this->isAnswerMode) {
-                return array('\['.$texsymbol.'\]',$str);
+			if (strlen($texsymbol) === 1) {
+                return array($texsymbol,$str);
             } else {
                 return array('{'.$texsymbol.'}',$str);
             }

@@ -30,7 +30,7 @@ class CalculatedScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqsigfigs', 
             'requiretimeslistpart', 'ansprompt', 'formatfeedbackon'];
@@ -92,7 +92,7 @@ class CalculatedScorePart implements ScorePart
                 $ansformats[] = 'list';
             }
             $answer = rewritePlusMinus($answer);
-            $givenans = rewritePlusMinus($givenans);    
+            $givenans = rewritePlusMinus($givenans);
         }
 
         $isListAnswer = (in_array('exactlist',$ansformats) || in_array('orderedlist',$ansformats) || in_array('list',$ansformats));
@@ -167,7 +167,7 @@ class CalculatedScorePart implements ScorePart
                                 $aarr[$j] = '';
                             }
                         }
-                    } 
+                    }
                 }
                 $anarr[$k] = $aarr;
             }

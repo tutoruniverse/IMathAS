@@ -48,7 +48,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
-
+        $answersize = "";
         $ansformats = array_map('trim', explode(',', $answerformat));
         $dispformats = array_map('trim', explode(',', $displayformat));
 
@@ -143,13 +143,13 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             }
             if ($anstype === 'calccomplexmatrix') {
                 $shorttip = _('Enter a matrix of complex numbers');
-                $tip = $shorttip . _(', like [(2+i,3,i),(2-i,4,5)]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype);
+                $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2+i & 3 & i \\\\ 2-i & 4 & 5 \\end{smallmatrix}\\right]\\]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype);
             } else if ($anstype === 'algmatrix') {
                 $shorttip = _('Enter a matrix of algebraic expressions');
-                $tip = $shorttip . _(', like [(x,2,x^2),(1,3x,5)]');
+                $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} x & 2 & x^2 \\\\ 1 & 3x & 5 \\end{smallmatrix}\\right]\\]');
             } else {
                 $shorttip = _('Enter your answer as a matrix');
-                $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype);
+                $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 1 & 4 & 5 \\end{smallmatrix}\\right]\\]') . '<br/>' . formathint(_('each element of the matrix'), $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, $anstype);
             }
             if (empty($answerboxsize)) {$answerboxsize = 20;}
 

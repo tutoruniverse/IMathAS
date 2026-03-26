@@ -33,7 +33,7 @@ class MatchingScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['matchlist', 'noshuffle', 'scoremethod'];
         foreach ($optionkeys as $optionkey) {
@@ -112,7 +112,7 @@ class MatchingScorePart implements ScorePart
         if (!empty($scoremethod) && $scoremethod=='allornothing') {
             if ($score<.99) {
                 $score = 0;
-            } 
+            }
         }
         $scorePartResult->setRawScore($score);
         return $scorePartResult;

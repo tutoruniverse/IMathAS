@@ -33,7 +33,7 @@ class AlgebraicMatrixScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $isRescore = $this->scoreQuestionParams->getIsRescore();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'answersize', 'scoremethod', 'ansprompt', 'domain', 'variables'];
@@ -46,6 +46,7 @@ class AlgebraicMatrixScorePart implements ScorePart
 
         $givenanslistvals = [];
 
+        $answersize = "";
         $ansformats = array_map('trim',explode(',',$answerformat));
 
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {

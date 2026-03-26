@@ -29,7 +29,7 @@ class FunctionExpressionScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'variables', 'domain', 'ansprompt', 'formatfeedbackon'];
@@ -43,7 +43,7 @@ class FunctionExpressionScorePart implements ScorePart
         $requiretimes = getOptionVal($options, 'requiretimes', $multi, $partnum, 1);
 
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
- 
+
         $ansformats = array_map('trim',explode(',',$answerformat));
 
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }
@@ -56,7 +56,7 @@ class FunctionExpressionScorePart implements ScorePart
             $givenans
         );
         $answer = normalizemathunicode($answer);
-        
+
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {
             list($givenans, $answer) = scorenosolninf($qn, $givenans, $answer, $ansprompt);
         }
@@ -174,6 +174,7 @@ class FunctionExpressionScorePart implements ScorePart
                 $givenansvals[] = $givenansfunc->evaluateQuiet($varvals);
             }
             $givenanslistvals[] = $givenansvals;
+
             if (isset($givenInequality)) {
                 $givenanslistineq[] = $givenInequality;
             }
@@ -239,7 +240,7 @@ class FunctionExpressionScorePart implements ScorePart
                     }
                 } else if (in_array('equation',$ansformats)) {
                     $answer = preg_replace('/(.*)=(.*)/','$1-($2)',$answer);
-                } 
+                }
                 if ($answer == '') {
                     continue;
                 }
@@ -258,6 +259,7 @@ class FunctionExpressionScorePart implements ScorePart
                     $realans = $answerfunc->evaluateQuiet($varvals);
                     $realanstmp[] = $realans;
                 }
+
                 foreach ($givenanslistvals as $gaidx => $givenansvals) {
                     if (isset($givenansused[$gaidx])) {
                         continue; // already used this givenans
@@ -293,7 +295,7 @@ class FunctionExpressionScorePart implements ScorePart
                                 $stunan++;
                                 continue;
                             }
-                
+
                             if ($isComplex) {
                                 if (abs($givenansvals[$i][0])<.0000001 && abs($givenansvals[$i][1])<.00000001) {
                                     if (abs($realans[0])<.0000001 && abs($realans[1])<.00000001) {
@@ -378,7 +380,7 @@ class FunctionExpressionScorePart implements ScorePart
                             $rollingreal[$rollingreali] = $realans;
                             $rollingstui = ($rollingstui+1)%2;
                             $rollingreali = ($rollingreali+1)%2;
-                            // want g2-g1 == r2-r1. 
+                            // want g2-g1 == r2-r1.
                             // This approach is simpler for complex than the meandiff approach
                             if (count($rollingstu)==2) {
                                 if ($isComplex) {
@@ -438,7 +440,7 @@ class FunctionExpressionScorePart implements ScorePart
                     if ($stunan>1) { //if more than 1 student NaN response
                         $correct = false; continue;
                     }
-    
+
                     if (in_array('scalarmult',$ansformats) && in_array('toconst',$ansformats)) {
                         // nothing to do; just need to catch combo and check for zeros
                         if ($cntbothzero>18) {
@@ -498,7 +500,6 @@ class FunctionExpressionScorePart implements ScorePart
                         }
                     }
                     */
-
      
                     if ($correct == true) {
                         //test for correct format, if specified
@@ -520,7 +521,7 @@ class FunctionExpressionScorePart implements ScorePart
                 }
             }
         }
-    
+
         if ($isListAnswer) {
             $score = array_sum($correctscores)/count($answerlist);
             if (count($givenanslist) > count($answerlist)) {
@@ -541,7 +542,7 @@ class FunctionExpressionScorePart implements ScorePart
 }
 
 /*
-Some possible replacement code for the future, not done yet.  Replaces toconst and scalarmult 
+Some possible replacement code for the future, not done yet.  Replaces toconst and scalarmult
 handling with simpler approach, though it impacts tolerances so needs more testing
 
 foreach ($realanstmp as $i=>$realans) {

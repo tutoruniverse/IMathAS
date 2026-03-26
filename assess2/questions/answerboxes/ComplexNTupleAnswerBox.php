@@ -52,28 +52,28 @@ class ComplexNTupleAnswerBox implements AnswerBox
         if ($multi) {$qn = ($qn + 1) * 1000 + $partnum;}
 
         if ($displayformat == 'point') {
-            $tip = _('Enter your answer as a complex point.  Example: (2+i,4.2)') . "<br/>";
+            $tip = _('Enter your answer as a complex point. Example: (2+i,4.2)') . "<br/>";
             $shorttip = _('Enter a complex point');
         } else if ($displayformat == 'pointlist') {
-            $tip = _('Enter your answer a list of complex points separated with commas.  Example: (1+i,2), (3.5,i)') . "<br/>";
+            $tip = _('Enter your answer a list of complex points separated with commas. Example: (1+i,2), (3.5,i)') . "<br/>";
             $shorttip = _('Enter a list of complex points');
         } else if ($displayformat == 'vector') {
-            $tip = _('Enter your answer as a complex vector.  Example: <2+i,5.5i>') . "<br/>";
+            $tip = _('Enter your answer as a complex vector. Example: <2+i,5.5i>') . "<br/>";
             $shorttip = _('Enter a complex vector');
         } else if ($displayformat == 'vectorlist') {
-            $tip = _('Enter your answer a list of complex vectors separated with commas.  Example: <1+i,2>, <3.5,i>') . "<br/>";
+            $tip = _('Enter your answer a list of complex vectors separated with commas. Example: <1+i,2>, <3.5,i>') . "<br/>";
             $shorttip = _('Enter a list of complex vectors');
         } else if ($displayformat == 'set') {
-            $tip = _('Enter your answer as a set of complex numbers.  Example: {1.5,2+i,-i}') . "<br/>";
+            $tip = _('Enter your answer as a set of complex numbers. Example: {1.5,2+i,-i}') . "<br/>";
             $shorttip = _('Enter a set of complex numbers');
         } else if ($displayformat == 'setlist') {
-            $tip = _('Enter your answer as a list of sets of complex numbers separated with commas.  Example: {1+i,2,i},{4.5i,2}') . "<br/>";
+            $tip = _('Enter your answer as a list of sets of complex numbers separated with commas. Example: {1+i,2,i},{4.5i,2}') . "<br/>";
             $shorttip = _('Enter a list of sets of complex numbers');
         } else if ($displayformat == 'list') {
             $tip = _('Enter your answer as a list of n-tuples of complex numbers separated with commas: Example: (1,i),(3.5,i)') . "<br/>";
             $shorttip = _('Enter a list of n-tuples of complex numbers');
         } else {
-            $tip = _('Enter your answer as an n-tuple of complex numbers.  Example: (2+3i,5.5)') . "<br/>";
+            $tip = _('Enter your answer as an n-tuple of complex numbers. Example: (2+3i,5.5)') . "<br/>";
             $shorttip = _('Enter an n-tuple of complex numbers');
         }
         

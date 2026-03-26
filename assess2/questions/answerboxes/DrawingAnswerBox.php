@@ -237,7 +237,7 @@ class DrawingAnswerBox implements AnswerBox
         } else if (!is_array($background) && $background == 'none') {
             $plot = showasciisvg("initPicture(0,10,0,10);", $settings[6], $settings[7]);
         } else if (!is_array($background) && $background == 'transparent') {
-            $plot = '';  
+            $plot = '';
         } else {
             $plot = showplot($background, $origxmin, $settings[1], $origymin, $settings[3], $sclinglbl, $sclinggrid, $settings[6], $settings[7]);
         }
@@ -275,7 +275,7 @@ class DrawingAnswerBox implements AnswerBox
                     $out .= '<div class="canvasbg" style="position:absolute;top:0px;left:0px;">' . $plot . '</div>';
                     $out .= '<div class="drawcanvasholder" style="position:relative;top:0;left:0;z-index:2">';
                     $out .= "<canvas id=\"canvas$qn\" width=\"{$settings[6]}\" height=\"{$settings[7]}\"></canvas>";
-                    $out .= '</div></div>';    
+                    $out .= '</div></div>';
                 } else {
                     $out .= '<p>' . $plot . '</p>';
                 }
@@ -291,7 +291,7 @@ class DrawingAnswerBox implements AnswerBox
                     $answerformat[0] = "polygon";
                     $dotline = 2;
                 }
-                
+
             } else {
                 $plot = str_replace('<embed', '<embed data-nomag=1', $plot); //hide mag
                 //overlay canvas over SVG.
@@ -584,7 +584,7 @@ class DrawingAnswerBox implements AnswerBox
 
             $out .= '<input ' .
             Sanitize::generateAttributeString($attributes) .
-                '" />';
+                ' />';
 
             if (isset($GLOBALS['capturedrawinit'])) {
                 $GLOBALS['drawinitdata'][$qn] = [$bg, $settings[0], $settings[1], $settings[2], $settings[3], 5, $settings[6], $settings[7], $def, $dotline, $locky, $snaptogrid, $a11yinfo];
@@ -652,7 +652,7 @@ class DrawingAnswerBox implements AnswerBox
                             $ys = evalbasic($function[2],true);
                             $dx = evalbasic($function[3],true) - $xs;
                             $dy = evalbasic($function[4],true) - $ys;
-                            
+
                         } else {
                             $dx = evalbasic($function[1],true);
                             $dy = evalbasic($function[2],true);

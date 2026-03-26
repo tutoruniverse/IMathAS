@@ -65,6 +65,7 @@ class ScoreEngine
     private $randWrapper;
     private $userRights;
     private $errors = array(); // Populated by this class' error handlers.
+    private $score_ob_level = 0;
 
     public function __construct(PDO $dbh, Rand $randWrapper)
     {
@@ -88,6 +89,7 @@ class ScoreEngine
         $GLOBALS['curqsetid'] = $scoreQuestionParams->getDbQuestionSetId();
         set_error_handler(array($this, 'evalErrorHandler'));
         set_exception_handler(array($this, 'evalExceptionHandler'));
+        $this->score_ob_level = ob_get_level();
         ob_start();
 
         $this->randWrapper->srand($scoreQuestionParams->getQuestionSeed());
@@ -339,7 +341,15 @@ class ScoreEngine
         restore_error_handler();
         restore_exception_handler();
         unset($GLOBALS['curqsetid']);
-        $errors = ob_get_clean();
+
+        $errors = '';
+        while (ob_get_level() >= $this->score_ob_level) {
+            $piece = ob_get_clean();
+            if ($piece !== '') {
+                $errors .= $piece;
+            }
+        }
+
         if ($errors != '') {
           $this->addError($errors);
         }

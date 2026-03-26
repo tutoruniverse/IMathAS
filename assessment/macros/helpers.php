@@ -932,6 +932,14 @@ function checkreqtimes($tocheck,$rtimes) {
 	if ($tocheck=='DNE' || $tocheck=='oo' || $tocheck=='+oo' || $tocheck=='-oo') {
 		return 1;
 	}
+
+    if (strpos($rtimes, "ignore_spaces,true") !== 0) {
+		error_log("Checking with ignore spaces");
+		$ignore_spaces_check_result = checkreqtimes($tocheck, "ignore_spaces,true," . $rtimes);
+		if ($ignore_spaces_check_result == 1) {
+			return 1;
+		}
+	}
 	//why?  $cleanans = preg_replace('/[^\w\*\/\+\-\(\)\[\],\.\^=\|<>_!]+/','',$tocheck);
     $cleanans = $tocheck;
 

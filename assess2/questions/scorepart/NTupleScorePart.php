@@ -31,9 +31,9 @@ class NTupleScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $anstype = $this->scoreQuestionParams->getAnswerType();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
-        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 
+        $optionkeys = ['answer', 'reltolerance', 'abstolerance',
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt', 'scoremethod', 'partweights'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
@@ -50,7 +50,7 @@ class NTupleScorePart implements ScorePart
         $givenans = str_replace(array('(:',':)','<<','>>'), array('<','>','<','>'), $givenans);
         $givenans = trim($givenans," ,");
         $answer = normalizemathunicode($answer);
-        
+
         $ansformats = array_map('trim',explode(',',$answerformat));
         $checkSameform = (in_array('sameform',$ansformats));
         $isComplex = ($anstype === 'complexntuple' || $anstype === 'calccomplexntuple');
@@ -165,7 +165,12 @@ class NTupleScorePart implements ScorePart
                                 if ($anfunc === false) { // parse error
                                     $normalizedGivenAnswer[$i]['vals'][$k] = '';
                                 } else {
-                                    $normalizedGivenAnswer[$i]['vals'][$k] = $anfunc->normalizeTreeString();
+                                    try {
+                                        $normalizedGivenAnswer[$i]['vals'][$k] = $anfunc->normalizeTreeString();
+                                    } catch (\Throwable $e) {
+                                        // Failed to normalize tree; set fallback
+                                        $normalizedGivenAnswer[$i]['vals'][$k] = null;
+                                    }
                                 }
                             }
                         }
@@ -197,7 +202,12 @@ class NTupleScorePart implements ScorePart
                             if ($anfunc === false) {
                                 $normalizedAnswer[$ai][$ao]['vals'][$k] = '';
                             } else {
-                                $normalizedAnswer[$ai][$ao]['vals'][$k] = $anfunc->normalizeTreeString();
+                                try {
+                                    $normalizedAnswer[$ai][$ao]['vals'][$k] = $anfunc->normalizeTreeString();
+                                } catch (\Throwable $e) {
+                                    // Failed to normalize tree; set fallback
+                                    $normalizedAnswer[$ai][$ao]['vals'][$k] = null;
+                                }
                             }
                         }
                     }

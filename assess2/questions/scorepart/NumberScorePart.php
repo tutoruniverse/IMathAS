@@ -30,7 +30,7 @@ class NumberScorePart implements ScorePart
         $multi = $this->scoreQuestionParams->getIsMultiPartQuestion();
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqdecimals',
             'reqsigfigs', 'answerformat', 'requiretimeslistpart', 
@@ -51,12 +51,12 @@ class NumberScorePart implements ScorePart
 
         $ansformats = array_map('trim',explode(',',$answerformat));
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }
-        
+
         $hasUnits = in_array('units',$ansformats);
         if ($hasUnits) {
             require_once __DIR__.'/../../../assessment/libs/units.php';
         }
-        
+
         $givenans = normalizemathunicode($givenans);
 
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {
@@ -163,7 +163,7 @@ class NumberScorePart implements ScorePart
             sort($tmp);
             $anarr = array($tmp[0]);
             for ($i=1;$i<count($tmp);$i++) {
-                if (!is_numeric($tmp[$i]) || !is_numeric($tmp[$i-1]) || 
+                if (!is_numeric($tmp[$i]) || !is_numeric($tmp[$i-1]) ||
                     $tmp[$i]-$tmp[$i-1]>1E-12
                 ) {
                     $anarr[] = $tmp[$i];
@@ -243,7 +243,7 @@ class NumberScorePart implements ScorePart
         foreach($anarr as $i=>$answer) {
             $foundloc = -1;
             if (in_array('orderedlist',$ansformats)) {
-                $gaarr = array($gamasterarr[$i]);  
+                $gaarr = array($gamasterarr[$i]);
                 if ($hasUnits) {
                     $gaunitsarr = array($gamasterunitsarr[$i]);
                 }
@@ -324,7 +324,7 @@ class NumberScorePart implements ScorePart
                                         continue;
                                     }
                                 } else {
-                                    /*  Don't bother to check in this case, since 
+                                    /*  Don't bother to check in this case, since
                                         0.1 could be considered as 0.100, so if not exact,
                                         no reason to bother checking
                                     if ($thisreqdecimals > $decimalsingivenans ) {
@@ -337,7 +337,7 @@ class NumberScorePart implements ScorePart
                                 // only check sigfigs, not value
                                 if (!checksigfigs($givenans, 1, $thisreqsigfigs, $exactsigfig, $reqsigfigoffset, false)) {
                                     continue;
-                                } 
+                                }
                             }
                             if ($matches[2]=='-oo') {$matches[2] = -1e99;}
                             if ($matches[3]=='oo') {$matches[3] = 1e99;}

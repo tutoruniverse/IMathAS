@@ -6,7 +6,33 @@
  * Score submit:  POST with form fields (handled automatically by the form)
  */
 
-require_once "../init_without_validate.php";
+// Minimal bootstrap — no DB connection required for preview.
+require_once __DIR__ . '/../includes/sanitize.php';
+require_once __DIR__ . '/../includes/Rand.php';
+require_once __DIR__ . '/../i18n/i18n.php';
+
+$CFG = [];
+$imasroot = '';
+$httpmode = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+    ? 'https://' : 'http://';
+$GLOBALS['basesiteurl'] = $httpmode . Sanitize::domainNameWithPort($_SERVER['HTTP_HOST']) . $imasroot;
+$staticroot = $imasroot;
+
+// Stub DB — satisfies PDO type hint; preview does not query the DB.
+$DBH = new PDO('sqlite::memory:');
+$GLOBALS['DBH'] = $DBH;
+
+// Random wrapper used by QuestionGenerator / ScoreEngine.
+$GLOBALS['RND'] = new Rand();
+
+if (!defined('MYSQL_LEFT_WRDBND')) {
+    define('MYSQL_LEFT_WRDBND', '[[:<:]]');
+    define('MYSQL_RIGHT_WRDBND', '[[:>:]]');
+}
+
+session_start();
+
 require_once '../assess2/AssessStandalone.php';
 
 $_SESSION['graphdisp'] = 1;

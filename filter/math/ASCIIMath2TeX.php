@@ -335,11 +335,11 @@ array( 'input'=>'>>', 'tex'=>'rangle', 'rightbracket'=>TRUE, 'notexcopy'=>TRUE),
 
 //fonts
 array('input'=>'color', 'binary'=>TRUE),
-array('input'=>'bb', 'tex'=>'mathbf', 'unary'=>TRUE),
-array('input'=>'sf', 'tex'=>'mathsf', 'unary'=>TRUE),
+array('input'=>'bb', 'tex'=>'boldsymbol', 'unary'=>TRUE),
+array('input'=>'sf', 'tex'=>'textsf', 'unary'=>TRUE),
 array('input'=>'bbb', 'tex'=>'mathbb', 'unary'=>TRUE),
 array('input'=>'cc', 'tex'=>'mathcal', 'unary'=>TRUE),
-array('input'=>'tt', 'tex'=>'mathtt', 'unary'=>TRUE),
+array('input'=>'tt', 'tex'=>'texttt', 'unary'=>TRUE),
 array('input'=>'fr', 'tex'=>'mathfrak', 'unary'=>TRUE)
 
 );

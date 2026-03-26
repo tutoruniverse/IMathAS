@@ -673,11 +673,6 @@ function AMTparseSexpr($str) {
 		$str = $this->AMremoveCharsAndBlanks($str,strlen($symbol['input']));
 		$texsymbol = $this->AMTgetTeXsymbol($symbol);
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
-			// Append {} when command ends with a letter to prevent merging with the next token
-			// e.g. \partial u would otherwise become \partialu
-			if (strlen($texsymbol)>0 && ctype_alpha($texsymbol[strlen($texsymbol)-1])) {
-				$texsymbol .= '{}';
-			}
 			return array($texsymbol,$str);
 		} else {
 			if (strlen($texsymbol) === 1) {
@@ -763,6 +758,12 @@ function AMTparseExpr($str,$rightbracket) {
 			$newFrag .= $node;
 			$symbol = $this->AMgetSymbol($str);
 		} else if ($node != '') {
+			// Add a space when a backslash-command (ends with letter) is followed by a bare letter,
+			// preventing token merging (e.g. \partial + u → \partialu). Does not affect ^ or _.
+			if (strlen($newFrag) > 0 && ctype_alpha($newFrag[strlen($newFrag)-1]) &&
+			    strlen($node) > 0 && ctype_alpha($node[0])) {
+				$newFrag .= ' ';
+			}
 			$newFrag .= $node;
 		}
 	} while ((!isset($symbol['rightbracket']) && (!isset($symbol['leftright']) || $rightbracket) || $this->AMnestingDepth==0) && $symbol!=null && $symbol['input']!='');

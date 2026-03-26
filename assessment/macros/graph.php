@@ -7,6 +7,7 @@ array_push(
     'showplot',
     'addplotborder',
     'replacealttext',
+    'replacetextonimagealt',
     'addlabel',
     'addlabelabs',
     'adddrawcommand',
@@ -832,6 +833,19 @@ function replacealttext($plot, $alttext) {
         }
         return $plot;
     }
+}
+
+function replacetextonimagealt($html, $alttext) {
+    if ($_SESSION['graphdisp'] == 0) {
+        return $alttext;
+    }
+    $encoded = Sanitize::encodeStringForDisplay($alttext);
+    return preg_replace(
+        '/(class="txtimgwrap element-to-render-as-image")/',
+        'role="img" aria-label="' . $encoded . '" $1',
+        $html,
+        1
+    );
 }
 
 function addlabel($plot, $x, $y, $lbl, $color = "black", $loc = "", $angle = 0, $size = 0, $alt = null) {

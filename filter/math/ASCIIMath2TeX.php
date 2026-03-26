@@ -52,6 +52,7 @@ array( 'input'=>'chi'),
 array( 'input'=>'delta'),
 array( 'input'=>'Delta'),
 array( 'input'=>'epsi', 'tex'=>'epsilon'),
+array( 'input'=>'epsilon'),
 array( 'input'=>'varepsilon'),
 array( 'input'=>'eta'),
 array( 'input'=>'gamma'),
@@ -72,6 +73,7 @@ array( 'input'=>'Phi'),
 array( 'input'=>'pi'),
 array( 'input'=>'Pi'),
 array( 'input'=>'psi'),
+array( 'input'=>'Psi'),
 array( 'input'=>'rho'),
 array( 'input'=>'sigma'),
 array( 'input'=>'Sigma'),
@@ -81,6 +83,7 @@ array( 'input'=>'vartheta'),
 array( 'input'=>'Theta'),
 array( 'input'=>'upsilon'),
 array( 'input'=>'xi'),
+array( 'input'=>'Xi'),
 array( 'input'=>'alpha'),
 array( 'input'=>'zeta'),
 
@@ -121,12 +124,14 @@ array( 'input'=>':=' ),
 array( 'input'=>'lt', 'tex'=>'<', 'val'=>TRUE),
 array( 'input'=>'<=', 'tex'=>'le'),
 array( 'input'=>'lt=', 'tex'=>'leq'),
-array( 'input'=>'gt', 'tex'=>'>', 'val'=>TRUE), 
+array( 'input'=>'gt', 'tex'=>'>', 'val'=>TRUE),
 array( 'input'=>'>=', 'tex'=>'ge'),
 array( 'input'=>'gt=', 'tex'=>'geq'),
 array( 'input'=>'-<', 'tex'=>'prec'),
+array( 'input'=>'-<=', 'tex'=>'preceq'),
 array( 'input'=>'-lt', 'output'=>'-<', 'definition'=>TRUE),
 array( 'input'=>'>-', 'tex'=>'succ'),
+array( 'input'=>'>-=', 'tex'=>'succeq'),
 array( 'input'=>'in'),
 array( 'input'=>'!in', 'tex'=>'notin'),
 array( 'input'=>'sub', 'tex'=>'subset'),
@@ -156,6 +161,8 @@ array( 'input'=>'EE', 'tex'=>'exists'),
 array( 'input'=>'_|_', 'tex'=>'bot'),
 array( 'input'=>'TT', 'tex'=>'top'),
 array( 'input'=>'|--', 'tex'=>'vdash'),
+array( 'input'=>'|==', 'tex'=>'models'),
+array( 'input'=>'|=', 'tex'=>'models'),
 
 // Miscellaneous symbols
 array( 'input'=>'int'),
@@ -242,7 +249,7 @@ array( 'input'=>'Log', 'output'=>'log', 'definition'=>TRUE),
 array( 'input'=>'Ln', 'output'=>'ln', 'definition'=>TRUE),
 array( 'input'=>'abs', 'tex'=>'text{abs}', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("|","|")), 
 array( 'input'=>'Abs', 'tex'=>'text{abs}', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("|","|")),
-array( 'input'=>'norm', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\|","\\|")), 
+array( 'input'=>'norm', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\lVert","\\rVert")),
 array( 'input'=>'floor', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\lfloor","\\rfloor")),
 array( 'input'=>'ceil', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\lceil","\\rceil")),
 array( 'input'=>'det', 'unary'=>TRUE, 'func'=>TRUE),
@@ -577,6 +584,13 @@ function AMTparseSexpr($str) {
 			$i = strpos(substr($str,1),'"')+1;
 		} else { $i = 0;}
 		if ($i==-1) { $i = strlen($str);}
+		if ($i == 0) {
+			// No bracket follows — consume just the single next character as text
+			$st = (strlen($str) > 0) ? $str[0] : '';
+			$newFrag .= '\\text{'.$st.'}';
+			$str = $this->AMremoveCharsAndBlanks($str, strlen($st));
+			return array($newFrag, $str);
+		}
 		$st = substr($str,1,$i-1);
 		if (strlen($st)>0 && $st[0]== " ") {
 			$newFrag .= '\\ ';
@@ -661,8 +675,8 @@ function AMTparseSexpr($str) {
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
 			return array($texsymbol,$str);
 		} else {
-			if ($this->isAnswerMode) {
-                return array('\['.$texsymbol.'\]',$str);
+			if (strlen($texsymbol) === 1) {
+                return array($texsymbol,$str);
             } else {
                 return array('{'.$texsymbol.'}',$str);
             }

@@ -673,6 +673,11 @@ function AMTparseSexpr($str) {
 		$str = $this->AMremoveCharsAndBlanks($str,strlen($symbol['input']));
 		$texsymbol = $this->AMTgetTeXsymbol($symbol);
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
+			// Append {} when command ends with a letter to prevent merging with the next token
+			// e.g. \partial u would otherwise become \partialu
+			if (strlen($texsymbol)>0 && ctype_alpha($texsymbol[strlen($texsymbol)-1])) {
+				$texsymbol .= '{}';
+			}
 			return array($texsymbol,$str);
 		} else {
 			if (strlen($texsymbol) === 1) {

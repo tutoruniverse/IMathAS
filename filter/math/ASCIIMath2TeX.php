@@ -588,13 +588,6 @@ function AMTparseSexpr($str) {
 			$i = strpos(substr($str,1),'"')+1;
 		} else { $i = 0;}
 		if ($i==-1) { $i = strlen($str);}
-		if ($i == 0) {
-			// No bracket follows — consume just the single next character as text
-			$st = (strlen($str) > 0) ? $str[0] : '';
-			$newFrag .= '\\text{'.$st.'}';
-			$str = $this->AMremoveCharsAndBlanks($str, strlen($st));
-			return array($newFrag, $str);
-		}
 		$st = substr($str,1,$i-1);
 		if (strlen($st)>0 && $st[0]== " ") {
 			$newFrag .= '\\ ';

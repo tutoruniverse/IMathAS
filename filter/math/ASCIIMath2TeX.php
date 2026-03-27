@@ -563,13 +563,17 @@ function AMTparseSexpr($str) {
 			if (isset($symbol['invisible'])) {
 				$node = '{' . $result[0] . '}';
 			} else {
-				$node = '{' . $this->AMTgetTeXsymbol($symbol) . $result[0] . '}';
+				$texsym = $this->AMTgetTeXsymbol($symbol);
+				$sep = (strlen($texsym)>0 && ctype_alpha($texsym[strlen($texsym)-1]) && strlen($result[0])>0 && ctype_alpha($result[0][0])) ? ' ' : '';
+				$node = '{' . $texsym . $sep . $result[0] . '}';
 			}
 		} else {
 			if (isset($symbol['invisible'])) {
 				$node = '{\\left.' . $result[0] . '}';
 			} else {
-				$node = '{\\left' . $this->AMTgetTeXsymbol($symbol) . $result[0] . '}';
+				$texsym = $this->AMTgetTeXsymbol($symbol);
+				$sep = (strlen($texsym)>0 && ctype_alpha($texsym[strlen($texsym)-1]) && strlen($result[0])>0 && ctype_alpha($result[0][0])) ? ' ' : '';
+				$node = '{\\left' . $texsym . $sep . $result[0] . '}';
 			}
 		}
 		return array($node, $result[1]);

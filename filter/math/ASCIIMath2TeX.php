@@ -52,6 +52,7 @@ array( 'input'=>'chi'),
 array( 'input'=>'delta'),
 array( 'input'=>'Delta'),
 array( 'input'=>'epsi', 'tex'=>'epsilon'),
+array( 'input'=>'epsilon'),
 array( 'input'=>'varepsilon'),
 array( 'input'=>'eta'),
 array( 'input'=>'gamma'),
@@ -72,6 +73,7 @@ array( 'input'=>'Phi'),
 array( 'input'=>'pi'),
 array( 'input'=>'Pi'),
 array( 'input'=>'psi'),
+array( 'input'=>'Psi'),
 array( 'input'=>'rho'),
 array( 'input'=>'sigma'),
 array( 'input'=>'Sigma'),
@@ -81,6 +83,7 @@ array( 'input'=>'vartheta'),
 array( 'input'=>'Theta'),
 array( 'input'=>'upsilon'),
 array( 'input'=>'xi'),
+array( 'input'=>'Xi'),
 array( 'input'=>'alpha'),
 array( 'input'=>'zeta'),
 
@@ -121,12 +124,14 @@ array( 'input'=>':=' ),
 array( 'input'=>'lt', 'tex'=>'<', 'val'=>TRUE),
 array( 'input'=>'<=', 'tex'=>'le'),
 array( 'input'=>'lt=', 'tex'=>'leq'),
-array( 'input'=>'gt', 'tex'=>'>', 'val'=>TRUE), 
+array( 'input'=>'gt', 'tex'=>'>', 'val'=>TRUE),
 array( 'input'=>'>=', 'tex'=>'ge'),
 array( 'input'=>'gt=', 'tex'=>'geq'),
 array( 'input'=>'-<', 'tex'=>'prec'),
+array( 'input'=>'-<=', 'tex'=>'preceq'),
 array( 'input'=>'-lt', 'output'=>'-<', 'definition'=>TRUE),
 array( 'input'=>'>-', 'tex'=>'succ'),
+array( 'input'=>'>-=', 'tex'=>'succeq'),
 array( 'input'=>'in'),
 array( 'input'=>'!in', 'tex'=>'notin'),
 array( 'input'=>'sub', 'tex'=>'subset'),
@@ -156,6 +161,8 @@ array( 'input'=>'EE', 'tex'=>'exists'),
 array( 'input'=>'_|_', 'tex'=>'bot'),
 array( 'input'=>'TT', 'tex'=>'top'),
 array( 'input'=>'|--', 'tex'=>'vdash'),
+array( 'input'=>'|==', 'tex'=>'models'),
+array( 'input'=>'|=', 'tex'=>'models'),
 
 // Miscellaneous symbols
 array( 'input'=>'int'),
@@ -242,7 +249,7 @@ array( 'input'=>'Log', 'output'=>'log', 'definition'=>TRUE),
 array( 'input'=>'Ln', 'output'=>'ln', 'definition'=>TRUE),
 array( 'input'=>'abs', 'tex'=>'text{abs}', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("|","|")), 
 array( 'input'=>'Abs', 'tex'=>'text{abs}', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("|","|")),
-array( 'input'=>'norm', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\|","\\|")), 
+array( 'input'=>'norm', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\lVert","\\rVert")),
 array( 'input'=>'floor', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\lfloor","\\rfloor")),
 array( 'input'=>'ceil', 'notexcopy'=>TRUE, 'unary'=>TRUE, 'rewriteleftright'=>array("\\lceil","\\rceil")),
 array( 'input'=>'det', 'unary'=>TRUE, 'func'=>TRUE),
@@ -556,13 +563,17 @@ function AMTparseSexpr($str) {
 			if (isset($symbol['invisible'])) {
 				$node = '{' . $result[0] . '}';
 			} else {
-				$node = '{' . $this->AMTgetTeXsymbol($symbol) . $result[0] . '}';
+				$texsym = $this->AMTgetTeXsymbol($symbol);
+				$sep = (strlen($texsym)>0 && ctype_alpha($texsym[strlen($texsym)-1]) && strlen($result[0])>0 && ctype_alpha($result[0][0])) ? ' ' : '';
+				$node = '{' . $texsym . $sep . $result[0] . '}';
 			}
 		} else {
 			if (isset($symbol['invisible'])) {
 				$node = '{\\left.' . $result[0] . '}';
 			} else {
-				$node = '{\\left' . $this->AMTgetTeXsymbol($symbol) . $result[0] . '}';
+				$texsym = $this->AMTgetTeXsymbol($symbol);
+				$sep = (strlen($texsym)>0 && ctype_alpha($texsym[strlen($texsym)-1]) && strlen($result[0])>0 && ctype_alpha($result[0][0])) ? ' ' : '';
+				$node = '{\\left' . $texsym . $sep . $result[0] . '}';
 			}
 		}
 		return array($node, $result[1]);
@@ -661,8 +672,8 @@ function AMTparseSexpr($str) {
 		if ((strlen($texsymbol)>0 && $texsymbol[0]=='\\') || (isset($symbol['isop']) && $symbol['isop']==true)) {
 			return array($texsymbol,$str);
 		} else {
-			if ($this->isAnswerMode) {
-                return array('\['.$texsymbol.'\]',$str);
+			if (strlen($texsymbol) === 1) {
+                return array($texsymbol,$str);
             } else {
                 return array('{'.$texsymbol.'}',$str);
             }
@@ -744,6 +755,12 @@ function AMTparseExpr($str,$rightbracket) {
 			$newFrag .= $node;
 			$symbol = $this->AMgetSymbol($str);
 		} else if ($node != '') {
+			// Add a space when a backslash-command (ends with letter) is followed by a bare letter,
+			// preventing token merging (e.g. \partial + u → \partialu). Does not affect ^ or _.
+			if (strlen($newFrag) > 0 && ctype_alpha($newFrag[strlen($newFrag)-1]) &&
+			    strlen($node) > 0 && ctype_alpha($node[0])) {
+				$newFrag .= ' ';
+			}
 			$newFrag .= $node;
 		}
 	} while ((!isset($symbol['rightbracket']) && (!isset($symbol['leftright']) || $rightbracket) || $this->AMnestingDepth==0) && $symbol!=null && $symbol['input']!='');

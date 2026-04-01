@@ -287,6 +287,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stype = isset($data["stype"]) ? $data["stype"] : "template";
     $convertToLatex = isset($data['convert_to_latex']) ? $data['convert_to_latex'] : false;
     $showplot = isset($data["showplot"]) ? $data["showplot"] : "";
+    if (isset($data['nonce_secret']) && is_string($data['nonce_secret']) && $data['nonce_secret'] !== '') {
+        $GLOBALS['csv_nonce_secret'] = $data['nonce_secret'];
+    }
 
     if ($showplot == "fn") {
         $control = str_replace("showplot", "showplot_with_functions", $control);

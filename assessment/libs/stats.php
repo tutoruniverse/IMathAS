@@ -2422,6 +2422,18 @@ function mosaicplot($rlbl,$clbl,$m, $w = 300, $h=300) {
 	return $out;
 }
 
+// Returns a data-nonce attribute string signing $payload, or '' if no secret is set.
+// $payload should be the fully built href value of the <a> tag.
+// Python verifies by recomputing: hmac(secret, timestamp + "." + href)
+function _make_link_nonce($payload) {
+    if (!isset($GLOBALS['csv_nonce_secret']) || $GLOBALS['csv_nonce_secret'] === '') {
+        return '';
+    }
+    $timestamp = time();
+    $sig = hash_hmac('sha256', $timestamp . '.' . $payload, $GLOBALS['csv_nonce_secret']);
+    return ' data-nonce="' . $timestamp . '.' . $sig . '"';
+}
+
 //argument should be header,column,header,column,...
 function csvdownloadlink() {
   $alist = func_get_args();
@@ -2462,7 +2474,8 @@ function csvdownloadlink() {
     $rows[$i] = rtrim($row,',');
   }
   $str = implode("\n",$rows);
-  return '<a download="'.Sanitize::encodeStringForDisplay($filename).'.csv" href="data:text/csv;charset=UTF-8,'.urlencode($str).'">'
+  $href = 'data:text/csv;charset=UTF-8,' . urlencode($str);
+  return '<a'._make_link_nonce($href).' download="'.Sanitize::encodeStringForDisplay($filename).'.csv" href="'.$href.'">'
     . _('Download CSV').'</a>';
 }
 

@@ -616,8 +616,21 @@ class QuestionHtmlGenerator
                 $previewloc[$atIdx] = $answerBoxGenerator->getPreviewLocation();
 
                 if ($printFormat) {
-                    $answerbox[$atIdx] = preg_replace('/<ul class="?nomark"?>(.*?)<\/ul>/s', '<ol style="list-style-type:upper-alpha">$1</ol>', $answerbox[$atIdx]);
-                    $answerbox[$atIdx] = preg_replace('/<ol class="?lalpha"?/','<ol style="list-style-type:lower-alpha"', $answerbox[$atIdx]);
+                    if (strpos($answerbox[$atIdx], 'nomark') !== false) {
+                        $answerbox[$atIdx] = str_replace(
+                            ['<ul class="nomark">', '<ul class=nomark>'],
+                            '<ol style="list-style-type:upper-alpha">',
+                            $answerbox[$atIdx]
+                        );
+                        $answerbox[$atIdx] = str_replace('</ul>', '</ol>', $answerbox[$atIdx]);
+                    }
+                    if (strpos($answerbox[$atIdx], 'lalpha') !== false) {
+                        $answerbox[$atIdx] = str_replace(
+                            ['<ol class="lalpha"', '<ol class=lalpha'],
+                            '<ol style="list-style-type:lower-alpha"',
+                            $answerbox[$atIdx]
+                        );
+                    }
                     
                     if ($anstype === 'choices') {
                         $qanskey = array_search($jsParams[$qnRef]['livepoll_ans'], $jsParams[$qnRef]['livepoll_randkeys']);
@@ -707,8 +720,21 @@ class QuestionHtmlGenerator
             }
 
             if ($printFormat) {
-                $answerbox = preg_replace('/<ul class="?nomark"?>(.*?)<\/ul>/s', '<ol style="list-style-type:upper-alpha">$1</ol>', $answerbox);
-                $answerbox = preg_replace('/<ol class="?lalpha"?/','<ol style="list-style-type:lower-alpha"', $answerbox);
+                if (strpos($answerbox, 'nomark') !== false) {
+                    $answerbox = str_replace(
+                        ['<ul class="nomark">', '<ul class=nomark>'],
+                        '<ol style="list-style-type:upper-alpha">',
+                        $answerbox
+                    );
+                    $answerbox = str_replace('</ul>', '</ol>', $answerbox);
+                }
+                if (strpos($answerbox, 'lalpha') !== false) {
+                    $answerbox = str_replace(
+                        ['<ol class="lalpha"', '<ol class=lalpha'],
+                        '<ol style="list-style-type:lower-alpha"',
+                        $answerbox
+                    );
+                }
 
                 if ($quesData['qtype'] == 'choices') {
                     $qanskey = array_search($jsParams[$qnRef]['livepoll_ans'], $jsParams[$qnRef]['livepoll_randkeys']);

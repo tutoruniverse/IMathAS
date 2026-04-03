@@ -238,6 +238,48 @@ function showplot_with_functions($funcs) { //optional arguments:  $xmin,$xmax,$y
 }
 
 
+/**
+ * Injects a function_list attribute into embed tags produced by showplot_with_functions.
+ * Each embed has script='drawPicture({JSON})'; this parses the JSON and builds a
+ * comma-separated function_list string that replace_graph_function_lists() in the
+ * Python backend can consume to produce human-readable <GraphData> blocks for LLMs.
+ *
+ * Supported function types serialised into function_list:
+ *   standard → "equation,color"
+ *   text     → "text,x,y,content,color"
+ *   dot      → "dot,x,y,style,color"
+ */
+function injectFunctionListAttributes($html) {
+    return preg_replace_callback(
+        "/<embed([^>]*)script='drawPicture\((\{[^']*\})\)'([^>]*)\/>/s",
+        function($m) {
+            $before  = $m[1]; $jsonStr = $m[2]; $after = $m[3];
+            $config = json_decode($jsonStr, true);
+            if (!$config || !isset($config['functions'])) return $m[0];
+            $list = [];
+            foreach ($config['functions'] as $f) {
+                $type = $f['type'] ?? '';
+                if ($type === 'standard') {
+                    $str = $f['equation'] ?? '';
+                    if (!empty($f['color'])) $str .= ',' . $f['color'];
+                    $list[] = $str;
+                } elseif ($type === 'text') {
+                    $str = 'text,' . ($f['x'] ?? '') . ',' . ($f['y'] ?? '') . ',' . ($f['content'] ?? '');
+                    if (!empty($f['color'])) $str .= ',' . $f['color'];
+                    $list[] = $str;
+                } elseif ($type === 'dot') {
+                    $str = 'dot,' . ($f['x'] ?? '') . ',' . ($f['y'] ?? '');
+                    if (!empty($f['style'])) $str .= ',' . $f['style'];
+                    if (!empty($f['color'])) $str .= ',' . $f['color'];
+                    $list[] = $str;
+                }
+            }
+            return "<embed{$before}function_list='" . json_encode($list) . "' script='drawPicture({$jsonStr})'{$after}/>";
+        },
+        $html
+    );
+}
+
 function processContent($matches) {
     $content = $matches[1];
     $processedContent = makepretty($content);
@@ -333,9 +375,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $question = $a2->getQuestion();
     $questionContent = $question->getQuestionContent();
 
+    if ($showplot === "fn") {
+        $questionContent = injectFunctionListAttributes($questionContent);
+    }
+
     if ($stype == "template") {
         $originalSolution = $question->getSolutionContent();
     } else {
+        $solutionCode = ($showplot === "fn")
+            ? str_replace("showplot", "showplot_with_functions", $solution)
+            : $solution;
         $vars = $question->getVarsOutput();
         $sanitizedVars = [];
         foreach ($vars as $key => $value) {
@@ -344,13 +393,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         extract($sanitizedVars);
         ob_start();
-        eval($solution);
+        eval($solutionCode);
         $originalSolution = ob_get_clean();
+    }
+
+    if ($showplot === "fn") {
+        $originalSolution = injectFunctionListAttributes($originalSolution);
     }
 
     $prettySolution = preg_replace_callback('/`([^`]*)`/', 'processContent', $originalSolution);
 
     $answers = $question->getCorrectAnswersForParts();
+    if ($showplot === "fn") {
+        $answers = injectFunctionListAttributes($answers);
+    }
     $vars = $question->getVarsOutput();
     $jsparams = $disp["jsparams"];
 

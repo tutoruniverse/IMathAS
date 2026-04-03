@@ -923,6 +923,22 @@ function adddrawcommand($plot, $cmd) {
     return str_replace("' />", $cmd . $end, $plot);
 }
 
+function _mergeplots_extract_json_str($embed) {
+    $start = strpos($embed, 'drawPicture({');
+    if ($start === false) return null;
+    $jsonStart = $start + strlen('drawPicture(');
+    $depth = 0; $jsonEnd = -1;
+    for ($j = $jsonStart; $j < strlen($embed); $j++) {
+        if ($embed[$j] === '{') $depth++;
+        elseif ($embed[$j] === '}') {
+            $depth--;
+            if ($depth === 0) { $jsonEnd = $j; break; }
+        }
+    }
+    if ($jsonEnd === -1) return null;
+    return substr($embed, $jsonStart, $jsonEnd - $jsonStart + 1);
+}
+
 function mergeplots($plota) {
     $n = func_num_args();
     if ($n == 1) {
@@ -936,8 +952,26 @@ function mergeplots($plota) {
             $plota .= $newtext;
         } else {
             $plotb = preg_replace('/<span.*?<\/span>/', '', $plotb);
-            $newcmds = preg_replace('/^.*?initPicture\(.*?\);\s*(axes\(.*?\);)?(.*?)\'\s*\/>.*$/', '$2', $plotb);
-            $plota = str_replace("' />", trim($newcmds) . "' />", $plota);
+            $jsonStrB = _mergeplots_extract_json_str($plotb);
+            if ($jsonStrB !== null) {
+                // Both embeds are new-format (drawPicture JSON) — merge function lists
+                $jsonStrA = _mergeplots_extract_json_str($plota);
+                if ($jsonStrA !== null) {
+                    $jsonA = json_decode($jsonStrA, true);
+                    $jsonB = json_decode($jsonStrB, true);
+                    if ($jsonA !== null && $jsonB !== null &&
+                        isset($jsonA['functions']) && isset($jsonB['functions'])) {
+                        $jsonA['functions'] = array_merge($jsonA['functions'], $jsonB['functions']);
+                        $plota = str_replace($jsonStrA, json_encode($jsonA), $plota);
+                    }
+                }
+            } else {
+                // Legacy format — only merge if $plota is also legacy
+                if (strpos($plota, 'drawPicture({') === false) {
+                    $newcmds = preg_replace('/^.*?initPicture\(.*?\);\s*(axes\(.*?\);)?(.*?)\'\s*\/>.*$/', '$2', $plotb);
+                    $plota = str_replace("' />", trim($newcmds) . "' />", $plota);
+                }
+            }
         }
     }
     return $plota;

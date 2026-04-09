@@ -860,12 +860,21 @@ function replacetextonimagealt($html, $alttext) {
         return $alttext;
     }
     $encoded = Sanitize::encodeStringForDisplay($alttext);
-    return preg_replace(
+    // Inject role="img" and aria-label into the outer txtimgwrap wrapper
+    $html = preg_replace(
         '/(class="txtimgwrap element-to-render-as-image")/',
         'role="img" aria-label="' . $encoded . '" $1',
         $html,
         1
     );
+    // Hide inner content from screen readers since outer div provides the description
+    $html = preg_replace(
+        '/(<div)((?=[^>]*class="txtimgwrap")(?![^>]*element-to-render-as-image)[^>]*>)/',
+        '$1 aria-hidden="true"$2',
+        $html,
+        1
+    );
+    return $html;
 }
 
 function addlabel($plot, $x, $y, $lbl, $color = "black", $loc = "", $angle = 0, $size = 0, $alt = null) {

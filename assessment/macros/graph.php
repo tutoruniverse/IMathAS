@@ -1177,14 +1177,6 @@ function mergeplots($plota) {
                         $jsonA['functions'] = array_merge($jsonA['functions'], $jsonB['functions']);
                         $plota = str_replace($jsonStrA, json_encode($jsonA), $plota);
                     }
-                    // Merge plot-func attributes
-                    $pfA = _mergeplots_extract_plot_func($plota);
-                    $pfB = _mergeplots_extract_plot_func($plotb);
-                    if (!empty($pfB)) {
-                        $merged = array_merge($pfA, $pfB);
-                        $newVal = base64_encode(json_encode($merged));
-                        $plota = preg_replace("/plot-func='[^']*'/", "plot-func='" . $newVal . "'", $plota);
-                    }
                 }
             } else {
                 // Legacy format — only merge if $plota is also legacy
@@ -1192,6 +1184,14 @@ function mergeplots($plota) {
                     $newcmds = preg_replace('/^.*?initPicture\(.*?\);\s*(axes\(.*?\);)?(.*?)\'\s*\/>.*$/', '$2', $plotb);
                     $plota = str_replace("' />", trim($newcmds) . "' />", $plota);
                 }
+            }
+            // Merge plot-func attributes (independent of script format)
+            $pfA = _mergeplots_extract_plot_func($plota);
+            $pfB = _mergeplots_extract_plot_func($plotb);
+            if (!empty($pfA) && !empty($pfB)) {
+                $merged = array_merge($pfA, $pfB);
+                $newVal = base64_encode(json_encode($merged));
+                $plota = preg_replace("/plot-func='[^']*'/", "plot-func='" . $newVal . "'", $plota);
             }
         }
     }

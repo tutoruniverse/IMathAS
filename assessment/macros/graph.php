@@ -1128,6 +1128,14 @@ function adddrawcommand($plot, $cmd) {
     return str_replace("' />", $cmd . $end, $plot);
 }
 
+function _mergeplots_extract_plot_func($embed) {
+    if (preg_match("/plot-func='([^']*)'/", $embed, $m)) {
+        $decoded = json_decode(base64_decode($m[1]), true);
+        return is_array($decoded) ? $decoded : [];
+    }
+    return [];
+}
+
 function _mergeplots_extract_json_str($embed) {
     $start = strpos($embed, 'drawPicture({');
     if ($start === false) return null;
@@ -1168,6 +1176,14 @@ function mergeplots($plota) {
                         isset($jsonA['functions']) && isset($jsonB['functions'])) {
                         $jsonA['functions'] = array_merge($jsonA['functions'], $jsonB['functions']);
                         $plota = str_replace($jsonStrA, json_encode($jsonA), $plota);
+                    }
+                    // Merge plot-func attributes
+                    $pfA = _mergeplots_extract_plot_func($plota);
+                    $pfB = _mergeplots_extract_plot_func($plotb);
+                    if (!empty($pfB)) {
+                        $merged = array_merge($pfA, $pfB);
+                        $newVal = base64_encode(json_encode($merged));
+                        $plota = preg_replace("/plot-func='[^']*'/", "plot-func='" . $newVal . "'", $plota);
                     }
                 }
             } else {

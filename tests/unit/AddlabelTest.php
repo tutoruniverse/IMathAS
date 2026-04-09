@@ -147,4 +147,67 @@ final class AddlabelTest extends TestCase
             'initPicture should not be duplicated after merge'
         );
     }
+
+    // -------------------------------------------------------------------------
+    // mergeplots — new format (drawPicture JSON + plot-func)
+    // -------------------------------------------------------------------------
+
+    public function testMergePlotsMergesPlotFuncAttribute()
+    {
+        $funcA = [['expr' => 'x^2', 'color' => 'blue']];
+        $funcB = [['expr' => 'sin(x)', 'color' => 'red']];
+
+        $jsonA = json_encode(['functions' => [['definition' => 'x^2']]]);
+        $jsonB = json_encode(['functions' => [['definition' => 'sin(x)']]]);
+
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='200' height='200'" .
+            " function_list='[\"x^2\"]'" .
+            " plot-func='" . base64_encode(json_encode($funcA)) . "'" .
+            " script='drawPicture(" . $jsonA . ")' />\n";
+
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='200' height='200'" .
+            " function_list='[\"sin(x)\"]'" .
+            " plot-func='" . base64_encode(json_encode($funcB)) . "'" .
+            " script='drawPicture(" . $jsonB . ")' />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        // Extract plot-func from result
+        preg_match("/plot-func='([^']*)'/", $result, $m);
+        $this->assertNotEmpty($m, 'result should contain plot-func attribute');
+
+        $merged = json_decode(base64_decode($m[1]), true);
+        $this->assertCount(2, $merged, 'merged plot-func should contain functions from both plots');
+        $this->assertEquals('x^2', $merged[0]['expr']);
+        $this->assertEquals('sin(x)', $merged[1]['expr']);
+    }
+
+    public function testMergePlotsPreservesPlotFuncWhenPlotBHasNone()
+    {
+        $funcA = [['expr' => 'x^2', 'color' => 'blue']];
+        $jsonA = json_encode(['functions' => [['definition' => 'x^2']]]);
+        $jsonB = json_encode(['functions' => [['definition' => 'sin(x)']]]);
+
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='200' height='200'" .
+            " function_list='[\"x^2\"]'" .
+            " plot-func='" . base64_encode(json_encode($funcA)) . "'" .
+            " script='drawPicture(" . $jsonA . ")' />\n";
+
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='200' height='200'" .
+            " function_list='[\"sin(x)\"]'" .
+            " script='drawPicture(" . $jsonB . ")' />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        preg_match("/plot-func='([^']*)'/", $result, $m);
+        $this->assertNotEmpty($m, 'result should still contain plot-func attribute');
+
+        $merged = json_decode(base64_decode($m[1]), true);
+        $this->assertCount(1, $merged, 'plot-func should keep only plot A functions when B has none');
+        $this->assertEquals('x^2', $merged[0]['expr']);
+    }
 }

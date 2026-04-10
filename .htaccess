@@ -27,24 +27,45 @@ Options -Indexes
   php_value max_input_time 300
   php_value memory_limit 128M
 </IfModule>
+<IfModule mod_php.c>
+  php_value upload_max_filesize 15M
+  php_value post_max_size 128M
+  php_value max_input_vars 5000
+  php_value max_input_time 300
+  php_value memory_limit 128M
+</IfModule>
 
-<Files "composer.json">
-deny from all
-</Files>
+<IfModule mod_headers.c>
+ <FilesMatch "\.(eot|ttf|otf|woff|woff2|png|jpg|gif|cur|css)$">
+  Header set Access-Control-Allow-Origin "*"
+ </FilesMatch>
+ <FilesMatch "\.(eot|ttf|otf|woff|woff2|png|jpg|gif|svg|cur|css|js)$">
+  Header set Cache-Control "public, max-age=14400"
+ </FilesMatch>
+</IfModule>
 
-<Files "composer.lock">
-deny from all
-</Files>
+# Deny all files starting with a '.' and some others
+<FilesMatch "^\.">
+    deny from all
+</FilesMatch>
+# Deny specific files.
+<FilesMatch "^(composer\.(json|lock)|phpunit\.xml|codeception\.yml|docker-compose\.yml)$">
+    deny from all
+</FilesMatch>
+<FilesMatch "\.(dist|md|log)$">
+    deny from all
+</FilesMatch>
 
-<Files "phpunit.xml">
-deny from all
-</Files>
+RewriteEngine On
+# Deny all directories starting with a '.'
+RewriteRule "(^|/)\." - [R=404,L]
+RewriteRule "(^|/)(config|deploy-scripts|docker)" - [R=404,L]
 
 # Annoying vulnerability scans
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule (.*admin.*) http://localhost/$1 [R=301,L,NC]
-RewriteRule (.*mysql.*) http://localhost/$1 [R=301,L,NC]
-RewriteRule ^sql(.*) http://localhost/$1 [R=301,L,NC]
-RewriteRule ^db(.*) http://localhost/$1 [R=301,L,NC]
-RewriteRule ^php(.*) http://localhost/$1 [R=301,L,NC]
-RewriteRule ^pma(.*) http://localhost/$1 [R=301,L,NC]
+RewriteRule (.*admin.*) - [R=404,L]
+RewriteRule (.*mysql.*) - [R=404,L]
+RewriteRule ^sql(.*) - [R=404,L]
+RewriteRule ^db(.*) - [R=404,L]
+RewriteRule ^php(.*) - [R=404,L]
+RewriteRule ^pma(.*) - [R=404,L]

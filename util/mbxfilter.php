@@ -8,12 +8,16 @@ require_once "../includes/filehandler.php";
 function mbxfilter($str) {
 	global $basesiteurl,$imasroot;
 	$mathexp = array();  $mathexpcnt = -1;
+	$svgexp = array(); $svgexpcnt = -1;
 //$C = array('elements'=>'*-script-form');
 
 //$str = 'This is <span>the</span> text `x^2+3` and `3 &lt; 4` blah<br><br>And heres a table:<table class="stats"><thead><tr><th scope="col">x</p><p>3</th><th scope="col">y</th></tr></thead><tbody><tr><td>1</td><td>1</td></tr><tr><td>8</td><td>8</td></tr></tbody></table><br><br>Do something:';
 //$str = 'This is <span>the</span> text `x^2+3` and `3 &lt; 4` blah<br><br>And heres blah<br>and on the next line';
 //$str = 'Test <i>x</i><sup>3</sup> blah.Test y<sup>2</sup> blah';
 
+
+// rewrite auto-added answerboxes to use p instead of div
+    $str = preg_replace('|<div class="toppad">(.*?)</div>|', '<p>$1</p>', $str);
 
 //rewrite drawing canvas
 	$str = preg_replace('/<canvas.*?\'(\w+\.png)\'.*?\/script>/','<img src="'.$imasroot.'/filter/graph/imgs/$1" alt="Graph"/>',$str);
@@ -40,8 +44,6 @@ function mbxfilter($str) {
 	$str = preg_replace('#</?div[^>]*>#','',$str);
 	//strip scripts - don't want to see insides left behind
 	$str = preg_replace('#<script.*?</script>\s*#s','',$str);
-	//force p in li
-	$str = str_replace(array('<li>','</li>'),array('<li><p>','</p></li>'),$str);
 	//if not editor-generated, wrap in <p> and rewrite double line breaks.
 	if (substr($str,0,2)!='<p') {
 		$str = '<p>'.$str.'</p>';
@@ -51,12 +53,25 @@ function mbxfilter($str) {
 	//make a stab at unwrapping tables up front
 	$str = str_replace(array('<table','</table>'), array('</p><table>','</table><p>'), $str);
 
+    // wrap image in div so htmlawed will break it out of inside p
+	$str = preg_replace('|<img.*?src="(.*?)"[^>]*>(\s*</img>)?|','<p>$0</p>', $str);
+
+    //strip buttons, since they won't translate, and we'll be left with the text of the button which isn't desirable
+    $str = preg_replace('/<button[^>]*>.*?<\/button>/','',$str); 
+
+	if (!empty($_GET['preservesvg'])) {
+		$str = preg_replace_callback('|<svg[^>]*>.*?</svg>|s', function($m) {
+			global $svgexp, $svgexpcnt;
+			$svgexpcnt++;
+			$svgexp[$svgexpcnt] = $m[0];
+			return '<p>@SVGIMG'.$svgexpcnt.'</p>';
+		}, $str);
+	}
+
 	//enforce stuff
-	$C = array('elements'=>'a,b,br,canvas,em,h1,h2,h3,h4,h5,h6,i,img,input,li,ol,option,p,pre,select,strong,sub,sup,table,tbody,td,textarea,th,thead,tr,u,ul,statement,solution,hint');
+	$C = array('elements'=>'a,b,br,canvas,em,h1,h2,h3,h4,h5,h6,i,img,input,li,ol,option,p,pre,select,strong,sub,sup,table,tbody,td,textarea,th,thead,tr,u,ul,statement,answer,solution,hint');
 	$str = htmLawed($str, $C);
 	$str = str_replace("\n\n","\n",$str);
-
-
 
 //rewrite input boxes, select, textarea, etc.
 	$str = preg_replace('/<input[^>]*Preview[^>]*>\s*/','',$str); //strip preview buttons
@@ -79,6 +94,12 @@ function mbxfilter($str) {
 		//return '<var name="qn'.$varcnt.'" width="'.$m[1].'" />';
 		return '<fillin characters="'.$m[1].'" />';
 	  },$str);
+	$str = preg_replace_callback('#<input[^>]*width:(\d+)[^>]*>#',function($m) {
+		global $varcnt;
+		$varcnt++;
+		//return '<var name="qn'.$varcnt.'" width="'.$m[1].'" />';
+		return '<fillin characters="'.ceil(($m[1] - 1)/1.2).'" />';
+	  },$str);
 
 	//replace any textareas
 	$str = preg_replace_callback('#<textarea*cols="?(\d+)[^>]*>.*?</textarea>#',function($m) {
@@ -92,9 +113,9 @@ function mbxfilter($str) {
 //convert tables
 	//strip thead/tbody
 	$str = preg_replace('#</?(tbody|thead)[^>]*>#','',$str);
-	//replace <table> with <table><tabular>
-	$str = preg_replace('|<table[^>]*>|','<table><tabular>', $str);
-	$str = str_replace('</table>', '</tabular></table>', $str);
+	//replace <table> with <tabular>
+	$str = preg_replace('|<table[^>]*>|','<tabular>', $str);
+	$str = str_replace('</table>', '</tabular>', $str);
 	//replace <tr>
 	$str = preg_replace('/<tr[^>]*>/','<row>', $str);
 	$str = str_replace('</tr>', '</row>', $str);
@@ -102,8 +123,9 @@ function mbxfilter($str) {
 	$str = preg_replace('#<(td|th)[^>]*>#','<cell>', $str);
 	$str = str_replace(array('</td>','</th>'), '</cell>', $str);
 
-//convert images
-	$str = preg_replace('|<img.*?src="(.*?)"[^>]*>(\s*</img>)?|','</p><figure><image source="$1" /></figure><p>', $str);
+    
+//convert images, remove wrapping div. don't bother wrapping in figure
+	$str = preg_replace('|<p><img.*?src="(.*?)"[^>]*>(\s*</img>)?\s*</p>|','<image source="$1" />', $str);
 
 //rewrite specific tags
 	//links
@@ -146,8 +168,11 @@ function mbxfilter($str) {
 	$str = preg_replace_callback('/`(.*?)`/s', function($m) {
 		global $mathexp, $mathexpcnt, $AMT;
 		$mathexpcnt++;
-		$m[1] = str_replace(array('&ne;','&quot;','&le;','&ge;','<','>','&lt;','&gt;'),array('ne','"','le','ge','lt','gt','lt','gt'),$m[1]);
-		$tex = $AMT->convert($m[1]);
+        $m[1] = normalizemathunicode($m[1]);
+        $m[1] = str_replace('&amp;','&',$m[1]);
+		$m[1] = str_replace(array('&ne;','&quot;','&le;','&ge;','<','>','&lt;','&gt;','&#8321;','&#8322;','&sup2;','&sup3;','&sup2','&sup3'),
+                            array('ne','"','le','ge','lt','gt','lt','gt','_1','_2','^2','^3','^2','^3'),$m[1]);
+        $tex = $AMT->convert($m[1]);
 		$tex = str_replace('&','\amp',$tex);  //need to use \amp macro for array enviro & symbols
 		$mathexp[$mathexpcnt] = $tex;
 		return '<m>'.$mathexpcnt.'</m>';
@@ -178,7 +203,6 @@ function mbxfilter($str) {
 		'&ge;'=>'<m>\ge</m>',
 		'&hellip;'=>'<ellipsis/>',
 		'…'=>'<ellipsis/>',
-		'#'=>'<hash/>',
 		'$'=>'<dollar/>',
 		'%'=>'<percent/>',
 		'^'=>'<circumflex/>',
@@ -194,7 +218,7 @@ function mbxfilter($str) {
 		'&rdquo;'=>'<rq/>',
 		'&lsquo;'=>'<lsq/>',
 		'&rsquo;'=>'<rsq/>',
-		'&amp'=>'<ampersand/>',
+		'&amp'=>'&',
 		'“'=>'<lq/>',
 		'”'=>'<rq/>',
 		'‘'=>'<lsq/>',
@@ -204,7 +228,7 @@ function mbxfilter($str) {
 
 //attempt to convert any remaining entities to unicode, then convert & to <ampersand/>
 	$str = html_entity_decode($str);
-	$str = str_replace('&','<ampersand />',$str);
+	$str = str_replace(['#','&'],['<hash/>','<ampersand />'],$str);
 
 //restore tags
     $str = preg_replace_callback('|<t(\d+)>|', function($m) {
@@ -217,6 +241,14 @@ function mbxfilter($str) {
 		global $mathexp;
 		return '<m>'.$mathexp[$m[1]].'</m>';
 	  }, $str);
+
+//restore svg
+	if (!empty($_GET['preservesvg'])) {
+		$str = preg_replace_callback('|<p>@SVGIMG(\d+)</p>|', function($m) {
+			global $svgexp;
+			return '<image>'.$svgexp[$m[1]].'</image>';
+		}, $str);
+	}
 
 //pretty up line spaces
 	$str = preg_replace('#<p>\s*</p>#s','',$str);

@@ -1,6 +1,8 @@
 <?php
 
 require_once "../init.php";
+require_once '../includes/videodata.php';
+
 if (isset($_SESSION['emulateuseroriginaluser']) && isset($_GET['unemulateuser'])) {
 	$_SESSION['userid'] = $_SESSION['emulateuseroriginaluser'];
     $userid = $_SESSION['userid'];
@@ -85,38 +87,132 @@ if (isset($_GET['fixorphanqs'])) {
 	echo '<p><a href="utils.php">Utils</a></p>';
 	exit;
 }
+if (isset($_POST['setupfcm'])) {
+    $data = json_decode($_POST['setupfcm'], true);
+    if ($data === null || !isset($data['client_email']) || !isset($data['private_key'])) {
+        echo '<p>Error: invalid data</p>';
+    } else {
+        $stm = $DBH->query("SELECT kid,privatekey FROM imas_lti_keys WHERE key_set_url='https://oauth2.googleapis.com/token'");
+        if ($stm->rowCount() > 0) {
+            $stm = $DBH->prepare("UPDATE imas_lti_keys set kid=?,privatekey=? WHERE 'https://oauth2.googleapis.com/token'");
+            $stm->execute([$data['client_email'], $data['private_key']]);
+        } else {
+            $stm = $DBH->prepare("INSERT INTO imas_lti_keys (key_set_url,kid,privatekey) VALUES (?,?,?)");
+            $stm->execute(['https://oauth2.googleapis.com/token', $data['client_email'], $data['private_key']]);
+        }
+        echo '<p>Key information stored.</p>';
+    }
+    echo '<p><a href="utils.php">Utils</a></p>';
+	exit;
+}
 if (isset($_POST['updatecaption'])) {
-	$vidid = trim($_POST['updatecaption']);
-	if (strlen($vidid)!=11 || preg_match('/[^A-Za-z0-9_\-]/',$vidid)) {
-		echo 'Invalid video ID';
-		exit;
-	}
-    $vidid = Sanitize::simpleASCII($vidid);
-	$ctx = stream_context_create(array('http'=>
-	    array(
-		'timeout' => 1
-	    )
-	));
-	$t = @file_get_contents('https://www.youtube.com/api/timedtext?type=list&v='.$vidid, false, $ctx);
-	$captioned = (strpos($t, '<track')===false)?0:1;
-	if ($captioned==1) {
-		$upd = $DBH->prepare("UPDATE imas_questionset SET extref=? WHERE id=?");
-		$stm = $DBH->prepare("SELECT id,extref FROM imas_questionset WHERE extref REGEXP ?");
-		$stm->execute(array(MYSQL_LEFT_WRDBND.$vidid.MYSQL_RIGHT_WRDBND));
-		$chg = 0;
-		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-			$parts = explode('~~', $row[1]);
-			foreach ($parts as $k=>$v) {
-				if (preg_match('/\b'.$vidid.'\b/', $v)) {
-					$parts[$k] = preg_replace('/!!0$/', '!!1', $v);
+	$vids = array_map('trim', explode(',', $_POST['updatecaption']));
+	$chg = 0;
+	foreach ($vids as $vidid) {
+		if (strlen($vidid)!=11 || preg_match('/[^A-Za-z0-9_\-]/',$vidid)) {
+			echo '<p>Invalid video ID</p>';
+			continue;
+		}
+		$vidid = Sanitize::simpleASCII($vidid);
+		if (!empty($_POST['forcecaptioned'])) {
+			$captioned = 1;
+			$query = "INSERT INTO imas_captiondata (vidid, captioned, status, lastchg) VALUES (?,1,2,?) ";
+			$query .= "ON DUPLICATE KEY UPDATE status=IF(VALUES(captioned)!=captioned OR status=0 OR status=3,VALUES(status),status),";
+			$query .= "lastchg=IF(VALUES(captioned)!=captioned OR status=0 OR status=3,VALUES(lastchg),lastchg),";
+			$query .= "captioned=IF(VALUES(captioned)!=captioned OR status=0 OR status=3,VALUES(captioned),captioned)";
+			$stm = $DBH->prepare($query);
+			$stm->execute([$vidid, time()]);
+		} else {
+			$captioned = getCaptionDataByVidId($vidid);
+		}
+		
+		if ($captioned==1 && empty($_POST['skipquestionupdate'])) {
+			$upd = $DBH->prepare("UPDATE imas_questionset SET extref=? WHERE id=?");
+			$stm = $DBH->prepare("SELECT id,extref FROM imas_questionset WHERE extref REGEXP ?");
+			$stm->execute(array(MYSQL_LEFT_WRDBND.$vidid.MYSQL_RIGHT_WRDBND));
+			
+			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$parts = explode('~~', $row[1]);
+				foreach ($parts as $k=>$v) {
+					if (preg_match('/\b'.$vidid.'\b/', $v)) {
+						$parts[$k] = preg_replace('/!!0$/', '!!1', $v);
+					}
 				}
+				$newextref = implode('~~', $parts);
+				$upd->execute(array($newextref, $row[0]));
+				$chg += $upd->rowCount();
 			}
-			$newextref = implode('~~', $parts);
-			$upd->execute(array($newextref, $row[0]));
-			$chg += $upd->rowCount();
 		}
 	}
-	echo '<p>Updated '.$chg.' records.</p><p><a href="utils.php">Utils</a></p>';
+	echo '<p>Updated '.$chg.' question records.</p><p><a href="utils.php">Utils</a></p>';
+	exit;
+}
+if (isset($_POST['updatecaptionbyqids'])) {
+	$qids = array_map('intval', explode(',', $_POST['updatecaptionbyqids']));
+	if (count($qids) == 0) {
+		echo "Must provide question IDs";
+		exit;
+	}
+	$upd = $DBH->prepare('UPDATE imas_questionset SET extref=? WHERE id=?');
+	$ph = Sanitize::generateQueryPlaceholders($qids);
+	$stm = $DBH->prepare("SELECT id,extref FROM imas_questionset WHERE id IN ($ph)");
+	$stm->execute($qids);
+	$updatedcnt = 0;
+	while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+		$changed = false;
+		$extrefs = explode('~~', $row['extref']);
+		foreach ($extrefs as $k=>$v) {
+			$parts = explode('!!', $v);
+			if ($parts[2] == 0) { // not captioned. if it's a video getvideoid will tell
+				$vidid = getvideoid($parts[1]);
+				if ($vidid !== '') {
+					$captioned = getCaptionDataByVidId($vidid);
+					if ($captioned == 1) {
+						$parts[2] = 1;
+						$extrefs[$k] = implode('!!', $parts);
+						$changed = true;
+					}
+				}
+			}
+		}
+		if ($changed) {
+			$updatedcnt++;
+			$upd->execute([implode('~~', $extrefs), $row['id']]);
+		}
+	}
+	
+	echo '<p>Updated '.$updatedcnt.' records.</p><p><a href="utils.php">Utils</a></p>';
+	exit;
+}
+if (isset($_POST['exportcaptions'])) {
+	$from = intval($_POST['exportcaptions']);
+	$stm = $DBH->prepare("SELECT * FROM imas_captiondata WHERE lastchg>?");
+	$stm->execute([$from]);
+	$out = $stm->fetchAll(PDO::FETCH_ASSOC);
+	header('Content-Type: application/json'); 
+	header('Content-Disposition: attachment; filename="captiondata.json"'); 
+	echo json_encode($out);
+	exit;
+}
+
+
+if (isset($_FILES['importcaptions'])) {
+	if (is_uploaded_file($_FILES['importcaptions']['tmp_name'])) {
+		$json = json_decode(file_get_contents($_FILES['importcaptions']['tmp_name']), true);
+		$qarr = [];
+		foreach ($json as $data) {
+			array_push($qarr, $data['vidid'], $data['captioned'], $data['status'], $data['lastchg']);
+		}
+		$ph = Sanitize::generateQueryPlaceholdersGrouped($qarr, 4);
+		$query = "INSERT INTO imas_captiondata (vidid, captioned, status, lastchg) VALUES $ph ";
+        $query .= "ON DUPLICATE KEY UPDATE status=IF(VALUES(captioned)>captioned OR status=0 OR status=3,VALUES(status),status),";
+        $query .= "lastchg=IF(VALUES(captioned)>captioned OR status=0 OR status=3,VALUES(lastchg),lastchg),";
+        $query .= "captioned=IF(VALUES(captioned)>captioned OR status=0 OR status=3,VALUES(captioned),captioned)";
+		$stm = $DBH->prepare($query);
+		$stm->execute($qarr);
+		echo count($json) . ' records read. ';
+		echo $stm->rowCount() . ' rows updated.';
+	}
 	exit;
 }
 
@@ -161,6 +257,7 @@ if (isset($_POST['action']) && $_POST['action']=='jumptoitem') {
 }
 if (isset($_GET['listadmins'])) {
 	$curBreadcrumb = $curBreadcrumb . " &gt; <a href=\"$imasroot/util/utils.php\">Utils</a>\n";
+	$pagetitle = _('Admin List');
 	require_once "../header.php";
 	echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Admin List</div>';
 	echo '<h1>Admin List</h1>';
@@ -190,6 +287,7 @@ if (isset($_GET['form'])) {
 	$curBreadcrumb = $curBreadcrumb . " &gt; <a href=\"$imasroot/util/utils.php\">Utils</a> \n";
 
 	if ($_GET['form']=='emu') {
+		$pagetitle = _('Emulate User');
 		require_once "../header.php";
 		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Emulate User</div>';
 		echo '<form method="post" action="'.$imasroot.'/admin/actions.php">';
@@ -199,6 +297,7 @@ if (isset($_GET['form'])) {
 		echo '</form>';
 		require_once "../footer.php";
 	} else if ($_GET['form']=='jumptoitem') {
+		$pagetitle = _('Jump to Item');
 		require_once "../header.php";
 		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Jump to Item</div>';
 		echo '<form method="post" action="'.$imasroot.'/util/utils.php">';
@@ -213,6 +312,7 @@ if (isset($_GET['form'])) {
 		require_once "../footer.php";
 
 	} else if ($_GET['form']=='rescue') {
+		$pagetitle = _('Recover Items');
 		require_once "../header.php";
 		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Recover Items</div>';
 		echo '<form method="post" action="'.$imasroot.'/util/rescuecourse.php">';
@@ -221,14 +321,64 @@ if (isset($_GET['form'])) {
 		echo '</form>';
 		require_once "../footer.php";
 	} else if ($_GET['form']=='updatecaption') {
+		$pagetitle = _('Update Caption Data');
 		require_once "../header.php";
 		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Update Caption Data</div>';
 		echo '<form method="post" action="'.$imasroot.'/util/utils.php">';
-		echo 'YouTube video ID: <input type="text" size="11" name="updatecaption"/>';
+		echo '<label>YouTube video ID: <input type="text" size="11" name="updatecaption"/></label>';
+		echo '<br/><label><input type=checkbox name="forcecaptioned" value="1"> Skip scan and mark as captioned (manually verified)</label>';
+		echo '<br/><label><input type=checkbox name="skipquestionupdate" value="1"> Skip question updating</label>';
+		echo '<br/><input type="submit" value="Go"/>';
+		echo '</form>';
+		require_once "../footer.php";
+	} else if ($_GET['form']=='updatecaptionbyqids') {
+		$pagetitle = _('Update Caption Data');
+		require_once "../header.php";
+		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Update Caption Data</div>';
+		echo '<form method="post" action="'.$imasroot.'/util/utils.php">';
+		echo 'Question IDs to rescan videos on (comma separated):<br><input type="text" size="80" name="updatecaptionbyqids"/>';
 		echo '<input type="submit" value="Go"/>';
 		echo '</form>';
 		require_once "../footer.php";
+	} else if ($_GET['form']=='exportcaptions') {
+		$pagetitle = _('Export Caption Data');
+		require_once "../header.php";
+		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Export Caption Data</div>';
+		echo '<form method="post" action="'.$imasroot.'/util/utils.php">';
+		echo 'Export changes since timestamp: <input type="text" size="11" name="exportcaptions" value="0"/>';
+		echo '<input type="submit" value="Go"/>';
+		echo '</form>';
+		require_once "../footer.php";
+	} else if ($_GET['form']=='importcaptions') {
+		$pagetitle = _('Import Caption Data');
+		require_once "../header.php";
+		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Import Caption Data</div>';
+		echo '<form method="post" enctype="multipart/form-data" action="'.$imasroot.'/util/utils.php">';
+		echo 'Import JSON file: <input type="file" name="importcaptions" />';
+		echo '<input type="submit" value="Go"/>';
+		echo '</form>';
+		require_once "../footer.php";
+	} else if ($_GET['form']=='setupfcm') {
+		$pagetitle = _('Setup FCM');
+		require_once "../header.php";
+		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Setup FCM</div>';
+		echo '<form method="post" action="'.$imasroot.'/util/utils.php">';
+        echo '<p>To enabled Firebase Cloud Messaging for push notifications, you need to 
+            set up an app with Firebase, enable the FireBase Cloud Messaging API, and
+            generate a private key, which will be downloaded as a .json file.  You will 
+            need to add the FCM project id to your config.php by setting 
+            <code>$CFG[\'FCM\'][\'project_id\']</code>.  Then copy the contents of the
+            .json file into the box below.</p>';
+        $stm = $DBH->query("SELECT kid,privatekey FROM imas_lti_keys WHERE key_set_url='https://oauth2.googleapis.com/token'");
+        if ($stm->rowCount() > 0) {
+            echo '<p><b>NOTE</b>: it appears you already have a configuration loaded. You can load a new one if you need to overwrite the existing.</p>';
+        }
+        echo '<textarea name=setupfcm id=setupfcm rows=30 style="width:100%"></textarea>';
+		echo '<input type="submit" value="Save"/>';
+		echo '</form>';
+		require_once "../footer.php";
 	} else if ($_GET['form']=='lookup') {
+		$pagetitle = _('User Lookup');
 		require_once "../header.php";
 		echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; User Lookup</div>';
 
@@ -324,8 +474,10 @@ if (isset($_GET['form'])) {
 						echo '</ul></li>';
 					}
 					if (count($teachercourses)>0) {
-						$query = "SELECT org,id,courseid,contextid FROM imas_lti_courses WHERE courseid IN (".implode(",",$teachercourses).")";
-						$lti_c_stm = $DBH->query($query);
+						$ph = Sanitize::generateQueryPlaceholders($teachercourses);
+						$query = "SELECT org,id,courseid,contextid FROM imas_lti_courses WHERE courseid IN ($ph)";
+						$lti_c_stm = $DBH->prepare($query);
+						$lti_c_stm->execute($teachercourses);
 						if ($lti_c_stm->rowCount()>0) {
 							echo '<li>LTI course connections: <ul>';
 							while ($r = $lti_c_stm->fetch(PDO::FETCH_NUM)) {
@@ -352,6 +504,7 @@ if (isset($_GET['form'])) {
 
 } else {
 	//listing of utilities
+	$pagetitle = _('Admin Utilities');
 	require_once "../header.php";
 	echo '<div class="breadcrumb">'.$curBreadcrumb.' &gt; Utilities</div>';
 	echo '<h2>Admin Utilities </h2>';
@@ -369,7 +522,10 @@ if (isset($_GET['form'])) {
 	echo '<a href="getstucntdet.php">Get Detailed Student Count</a><br/>';
 	echo '<a href="utils.php?debug=true">Enable Debug Mode</a><br/>';
 	echo '<a href="replacevids.php">Replace YouTube videos</a><br/>';
-	echo '<a href="utils.php?form=updatecaption">Update YouTube video caption data</a><br/>';
+	echo '<a href="utils.php?form=updatecaption">Update YouTube video caption data by video ID</a><br/>';
+	echo '<a href="utils.php?form=updatecaptionbyqids">Update YouTube video caption data by Question IDs</a><br/>';
+	echo '<a href="utils.php?form=exportcaptions">Export Captions database</a><br/>';
+	echo '<a href="utils.php?form=importcaptions">Import to Captions database</a><br/>';
 	echo '<a href="replaceurls.php">Replace URLS</a><br/>';
 	echo '<a href="utils.php?form=rescue">Recover lost items</a><br/>';
 	echo '<a href="utils.php?fixorphanqs=true">Fix orphaned questions</a><br/>';
@@ -382,7 +538,8 @@ if (isset($_GET['form'])) {
 	echo '<a href="listwronglibs.php">List WrongLibFlags</a><br/>';
 	echo '<a href="updatewronglibs.php">Update WrongLibFlags</a><br/>';
 	echo '<a href="blocksearch.php">Search Block titles</a><br/>';
-	echo '<a href="itemsearch.php">Search inline/linked items</a>';
+	echo '<a href="itemsearch.php">Search inline/linked items</a><br/>';
+    echo '<a href="utils.php?form=setupfcm">Set up FCM for push notifications</a><br/>';
 	require_once "../footer.php";
 }
 ?>

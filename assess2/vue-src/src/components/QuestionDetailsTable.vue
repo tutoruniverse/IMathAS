@@ -5,10 +5,10 @@
     </caption>
     <thead>
       <tr>
-        <th>{{ $t('qdetails.part') }}</th>
-        <th v-if="showScore">{{ $t('qdetails.score') }}</th>
-        <th v-if="doShowTries">{{ $t('qdetails.try') }}</th>
-        <th v-if="hasPenalty">{{ $t('qdetails.penalties') }}</th>
+        <th>{{ $t('qdetails-part') }}</th>
+        <th v-if="showScore">{{ $t('qdetails-score') }}</th>
+        <th v-if="doShowTries">{{ $t('qdetails-try') }}</th>
+        <th v-if="hasPenalty">{{ $t('qdetails-penalties') }}</th>
       </tr>
     </thead>
     <tbody>
@@ -63,7 +63,9 @@ export default {
     triesRemaining () {
       const out = [];
       for (let pn = 0; pn < this.parts.length; pn++) {
-        if (this.qinfo.hasOwnProperty('did_jump_to_ans')) {
+        if (this.parts[pn].points_possible === 0) {
+          out[pn] = '';
+        } else if (this.qinfo.hasOwnProperty('did_jump_to_ans')) {
           out[pn] = 0;
         } else {
           out[pn] = this.qinfo.tries_max - this.parts[pn].try;

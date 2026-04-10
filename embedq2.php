@@ -23,7 +23,7 @@ $_SESSION = array();
 $inline_choicemap = !empty($CFG['GEN']['choicesalt']) ? $CFG['GEN']['choicesalt'] : 'test';
 $statesecret = !empty($CFG['GEN']['embedsecret']) ? $CFG['GEN']['embedsecret'] : 'test';
 $cid = 'embedq';
-$_SESSION['secsalt'] = "12345";
+$_SESSION['secsalt'] = $CFG['GEN']['embedsecret'] ?? "12345";
 $myrights = 5;
 
 $issigned = false;
@@ -38,7 +38,7 @@ if (isset($_POST['state'])) {
         // verification using 'auth' is built-into the JWT method
         $QS = json_decode(json_encode(JWT::decode($_REQUEST['jwt'])), true);
     } catch (Exception $e) {
-        echo "JWT Error: " . $e->getMessage();
+        echo "Error decoding JWT";
         exit;
     }
     if (!empty($QS['auth'])) {
@@ -58,14 +58,14 @@ if (empty($QS['auth'])) {
     $QS['auth'] = '';
 }
 
-if (empty($QS['id'])) {
-    echo 'Need to supply an id';
+if (empty($QS['id']) || !is_numeric($QS['id'])) {
+    echo 'Need to supply a numeric id';
     exit;
 }
 
 // set user preferences
 $prefdefaults = array(
-    'mathdisp' => 6, //default is katex
+    'mathdisp' => 7, //default is MJ3
     'graphdisp' => 1,
     'drawentry' => 1,
     'useed' => 1,
@@ -138,6 +138,7 @@ if (isset($_POST['state'])) {
         'scoreiscorrect' => array(($qn + 1) => -1),
         'partattemptn' => array($qn => array()),
         'rawscores' => array($qn => array()),
+        'useda11yalt' => array($qn => false),
         'auth' => $QS['auth']
     );
 }
@@ -190,6 +191,9 @@ if (isset($QS['showscored'])) {
         $state['showans'] = 0;
     }
 }
+if (isset($QS['includeans']) && $issigned) {
+    $overrides['includeans'] = 1;
+}
 if (isset($QS['allowregen'])) {
     $state['allowregen'] = $QS['allowregen'];
 } else {
@@ -205,6 +209,16 @@ if (isset($QS['autoseq'])) {
 } else {
     $state['autoseq'] = 1;
 }
+if (isset($QS['hidescoreval'])) {
+    $state['hidescoreval'] = intval($QS['hidescoreval']);
+} else {
+    $state['hidescoreval'] = 0;
+}
+if (!empty($QS['scroll'])) {
+    $state['scroll'] = ($QS['scroll'] ? 1 : 0);
+} else {
+    $state['scroll'] = 0;
+}
 
 
 if (isset($_POST['regen']) && !$issigned) {
@@ -216,6 +230,7 @@ if (isset($_POST['regen']) && !$issigned) {
     $state['scoreiscorrect'][$qn+1] = -1;
     $state['partattemptn'][$qn] = array();
     $state['rawscores'][$qn] = array();
+    $state['useda11yalt'][$qn] = false;
 }
 
 $a2->setState($state);
@@ -237,6 +252,7 @@ if (isset($_POST['toscoreqn'])) {
         'errors' => $res['errors'],
         'state' => JWT::encode($a2->getState(), $statesecret)
     );
+
     if ($QS['auth'] != '') {
         $stm = $DBH->prepare("SELECT password FROM imas_users WHERE SID=?");
         $stm->execute(array($QS['auth']));
@@ -255,6 +271,12 @@ if (isset($_POST['toscoreqn'])) {
 }
 
 $disp = $a2->displayQuestion($qn, $overrides);
+
+//update useda11yalt if changed
+if ($disp['useda11yalt'] != $state['useda11yalt'][$qn]) {
+    $state['useda11yalt'][$qn] = $disp['useda11yalt'];
+    $a2->setState($state);
+}
 
 // force submitall
 if ($state['submitall']) {
@@ -281,26 +303,23 @@ if (isset($_GET['theme'])) {
     $coursetheme = $theme . '.css';
 }
 
-$lastupdate = '20200422';
-$placeinhead = '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/vue/css/index.css?v=' . $lastupdate . '" />';
-$placeinhead .= '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/vue/css/chunk-common.css?v=' . $lastupdate . '" />';
-$placeinhead .= '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/print.css?v=' . $lastupdate . '" media="print">';
-$placeinhead .= '<script src="' . $staticroot . '/mathquill/mathquill.min.js?v=022720" type="text/javascript"></script>';
+$placeinhead = '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/vue/css/style.css?v=' . $lastvueupdate . '" />';
+$placeinhead .= '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/print.css?v=' . $lastvueupdate . '" media="print">';
+$placeinhead .= '<script src="' . $staticroot . '/mathquill/mathquill.min.js?v=020326" type="text/javascript"></script>';
 if (!empty($CFG['assess2-use-vue-dev'])) {
     $placeinhead .= '<script src="' . $staticroot . '/javascript/drawing.js?v=041920" type="text/javascript"></script>';
     $placeinhead .= '<script src="' . $staticroot . '/javascript/AMhelpers2.js?v=052120" type="text/javascript"></script>';
     $placeinhead .= '<script src="' . $staticroot . '/javascript/eqntips.js?v=041920" type="text/javascript"></script>';
-    $placeinhead .= '<script src="' . $staticroot . '/javascript/mathjs.js?v=20230729" type="text/javascript"></script>';
     $placeinhead .= '<script src="' . $staticroot . '/mathquill/AMtoMQ.js?v=052120" type="text/javascript"></script>';
     $placeinhead .= '<script src="' . $staticroot . '/mathquill/mqeditor.js?v=041920" type="text/javascript"></script>';
     $placeinhead .= '<script src="' . $staticroot . '/mathquill/mqedlayout.js?v=041920" type="text/javascript"></script>';
 } else {
-    $placeinhead .= '<script src="' . $staticroot . '/javascript/assess2_min.js?v=20231106" type="text/javascript"></script>';
+    $placeinhead .= '<script src="' . $staticroot . '/javascript/assess2_min.js?v='.$lastvueupdate.'" type="text/javascript"></script>';
 }
 
-$placeinhead .= '<script src="' . $staticroot . '/javascript/assess2supp.js?v=041522" type="text/javascript"></script>';
-$placeinhead .= '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/mathquill/mathquill-basic.css?v=021823">
-  <link rel="stylesheet" type="text/css" href="' . $staticroot . '/mathquill/mqeditor.css">';
+$placeinhead .= '<script src="' . $staticroot . '/javascript/assess2supp.js?v=092224" type="text/javascript"></script>';
+$placeinhead .= '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/mathquill/mathquill-basic.css?v=010726">
+  <link rel="stylesheet" type="text/css" href="' . $staticroot . '/mathquill/mqeditor.css?v=020226">';
 
 // setup resize message sender
 $placeinhead .= '<script type="text/javascript">
@@ -309,7 +328,6 @@ $placeinhead .= '<script type="text/javascript">
   var thisqn = '.$qn.';
   function sendresizemsg() {
    if(inIframe()){
-       console.log(document.body.scrollHeight + "," + document.body.offsetHeight + "," + document.getElementById("embedspacer").offsetHeight);
       var default_height = Math.max(
         document.body.scrollHeight, document.body.offsetHeight) + 20;
       var wrap_height = default_height - document.getElementById("embedspacer").offsetHeight;
@@ -321,9 +339,16 @@ $placeinhead .= '<script type="text/javascript">
         element_id: "' . $frameid . '",
         frame_id: "' . $frameid . '"
       }), "*");
+   } else {
+    $("body").css("overflow-y", "auto");
    }
   }
   $(function() {
+    $(window).on("message", function(e) {
+		if (e.originalEvent.data=="requestResize") {
+            sendresizemsg();
+        }
+    });
       $(document).on("mqeditor:show", function() {
         $("#embedspacer").show();
         sendresizemsg();
@@ -337,26 +362,44 @@ $placeinhead .= '<script type="text/javascript">
      window.katexDoneCallback = sendresizemsg;
   } else if (typeof MathJax != "undefined") {
     if (MathJax.startup) {
-        MathJax.startup.promise = MathJax.startup.promise.then(sendLTIresizemsg);
+        MathJax.startup.promise = MathJax.startup.promise.then(sendresizemsg);
     } else if (MathJax.Hub) {
         MathJax.Hub.Queue(function () {
             sendresizemsg();
         });
+        MathJax.Hub.Register.MessageHook("End Process", sendresizemsg);
     } 
   } else {
       $(function() {
           sendresizemsg();
       });
   }
+  rendermathnode = (function(old) {
+      return function(el,callback) {
+        old(el, function() {
+            if (typeof callback == "function") {
+                callback();
+            }
+            sendresizemsg();
+        });
+      }
+    })(rendermathnode);
   </script>
   <style>
-  body { margin: 0; overflow-y: hidden;}
+  body { 
+    margin: 0; padding: 0; ' . ($state['scroll'] ? '' : 'overflow-y: hidden;') . '
+    background-color: transparent !important;
+    }
   .question {
       margin-top: 0 !important;
   }
   .questionpane {
-    margin-top: 0 !important;
-    }
+    margin: 0 !important;
+    padding-top: .5em !important;
+  }
+  .questionpane > .question > p:first-child {
+    padding-top: 0 !important;
+  }
   .questionpane>.question { 
   	background-image: none !important;
   }
@@ -375,11 +418,12 @@ $placeinhead .= '<script type="text/javascript">
 
 $flexwidth = true; //tells header to use non _fw stylesheet
 $nologo = true;
+$noskipnavlink = true;
 require_once "./header.php";
-
+echo '<a href="embedq2prefs.php" target="_blank" class="sr-only">'._('Edit display preferences').'</a>';
 echo '<div><ul id="errorslist" style="display:none" class="small"></ul></div>';
 echo '<div class="questionwrap">';
-if (!$state['jssubmit']) {
+if (!$state['jssubmit'] && !$state['hidescoreval']) {
     echo '<div id="results'.$qn.'"></div>';
 }
 echo '<div class="questionpane">';
@@ -397,7 +441,10 @@ echo '</div>';
 echo '<input type=hidden name=toscoreqn id=toscoreqn value=""/>';
 echo '<input type=hidden name=state id=state value="'.Sanitize::encodeStringForDisplay(JWT::encode($a2->getState(), $statesecret)).'" />';
 
-echo '<div class="mce-content-body" style="text-align:right;font-size:70%;margin-right:5px;"><a style="color:#666" target="_blank" href="course/showlicense.php?id='.$qsid.'">'._('License').'</a></div>';
+echo '<div class="mce-content-body" style="text-align:right;font-size:70%;margin-right:5px;">';
+echo '<a style="color:#666" href="embedq2prefs.php" target="_blank">'._('Prefs').'</a> ';
+echo '<a style="color:#666" target="_blank" href="course/showlicense.php?id='.$qsid.'">'._('License').'</a>';
+echo '</div>';
 echo '<script>
     $(function() {
         showandinit('.$qn.','.json_encode($disp).');

@@ -58,15 +58,33 @@ class IntervalAnswerBox implements AnswerBox
             $top = _('Enter your answer by selecting the shade type, and by clicking and dragging the sliders on the normal curve');
             $shorttip = _('Adjust the sliders');
         } else {
+            if (in_array('inequality', $ansformats)) {
+                $tip = sprintf(_('Enter your answer using inequality notation. Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+                $tip .= sprintf(_('Use or to combine intervals. Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+                $tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
+                $shorttip = _('Enter an interval using inequalities');
+            } else {
+                if (in_array('nodecimal', $ansformats)) {
+                    $tip = _('Enter your answer in interval notation using integers (no decimals). Example: [2,5)') . " <br/>";
+                } else {
+                    $tip = _('Enter your answer using interval notation. Example: [2.1,5.6172)') . " <br/>";
+                }
+                if (in_array('list', $ansformats)) {
+                    $tip .= _('Separate intervals by a comma. Example: (-oo,2],[4,oo)') . "<br/>";
+                    $shorttip = _('Enter a list of intervals using interval notation');
+                } else {
+                    $tip .= _('Use U for union to combine intervals. Example: (-oo,2] U [4,oo)') . "<br/>";
+                    $shorttip = _('Enter an interval using interval notation');
+                }
+            }
 
-            $tip = _('Enter your answer using interval notation.  Example: [2.1,5.6172)') . " <br/>";
-            $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
             if (!in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
                 $tip .= _('Enter DNE for an empty set. Use oo to enter Infinity.');
             } else {
                 $tip .= _('Use oo to enter Infinity.');
             }
             if ($reqdecimals !== '') {
+                list($reqdecimals, $exactreqdec, $reqdecoffset, $reqdecscoretype) = parsereqsigfigs($reqdecimals);
                 $tip .= "<br/>" . sprintf(_('Your numbers should be accurate to %d decimal places.'), $reqdecimals);
             }
             $shorttip = _('Enter an interval using interval notation');
@@ -100,7 +118,7 @@ class IntervalAnswerBox implements AnswerBox
         }
         $attributes = [
             'type' => 'text',
-            'size' => $answerboxsize,
+            'style' => 'width:'.sizeToCSS($answerboxsize),
             'name' => "qn$qn",
             'id' => "qn$qn",
             'value' => $la,
@@ -110,7 +128,12 @@ class IntervalAnswerBox implements AnswerBox
         ];
         $params['tip'] = $shorttip;
         $params['longtip'] = $tip;
-        $params['calcformat'] = $answerformat . ($answerformat == '' ? '' : ',') . 'decimal';
+
+        // Determine the default value based on the presence of 'nodecimal'
+        $defaultCalcFormat = (strpos($answerformat, 'nodecimal') !== false) ? 'integer' : 'decimal';
+        
+        $params['calcformat'] = $answerformat . ($answerformat === '' ? '' : ',') . $defaultCalcFormat;
+
         if ($useeqnhelper) {
             $params['helper'] = 1;
         }
@@ -128,7 +151,7 @@ class IntervalAnswerBox implements AnswerBox
         $preview .= "<span id=p$qn></span> ";
 
         if (in_array('nosoln', $ansformats)) {
-            list($out, $answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox, 'interval');
+            list($out, $answer, $nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox, 'interval');
             $answer = str_replace('"', '', $answer);
         }
         if ($answer !== '' && !is_array($answer) && !$isConditional) {

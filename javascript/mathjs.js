@@ -145,6 +145,8 @@ function mathjs(st,varlist) {
 
   st = st.replace(/\*?\s*degrees?/g,"*((pi)/180)");
 
+  st = st.replace(/div/,'/');
+
   //convert named constants
   st = st.replace(/e/g, "(E)");
 
@@ -159,7 +161,8 @@ function mathjs(st,varlist) {
   st = st.replace(/(sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|sech|csch|coth)\^(-1|\(-1\))/g,"arc$1");
   st = st.replace(/(sin|cos|tan|sec|csc|cot|ln)\^(\d+)\s*\(/g,"$1n($2,");
   st = st.replace(/(sin|cos|tan|sec|csc|cot|ln)\^\((\d+)\)\s*\(/g,"$1n($2,");
-  st = st.replace(/root\s*\((\d+)\)\s*\(/g,"nthroot($1,");
+  st = st.replace(/root\s*\(([a-zA-Z\/\d\.]+)\)\s*\(/g,"nthroot(($1),");
+  st = st.replace(/root\s*\(\((@v\d+@)\)\)\s*\(/g,"nthroot($1,");
 
   //add implicit mult for "3 4"
   st = st.replace(/([0-9]\.?)\s+([0-9])/g,"$1*$2");

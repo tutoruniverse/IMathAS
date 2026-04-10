@@ -59,11 +59,12 @@ class StringAnswerBox implements AnswerBox
             (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
 
         if ($answerformat == 'list') {
-            $tip = _('Enter your answer as a list of text separated by commas.  Example:  dog, cat, rabbit.') . "<br/>";
+            $tip = _('Enter your answer as a list of text separated by commas. Example: dog, cat, rabbit.') . "<br/>";
             $shorttip = _('Enter a list of text');
         } else if ($answerformat == 'matrix') {
             $shorttip = _('Enter your answer as a matrix');
-            $tip = $shorttip . _(', like [(2,3,4),(1,4,5)]');
+            // convert [(2,3,4),(1,4,5)] to latex
+            $tip = $shorttip . _(', like \\[\\left[\\begin{smallmatrix} 2 & 3 & 4 \\\\ 3 & 4 & 5 \\end{smallmatrix}\\right]\\]');
         } else if ($answerformat == 'logic') {
             $shorttip = _('Enter a logic statement');
             $tip = _('Enter a logic statement using the editor buttons, or use "and", "or", "xor", "neg", "implies", and "iff"');
@@ -71,7 +72,7 @@ class StringAnswerBox implements AnswerBox
             $shorttip = _('Enter a set expression');
             $tip = _('Enter a set expression using the editor buttons, or use "and", "or", "ominus", and "-"');
         } else {
-            $tip .= _('Enter your answer as letters.  Examples: A B C, linear, a cat');
+            $tip .= _('Enter your answer as letters. Examples: A B C, linear, a cat');
             $shorttip = _('Enter text');
         }
 
@@ -105,7 +106,7 @@ class StringAnswerBox implements AnswerBox
             }
             $attributes = [
                 'type' => 'text',
-                'size' => $answerboxsize,
+                'style' => 'width:'.sizeToCSS($answerboxsize),
                 'name' => "qn$qn",
                 'id' => "qn$qn",
                 'value' => $la,
@@ -184,6 +185,8 @@ class StringAnswerBox implements AnswerBox
                 $sa = '`' . str_replace(['and', 'xor', 'or', 'implies', 'iff'], ['^^', 'oplus', 'vv', '=>', '<=>'], $answer) . '`';
             } else if ($answerformat == "setexp") {
                 $sa = '`' . str_replace(['and', 'cap', 'xor', 'oplus', 'ominus', 'or', 'cup'], ['nn', 'nn', '⊖', '⊖', '⊖', 'uu', 'uu'], $answer) . '`';
+            } else if (strpos($strflags, 'all_words') !== false) {
+                $sa .= _('The answer must contain the words:') . ' ' . $answer;
             } else {
                 $sa .= $answer;
             }

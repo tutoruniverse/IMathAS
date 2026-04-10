@@ -25,11 +25,11 @@
 	$istutor = isset($tutorid);
 	$stm = $DBH->prepare("SELECT text,title,target FROM imas_linkedtext WHERE id=:id AND courseid=:cid");
 	$stm->execute(array(':id'=>$linkedtextid, ':cid'=>$cid));
-	if ($stm->rowCount()==0) {
+	list($text,$title,$target) = $stm->fetch(PDO::FETCH_NUM);
+	if ($text === null) {
 		echo "Invalid ID";
 		exit;
 	}
-	list($text,$title,$target) = $stm->fetch(PDO::FETCH_NUM);
 	$titlesimp = strip_tags($title);
 
 	if (substr($text,0,8)=='exttool:') {
@@ -92,6 +92,9 @@
 	if ($shownav) {
 		echo "<div class=breadcrumb $fixbc>$breadcrumbbase <a href=\"course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> ";
 		echo "&gt; ".Sanitize::encodeStringForDisplay($titlesimp)."</div>";
+		if ($isteacher) {
+			echo '<div class=cp><a href="addlinkedtext.php?cid='.$cid.'&id='.$linkedtextid.'">'._('Edit Page').'</a></div>';
+		}
 		echo '<div id="headershowlinkedtext" class="pagetitle"><h1>'.Sanitize::encodeStringForDisplay($titlesimp).'</h1></div>';
 	}
 	echo '<div class="linkedtextholder" style="padding-left:10px; padding-right: 10px;'.$pad.'">';

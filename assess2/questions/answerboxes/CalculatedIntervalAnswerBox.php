@@ -56,20 +56,19 @@ class CalculatedIntervalAnswerBox implements AnswerBox
         }
 
         if (in_array('inequality', $ansformats)) {
-            $tip = sprintf(_('Enter your answer using inequality notation.  Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
-            $tip .= sprintf(_('Use or to combine intervals.  Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
+            $tip = sprintf(_('Enter your answer using inequality notation. Example: 3 &lt;= %s &lt; 4'), $variables) . " <br/>";
+            $tip .= sprintf(_('Use or to combine intervals. Example: %s &lt; 2 or %s &gt;= 3'), $variables, $variables) . "<br/>";
             $tip .= _('Enter <i>all real numbers</i> for solutions of that type') . "<br/>";
             $shorttip = _('Enter an interval using inequalities');
         } else {
-            $tip = _('Enter your answer using interval notation.  Example: [2,5)') . " <br/>";
+            $tip = _('Enter your answer using interval notation. Example: [2,5)') . " <br/>";
             if (in_array('list', $ansformats)) {
-                $tip .= _('Separate intervals by a comma.  Example: (-oo,2],[4,oo)') . "<br/>";
+                $tip .= _('Separate intervals by a comma. Example: (-oo,2],[4,oo)') . "<br/>";
                 $shorttip = _('Enter a list of intervals using interval notation');
             } else {
-                $tip .= _('Use U for union to combine intervals.  Example: (-oo,2] U [4,oo)') . "<br/>";
+                $tip .= _('Use U for union to combine intervals. Example: (-oo,2] U [4,oo)') . "<br/>";
                 $shorttip = _('Enter an interval using interval notation');
             }
-
         }
         //$tip .= "Enter values as numbers (like 5, -3, 2.2) or as calculations (like 5/3, 2^3, 5+4)<br/>";
         //$tip .= "Enter DNE for an empty set, oo for Infinity";
@@ -81,7 +80,7 @@ class CalculatedIntervalAnswerBox implements AnswerBox
         }
         $attributes = [
             'type' => 'text',
-            'size' => $answerboxsize,
+            'style' => 'width:'.sizeToCSS($answerboxsize),
             'name' => "qn$qn",
             'id' => "qn$qn",
             'value' => $la,
@@ -113,12 +112,15 @@ class CalculatedIntervalAnswerBox implements AnswerBox
         }
         $preview .= "<span id=p$qn></span> ";
 
+        $nosolntype = 0;
         if (in_array('nosoln', $ansformats)) {
-            list($out, $answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox, in_array('inequality', $ansformats) ? 'inequality' : 'interval');
+            list($out, $answer, $nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox, in_array('inequality', $ansformats) ? 'inequality' : 'interval');
         }
 
         if ($answer !== '' && !$isConditional && !is_array($answer)) {
-            if (in_array('inequality', $ansformats) && strpos($answer, '"') === false) {
+            if ($nosolntype > 0) {
+                $sa = $answer;
+            } else if (in_array('inequality', $ansformats) && strpos($answer, '"') === false) {
                 $anspts = explode('or', $answer);
                 foreach ($anspts as $k=>$v) {
                     $anspts[$k] = '`' . intervaltoineq($v, $variables) . '`';

@@ -103,18 +103,15 @@ if ($myrights<20) {
 						$stm = $DBH->prepare($query);
 						$stm->execute(array(':groupid'=>$groupid, ':id'=>$qsetid));
 						if ($stm->rowCount()>0) {
-							//$query = "DELETE FROM imas_questionset WHERE id='$qsetid'";
 							$stm = $DBH->prepare("UPDATE imas_questionset SET deleted=1 WHERE id=:id");
 							$stm->execute(array(':id'=>$qsetid));
 							if ($stm->rowCount()>0) {
 								$stm = $DBH->prepare("DELETE FROM imas_library_items WHERE qsetid=:qsetid");
 								$stm->execute(array(':qsetid'=>$qsetid));
-								//delqimgs($qsetid);
 								$cnt--;
 							}
 						}
 					} else {
-						//$query = "DELETE FROM imas_questionset WHERE id='$qsetid'";
 
 						if (!$isadmin) {
 							$stm = $DBH->prepare("UPDATE imas_questionset SET deleted=1 WHERE id=:id AND ownerid=:ownerid");
@@ -126,11 +123,9 @@ if ($myrights<20) {
 						if ($stm->rowCount()>0) {
 							$stm = $DBH->prepare("DELETE FROM imas_library_items WHERE qsetid=:qsetid");
 							$stm->execute(array(':qsetid'=>$qsetid));
-							//delqimgs($qsetid);
 							$cnt--;
 						}
 					}
-					//$query = "DELETE FROM imas_questionset WHERE id='$qsetid'";
 
 				}
 				if (isset($_POST['remove'])) {
@@ -328,7 +323,7 @@ if ($overwriteBody==1) {
 	<script>
 		var curlibs = '<?php echo $inlibs ?>';
 		function libselect() {
-			window.open('libtree.php?libtree=popup&type=radio&selectrights=1&libs='+curlibs,'libtree','width=400,height='+(.7*screen.height)+',scrollbars=1,resizable=1,status=1,top=20,left='+(screen.width-420));
+			GB_show('<?php echo _('Library Select');?>','libtree3.php?libtree=popup&mode=single&selectrights=1&libs='+curlibs,500,500);
 		}
 		function setlib(libs) {
 			if (libs.charAt(0)=='0' && libs.indexOf(',')>-1) {
@@ -341,7 +336,7 @@ if ($overwriteBody==1) {
 			if (libn.indexOf('Unassigned')>-1 && libn.indexOf(',')>-1) {
 				libn = libn.substring(11);
 			}
-			document.getElementById("libnames").innerHTML = libn;
+			document.getElementById("libnames").textContent = libn;
 		}
 	</script>
 
@@ -497,22 +492,4 @@ if ($overwriteBody==1) {
 
 require_once "../footer.php";
 
-
-
-function delqimgs($qsid) {
-	global $DBH;
-	$stm = $DBH->prepare("SELECT id,filename,var FROM imas_qimages WHERE qsetid=:qsetid");
-	$stm->execute(array(':qsetid'=>$qsid));
-	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-		if (substr($row[1],0,4)!='http') {
-			$stm2 = $DBH->prepare("SELECT id FROM imas_qimages WHERE filename=:filename");
-			$stm2->execute(array(':filename'=>$row[1]));
-			if ($stm2->rowCount()==1) {
-				unlink(rtrim(dirname(__FILE__), '/\\') .'/../assessment/qimages/'.$row[1]);
-			}
-		}
-		$stm2 = $DBH->prepare("DELETE FROM imas_qimages WHERE id=:id");
-		$stm2->execute(array(':id'=>$row[0]));
-	}
-}
 ?>

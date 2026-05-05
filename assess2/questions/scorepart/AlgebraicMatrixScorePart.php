@@ -46,7 +46,6 @@ class AlgebraicMatrixScorePart implements ScorePart
 
         $givenanslistvals = [];
 
-        $answersize = "";
         $ansformats = array_map('trim',explode(',',$answerformat));
 
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {

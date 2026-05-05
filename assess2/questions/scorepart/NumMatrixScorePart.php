@@ -50,7 +50,6 @@ class NumMatrixScorePart implements ScorePart
             }
         }
         $givenans = normalizemathunicode($givenans);
-        $answersize = "";
         $ansformats = array_map('trim',explode(',',$answerformat));
 
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {

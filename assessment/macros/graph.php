@@ -1173,8 +1173,19 @@ function mergeplots($plota) {
             } else {
                 // Legacy format — only merge if $plota is also legacy
                 if (strpos($plota, 'drawPicture({') === false) {
-                    $newcmds = preg_replace('/^.*?initPicture\(.*?\);\s*(axes\(.*?\);)?(.*?)\'\s*\/>.*$/', '$2', $plotb);
-                    $plota = str_replace("' />", trim($newcmds) . "' />", $plota);
+                    // Pull the script attribute out of plotb directly. Older showplot()
+                    // emitted `setBorder(...); initPicture(...); axes(...); <draw cmds>`;
+                    // modern showplot() emits only `axes(...); <draw cmds>` (no initPicture).
+                    // Strip whichever boilerplate is present so plota's own setup is kept
+                    // and only the additional draw commands get appended.
+                    if (preg_match("/script='([^']*)'/", $plotb, $sm)) {
+                        $newcmds = preg_replace(
+                            '/^\s*(setBorder\([^)]*\);\s*)?(initPicture\([^)]*\);\s*)?(axes\([^)]*\);\s*)?/',
+                            '',
+                            $sm[1]
+                        );
+                        $plota = str_replace("' />", trim($newcmds) . "' />", $plota);
+                    }
                 }
             }
         }

@@ -147,4 +147,80 @@ final class AddlabelTest extends TestCase
             'initPicture should not be duplicated after merge'
         );
     }
+
+    /**
+     * Modern showplot() emits embeds whose script attribute starts with
+     * `axes(...)` directly — no `setBorder(...);` or `initPicture(...);`
+     * prefix. mergeplots must still extract the additional draw commands
+     * and inject them into plota's script, without leaking the second
+     * embed tag as text.
+     */
+    public function testMergeplotsModernFormatInjectsCommands()
+    {
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[\"x^2\"]'" .
+            " plot-func='abc'" .
+            " script='axes(1,1,1,1,1);plot(\"x^2\");'" .
+            " />\n";
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[\"x^3\"]'" .
+            " plot-func='def'" .
+            " script='axes(1,1,1,1,1);plot(\"x^3\");'" .
+            " />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        $this->assertRegExp(
+            "/script='[^']*plot\(\"x\^3\"\)/",
+            $result,
+            'plotB draw command should be inside plotA\'s script attribute'
+        );
+        $this->assertEquals(
+            1,
+            substr_count($result, '<embed'),
+            'merged result must be a single embed tag — no nested embed leaked into the script'
+        );
+    }
+
+    /**
+     * ineqbetweenplot() injects fill/path commands into a modern showplot()
+     * embed via str_replace("' />"). mergeplots() must merge such an embed
+     * with another modern embed without spilling the second embed's script
+     * payload as visible text below the graph.
+     */
+    public function testMergeplotsModernFormatWithIneqbetweenplotPayload()
+    {
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[]'" .
+            " plot-func='abc'" .
+            " script='axes(1,1,1,1,1);fill=\"transgreen\";strokewidth=0;path([[0,0],[1,0],[1,-3],[0,-3]]);'" .
+            " />\n";
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[\"line\"]'" .
+            " plot-func='def'" .
+            " script='axes(1,1,1,1,1);plot(\"x\");'" .
+            " />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        $this->assertEquals(
+            1,
+            substr_count($result, '<embed'),
+            'merged result must be a single embed tag'
+        );
+        $this->assertRegExp(
+            "/script='[^']*path\(\[\[0,0\]/",
+            $result,
+            'fill/path payload from ineqbetweenplot must remain in script'
+        );
+        $this->assertRegExp(
+            "/script='[^']*plot\(\"x\"\)/",
+            $result,
+            'plotB plot() must be appended into plotA\'s script'
+        );
+    }
 }

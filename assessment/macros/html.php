@@ -31,12 +31,6 @@ function formhoverover($label, $tip) {
 }
 
 function formpopup($label, $content, $width = 600, $height = 400, $type = 'link', $scroll = 'null', $id = 'popup', $ref = '', $presanitized = false) {
-    global $urlmode;
-    if (!$presanitized) {
-        $labelSanitized = Sanitize::encodeStringForDisplay($label);
-    } else {
-        $labelSanitized = $label;
-    }
     if (!is_scalar($content)) {
         echo "invalid content in formpopup";
         return '';
@@ -45,48 +39,9 @@ function formpopup($label, $content, $width = 600, $height = 400, $type = 'link'
         echo "invalid label in formpopup";
         return '';
     }
-    if (is_array($width)) {
-        echo "width should not be array in formpopup";
-        $width = 600;
-    }
-
-    if ($scroll != null) {
-        $scroll = ',' . $scroll;
-    }
-    if ($height == 'fit') {
-        $height = "'fit'";
-    }
-    if ($ref != '') {
-        if (strpos($ref, '-') !== false) {
-            $ref = explode('-', $ref);
-            $contentadd = 'Q' . $ref[1] . ': ';
-            $ref = $ref[0];
-        } else {
-            $contentadd = '';
-        }
-        if (strpos($content, 'watchvid.php') !== false) {
-            $cp = explode('?url=', $content);
-            $rec = "recclick('extref',$ref,'" . $contentadd . trim(htmlentities(urldecode($cp[1]))) . "');";
-        } else {
-            $rec = "recclick('extref',$ref,'" . $contentadd . trim(htmlentities($content)) . "');";
-        }
-    } else {
-        $rec = '';
-    }
-    if (strpos($label, '<img') !== false) {
-        return '<button type="button" class="nopad plain" onClick="' . $rec . 'popupwindow(\'' . $id . '\',\'' . Sanitize::encodeStringForJavascript($content) . '\',' . $width . ',' . $height . $scroll . ')">' . $label . '</button>';
-    } else {
-        if ($type == 'link') {
-            return '<a href="#" onClick="' . $rec . 'popupwindow(\'' . $id . '\',\'' . Sanitize::encodeStringForJavascript($content) . '\',' . $width . ',' . $height . $scroll . ');return false;">' . $labelSanitized . '</a>';
-        } else if ($type == 'button') {
-            if (substr($content, 0, 31) == 'http://www.youtube.com/watch?v=') {
-                $content = $GLOBALS['basesiteurl'] . "/assessment/watchvid.php?url=" . Sanitize::encodeUrlParam($content);
-                $width = 660;
-                $height = 525;
-            }
-            return '<button type="button" onClick="' . $rec . 'popupwindow(\'' . $id . '\',\'' . Sanitize::encodeStringForJavascript($content) . '\',' . $width . ',' . $height . $scroll . ')">' . $labelSanitized . '</button>';
-        }
-    }
+    $labelSanitized = $presanitized ? $label : Sanitize::encodeStringForDisplay($label);
+    $href = Sanitize::encodeStringForDisplay($content);
+    return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer">' . $labelSanitized . '</a>';
 }
 
 function forminlinebutton($label, $content, $style = 'button', $outstyle = 'block') {

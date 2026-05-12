@@ -223,4 +223,41 @@ final class AddlabelTest extends TestCase
             'plotB plot() must be appended into plotA\'s script'
         );
     }
+
+    /**
+     * showplot() can emit a script whose payload begins with a stray empty
+     * statement, e.g. `;  initPicture(...); axes(...);; stroke = "red";; plot(...)`.
+     * The leading `;` must not block the setBorder/initPicture/axes strip;
+     * otherwise the duplicate initPicture re-runs and clears the canvas.
+     */
+    public function testMergeplotsStripsBoilerplateWithLeadingSemicolon()
+    {
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='400' height='400'" .
+            " script=';  initPicture(-2.5,2.5,-2.5,2.5); axes(1, 1, \"labels\", );;  stroke = \"blue\";;  plot(\"x\",0,1)' />\n";
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='400' height='400'" .
+            " script=';  initPicture(-2.5,2.5,-2.5,2.5); axes(1, 1, \"labels\", );;  stroke = \"red\";;  plot(\"x\",1,2)' />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        $this->assertEquals(
+            1,
+            substr_count($result, 'initPicture'),
+            'initPicture must not be duplicated when plotb starts with a stray semicolon'
+        );
+        $this->assertRegExp(
+            "/stroke = \"red\";;\s*plot\(\"x\",1,2\)/",
+            $result,
+            'plotB draw commands must still be injected into plotA'
+        );
+        // plotA's script ends with `...plot("x",0,1)` (no trailing `;`). The
+        // injected commands must be separated by `;` so they parse as a new
+        // statement — otherwise we'd get `...plot("x",0,1)stroke = "red"...`.
+        $this->assertNotRegExp(
+            "/plot\(\"x\",0,1\)stroke/",
+            $result,
+            'separator semicolon between plotA tail and injected plotB commands must be preserved'
+        );
+    }
 }

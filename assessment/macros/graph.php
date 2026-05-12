@@ -1179,8 +1179,10 @@ function mergeplots($plota) {
                     // Strip whichever boilerplate is present so plota's own setup is kept
                     // and only the additional draw commands get appended.
                     if (preg_match("/script='([^']*)'/", $plotb, $sm)) {
+                        // Leading `[;\s]*` also absorbs stray empty statements
+                        // (e.g. showplot() emits `;  initPicture(...)`).
                         $newcmds = preg_replace(
-                            '/^\s*(setBorder\([^)]*\);\s*)?(initPicture\([^)]*\);\s*)?(axes\([^)]*\);\s*)?/',
+                            '/^[;\s]*(setBorder\([^)]*\);\s*)?(initPicture\([^)]*\);\s*)?(axes\([^)]*\);\s*)?/',
                             '',
                             $sm[1]
                         );

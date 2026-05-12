@@ -220,7 +220,8 @@ function CalcPlot3Dembed($funcs, $width=500, $height=500, $xmin=-2, $xmax=2, $ym
 function CalcPlot3Dlink($funcs, $linktext="View Graph", $xmin=-2, $xmax=2, $ymin=-2, $ymax=2, $zmin=-2, $zmax=2, $xscl=1, $yscl=1, $zscl=1, $zclipmin=null,$zclipmax=null,$showbox=true,$scaleaxes=false) {
 	$querystring = CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax, $xscl, $yscl, $zscl, $zclipmin, $zclipmax,$showbox);
 	//$querystring is sanitized as it's constructed
-	$out = '<a href="https://c3d.libretexts.org/CalcPlot3D/index.html?'.$querystring.'" target="_blank">';
+	$href = 'https://c3d.libretexts.org/CalcPlot3D/index.html?'.$querystring;
+	$out = '<a'._make_link_nonce($href).' href="'.$href.'" target="_blank">';
 	$out .= Sanitize::encodeStringForDisplay($linktext).'</a>';
 	return $out;
 }

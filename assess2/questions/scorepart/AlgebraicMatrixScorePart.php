@@ -43,6 +43,10 @@ class AlgebraicMatrixScorePart implements ScorePart
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
 
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }
+        if (!empty($answersize) && !isset($_POST["qn$qn-0"])) {
+            // caller submitted a single bracketed matrix string instead of per-cell fields
+            $answersize = '';
+        }
 
         $givenanslistvals = [];
 

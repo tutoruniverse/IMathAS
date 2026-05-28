@@ -77,12 +77,19 @@ class MatrixAnswerBox implements AnswerBox
             } else {
                 $style = '';
             }
-            if ($colorbox == '') {
-                $out .= '<div id="qnwrap' . $qn . '"' . $style . '>';
-            } else {
-                $out .= '<div class="' . $colorbox . '" id="qnwrap' . $qn . '"' . $style . '>';
-            }
             $answersize = explode(",", $answersize);
+            $augcolumn = in_array('augmented', $dispformats) ? $answersize[1] - 1 : -1;
+            $classes = 'matrix-input';
+            if ($colorbox != '') {
+                $classes .= ' ' . $colorbox;
+            }
+            if ($augcolumn != -1) {
+                $classes .= ' matrix-augmented';
+            }
+            if (in_array('det', $dispformats)) {
+                $classes .= ' matrix-det';
+            }
+            $out .= '<div class="' . $classes . '" matrix-rows="' . $answersize[0] . '" matrix-cols="' . $answersize[1] . '" id="qnwrap' . $qn . '"' . $style . '>';
             $arialabel = $this->answerBoxParams->getQuestionIdentifierString() .
                 ' ' . sprintf(_('matrix entry with %d rows and %d columns'), $answersize[0], $answersize[1]) .
                 (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
@@ -99,10 +106,6 @@ class MatrixAnswerBox implements AnswerBox
             $count = 0;
             $las = explode("|", $la);
             $cellcnt = $answersize[0] * $answersize[1];
-            $augcolumn = -1;
-            if (in_array('augmented', $dispformats)) {
-                $augcolumn = $answersize[1] - 1;
-            }
             for ($row = 0; $row < $answersize[0]; $row++) {
                 $out .= "<tr>";
                 for ($col = 0; $col < $answersize[1]; $col++) {
@@ -122,7 +125,7 @@ class MatrixAnswerBox implements AnswerBox
 
                     $out .= '<input ' .
                         Sanitize::generateAttributeString($attributes) .
-                        '" />';
+                        ' />';
 
                     $out .= "</td>\n";
                     $count++;

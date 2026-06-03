@@ -183,7 +183,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
         }
         $preview .= "<span id=p$qn></span> ";
         if ($anstype === 'algmatrix' && in_array('generalcomplex', $ansformats)) {
-            $tip .= '<br>'._('Your answer can contain complex numbers.');
+            $tip .= '<br/>'._('Your answer can contain complex numbers.');
         }
         $params['tip'] = $shorttip;
         $params['longtip'] = $tip;

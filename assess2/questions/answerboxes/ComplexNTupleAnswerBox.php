@@ -87,7 +87,8 @@ class ComplexNTupleAnswerBox implements AnswerBox
         if ($anstype === 'calccomplexntuple') {
             $tip .= formathint('each value', $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calccomplexntuple');
         }
-        if (!in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
+        if ($anstype === 'complexntuple'
+            && !in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
             $tip .= _('Enter DNE for Does Not Exist');
         }
         

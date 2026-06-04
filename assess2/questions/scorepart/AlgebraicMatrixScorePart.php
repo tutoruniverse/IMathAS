@@ -61,15 +61,26 @@ class AlgebraicMatrixScorePart implements ScorePart
             
             if ($isRescore) {
               $givenanslist = explode('|', $givenans);
-            } else {
+            } else if (isset($_POST["qn$qn-0"])) {
               for ($i=0; $i<$sizeparts[0]*$sizeparts[1]; $i++) {
                   $givenanslist[$i] = $_POST["qn$qn-$i"];
               }
+            } else {
+              list($givenanslist,) = parseMatrixToArray($givenans);
+              if ($givenanslist === false) { $givenanslist = []; }
             }
             $scorePartResult->setLastAnswerAsGiven(implode('|',$givenanslist));
+        } else if (isset($_POST["qn$qn-0"])) {
+            // no answersize but multi-input cells: collect and join as pipe-delimited
+            $N = null;
+            $givenanslist = [];
+            for ($i=0; isset($_POST["qn$qn-$i"]); $i++) {
+                $givenanslist[$i] = $_POST["qn$qn-$i"];
+            }
+            $scorePartResult->setLastAnswerAsGiven(implode('|', $givenanslist));
         } else {
             list($givenanslist, $N) = parseMatrixToArray($givenans);
-    
+
             //this may not be backwards compatible
             $scorePartResult->setLastAnswerAsGiven($givenans);
             if ($givenanslist === false) { // invalid answer

@@ -80,7 +80,7 @@ class NumMatrixScorePart implements ScorePart
                     $givenanslistvals[$i] = evalMathParser($v);
                 }
               }
-            } else {
+            } else if (isset($_POST["qn$qn-0"])) {
             for ($i=0; $i<$sizeparts[0]*$sizeparts[1]; $i++) {
                 $givenanslist[$i] = $_POST["qn$qn-$i"];
                 if ($anstype === 'calcmatrix' && !$hasNumVal && $_POST["qn$qn-$i"] !== '') {
@@ -89,14 +89,44 @@ class NumMatrixScorePart implements ScorePart
                 $givenanslistvals[$i] = evalMathParser($cellval);
                 }
             }
+            } else {
+            list($givenanslist,) = parseMatrixToArray($givenans);
+            if ($givenanslist === false) { $givenanslist = []; }
+            if ($anstype === 'calcmatrix' && !$hasNumVal) {
+                foreach ($givenanslist as $i=>$v) {
+                    $v = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $v);
+                    $v = str_replace('xx', '*', $v);
+                    $givenanslistvals[$i] = evalMathParser($v);
+                }
+            }
             }
             $scorePartResult->setLastAnswerAsGiven(implode('|',$givenanslist));
             if ($anstype === 'calcmatrix') {
                 $scorePartResult->setLastAnswerAsNumber(implode('|',$givenanslistvals));
             } 
+        } else if (isset($_POST["qn$qn-0"])) {
+            // no answersize but multi-input cells: collect and join as pipe-delimited
+            $N = null;
+            $givenanslist = [];
+            $givenanslistvals = [];
+            for ($i=0; isset($_POST["qn$qn-$i"]); $i++) {
+                $givenanslist[$i] = $_POST["qn$qn-$i"];
+                if ($anstype === 'calcmatrix' && !$hasNumVal && $_POST["qn$qn-$i"] !== '') {
+                    $cellval = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $_POST["qn$qn-$i"]);
+                    $cellval = str_replace('xx', '*', $cellval);
+                    $givenanslistvals[$i] = evalMathParser($cellval);
+                }
+            }
+            $scorePartResult->setLastAnswerAsGiven(implode('|', $givenanslist));
+            if ($anstype === 'calcmatrix') {
+                if ($hasNumVal) {
+                    $givenanslistvals = explode('|', $givenansval);
+                }
+                $scorePartResult->setLastAnswerAsNumber(implode('|', $givenanslistvals));
+            }
         } else {
             list($givenanslist, $N) = parseMatrixToArray($givenans);
-    
+
             //this may not be backwards compatible
             $scorePartResult->setLastAnswerAsGiven($givenans);
             if ($givenanslist === false) { // invalid answer

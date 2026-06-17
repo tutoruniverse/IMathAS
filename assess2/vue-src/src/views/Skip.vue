@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <a href="#" class="sr-only" id="skipnav" @click.prevent="$refs.scrollpane.focus()">
+    <a href="#" class="sr-only" id="skipnav" @click.prevent="jumpFocus">
       {{ $t('jumptocontent') }}
     </a>
     <assess-header></assess-header>
@@ -9,8 +9,7 @@
       class="scrollpane"
       role="region"
       ref="scrollpane"
-      tabindex="-1"
-      :aria-label="$t('regions.questions')"
+      :aria-label="$t('regions-questions')"
     >
       <intro-text
         :active = "qn == -1"
@@ -20,10 +19,18 @@
       <router-link
           v-if = "qn == -1"
           :to="'/skip/1'"
-          tag="button"
+          custom
+          v-slot="{ navigate }"
       >
-        <icons name="right" alt=""/>
-        {{ $t('question.firstq') }}
+        <button
+          type="button"
+          @click="navigate"
+          @keypress.enter="navigate"
+          role="link"
+        >
+          <icons name="right" alt=""/>
+          {{ $t('question-firstq') }}
+        </button>
       </router-link>
       <inter-question-text-skiplist
         pos = "before"
@@ -35,6 +42,9 @@
         :class="{inactive: curqn != qn}"
         :aria-hidden = "curqn != qn"
       >
+        <h2 class="sr-only">
+          {{ $t('question_n', { n: curqn + 1 }) }}
+        </h2>
         <question
           :qn="curqn"
           :active="curqn == qn"
@@ -57,7 +67,7 @@ import Question from '@/components/question/Question.vue';
 import IntroText from '@/components/IntroText.vue';
 import Icons from '@/components/widgets/Icons.vue';
 
-import { store } from '../basicstore';
+import { store } from '@/basicstore';
 
 export default {
   name: 'skip',
@@ -82,6 +92,13 @@ export default {
         qnArray[i] = i;
       }
       return qnArray;
+    }
+  },
+  methods: {
+    jumpFocus () {
+      this.$refs.scrollpane.setAttribute("tabindex","-1");
+      this.$refs.scrollpane.focus();
+      this.$refs.scrollpane.removeAttribute("tabindex");
     }
   }
 };

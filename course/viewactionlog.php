@@ -6,10 +6,12 @@ require_once "../init.php";
 
 
 $cid = intval($_GET['cid']);
-if (!isset($teacherid) && !isset($tutorid)) {
+if (isset($studentid)) {
 	$uid = $userid;
-} else {
+} else if (isset($teacherid) || isset($tutorid)) {
 	$uid = intval($_GET['uid']);
+} else {
+	exit;
 }
 
 $curBreadcrumb = $breadcrumbbase;
@@ -41,18 +43,25 @@ echo '<h2>Activity Log for <span class="pii-full-name">'.Sanitize::encodeStringF
 
 
 $actions = array();
-$lookups = array('as'=>array(), 'in'=>array(), 'li'=>array(), 'ex'=>array(), 'wi'=>array(), 'fo'=>array(), 'forums'=>array(), 'dr'=>array(),);
-$stm = $DBH->prepare("SELECT type,typeid,viewtime,info FROM imas_content_track WHERE userid=:userid AND courseid=:courseid ORDER BY viewtime DESC");
+$lookups = array('as'=>[], 'in'=>[], 'li'=>[], 'ex'=>[], 'wi'=>[], 'fo'=>[], 'forums'=>[], 'dr'=>array(), 'og'=>[]);
+$stm = $DBH->prepare("SELECT type,typeid,viewtime,info FROM imas_content_track WHERE userid=:userid AND courseid=:courseid");
 $stm->execute(array(':userid'=>$uid, ':courseid'=>$cid));
 while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 	$actions[] = $row;
 	$t = substr($row[0],0,2);
+    if ($t == 'gb') {
+        $t = 'as'; // gradebook view, need to look up assess
+    }
 	$lookups[$t][] = intval($row[1]);
 	if ($t=='fo') {
 		$ip = explode(';',$row[3]);
 		$lookups['forums'][] = $ip[0];
 	}
 }
+//sort by viewtime desc
+usort($actions, function ($a,$b) { 
+	return $b[2] <=> $a[2];
+});
 $asnames = array();
 if (count($lookups['as'])>0) {
 	$lookuplist = array_map('intval', array_unique($lookups['as']));
@@ -133,10 +142,20 @@ if (count($lookups['dr'])>0) {
 		$drnames[$row[0]] = $row[1];
 	}
 }
+$ognames = array();
+if (count($lookups['og'])>0) {
+	$lookuplist = array_map('intval', array_unique($lookups['og']));
+	$query_placeholders = Sanitize::generateQueryPlaceholders($lookuplist);
+	$stm = $DBH->prepare("SELECT id,name FROM imas_gbitems WHERE id IN ($query_placeholders)");
+	$stm->execute(array_values($lookuplist));
+	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		$ognames[$row[0]] = $row[1];
+	}
+}
 
 echo '<table><thead><tr><th>Date</th><th>Action</th></tr></thead><tbody>';
 foreach ($actions as $r) {
-	if (isset($r[3])) {
+	if (isset($r[3]) && $r[0] !== 'assess') {
 		$r3pts = explode('::',$r[3]);
 		if (count($r3pts)==2) {
 			$thelink = '<a href="'.Sanitize::url($r3pts[0]).'" target="_blank">'.Sanitize::encodeStringForDisplay($r3pts[1]).'</a>';
@@ -182,11 +201,29 @@ foreach ($actions as $r) {
 		$actionmsg =  'In assessment '.Sanitize::encodeStringForDisplay($asnames[$r[1]] ?? '(deleted)').' summary, clicked link to '.$thelink;
 		break;
 	case 'assess':
-		$actionmsg =  'Opened assessment '.Sanitize::encodeStringForDisplay($asnames[$r[1]] ?? '(deleted)');
+		$actionmsg =  'Started/resumed assessment '.Sanitize::encodeStringForDisplay($asnames[$r[1]] ?? '(deleted)');
+		if ($r[3] !== '') {
+			$actionmsg .= ' <span class=small>(from ' . Sanitize::encodeStringForDisplay($r[3]) .')</span>';
+		}
 		break;
     case 'assessreview':
     case 'assessreviewub':
 		$actionmsg =  'Opened in review mode assessment '.Sanitize::encodeStringForDisplay($asnames[$r[1]] ?? '(deleted)');
+		break;
+	case 'viewallfb':
+		$actionmsg =  'Viewed feedback for all items via gradebook';
+		break;
+	case 'gbviewfb':
+		$actionmsg =  'Viewed feedback for assessment '.Sanitize::encodeStringForDisplay($asnames[$r[1]] ?? '(deleted)');
+		break;
+	case 'liviewfb':
+		$actionmsg =  'Viewed feedback for external assignment '.Sanitize::encodeStringForDisplay($linames[$r[1]] ?? '(deleted)');
+		break;
+	case 'ogviewfb':
+		$actionmsg =  'Viewed feedback for offline grade '.Sanitize::encodeStringForDisplay($ognames[$r[1]] ?? '(deleted)');
+		break;
+	case 'foviewfb':
+		$actionmsg =  'Viewed feedback via gradebook for forum posts in '.Sanitize::encodeStringForDisplay($ognames[$r[1]] ?? '(deleted)');	
 		break;
 	case 'gbviewassess':
 	case 'gbviewsafe':
@@ -234,6 +271,7 @@ foreach ($actions as $r) {
 }
 echo '</tbody></table>';
 
+echo '<p></p><p class="small">'._('Note: On "started/resumed assessment" records, the "(from ___)" is an identifier based on the IP address of the student\'s computer. Note that this can change if the student switches from a phone to a laptop, from one computer to another, or even if their wifi connection resets, so don\'t put too much weight on this value changing.').'</p>';
 require_once "../footer.php";
 
 ?>

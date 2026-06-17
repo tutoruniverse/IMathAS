@@ -71,7 +71,7 @@ function getpts($sc) {
 	}
 }
 
-function flattenitems($items,&$addto,&$itemidsection,$sec='') {
+function flattenitems($items,&$addto,&$itemidsection,$sec=[]) {
 	global $canviewall,$secfilter,$studentinfo;
 	$now = time();
 	foreach ($items as $item) {
@@ -79,19 +79,19 @@ function flattenitems($items,&$addto,&$itemidsection,$sec='') {
 			if (!isset($item['avail'])) { //backwards compat
 				$item['avail'] = 1;
             }
-            $thissec = $sec;
+            $thissections = $sec;
             $ishidden = ($item['avail']==0 || (!$canviewall && $item['avail']==1 && $item['SH'][0]=='H' && $item['startdate']>$now));
             if (!empty($item['grouplimit'])) {
-                $thissec = substr($item['grouplimit'][0],2); // trim off s-
-                if ((!$canviewall && $studentinfo['section'] != $thissec) ||
-                    ($canviewall && $secfilter != -1 && $secfilter != $thissec)
+                $thissections = array_map(function ($v) {return strtolower(substr($v, 2));}, $item['grouplimit']);
+                if ((!$canviewall && !in_array(strtolower($studentinfo['section'] ?? ''), $thissections)) ||
+                    ($canviewall && $secfilter != -1 && !in_array(strtolower($secfilter), $thissections))
                 ) {
                     // if a section limited block, and not in/showing that sec, hide
                     $ishidden = true;
                 }
             } 
 			if (!$ishidden && !empty($item['items'])) {
-				flattenitems($item['items'], $addto, $itemidsection, $thissec);
+				flattenitems($item['items'], $addto, $itemidsection, $thissections);
 			}
 		} else {
             if ($sec != '') {
@@ -193,6 +193,7 @@ function outcometable() {
 	$startdate = array();
 	$enddate = array();
 	$LPcutoff = array();
+    $LPenddate = [];
 	$allowlate = array();
 	$timelimits = array();
 	$avail = array();
@@ -241,6 +242,18 @@ function outcometable() {
 			// $sa = scoresingb setting
 			$assessmenttype[$kcnt] = $line['viewingb'];
 			$sa[$kcnt] = $line['scoresingb'];
+            if ($line['scoresingb'] == 'after_lp') {
+                $adjusted_allowlate = ($line['allowlate'] % 10) - 1; // ignore "allow use after"
+                if ($adjusted_allowlate == 0) { // this is now "unlimited"
+                    $LPenddate[$kcnt] = 2000000000;
+                } else {
+                    $LPenddate[$kcnt] = strtotime("+".($GLOBALS['latepasshrs']*$adjusted_allowlate)." hours", $line['enddate']);
+                }
+                $LPenddate[$kcnt] = min($LPenddate[$kcnt], $GLOBALS['courseenddate']);
+                if ($line['LPcutoff'] > 0) {
+                    $LPenddate[$kcnt] = min($LPenddate[$kcnt], $line['LPcutoff']);
+                }
+            }
 		} else {
 			$deffeedback = explode('-',$line['deffeedback']);
 			$assessmenttype[$kcnt] = $deffeedback[0];
@@ -309,7 +322,7 @@ function outcometable() {
 	while ($line=$stm->fetch(PDO::FETCH_ASSOC)) {
 		$avail[$kcnt] = 0;
 
-		$grades[$kcnt] = $line['id'];
+		$grades[$kcnt] = intval($line['id']);
 		$assessmenttype[$kcnt] = "Offline";
 		$category[$kcnt] = $line['gbcategory'];
 		$enddate[$kcnt] = $line['showdate'];
@@ -337,7 +350,7 @@ function outcometable() {
         if (!isset($courseitemsassoc['Forum'.$line['id']])) {
 			continue; //forum is in hidden block - skip it
 		}
-		$discuss[$kcnt] = $line['id'];
+		$discuss[$kcnt] = intval($line['id']);
 		$assessmenttype[$kcnt] = "Discussion";
 		$category[$kcnt] = $line['gbcategory'];
 		if ($line['avail']==2) {
@@ -594,15 +607,15 @@ function outcometable() {
 
 	//pull exceptions
 	$exceptions = array();
-	$query = "SELECT imas_exceptions.assessmentid,imas_exceptions.userid,imas_exceptions.startdate,imas_exceptions.enddate,imas_exceptions.islatepass FROM imas_exceptions,imas_assessments WHERE ";
+	$query = "SELECT imas_exceptions.assessmentid,imas_exceptions.userid,imas_exceptions.startdate,imas_exceptions.enddate,imas_exceptions.islatepass,imas_exceptions.is_lti FROM imas_exceptions,imas_assessments WHERE ";
 	$query .= "imas_exceptions.itemtype='A' AND imas_exceptions.assessmentid=imas_assessments.id AND imas_assessments.courseid=:courseid";
 	$stm2 = $DBH->prepare($query);
 	$stm2->execute(array(':courseid'=>$cid));
-	while ($r = $stm2->fetch(PDO::FETCH_NUM)) {
-		if (!isset($sturow[$r[1]])) { continue;}
-        $exceptions[$r[0]][$r[1]] = array($r[2],$r[3],$r[4]);
-        if (isset($assesscol[$r[0]]) && isset($sturow[$r[1]])) {
-            $gb[$sturow[$r[1]]][1][$assesscol[$r[0]]][2] = 10; //will get overwritten later if assessment session exists
+	while ($r = $stm2->fetch(PDO::FETCH_ASSOC)) {
+		if (!isset($sturow[$r['userid']])) { continue;}
+        $exceptions[$r['assessmentid']][$r['userid']] = $r;
+        if (isset($assesscol[$r['assessmentid']]) && isset($sturow[$r['userid']])) {
+            $gb[$sturow[$r['userid']]][1][$assesscol[$r['assessmentid']]][2] = 10; //will get overwritten later if assessment session exists
         }
 	}
 
@@ -662,13 +675,13 @@ function outcometable() {
 		}
 
 		if ($useexception) {
-			if ($enddate[$i]>$exceptions[$l['assessmentid']][$l['userid']][1] && $assessmenttype[$i]=="NoScores") {
+			if ($enddate[$i]>$exceptions[$l['assessmentid']][$l['userid']]['enddate'] && $assessmenttype[$i]=="NoScores") {
 				//if exception set for earlier, and NoScores is set, use later date to hide score until later
 				$thised = $enddate[$i];
 			} else {
-				$thised = $exceptions[$l['assessmentid']][$l['userid']][1];
+				$thised = $exceptions[$l['assessmentid']][$l['userid']]['enddate'];
 				if ($limuser>0) {  //change $avail past/cur/future
-					if ($now<$thised && $now>$exceptions[$l['assessmentid']][$l['userid']][0]) { //inside exception window
+					if ($now<$thised && $now>$exceptions[$l['assessmentid']][$l['userid']]['startdate']) { //inside exception window
 						$gb[0][1][$col][2] = 1;
 					} else if ($now>$thised) { //past exception due date
 						$gb[0][1][$col][2] = 0;
@@ -741,7 +754,7 @@ function outcometable() {
 	}
 
 	//Get assessment2 scores
-	$query = "SELECT iar.assessmentid,iar.score,iar.starttime,iar.lastchange,iar.timeontask,iar.status,iar.userid,iar.scoreddata FROM imas_assessment_records AS iar ";
+	$query = "SELECT iar.assessmentid,iar.score,iar.starttime,iar.lastchange,iar.timeontask,iar.status,iar.status2,iar.userid,iar.scoreddata FROM imas_assessment_records AS iar ";
 	$query .= "JOIN imas_assessments AS ia ON ia.id=iar.assessmentid WHERE ia.courseid=:courseid ";
 	if ($limuser>0) {
 		$query .= " AND iar.userid=:userid ";
@@ -762,7 +775,7 @@ function outcometable() {
 
 		$gb[$row][1][$col][3] = $l['userid'];; //in place of assessment session id
 
-		$scoreddata = json_decode(gzdecode($l['scoreddata']), true);
+		$scoreddata = json_decode(Sanitize::gzexpand($l['scoreddata']), true);
 		$assessver = $scoreddata['assess_versions'][$scoreddata['scored_version']];
 		$pts = array();
 		$ptsposs = array();
@@ -786,13 +799,13 @@ function outcometable() {
 		}
 
 		if ($useexception) {
-			if ($enddate[$i]>$exceptions[$l['assessmentid']][$l['userid']][1] && $sa[$i]=="never") {
+			if ($enddate[$i]>$exceptions[$l['assessmentid']][$l['userid']]['enddate'] && $sa[$i]=="never") {
 				//if exception set for earlier, and NoScores is set, use later date to hide score until later
 				$thised = $enddate[$i];
 			} else {
-				$thised = $exceptions[$l['assessmentid']][$l['userid']][1];
+				$thised = $exceptions[$l['assessmentid']][$l['userid']]['enddate'];
 				if ($limuser>0) {  //change $avail past/cur/future
-					if ($now<$thised && $now>$exceptions[$l['assessmentid']][$l['userid']][0]) { //inside exception window
+					if ($now<$thised && $now>$exceptions[$l['assessmentid']][$l['userid']]['startdate']) { //inside exception window
 						$gb[0][1][$col][2] = 1;
 					} else if ($now>$thised) { //past exception due date
 						$gb[0][1][$col][2] = 0;
@@ -821,7 +834,9 @@ function outcometable() {
 		if (!$canviewall && (
 			($sa[$i]=="never") ||
 		 	($sa[$i]=='after_due' && $now < $thised) ||
-			($sa[$i]=='after_take' && !$hasSubmittedTake)
+            ($sa[$i]=='after_lp' && $now < max($thised,$LPenddate[$i])) ||
+			($sa[$i]=='after_take' && !$hasSubmittedTake) ||
+			($sa[$i]=='manual' && ($l['status2']&1)==0)
 		)) {
 			$gb[$row][1][$col][0] = 'N/A'; //score is not available
 			$gb[$row][1][$col][2] = 0;  //no other info

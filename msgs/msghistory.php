@@ -48,19 +48,21 @@
 	$query = "SELECT baseid,courseid,msgto,msgfrom FROM imas_msgs WHERE id=:id";
 	if ($type!='allstu' || !$isteacher) {
 		$query .= " AND (msgto=:msgto OR msgfrom=:msgfrom)";
+	} else {
+		$query .= " AND courseid=:cid";
 	}
 	$stm = $DBH->prepare($query);
 	if ($type!='allstu' || !$isteacher) {
 		$stm->execute(array(':id'=>$msgid, ':msgto'=>$userid, ':msgfrom'=>$userid));
 	} else {
-		$stm->execute(array(':id'=>$msgid));
+		$stm->execute(array(':id'=>$msgid, ':cid'=>$cid));
 	}
-	if ($stm->rowCount()==0) {
+    $line =  $stm->fetch(PDO::FETCH_ASSOC);
+	if ($line === false) {
 		echo "Message not found";
 		require_once "../footer.php";
 		exit;
 	}
-    $line =  $stm->fetch(PDO::FETCH_ASSOC);
 	$baseid = $line['baseid'];
 	if ($baseid==0) {
 		$baseid=$msgid;
@@ -161,12 +163,12 @@
 	       node.className = 'hidden';
 	       //if (butn.value=='Collapse') {butn.value = 'Expand';} else {butn.value = '+';}
 	//       butn.value = 'Expand';
-		butn.src = staticroot+'/img/expand.gif';
+		butn.src = staticroot+'/img/expand.svg';
 	   } else {
 	       node.className = 'forumgrp';
 	       //if (butn.value=='Expand') {butn.value = 'Collapse';} else {butn.value = '-';}
 	//       butn.value = 'Collapse';
-		butn.src = staticroot+'/img/collapse.gif';
+		butn.src = staticroot+'/img/collapse.svg';
 	}
 	}
 	function toggleitem(inum) {
@@ -187,7 +189,7 @@
 	     node.className = 'forumgrp';
 	//     butn.value = 'Collapse';
 	       //if (butn.value=='Expand' || butn.value=='Collapse') {butn.value = 'Collapse';} else {butn.value = '-';}
-	       butn.src = staticroot+'/img/collapse.gif';
+	       butn.src = staticroot+'/img/collapse.svg';
 	   }
 	}
 	function collapseall() {
@@ -197,7 +199,7 @@
 	     node.className = 'hidden';
 	//     butn.value = 'Expand';
 	       //if (butn.value=='Collapse' || butn.value=='Expand' ) {butn.value = 'Expand';} else {butn.value = '+';}
-	       butn.src = staticroot+'/img/expand.gif';
+	       butn.src = staticroot+'/img/expand.svg';
 	   }
 	}
 
@@ -291,7 +293,9 @@
 		}
 	}
 
-	printchildren(0);
+	if (!empty($children[0])) {
+		printchildren(0);
+	}
 
 	echo "<script type=\"text/javascript\">";
 	echo "var bcnt =".$bcnt."; var icnt = $icnt;\n";

@@ -79,7 +79,7 @@ class AssessUtils
     $stm = $DBH->prepare('SELECT * from imas_assessment_records WHERE userid=? AND assessmentid=?');
     $stm->execute(array($uid, $assessmentid));
     $source = $stm->fetch(PDO::FETCH_ASSOC);
-    $fields = implode(',', array_diff(array_keys($source), array('userid')));
+    $fields = implode(',', array_map('intval', array_diff(array_keys($source), array('userid'))));
 
     // this isn't super-efficient, but avoids having to send the full assessment
     // record between PHP and the DB multiple times.
@@ -124,14 +124,16 @@ class AssessUtils
    */
   public static function isIPinRange($userip, $range) {
     $ips = array_map('trim', explode(',', $range));
-    $userip = explode('.', $userip);
-		$isoneIPok = false;
+    // might be multiple userips listed; use first
+    $userips = array_map('trim', explode(',', $userip));
+    $userip = explode('.', $userips[0]);
+	  $isoneIPok = false;
     foreach ($ips as $ip) {
       $ip = explode('.', $ip);
       $thisIPok = true;
       for ($i=0;$i<4;$i++) {
         $pts = explode('-', $ip[$i]);
-        if (count($pts) == 2 && $userip[$i] >= $pts[0] && $userip[$i] <= $pts[0]) {
+        if (count($pts) == 2 && $userip[$i] >= $pts[0] && $userip[$i] <= $pts[1]) {
           continue;
         } else if ($ip[$i] == '*') {
           continue;
@@ -143,9 +145,9 @@ class AssessUtils
         }
       }
       if ($thisIPok) {
-				$isoneIPok = true;
-				break;
-			}
+            $isoneIPok = true;
+            break;
+        }
     }
     return $isoneIPok;
   }

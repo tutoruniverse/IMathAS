@@ -39,7 +39,13 @@ function updateBlocksArray(&$items,$tochg,$sets) {
 		if (is_array($item)) {
 			if (in_array($item['id'], $tochg)) {
 				foreach ($sets as $k=>$v) {
-					if (is_array($v)) {
+					if ($k == 'SH') {
+                        for ($i=0;$i<3;$i++) {
+                            if ($v[$i] !== null) {
+                                $items[$n][$k][$i] = $v[$i];
+                            }
+                        }
+                    } else if (is_array($v)) {
                         $items[$n][$k] = []; // reset first before adding
 						foreach ($v as $kk=>$vv) {
 							$items[$n][$k][$kk] = $vv;
@@ -84,7 +90,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		$sets['avail'] = intval($_POST['avail']);
 	}
 	if (isset($_POST['chgshowhide']) || isset($_POST['chgavailbeh']) || isset($_POST['chggreyout'])) {
-		$sets['SH'] = array();
+		$sets['SH'] = array(null,null,null);
 	}
 	if (isset($_POST['chgshowhide'])) {
 		$sets['SH'][0] = $_POST['showhide'];
@@ -95,16 +101,14 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 	if (isset($_POST['chggreyout'])) {
 		$sets['SH'][2] = $_POST['contentbehavior'];
 	}
-    if (isset($_POST['chgshowhide']) || isset($_POST['chgavailbeh']) || isset($_POST['chggreyout'])) {
-		$sets['SH'] = implode('', $sets['SH']);
-	}
     if (isset($_POST['chginnav'])) {
 		$sets['innav'] = !empty($_POST['innav']) ? 1 : 0;
 	}
 	if (isset($_POST['chggrouplimit'])) {
-		$grouplimit = array();
-		if ($_POST['grouplimit']!='none') {
-			$grouplimit[] = $_POST['grouplimit'];
+		if (!empty($_POST['grouplimit']) && is_array($_POST['grouplimit'])) {
+			$grouplimit = $_POST['grouplimit'];
+		} else {
+			$grouplimit = array();
 		}
 		$sets['grouplimit'] = $grouplimit;
 	}
@@ -140,11 +144,12 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 	$existBlocksLabels = array();
 	buildExistBlocksArray($items,'0');
 
-	$page_sectionlistval = array("none");
-	$page_sectionlistlabel = array(_("No restriction"));
+	$page_sectionlistval = [];//array("none");
+	$page_sectionlistlabel = [];//array("No restriction");
 	$stm = $DBH->prepare("SELECT DISTINCT section FROM imas_students WHERE courseid=:courseid ORDER BY section");
 	$stm->execute(array(':courseid'=>$cid));
 	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		if ($row[0] === null || trim($row[0]) === '') { continue; }
 		$page_sectionlistval[] = 's-'.$row[0];
 		$page_sectionlistlabel[] = 'Section '.$row[0];
 	}
@@ -167,6 +172,7 @@ function init() {
 	attachColorPicker(inp2);
 	var inp3 = document.getElementById(\"bi\");
 	attachColorPicker(inp3);
+	$('#titlebg,#titletxt,#bi').on('input', updateColors);
 }
 var imgBase = '$staticroot/javascript/cpimages';
 $(document).ready(init);
@@ -174,11 +180,56 @@ $(function() {
 	$('.chgbox').change(function() {
 			$(this).parents('tr').toggleClass('odd');
 	});
-})
+});
+function updateColors(e) {
+	var id = e.target.id;
+	var haserr = false;
+	if (!e.target.value.match(/#[A-Fa-f0-9]{6}/)) {
+		e.target.setAttribute('aria-invalid', true);
+		e.target.setAttribute('aria-describedby', e.target.id + 'err');
+		document.getElementById(e.target.id + 'err').textContent = 'Invalid format';
+		haserr = true;
+	} else {
+		if (id=='titlebg' || id=='titletxt') {
+			if (!checkContrast(document.getElementById('titletxt').value, document.getElementById('titlebg').value)) {
+				document.getElementById('titletxt').setAttribute('aria-invalid', true);
+				document.getElementById('titletxt').setAttribute('aria-describedby', 'titlecolorerr');
+				document.getElementById('titlebg').setAttribute('aria-invalid', true);
+				document.getElementById('titlebg').setAttribute('aria-describedby', 'titlecolorerr');
+				document.getElementById('titlecolorerr').textContent = 'Insufficient contrast';
+				haserr = true;
+			} else {
+				document.getElementById('titlebg').removeAttribute('aria-describedby');
+				document.getElementById('titletxt').removeAttribute('aria-describedby');
+				document.getElementById('titletxt').setAttribute('aria-invalid', false);
+				document.getElementById('titlebg').setAttribute('aria-invalid', false);
+				document.getElementById('titlecolorerr').textContent = '';
+			}
+		}
+	}
+		
+	if (!haserr) {
+		e.target.setAttribute('aria-invalid', false);
+		e.target.removeAttribute('aria-describedby');
+		document.getElementById(e.target.id + 'err').textContent = '';
+	}
+	if (id=='titlebg') {
+		document.getElementById('ex1').style.backgroundColor = e.target.value;
+	}
+	if (id=='titletxt') {
+		document.getElementById('ex1').style.color = e.target.value;
+	}
+	if (id=='bi') {
+		document.getElementById('ex2').style.backgroundColor = e.target.value;
+	}
+	document.getElementById('colorcustom').checked = true;
+}
 </script>";
 $placeinhead .= "<style type=\"text/css\">img {	behavior:	 url(\"$imasroot/javascript/pngbehavior.htc\");} table td {border-bottom: 1px solid #ccf;}</style>";
-$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/colorpicker.js\"></script>";
+$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/colorpicker.js?v=111825\"></script>";
+$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/contrastcheck.js\"></script>";
 $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/DatePicker.js\"></script>";
+$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/multiselect-dropdown.js\"></script>";
 
 /******* begin html output ********/
 require_once "../header.php";
@@ -198,12 +249,12 @@ Check: <a href="#" onclick="return chkAllNone('qform','checked[]',true)"><?php e
 <ul class="nomark">
 <?php
 foreach ($existblocks as $pos=>$name) {
-	echo '<li><input type="checkbox" name="checked[]" value="' . Sanitize::encodeStringForDisplay($existblockids[$pos]) . '"/>';
+	echo '<li><label><input type="checkbox" name="checked[]" value="' . Sanitize::encodeStringForDisplay($existblockids[$pos]) . '"/>';
 	$n = substr_count($pos,"-")-1;
 	for ($i=0;$i<$n;$i++) {
 		echo '&nbsp;&nbsp;';
 	}
-	echo Sanitize::encodeStringForDisplay($name) . '</li>';
+	echo Sanitize::encodeStringForDisplay($name) . '</label></li>';
 }
 ?>
 </ul>
@@ -214,19 +265,19 @@ foreach ($existblocks as $pos=>$name) {
 </thead>
 <tbody>
 	<tr>
-		<td><input type="checkbox" name="chgavail" class="chgbox"/></td>
-		<td class="r">Show:</td>
-		<td>
-			<input type=radio name="avail" value="0"/>Hide<br/>
-			<input type=radio name="avail" value="1"/>Show by Dates<br/>
-			<input type=radio name="avail" value="2" checked="checked"/>Show Always
+		<td><input type="checkbox" name="chgavail" class="chgbox" aria-labelledby="lavail"/></td>
+		<td class="r" id="lavail">Show:</td>
+		<td role=radiogroup aria-labelledby="lavail">
+			<label><input type=radio name="avail" value="0"/>Hide</label><br/>
+			<label><input type=radio name="avail" value="1"/>Show by Dates</label><br/>
+			<label><input type=radio name="avail" value="2" checked="checked"/>Show Always</label>
 		</td>
 	</tr>
 	<tr>
-		<td><input type="checkbox" name="chgavailbeh" class="chgbox"/></td>
-		<td class="r">When available:</td>
+		<td><input type="checkbox" name="chgavailbeh" class="chgbox" aria-labelledby="lavailbeh"/></td>
+		<td class="r" id="lavailbeh">When available:</td>
 		<td>
-			<select name="availbeh">
+			<select name="availbeh" aria-labelledby="lavailbeh">
 			<option value="O" selected="selected">Show Expanded</option>
 			<option value="C">Show Collapsed</option>
 			<option value="F">Show as Folder</option>
@@ -235,10 +286,10 @@ foreach ($existblocks as $pos=>$name) {
 		</td>
 	</tr>
 	<tr>
-		<td><input type="checkbox" name="chgshowhide" class="chgbox"/></td>
-		<td class="r">When not available:</td>
+		<td><input type="checkbox" name="chgshowhide" class="chgbox" aria-labelledby="lshowhide"/></td>
+		<td class="r" id="lshowhide">When not available:</td>
 		<td>
-			<select name="showhide">
+			<select name="showhide" aria-labelledby="lshowhide">
 			<option value="H" selected="selected">Hide from Students</option>
 			<option value="S">Show Collapsed/as folder</option>
 			</select>
@@ -246,8 +297,8 @@ foreach ($existblocks as $pos=>$name) {
 	</tr>
 
 	<tr>
-		<td><input type="checkbox" name="chggreyout" class="chgbox"/></td>
-		<td class="r">For assignments within this block,<br/>when they are not available:</td>
+		<td><input type="checkbox" name="chggreyout" class="chgbox" aria-labelledby="lgreyout"/></td>
+		<td class="r" id="lgreyout">For assignments within this block,<br/>when they are not available:</td>
 		<td>
 		<?php
 			writeHtmlSelect('contentbehavior',array(0,1,2,3),array(
@@ -255,37 +306,37 @@ foreach ($existblocks as $pos=>$name) {
 				_('Show greyed out before start date, hide after end date'),
 				_('Hide before start date, show greyed out after end date'),
 				_('Show greyed out before and after'),
-			), 0);
+			), 0,null,null,'aria-labelledby="lgreyout"');
 		?>
 		</td>
 	</tr>
 	<tr>
-		<td><input type="checkbox" name="chggrouplimit" class="chgbox"/></td>
-		<td class="r">Restrict access to students in section:</td>
+		<td><input type="checkbox" name="chggrouplimit" class="chgbox" aria-labelledby="lgrouplimit"/></td>
+		<td class="r" id="lgrouplimit">Restrict access to students in section:</td>
 		<td>
-			<?php writeHtmlSelect('grouplimit',$page_sectionlistval,$page_sectionlistlabel,0); ?>
+			<?php writeHtmlSelect('grouplimit[]',$page_sectionlistval,$page_sectionlistlabel,0,null,null,'aria-labelledby="lgrouplimit" multiple'); ?>
 		</td>
 	</tr>
     <tr>
-		<td><input type="checkbox" name="chginnav" class="chgbox"/></td>
-		<td class="r">Quick Links:</td>
+		<td><input type="checkbox" name="chginnav" class="chgbox" aria-labelledby="linnav"/></td>
+		<td class="r" id="linnav">Quick Links:</td>
 		<td>
-			<input type=checkbox name=innav value=1 /> List block in student left navigation
+			<label><input type=checkbox name=innav value=1 /> List block in student left navigation</label>
 		</td>
 	</tr>
 	<tr>
-		<td><input type="checkbox" name="chgcolors" class="chgbox"/></td>
-		<td class="r">Block colors:</td>
+		<td><input type="checkbox" name="chgcolors" class="chgbox" aria-labelledby="lchgcolors"/></td>
+		<td class="r" id="lchgcolors">Block colors:</td>
 		<td>
-			<input type=radio name="colors" value="def" checked="checked"/>Use defaults<br/>
-			<input type=radio name="colors" value="copy"/>Copy colors from block:
+			<label><input type=radio name="colors" value="def" checked="checked"/>Use defaults</label><br/>
+			<label><input type=radio name="colors" value="copy"/>Copy colors from block</label>:
 
 			<?php
-			writeHtmlSelect("copycolors",$existBlocksVals,$existBlocksLabels);
+			writeHtmlSelect("copycolors",$existBlocksVals,$existBlocksLabels,null,null,null,'aria-label="block to copy colors from"');
 			?>
 
 			<br />&nbsp;<br/>
-			<input type=radio name="colors" id="colorcustom" value="custom"/>Use custom:
+			<label><input type=radio name="colors" id="colorcustom" value="custom"/>Use custom:
 			<table style="display: inline; border-collapse: collapse; margin-left: 15px;" role="presentation">
 				<tr>
 					<td id="ex1" style="border: 1px solid #000;background-color:#DDDDFF;color:#000000;">Sample Title Cell</td>
@@ -297,18 +348,21 @@ foreach ($existblocks as $pos=>$name) {
 			<br/>
 			<table style=" margin-left: 30px;" role="presentation">
 				<tr>
-					<td>Title Background: </td>
+					<td><label for="titlebg">Title Background:</label> </td>
 					<td><input type=text id="titlebg" name="titlebg" value="#DDDDFF" />
+					<span id=titlebgerr class=noticetext></span>
 					</td>
 				</tr>
 				<tr>
-					<td>Title Text: </td>
+					<td><label for="titletxt">Title Text:</label> </td>
 					<td><input type=text id="titletxt" name="titletxt" value="#000000" />
+					<span id=titletxterr class=noticetext></span> <span id=titlecolorerr class=noticetext></span>
 					</td>
 				</tr>
 				<tr>
-					<td>Items Background: </td>
+					<td><label for="bi">Items Background:</label> </td>
 					<td><input type=text id="bi" name="bi" value="#EEEEFF" />
+					<span id=bierr class=noticetext></span>
 					</td>
 				</tr>
 			</table>
@@ -321,5 +375,7 @@ foreach ($existblocks as $pos=>$name) {
 </form>
 <?php
 }
+echo '<script>MultiselectDropdown({style: {width: "400px"}, placeholder: "'._('No restriction').'"});</script>';
+
 require_once "../footer.php";
 ?>

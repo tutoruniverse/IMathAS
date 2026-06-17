@@ -9,9 +9,13 @@ if (isset($CFG['hooks']['delete'])) {
 
 function delitembyid($itemid) {
 	global $DBH, $cid;
-	$stm = $DBH->prepare("SELECT itemtype,typeid FROM imas_items WHERE id=:id");
-	$stm->execute(array(':id'=>$itemid));
+	$stm = $DBH->prepare("SELECT itemtype,typeid FROM imas_items WHERE id=:id AND courseid=:courseid");
+	$stm->execute(array(':id'=>$itemid, ':courseid'=>$cid));
 	list($itemtype,$typeid) = $stm->fetch(PDO::FETCH_NUM);
+	if (empty($itemtype)) {
+		echo 'Invalid ID';
+		exit;
+	}
 	$typeid = Sanitize::simpleString($typeid);
 
 	if ($itemtype == "InlineText") {
@@ -69,7 +73,7 @@ function delitembyid($itemid) {
 				$stm = $DBH->prepare("DELETE FROM imas_linked_files WHERE id=?");
 				$stm->execute(array($fileid));
 			}
-		} else if (strpos($text, 'file:'.$cid.'/') === 0) { //delete file if not used
+		} else if (strpos($text, 'file:'.$cid.'/') === 0 && empty($CFG['GEN']['skip_old_linked_delete'])) { //delete file if not used
 			$stm = $DBH->prepare("SELECT id FROM imas_linkedtext WHERE text=:text");
 			$stm->execute(array(':text'=>$text));
 			if ($stm->rowCount()==1) {
@@ -181,6 +185,9 @@ function delitembyid($itemid) {
         
         $stm = $DBH->prepare("DELETE FROM imas_lti_placements WHERE typeid=:assessmentid AND placementtype='assess'");
 		$stm->execute(array(':assessmentid'=>$typeid));
+
+		$stm = $DBH->prepare("UPDATE imas_students SET lockaid=0 WHERE courseid=? and lockaid=?");
+        $stm->execute([$cid, $typeid]);
 
 	} else if ($itemtype == "Drill") {
 		$stm = $DBH->prepare("SELECT name FROM imas_drillassess WHERE id=:id");

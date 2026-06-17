@@ -24,10 +24,17 @@ class LTI_Service_Connector {
         if (isset($this->access_tokens[$scope_key])) {
           return $this->access_tokens[$scope_key];
         }
+        
         list($cached_token,$failures) = $this->db->get_token($this->registration->get_id(), $scope_key);
+
+        if (substr($cached_token, 0, 6) === 'failed') {
+          // failed to get token, and not time to try again yet
+          return false;
+        }
         if ($cached_token !== false) {
           return $cached_token;
         }
+        
 
         // Build up JWT to exchange for an auth token
         $client_id = $this->registration->get_client_id();
@@ -43,6 +50,7 @@ class LTI_Service_Connector {
         // Get tool private key from our JWKS
         $private_key = $this->db->get_tool_private_key();
 
+
         // Sign the JWT with our private key (given by the platform on registration)
         $jwt = JWT::encode($jwt_claim, $private_key['privatekey'], 'RS256', $private_key['kid']);
 
@@ -57,6 +65,7 @@ class LTI_Service_Connector {
         // Make request to get auth token
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->registration->get_auth_token_url());
+        curl_setopt($ch, CURLOPT_USERAGENT, \Sanitize::simpleASCII($GLOBALS['installname'] ?? 'IMathAS'));
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($auth_request));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -66,6 +75,7 @@ class LTI_Service_Connector {
           curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         }
         $resp = curl_exec($ch);
+        $error = curl_error($ch);
         $token_data = json_decode($resp, true);
         curl_close ($ch);
 
@@ -75,10 +85,15 @@ class LTI_Service_Connector {
 
           return $this->access_tokens[$scope_key] = $token_data['access_token'];
         } else {
+          $failures++;
+          if ($failures == 2) {
+            // log failure response
+            $this->db->record_log('Grade token failure t2 for platform '. $this->registration->get_id() . ', response: ' . $resp . ', error: ' . $error);
+          }
           // record the failure in the token store
           $token_data = [
             'access_token' => 'failed'.$failures,
-            'expires_in' => min(pow(3, $failures-1), 24*60*60)
+            'expires_in' => min(300*$failures*$failures, 24*60*60)
           ];
           $this->db->record_token($this->registration->get_id(), $scope_key, $token_data);
           return false;
@@ -87,6 +102,7 @@ class LTI_Service_Connector {
 
     public function make_service_request($scopes, $method, $url, $body = null, $content_type = 'application/json', $accept = 'application/json') {
         $token = $this->get_access_token($scopes);
+
         if ($token === false) {
           return false;
         }
@@ -96,6 +112,7 @@ class LTI_Service_Connector {
             'Accept:' . $accept,
         ];
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_USERAGENT, \Sanitize::simpleASCII($GLOBALS['installname'] ?? 'IMathAS'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, 1);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);

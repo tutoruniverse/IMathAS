@@ -198,6 +198,8 @@ var AMsymbols = [
 
 //miscellaneous symbols
 {input:"int",  tag:"mo", output:"\u222B", tex:null, ttype:CONST},
+{input:"iint",  tag:"mo", output:"\u222C", tex:null, ttype:CONST},
+{input:"iiint",  tag:"mo", output:"\u222D", tex:null, ttype:CONST},
 {input:"dx",   tag:"mi", output:"{:d x:}", tex:null, ttype:DEFINITION},
 {input:"dy",   tag:"mi", output:"{:d y:}", tex:null, ttype:DEFINITION},
 {input:"dz",   tag:"mi", output:"{:d z:}", tex:null, ttype:DEFINITION},
@@ -255,6 +257,9 @@ var AMsymbols = [
 {input:"arcsin",  tag:"mo", output:"arcsin", tex:null, ttype:UNARY, func:true},
 {input:"arccos",  tag:"mo", output:"arccos", tex:null, ttype:UNARY, func:true},
 {input:"arctan",  tag:"mo", output:"arctan", tex:null, ttype:UNARY, func:true},
+{input:"arcsec",  tag:"mo", tex:"mathrm{arcsec}", ttype:UNARY, func:true},
+{input:"arccsc",  tag:"mo", tex:"mathrm{arccsc}", ttype:UNARY, func:true},
+{input:"arccot",  tag:"mo", tex:"mathrm{arccot}", ttype:UNARY, func:true},
 {input:"sinh", tag:"mo", output:"sinh", tex:null, ttype:UNARY, func:true},
 {input:"cosh", tag:"mo", output:"cosh", tex:null, ttype:UNARY, func:true},
 {input:"tanh", tag:"mo", output:"tanh", tex:null, ttype:UNARY, func:true},

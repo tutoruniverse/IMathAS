@@ -18,7 +18,13 @@ if (!isset($_GET['launchid'])) {
 }
 
 $db = new Imathas_LTI_Database($DBH);
-$launch = LTI\LTI_Message_Launch::from_cache($_GET['launchid'], $db);
+try {
+    $launch = LTI\LTI_Message_Launch::from_cache(Sanitize::simpleASCII($_GET['launchid']), $db);
+} catch (\IMSGlobal\LTI\LTI_Exception $e) {
+  echo _('Error.') . ' ';
+  echo _('Go back and open from the LMS again. If you continue to get this error, ensure you have 3rd party cookies enabled. If it is an option, try opening in a new tab/window.');
+  exit;
+}
 $contextid = $launch->get_platform_context_id();
 $platform_id = $launch->get_platform_id();
 $resource_link = $launch->get_resource_link();
@@ -76,7 +82,7 @@ if (function_exists('lti_ltimenu_coursemenu')) {
   lti_ltimenu_coursemenu();
 }
 if (isset($line['date_by_lti']) && $line['date_by_lti']===0) {
-    echo '<li><a href="'.$imasroot.'/course/masschgdates?cid='.$cid.'">'._('Mass Change Dates').'</a></li>';
+    echo '<li><a href="'.$imasroot.'/course/masschgdates.php?cid='.$cid.'">'._('Mass Change Dates').'</a></li>';
 }
 echo '<li><a href="'.$imasroot.'/admin/forms.php?action=modify&cid='.$cid.'&id='.$cid.'">'._('Course Settings').'</a></li>';
 echo '<li><a href="'.$imasroot.'/course/copyitems.php?cid='.$cid.'">'._('Course Items: Copy').'</a></li>';

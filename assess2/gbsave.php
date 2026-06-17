@@ -25,8 +25,6 @@ require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 require_once '../includes/TeacherAuditLog.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 if (!$isActualTeacher && !$istutor) {
   echo '{"error": "no_access"}';
   exit;
@@ -78,6 +76,11 @@ if (!$assess_record->hasRecord()) {
 
 $changes = $assess_record->setGbScoreOverrides($scores);
 $assess_record->setGbFeedbacks($feedbacks);
+if (isset($_POST['releasescore'])) {
+  if ($assess_record->setManuallyReleased($_POST['releasescore']==1)) {
+    $changes['manually_released'] = ($_POST['releasescore']==1)?1:0;
+  }
+}
 $assess_record->saveRecord();
 
 $out = $assess_record->getGbScore();
@@ -98,8 +101,5 @@ if (!empty($changes)) {
 
 // update LTI grade
 $assess_record->updateLTIscore(true, false);
-
-//prep date display
-prepDateDisp($assessInfoOut);
 
 echo json_encode($out, JSON_INVALID_UTF8_IGNORE);

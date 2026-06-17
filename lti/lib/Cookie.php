@@ -15,7 +15,8 @@ class Cookie {
 
     public function set_cookie($name, $value, $exp = 3600, $options = []) {
         $cookie_options = [
-            'expires' => time() + $exp
+            'expires' => time() + $exp,
+            'httponly' => false  // so hybrid redirect can see if cookie is set
         ];
 
         // SameSite none and secure will be required for tools to work inside iframes
@@ -24,22 +25,13 @@ class Cookie {
             'secure' => true
         ];
 
-        if (PHP_VERSION_ID < 70300) {
-          if (!function_exists('disallowsSameSiteNone') || !disallowsSameSiteNone()) {
-        		// hack to add samesite
-        		setcookie($name, $value,
-              $cookie_options['expires'],
-              '/; samesite=none');
-          }
-          // Set a second fallback cookie in the event that "SameSite" is not supported
-          setcookie("LEGACY_" . $name, $value, $cookie_options['expires']);
-        } else {
-          if (!function_exists('disallowsSameSiteNone') || !disallowsSameSiteNone()) {
+
+        if (!function_exists('disallowsSameSiteNone') || !disallowsSameSiteNone()) {
             setcookie($name, $value, array_merge($cookie_options, $same_site_options, $options));
-          }
-          // Set a second fallback cookie in the event that "SameSite" is not supported
-          setcookie("LEGACY_" . $name, $value, array_merge($cookie_options, $options));
         }
+        // Set a second fallback cookie in the event that "SameSite" is not supported
+        setcookie("LEGACY_" . $name, $value, array_merge($cookie_options, $options));
+        
 
         return $this;
     }

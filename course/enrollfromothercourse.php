@@ -30,6 +30,21 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 			}
 		}
 		if (count($todo)>0) {
+			// check students are actually in teacher's course
+			$todolist = implode(',', $todo);
+			$stm = $DBH->prepare("SELECT DISTINCT istu.userid FROM imas_students AS istu JOIN 
+				imas_teachers AS it ON istu.courseid=it.courseid WHERE
+				it.userid=? AND istu.userid IN ($todolist)");
+			$stm->execute([$userid]);
+			$todo = [];
+			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$todo[] = intval($row[0]);
+			}
+			if (count($todo)==0) {
+				echo 'No valid students';
+				exit;
+			}
+			//check they're not already enrolled
 			$todolist = implode(',', $todo);
 			$dontdo = array();
 			$stm = $DBH->prepare("SELECT userid FROM imas_students WHERE courseid=:courseid AND userid IN ($todolist)");
@@ -58,6 +73,13 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 	} else if (isset($_POST['sourcecourse'])) {
 		//know source course
 		$source = intval($_POST['sourcecourse']);
+		$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=? AND userid=?");
+		$stm->execute([$source, $userid]);
+		$check = $stm->fetchColumn(0);
+		if ($check === false) {
+			echo 'Error - invalid course';
+			exit;
+		}
 		$resultStudentList = $DBH->prepare("SELECT iu.FirstName,iu.LastName,iu.id FROM imas_users AS iu JOIN imas_students ON iu.id=imas_students.userid WHERE imas_students.courseid=:courseid ORDER BY iu.LastName,iu.FirstName");
 		$resultStudentList->execute(array(':courseid'=>$source));
 
@@ -91,9 +113,9 @@ if (!empty($overwriteBody)) {
 		echo '<p>Select a course to choose students from:</p><p>';
 		$cnt = 0;
 		while ($line=$resultCourseList->fetch(PDO::FETCH_ASSOC)) {
-			echo '<input type="radio" name="sourcecourse" value="' . Sanitize::encodeStringForDisplay($line['id']) . '" ';
+			echo '<label><input type="radio" name="sourcecourse" value="' . Sanitize::encodeStringForDisplay($line['id']) . '" ';
 			if ($cnt==0) {echo 'checked="checked"';}
-			echo '/> ' . Sanitize::encodeStringForDisplay($line['name']) . '<br/>';
+			echo '/> ' . Sanitize::encodeStringForDisplay($line['name']) . '</label><br/>';
 			$cnt++;
 		}
 		echo '<input type="submit" value="Choose Students" />';
@@ -104,11 +126,11 @@ if (!empty($overwriteBody)) {
 		echo 'Check: <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',true)">All</a> <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',false)">None</a>';
 		echo '<p>';
 		while ($line=$resultStudentList->fetch(PDO::FETCH_ASSOC)) {
-			echo '<input type=checkbox name="checked[]" value="' . Sanitize::encodeStringForDisplay($line['id']) . '"/>';
-			printf('<span class="pii-full-name">%s, %s</span><br/>', Sanitize::encodeStringForDisplay($line['LastName']),
+			echo '<label><input type=checkbox name="checked[]" value="' . Sanitize::encodeStringForDisplay($line['id']) . '"/>';
+			printf('<span class="pii-full-name">%s, %s</span></label><br/>', Sanitize::encodeStringForDisplay($line['LastName']),
                 Sanitize::encodeStringForDisplay($line['FirstName']));
 		}
-		echo '</p><p>Assign to section: <input type="text" name="section" />  (optional)</p>';
+		echo '</p><p><label>Assign to section: <input type="text" name="section" />  (optional)</label></p>';
 		echo '</p><p><input type="submit" value="Enroll These Students" /></p>';
 		echo '</form>';
 	}

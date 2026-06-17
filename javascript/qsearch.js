@@ -6,9 +6,12 @@ $(function() {
     }).on('input', function (e) {
         $("#searchwrap").toggleClass("hastext", e.currentTarget.value.trim() !== '');
     });
-    $("#addbar button").on('focus', function(e) {
-        if ($(this).closest("#addbar").hasClass("sr-only")) {
-            $(this).closest("#addbar").removeClass("sr-only").removeClass("footerbar");
+    var lastInputWasKeyboard = false;
+    window.addEventListener('keydown',function() { lastInputWasKeyboard = true; });
+    window.addEventListener('mousedown',function() { lastInputWasKeyboard = false; });
+    $("#addbar button").first().on('focus', function(e) {
+        if (lastInputWasKeyboard && !$(this).closest("#addbar").hasClass("nofooterbar")) {
+            $(this).closest("#addbar").removeClass("sr-only").removeClass("footerbar").addClass("nofooterbar");
         }
     });
 });
@@ -31,7 +34,8 @@ $(function() {
 function parseAdvSearch() {
     var search = document.getElementById("search").value;
     var matches;
-    if (matches = search.match(/(author|type|id|regex|used|avgtime|mine|unused|private|res|order|lastmod|avgscore|isrand)(:|=)("[^"]+?"|\w+)/g)) {
+    $("#search-intext-wrap").hide();
+    if (matches = search.match(/(author|type|id|regex|used|avgtime|mine|intext|unused|private|res|order|lastmod|created|avgscore|isrand|isbroken|wronglib)(:|=)("[^"]+?"|\w+)/g)) {
         var pts;
         for (var i=0;i<matches.length;i++) {
             pts = matches[i].split(/(:|=)/);
@@ -54,10 +58,21 @@ function parseAdvSearch() {
                 var avgt = pts[2].split(/,/);
                 $("#search-lastmod-min").val(avgt[0]);
                 $("#search-lastmod-max").val(avgt[1]);
+            } else if (pts[0] == 'created') {
+                var avgt = pts[2].split(/,/);
+                $("#search-created-min").val(avgt[0]);
+                $("#search-created-max").val(avgt[1]);
             } else if (pts[0] == 'mine') {
                 $("#search-mine").prop('checked', pts[2] == 1)
+                if (pts[2] == 1) {
+                    $("#search-intext-wrap").show();
+                }
             } else if (pts[0] == 'unused') {
                 $("#search-unused").prop('checked', pts[2] == 1)
+            } else if (pts[0] == 'private') {
+                $("#search-nopriv").prop('checked', pts[2] == 0);
+            } else if (pts[0] == 'public') {
+                $("#search-nopub").prop('checked', pts[2] == 0);
             } else if (pts[0] == 'isrand') {
                 $("#search-nounrand").prop('checked', pts[2] == 1)
             } else if (pts[0] == 'res') {
@@ -67,10 +82,16 @@ function parseAdvSearch() {
                 }
             } else if (pts[0] == 'order') {
                 $("#search-newest").prop('checked', pts[2] == 'newest');
+            } else if (pts[0] == 'isbroken') {
+                $("#search-broken").prop('checked', pts[2] == 1);
+            } else if (pts[0] == 'wronglib') {
+                $("#search-wronglib").prop('checked', pts[2] == 1);
+            } else if (pts[0] == 'intext') {
+                $("#search-intext").prop('checked', pts[2] == 1);
             }
         }
     }
-    search = search.replace(/(author|type|id|regex|used|avgtime|mine|unused|private|res|order|lastmod|avgscore|isrand)(:|=)("[^"]+?"|\w+)/g, '');
+    search = search.replace(/(author|type|id|regex|used|avgtime|mine|intext|unused|private|public|res|order|lastmod|created|avgscore|isrand|isbroken|wronglib)(:|=)("[^"]+?"|\w+)/g, '');
     var words = search.split(/\s+/);
     var haswords = [];
     var excwords = [];
@@ -124,8 +145,18 @@ function doAdvSearch() {
     if (lastmodmin != '' || lastmodmax != '') {
         outstr += 'lastmod:"' + lastmodmin + ',' + lastmodmax + '" ';
     }
+    if (document.getElementById("search-created-min")) {
+        var createdmin = $("#search-created-min").val();
+        var createdmax = $("#search-created-max").val();
+        if (createdmin != '' || createdmax != '') {
+            outstr += 'created:"' + createdmin + ',' + createdmax + '" ';
+        }
+    }
     if ($("#search-mine").is(':checked')) {
         outstr += 'mine:1 ';
+    }
+    if ($("#search-intext").is(':checked') && $("#search-mine").is(':checked')) {
+        outstr += 'intext:1 ';
     }
     if ($("#search-unused").is(':checked')) {
         outstr += 'unused:1 ';
@@ -135,6 +166,18 @@ function doAdvSearch() {
     }
     if ($("#search-nounrand").is(':checked')) {
         outstr += 'isrand:1 ';
+    }
+    if ($("#search-nopriv").is(':checked')) {
+        outstr += 'private:0 ';
+    }
+    if ($("#search-nopub").is(':checked')) {
+        outstr += 'public:0 ';
+    }
+    if ($("#search-broken").is(':checked')) {
+        outstr += 'isbroken:1 ';
+    }
+    if ($("#search-wronglib").is(':checked')) {
+        outstr += 'wronglib:1 ';
     }
     var helps = [];
     $("input[id^=search-res-]:checked").each(function(i,el) {
@@ -169,6 +212,7 @@ function doQuestionSearch(offset) {
         return;
     }
     $("#searchspinner").show();
+    $("#statusmsg").text(_('Searching'));
     qsearchintransit = true;
     $.ajax({
         url: qsearchaddr,
@@ -185,6 +229,7 @@ function doQuestionSearch(offset) {
         document.getElementById("myTable").focus();
         document.getElementById("fullqsearchwrap").scrollIntoView();
         $("#searchspinner").hide();
+        $("#statusmsg").text(_('Done'));
         qsearchintransit = false;
     }).fail(function() {
         $("#searcherror").show();
@@ -211,12 +256,28 @@ function getExistingQuestions(qlist,flattened) {
         }
     }
 }
-var wronglibicon = '<span class="wronglibicon" title="' + _('Marked as in wrong library') + '" ' + 
-    'aria-label="' + _('Marked as in wrong library') + '">' + 
-    '<svg viewBox="0 0 24 24" width="16" height="16" stroke="#f66" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18.1 12.1C19.7 9.1 19 5.3 16.4 3.2 13.8 1 10 1 7.5 3.2 4.9 5.4 4.2 9.1 5.7 12.1l6.2 10.6z M9.5 11.5 14.5 6.5 M9.5 6.5 14.5 11.5"></path></svg>' +
+var wronglibicon = '<span class="wronglibicon" title="' + _('Marked as in wrong library') + '">' + 
+    '<svg role=img viewBox="0 0 24 24" width="16" height="16" stroke="#f66" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><title>' + _('Marked as in wrong library') + '</title><path d="M18.1 12.1C19.7 9.1 19 5.3 16.4 3.2 13.8 1 10 1 7.5 3.2 4.9 5.4 4.2 9.1 5.7 12.1l6.2 10.6z M9.5 11.5 14.5 6.5 M9.5 6.5 14.5 11.5"></path></svg>' +
+    '</span> ';
+var a11yissueicon = '<span class="a11yissueicon" title="' + _('Potentialy accessibility issue') + '">' + 
+    '<svg role=img viewBox="0 0 16 16" stroke-width="1" fill="none" stroke-linecap="round"><title>'+_('Potentialy accessibility issue')+'</title><circle stroke="black" cx="8" cy="8" r="7"/><circle fill="black" cx="8" cy="4" r="1"/><path stroke="black" d="M4 5 L8 6 L12 5 M7.5 6 L7.75 8.5 L6.5 13 M8.5 6 L8.25 8.5 L9.5 13"/><path fill="orange" d="M12 8 L8 16 L16 16 z"/><path stroke="black" d="M12 10.5v3 M12 15v.1"/></svg>' +
+    '</span> ';
+var a11ygoodicon = '<span class="a11ygoodicon" title="' + _('Positive accessibility reviews') + '">' + 
+    '<svg role=img viewBox="0 0 16 16" stroke-width="1" fill="none" stroke-linecap="round"><title>'+ _('Positive accessibility reviews')+'</title><circle stroke="black" cx="8" cy="8" r="7"/><circle fill="black" cx="8" cy="4" r="1"/><path stroke="black" d="M4 5 L8 6 L12 5 M7.5 6 L7.75 8.5 L6.5 13 M8.5 6 L8.25 8.5 L9.5 13"/></svg>' +
     '</span> ';
 var wrongLibState = {};
 function displayQuestionList(results) {
+    if (typeof results === 'string') {  // error message
+        $("#searcherror").html(results).show();
+        $("#search").focus();
+        return;
+    }
+    let searchcontext = 'manageq';
+    if (qsearchaddr.match(/aid=/)) {
+        searchcontext = 'addq';
+    } else if (qsearchaddr.match(/did=/)) {
+        searchcontext = 'adddrill';
+    }
     var searchtype = 'libs';
     var colcnt = 9;
     var thead = '<thead><tr>'
@@ -227,8 +288,14 @@ function displayQuestionList(results) {
         + '<th>'+_('ID')+'</th>'
         + '<th>'+_('Type')+'</th>'
         + '<th>'+_('Times Used')+'</th>'
-        + '<th>'+_('Avg Time')+'</th>'
+        + (searchcontext == 'manageq' ? '<th>'+_('Last Mod')+'</th>' :
+            '<th>'+_('Avg Time')+'</th>')
+        + (curcid == 'admin' ? '<th>'+_('Owner')+'</th>' : '')
         + '</tr></thead>';
+    var sortinit = [false,'S',false,'S','N','S','N', searchcontext == 'manageq' ? 'D' : 'N'];
+    if (curcid == 'admin') {
+        sortinit.push('S');
+    }
     var tbody = '<tbody>';
     var i,q,row,features,descrclass,descricon;
     var lastlib = -1;
@@ -282,18 +349,18 @@ function displayQuestionList(results) {
                 'title="'+_('Written example')+'" />';
         }
         if (q['mine'] == 1) {
-            features += '<span title="' + _('My Question') + '" aria-label="' + _('My Question') + '">' + 
-                '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' +
+            features += '<span title="' + _('My Question') + '">' + 
+                '<svg role=img viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><title>' + _('My Question') + '</title><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' +
                 '</span>';
         }
         if (q['userights'] == 0) {
-            features += '<span title="' + _('Private') + '" aria-label="' + _('Private') + '">' + 
-                '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' +
+            features += '<span title="' + _('Private') + '">' + 
+                '<svg role=img viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><title>' + _('Private') + '</title><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' +
                 '</span>';
         }
         if (q['isrand'] == 0) {
-            features += '<span title="' + _('Not Randomized') + '" aria-label="' + _('Not Randomized') + '">' + 
-                '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><line stroke="#f00" x1="5" y1="1" x2="19" y2="23"></line></svg>' +
+            features += '<span title="' + _('Not Randomized') + '">' + 
+                '<svg role=img viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><title>' + _('Not Randomized') + '</title><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><line stroke="#f00" x1="5" y1="1" x2="19" y2="23"></line></svg>' +
                 '</span>';
         }
         descrclass = '';
@@ -308,6 +375,8 @@ function displayQuestionList(results) {
             descricon = wronglibicon;
         } else if (existingq.indexOf(parseInt(q['id'])) !== -1) {
             descrclass = ' class="qinassess"';
+        } else if (q['userights'] == 0) {
+            descrclass = ' class="qisprivate"';
         }
         // build action dropdown
 
@@ -318,26 +387,40 @@ function displayQuestionList(results) {
             "&cid=" + curcid +
             '&from=addq2';
         var editqaddr = 'moddataset.php?id=' + q['id'] +
-            "&aid=" + curaid +
+            (curaid > 0 ? ("&aid=" + curaid) : "") +
             "&cid=" + curcid +
-            '&from=addq2&frompot=1';
+            (curaid > 0 ? ('&from=addq2&frompot=1') : "");
 
         var actions2 = '<button role="button" class="dropdown-toggle arrow-down secondary" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">' + 
-            '<span class="sr-only">More</span></button><ul role="menu" class="dropdown-menu dropdown-menu-right">' + 
-            '<li><a href="' + addqaddr + '">' + _('Add') + '</a></li>' +
-            '<li><a href="' + editqaddr + '">' + (q['mine']==1 ? _('Edit') : _('View Code')) + '</a></li>' + 
-            '<li><a href="' + editqaddr + '&template=true">' + _('Template') + '</a></li>';
+            '<span class="sr-only">More</span></button><ul role="menu" class="dropdown-menu dropdown-menu-right">';
+        if (curaid > 0) { 
+            actions2 += '<li><a href="' + addqaddr + '">' + _('Add') + '</a></li>';
+        }
+        actions2 += '<li><a href="' + editqaddr + '&viewonly=1">' + _('View Code') + '</a></li>';
+        if (q['canedit']==1) {
+            actions2 += '<li><a href="' + editqaddr + '">' + _('Edit Code') + '</a></li>';
+        } 
+        actions2 += '<li><a href="' + editqaddr + '&template=true">' + _('Template (Copy)') + '</a></li>';
         if (results.type=='libs') {
             actions2 += '<li><a href="#" onclick="toggleWrongLibFlag('+i+'); return false;" class="wronglibtoggle">' + 
                 ((q['junkflag'] == 1) ? _('Un-mark as in wrong library') : _('Mark as in wrong library')) +
                 '</a></li>';
+        }
+        if (q['canedit']==1) {
+            actions2 += '<li class=divider></li>';
+            actions2 += '<li><a href="manageqset.php?cid=' + curcid + 
+                '&transfer=' + q['id'] + '">' + 
+                _('Transfer') + '</a></li>';
+            actions2 += '<li><a href="manageqset.php?cid=' + curcid + 
+                '&remove=' + q['id'] + '">' + 
+                _('Delete') + '</a></li>';
         }
         actions2 += '</ul>';
 
         // build row
         tbody += '<tr>'
             + '<td><input type=checkbox name="nchecked[]" id="qo'+i+'" value="'+q['id']+'"></td>'
-            + '<td' + descrclass + '>' + descricon + q['description'] + '</td>'
+            + '<td' + descrclass + '><label for="qo'+i+'" id="qd'+i+'">' + descricon + q['description'] + '</label></td>'
             + '<td><div class="dropdown splitbtn nowrap"><button type="button" class="secondary" onclick="previewq(\'selq\',\'qo'+i+'\','+q['id']+',true,false)">'
             + _('Preview') + '</button>'
             + actions2
@@ -345,21 +428,33 @@ function displayQuestionList(results) {
             + '<td class="nowrap">' + features + '</td>'
             + '<td>' + q['id'] + '</td>'
             + '<td>' + q['qtype'] + '</td>'
-            + '<td class="c">' + q['times'] + '</td>'
-            + '<td class="c">' + (q['meantimen'] > 3 ? 
+            + '<td class="c">' + q['times'] + '</td>';
+
+        if (searchcontext == 'manageq') {
+            tbody += '<td>' + q['lastmod'] + '</td>';
+        } else {
+            tbody += '<td class="c">' + (q['meantimen'] > 3 ? 
                 ('<span onmouseenter="tipshow(this,\''+_('Avg score on first try: ')+q['meanscore']+'%'
                 + '<br/>'+_('Avg time on first try: ') + q['meantime'] + _(' min') + 
                 '<br/>N='+q['meantimen']+'\')" onmouseleave="tipout()">' + q['meantime'] + '</span>') :
-                '') + '</td>'
-            + '</tr>';
+                '') + '</td>';
+        }
+        if (curcid == 'admin') {
+            tbody += '<td>' + q['ownershort'] + '</td>';
+        }
+        tbody += '</tr>';
     }
     tbody += '</tbody>';
     document.getElementById("myTable").innerHTML = thead + tbody;
     rendermathnode(document.getElementById("myTable"));
 
-    initSortTable('myTable',[false,'S',false,'S','N','S','N','N']);
+    initSortTable('myTable', sortinit);
+    $(".dropdown-toggle").dropdown();
     if (window.top == window.self && document.getElementById("addbar")) {
          $("#selq input[type=checkbox]").on("change", function () {
+             if (!$("#addbar").hasClass("nofooterbar")) {
+                $("#addbar").addClass("footerbar");
+             }
              $("#addbar.footerbar").toggleClass("sr-only", $("#selq input[type=checkbox]:checked").length == 0);
          });
     }
@@ -468,8 +563,10 @@ function previewq(formn,loc,qn,docheck,onlychk) {
     if (onlychk) {
        addr += '&onlychk=1';
     }
- 
-    previewpop = window.open(addr,'Testing','width='+(.4*screen.width)+',height='+(.8*screen.height)+',scrollbars=1,resizable=1,status=1,top=20,left='+(.6*screen.width-20));
+    let leftpos = screen.left ?? screen.availLeft ?? 0;
+    let toppos = screen.top ?? screen.availTop ?? 0;
+
+    previewpop = window.open(addr,'Testing','width='+(.4*screen.width)+',height='+(.8*screen.height)+',scrollbars=1,resizable=1,status=1,top='+(toppos+20)+',left='+(.6*screen.width-20+leftpos));
     previewpop.focus();
  }
  function sethighlightrow(loc) {
@@ -562,7 +659,7 @@ function previewq(formn,loc,qn,docheck,onlychk) {
      if (cursearchtype == 'libs') {
          listlibs = curlibs;
      }
-     GB_show('Library Select','libtree2.php?libtree=popup&libs='+listlibs,500,500);
+     GB_show(_('Library Select'),'libtree3.php?cid='+curcid+'&libtree=popup&libs='+listlibs,500,500);
  }
 
  function setlib(libs) {
@@ -573,7 +670,7 @@ function previewq(formn,loc,qn,docheck,onlychk) {
      doQuestionSearch();
  }
  function setlibnames(libn) {
-     document.getElementById("libnames").innerHTML = libn.replace(/\s*<span.*?<\/span.*?>/g,'').replace(/\s+/g,' ').trim();
+     document.getElementById("libnames").textContent = libn.replace(/\s*<span.*?<\/span.*?>/g,'').replace(/\s+/g,' ').trim();
      $("#libnames").parent().show();
 
     // this gets called after setlib, so we'll check for and update history here
@@ -600,7 +697,7 @@ function previewq(formn,loc,qn,docheck,onlychk) {
         recentlibs.names.splice(curloc,1);
     }
     recentlibs.ids.unshift(curlibs);
-    let curnames = document.getElementById("libnames").innerHTML.replace(/&\w+;/g,'');
+    let curnames = document.getElementById("libnames").textContent.replace(/&\w+;/g,'');
     curnames = curnames.length > 50 ? curnames.substring(0,49) + "..." : curnames;
     recentlibs.names.unshift(curnames);
     
@@ -611,10 +708,14 @@ function previewq(formn,loc,qn,docheck,onlychk) {
     if (isLocalStorageAvailable()) {
         window.localStorage.setItem('recentlibs', JSON.stringify(recentlibs));
     } else {
-        document.cookie = "recentlibs=" + encodeURIComponent(JSON.stringify(recentlibs));
+        setCookie("recentlibs", JSON.stringify(recentlibs));
     }
     if (recentlibs.ids.length > 1) {
-        $('#searchtypemenu').children(":nth-child(n+4)").remove();
+        if (curcid === 'admin' || curcid == 0) {
+            $('#searchtypemenu').children(":nth-child(n+3)").remove();
+        } else {
+            $('#searchtypemenu').children(":nth-child(n+4)").remove();
+        }
         $('#searchtypemenu').append($("<li>", {
             text: _("Recent Libraries"),
             class: "dropdown-header"
@@ -651,7 +752,7 @@ function previewq(formn,loc,qn,docheck,onlychk) {
      doQuestionSearch();
  }
  function setassessnames(aidn) {
-     document.getElementById("libnames").innerHTML = aidn.replace(/<span.*?<\/span.*?>/g,'');
+     document.getElementById("libnames").textContent = aidn.replace(/<span.*?<\/span.*?>/g,'');
      $("#libnames").parent().show();
  }
  

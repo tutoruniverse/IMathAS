@@ -42,14 +42,18 @@ class ChoicesAnswerBox implements AnswerBox
         $style = '';
         $params = [];
 
-        $optionkeys = ['displayformat', 'answer', 'noshuffle', 'readerlabel', 'ansprompt'];
+        $optionkeys = ['answer', 'noshuffle', 'readerlabel', 'ansprompt'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
+        $displayformat = "";
         $questions = getOptionVal($options, 'questions', $multi, $partnum, 2);
 
         if (!is_array($questions)) {
             echo _('Eeek!  $questions is not defined or needs to be an array');
+            if ($multi) {
+                echo ' ' . sprintf(_('(part %d)'), $partnum);
+            }
             $questions = array();
         }
 
@@ -103,8 +107,16 @@ class ChoicesAnswerBox implements AnswerBox
             $out .= "<span $style id=\"qnwrap$qn\" role=radiogroup ";
             $out .= 'aria-label="' . $arialabel . '">';
         } else if ($displayformat != 'select') {
-            if ($colorbox != '') {$style .= ' class="' . $colorbox . ' clearfix" ';} else { $style = ' class="clearfix" ';}
-            $out .= "<div $style id=\"qnwrap$qn\" style=\"display:block\" role=radiogroup ";
+            $classes = ['clearfix'];
+            if ($colorbox != '') { 
+                $classes[] = $colorbox;
+            }
+            if ($displayformat == 'horiz') {
+                $classes[] = 'choicesflexrow';
+            }
+
+            $style = 'class="' . implode(' ', $classes) . '" ';
+            $out .= "<div $style id=\"qnwrap$qn\" role=radiogroup ";
             $out .= 'aria-label="' . $arialabel . '">';
         }
         if ($displayformat == "select") {
@@ -187,7 +199,7 @@ class ChoicesAnswerBox implements AnswerBox
             foreach ($anss as $v) {
                 if (isset($questions[intval($v)])) {
                     $sapt[] = $questions[intval($v)];
-                } 
+                }
             }
             $sa = implode(' or ', $sapt); //$questions[$answer];
         }

@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <summary-header class="headerpane" />
-    <div class="flexpanes">
+    <div class="flexpanes" v-show="ready">
       <div style="flex-grow: 1">
         <summary-diag-info />
 
@@ -16,7 +16,7 @@
         <div
           v-if="ainfo.hasOwnProperty('newexcused') && Object.keys(ainfo.newexcused).length > 0"
         >
-          <p>{{ $t('summary.new_excused') }}</p>
+          <p>{{ $t('summary-new_excused') }}</p>
           <ul id="excusedlist">
             <li v-for="(name,index) in ainfo.newexcused" :key="index">
               {{ name }}
@@ -26,7 +26,7 @@
 
         <div v-if = "showScores">
           <vue-tabs id="scoretabs">
-            <vue-tab :name="$t('summary.scorelist')">
+            <vue-tab :name="$t('summary-scorelist')">
               <summary-score-list />
               <p>&nbsp;</p>
               <summary-categories
@@ -35,7 +35,7 @@
               />
             </vue-tab>
             <vue-tab
-              :name="$t('summary.reshowquestions')"
+              :name="$t('summary-reshowquestions')"
               v-if="showReviewQ"
             >
               <template v-slot = "{ active }">
@@ -48,14 +48,14 @@
       </div>
       <div v-if="ainfo.hasOwnProperty('prev_attempts') && ainfo.prev_attempts.length > 0">
         <summary-gb-score />
-        <previous-attempts :caption = "$t('prev.all_attempts')" />
+        <previous-attempts :caption = "$t('prev-all_attempts')" />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { store, actions } from '../basicstore';
+import { store, actions } from '@/basicstore';
 import SummaryHeader from '@/components/summary/SummaryHeader.vue';
 import SummaryGbScore from '@/components/summary/SummaryGbScore.vue';
 import SummaryScoreTotal from '@/components/summary/SummaryScoreTotal.vue';
@@ -83,7 +83,8 @@ export default {
   },
   data: function () {
     return {
-      activeTab: 0
+      activeTab: 0,
+      ready: false
     };
   },
   computed: {
@@ -117,12 +118,22 @@ export default {
         }
       }
       return hascat;
+    },
+    hasQInfo () {
+      for (const i in this.ainfo.questions) {
+        if (!this.ainfo.questions[i].hasOwnProperty('parts')) {
+          return false;
+        }
+      }
+      return true;
     }
   },
   methods: {
     loadScoresIfNeeded () {
-      if (!this.hasScore) {
-        actions.getScores();
+      if (!this.hasQInfo) {
+        actions.getScores(() => this.ready = true);
+      } else {
+        this.ready = true;
       }
     }
   },

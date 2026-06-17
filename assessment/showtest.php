@@ -82,21 +82,27 @@
 			if ($isRealStudent) {
 				$stm2 = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,waivereqscore FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 				$stm2->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
-				$row = $stm2->fetch(PDO::FETCH_NUM);
+				$row = $stm2->fetch(PDO::FETCH_ASSOC);
 				if ($row!=null) {
 					$useexception = $exceptionfuncs->getCanUseAssessException($row, $adata, true);
-					$waivereqscore = ($row[4]>0);
+					$waivereqscore = (($row['waivereqscore']&1)>0);
 				}
 			} else if (isset($_SESSION['lti_duedate']) && (isset($teacherid) || isset($tutorid)) && $_SESSION['lti_duedate']!=$adata['enddate']) {
 				//teacher launch with lti duedate that's different than default
 				//do a pseudo-exception
 				$useexception = true;
-				$row = array(0, $_SESSION['lti_duedate'], 0, 1, 0);
+				$row = array(
+					'startdate' => 0, 
+					'enddate' => $_SESSION['lti_duedate'], 
+					'islatepass' => 0, 
+					'is_lti' => 1, 
+					'waivereqscore' => 0
+				);
 			} else {
 				$row = null;
 			}
 			if ($row!=null && $useexception) {
-				if ($now<$row[0] || $row[1]<$now) { //outside exception dates
+				if ($now<$row['startdate'] || $row['enddate']<$now) { //outside exception dates
 					if ($now > $adata['startdate'] && $now<$adata['reviewdate']) {
 						$isreview = true;
 					} else {
@@ -105,12 +111,12 @@
 						}
 					}
 				} else { //inside exception dates exception
-					if ($adata['enddate']<$now && ($row[3]==0 || $row[2]>0)) { //exception is for past-due-date
+					if ($adata['enddate']<$now && ($row['is_lti']==0 || $row['islatepass']>0)) { //exception is for past-due-date
 						$inexception = true; //only trigger if past due date for penalty (and not a regular lti-set exception)
 					}
 				}
-				$exceptionduedate = $row[1];
-				$activestartdate = $row[0];
+				$exceptionduedate = $row['enddate'];
+				$activestartdate = $row['startdate'];
 			} else { //has no exception
 				if ($now < $adata['startdate'] || $adata['enddate']<$now) { //outside normal dates
 					if ($now > $adata['startdate'] && $now<$adata['reviewdate']) {
@@ -701,19 +707,24 @@
 	if (!$actas) {
 		$stm2 = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm2->execute(array(':userid'=>$userid, ':assessmentid'=>$line['assessmentid']));
-		$exceptionrow = $stm2->fetch(PDO::FETCH_NUM);
+		$exceptionrow = $stm2->fetch(PDO::FETCH_ASSOC);
 		if ($exceptionrow != null) {
 			$useexception = $exceptionfuncs->getCanUseAssessException($exceptionrow, $testsettings, true);
-			$ltiexception = ($exceptionrow[3]>0 && $exceptionrow[2]==0);
+			$ltiexception = ($exceptionrow['is_lti']>0 && $exceptionrow['islatepass']==0);
 		} else if (isset($_SESSION['lti_duedate']) && $isteacher && $_SESSION['lti_duedate']!=$testsettings['enddate']) {
 			//teacher launch with lti duedate that's different than default
 			//do a pseudo-exception
 			$useexception = true;
 			$ltiexception = true;
-			$exceptionrow = array(0, $_SESSION['lti_duedate'], 0, 1);
+			$exceptionrow = array(
+				'startdate'=>0, 
+				'enddate'=>$_SESSION['lti_duedate'],
+				'islatepass'=>0, 
+				'is_lti'=>1
+			);
 		}
 		if ($exceptionrow!=null && $useexception) {
-			if ($now<$exceptionrow[0] || $exceptionrow[1]<$now) { //outside exception dates
+			if ($now<$exceptionrow['startdate'] || $exceptionrow['enddate']<$now) { //outside exception dates
 				if ($now > $testsettings['startdate'] && $now<$testsettings['reviewdate']) {
 					$isreview = true;
 				} else {
@@ -724,15 +735,15 @@
 					}
 				}
 			} else { //in exception
-				if ($testsettings['enddate']<$now && ($exceptionrow[3]==0 || $exceptionrow[2]>0)) { //exception is for past-due-date
+				if ($testsettings['enddate']<$now && ($exceptionrow['is_lti']==0 || $exceptionrow['islatepass']>0)) { //exception is for past-due-date
 					$inexception = true;
-					$exceptiontype = $exceptionrow[2];
-					if ($exceptionrow[4]!==null) {
-						$testsettings['exceptionpenalty'] = $exceptionrow[4];
+					$exceptiontype = $exceptionrow['islatepass'];
+					if ($exceptionrow['exceptionpenalty']!==null) {
+						$testsettings['exceptionpenalty'] = $exceptionrow['exceptionpenalty'];
 					}
 				}
 			}
-			$exceptionduedate = $exceptionrow[1];
+			$exceptionduedate = $exceptionrow['enddate'];
 		} else { //has no exception
 			if ($now < $testsettings['startdate'] || $testsettings['enddate'] < $now) {//outside normal dates
 				if ($now > $testsettings['startdate'] && $now<$testsettings['reviewdate']) {
@@ -749,13 +760,13 @@
 	} else {
 		$stm2 = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm2->execute(array(':userid'=>$_SESSION['actas'], ':assessmentid'=>$line['assessmentid']));
-		$row = $stm2->fetch(PDO::FETCH_NUM);
+		$row = $stm2->fetch(PDO::FETCH_ASSOC);
 		if ($row!=null) {
 			$useexception = $exceptionfuncs->getCanUseAssessException($row, $testsettings, true);
 			if ($useexception) {
-				$exceptionduedate = $row[1];
+				$exceptionduedate = $row['enddate'];
 			}
-			$ltiexception = ($row[3]>0 && $row[2]==0);
+			$ltiexception = ($row['is_lti']>0 && $row['islatepass']==0);
 		}
 	}
 
@@ -1158,15 +1169,16 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 		$placeinhead .= '<script src="'.$staticroot.'/javascript/ytapi.js?v=101817"></script>';
 	}
 	if ($testsettings['displaymethod'] == "LivePoll") {
-		$placeinhead = '<script src="https://'.$CFG['GEN']['livepollserver'].':3000/socket.io/socket.io.js"></script>';
-		$placeinhead .= '<script src="'.$staticroot.'/javascript/livepoll.js?v=102518"></script>';
+		$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+		$placeinhead = '<script src="https://'.$CFG['GEN']['livepollserver'].':'.$port.'/socket.io/socket.io.js"></script>';
+		$placeinhead .= '<script src="'.$staticroot.'/javascript/livepoll.js?v=031126"></script>';
 		$livepollroom = $testsettings['id'].'-'.($_SESSION['isteacher'] ? 'teachers':'students');
 		$now = time();
 		if (isset($CFG['GEN']['livepollpassword'])) {
-			$livepollsig = base64_encode(sha1($livepollroom . $CFG['GEN']['livepollpassword'] . $now,true));
+			$livepollsig = base64_encode(hash('sha256',$livepollroom . $CFG['GEN']['livepollpassword'] . $now,true));
 		}
 		$placeinhead .= '<script type="text/javascript">
-				if (typeof io != "undefined") {livepoll.init("'.$CFG['GEN']['livepollserver'].'","'.$livepollroom.'","'.$now.'","'.$livepollsig.'");}
+				if (typeof io != "undefined") {livepoll.init("'.$CFG['GEN']['livepollserver'].':'.$port.'","'.$livepollroom.'","'.$now.'","'.$livepollsig.'");}
 				else { $(function() {$("#livepollqcontent").html("<p>' . _("Unable to connect to LivePoll Hub.  Please try again later.") . '</p>");});}</script>';
 
 		$placeinhead .= '<style type="text/css">
@@ -1205,7 +1217,7 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				if ($userfullname != ' ') {
 					echo "<a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\" title=\""._('User Preferences')."\" aria-label=\""._('Edit User Preferences')."\">";
 					echo "<span id=\"myname\">".Sanitize::encodeStringForDisplay($userfullname)."</span> ";
-					echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.png\" alt=\"\"/></a>";
+					echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.svg\" alt=\"\"/></a>";
 				} else {
 					echo "<a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\">";
 					echo "<span id=\"myname\">".('User Preferences')."</span></a>";
@@ -1225,7 +1237,7 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 		if ($userfullname != ' ') {
 			echo "<p><a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\" title=\""._('User Preferences')."\" aria-label=\""._('Edit User Preferences')."\">";
 			echo "<span id=\"myname\">".Sanitize::encodeStringForDisplay($userfullname)."</span> ";
-			echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.png\" alt=\"\"/></a></p>";
+			echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.svg\" alt=\"\"/></a></p>";
 		} else {
 			echo "<p><a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\">";
 			echo "<span id=\"myname\">".('User Preferences')."</span></a></p>";
@@ -1264,7 +1276,7 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 		if ($userfullname != ' ') {
 			echo "<p><a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\" title=\""._('User Preferences')."\" aria-label=\""._('Edit User Preferences')."\">";
 			echo "<span id=\"myname\">".Sanitize::encodeStringForDisplay($userfullname)."</span> ";
-			echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.png\" alt=\"\"/></a></p>";
+			echo "<img style=\"vertical-align:top\" src=\"$staticroot/img/gears.svg\" alt=\"\"/></a></p>";
 		} else {
 			echo "<p><a href=\"#\" onclick=\"GB_show('"._('User Preferences')."','$imasroot/admin/ltiuserprefs.php?cid=$cid&greybox=true',800,'auto');return false;\">";
 			echo "<span id=\"myname\">".('User Preferences')."</span></a></p>";
@@ -1282,9 +1294,8 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 			$stm->execute(array(':id'=>$testid));
 			$rowgrptest = $stm->fetch(PDO::FETCH_ASSOC);
 			$loginfo = "$userfullname creating group. ";
-			if (isset($CFG['GEN']['newpasswords'])) {
-				require_once "../includes/password.php";
-			}
+			require_once "../includes/password.php";
+			
 			for ($i=1;$i<$testsettings['groupmax'];$i++) {
 				if (isset($_POST['user'.$i]) && $_POST['user'.$i]!=0) {
 					$stm = $DBH->prepare("SELECT password,LastName,FirstName FROM imas_users WHERE id=:id");
@@ -1293,8 +1304,7 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 					$thisusername = $thisuser['FirstName'] . ' ' . $thisuser['LastName'];
 					if ($testsettings['isgroup']==1) {
 						$actualpw = $thisuser['password'];
-						$md5pw = md5($_POST['pw'.$i]);
-						if (!($actualpw==$md5pw || (isset($CFG['GEN']['newpasswords']) && password_verify($_POST['pw'.$i],$actualpw)))) {
+						if (password_verify($_POST['pw'.$i],$actualpw)) {
 							echo "<p>" . Sanitize::encodeStringForDisplay($thisusername) . ": ", _('password incorrect'), "</p>";
 							$errcnt++;
 							continue;
@@ -2399,14 +2409,14 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				$arv = explode('##',$ar);
 				$arv = $arv[count($arv)-1];
 
-				$aid = $testsettings['id'];
+				$aid = Sanitize::onlyInt($testsettings['id']);
 				$tocheck = $aid.$qn.$userid.$rawscore.$arv;
 				$now = time();
 				if (isset($CFG['GEN']['livepollpassword'])) {
-					$livepollsig = Sanitize::encodeUrlParam(base64_encode(sha1($tocheck . $CFG['GEN']['livepollpassword'] . $now,true)));
+					$livepollsig = Sanitize::encodeUrlParam(base64_encode(hash('sha256',$tocheck . $CFG['GEN']['livepollpassword'] . $now,true)));
 				}
-
-				$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/qscored?aid='.$aid.'&qn='.$qn.'&user='.$userid.'&score='.Sanitize::encodeUrlParam($rawscore).'&now='.$now.'&la='.Sanitize::encodeUrlParam($arv).'&sig='.$livepollsig);
+				$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+				$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/qscored?aid='.$aid.'&qn='.$qn.'&user='.Sanitize::encodeUrlParam($userid).'&score='.Sanitize::encodeUrlParam($rawscore).'&now='.$now.'&la='.Sanitize::encodeUrlParam($arv).'&sig='.$livepollsig);
 				echo '{success: true}';
 			//}
 			exit;
@@ -2416,24 +2426,24 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				exit;
 			}
 			$qn = Sanitize::onlyInt($_GET['qn']);
-			$aid = $testsettings['id'];
+			$aid = Sanitize::onlyInt($testsettings['id']);
 			$seed = Sanitize::onlyInt($_GET['seed']);
 			$startt = Sanitize::onlyInt($_GET['startt']);
 			$stm = $DBH->prepare("UPDATE imas_livepoll_status SET curquestion=:curquestion,curstate=2,seed=:seed,startt=:startt WHERE assessmentid=:assessmentid");
 			$stm->execute(array(':curquestion'=>$qn, ':seed'=>$seed, ':startt'=>$startt, ':assessmentid'=>$aid));
 
 			if (isset($CFG['GEN']['livepollpassword'])) {
-				$livepollsig = Sanitize::encodeUrlParam(base64_encode(sha1($aid.$qn .$seed. $CFG['GEN']['livepollpassword'] . $now, true)));
+				$livepollsig = Sanitize::encodeUrlParam(base64_encode(hash('sha256',$aid.$qn .$seed. $CFG['GEN']['livepollpassword'] . $now, true)));
 			}
 			$regenstr = '';
 
-
-			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/startq?aid='.$aid.'&qn='.$qn.'&seed='.$seed.'&startt='.$startt.'&now='.$now.'&sig='.$livepollsig);
+			$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/startq?aid='.$aid.'&qn='.$qn.'&seed='.$seed.'&startt='.$startt.'&now='.$now.'&sig='.$livepollsig);
 
 			if ($r=='success') {
 				echo '{success: true}';
 			} else {
-				echo '{error: "'.$r.'"}';
+				echo '{error: "'.Sanitize::encodeStringforDisplay($r).'"}';
 			}
 			exit;
 
@@ -2451,7 +2461,7 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				exit;
 			}
 			$qn = intval($_GET['qn']);
-			$aid = $testsettings['id'];
+			$aid = Sanitize::onlyInt($testsettings['id']);
 			if (isset($_GET['newstate'])) {
 				$newstate = $showeachscore?intval($_GET['newstate']):3;
 			} else if ($showeachscore) {
@@ -2460,17 +2470,17 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				$newstate=3;
 			}
 			if (isset($CFG['GEN']['livepollpassword'])) {
-				$livepollsig = Sanitize::encodeUrlParam(base64_encode(sha1($aid.$qn . $newstate. $CFG['GEN']['livepollpassword'] . $now,true)));
+				$livepollsig = Sanitize::encodeUrlParam(base64_encode(hash('sha256',$aid.$qn . $newstate. $CFG['GEN']['livepollpassword'] . $now,true)));
 			}
 			$stm = $DBH->prepare("UPDATE imas_livepoll_status SET curquestion=:curquestion,curstate=:curstate WHERE assessmentid=:assessmentid");
 			$stm->execute(array(':curquestion'=>$qn, ':curstate'=>$newstate, ':assessmentid'=>$aid));
-
-			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/stopq?aid='.$aid.'&qn='.$qn.'&newstate='.$newstate.'&now='.$now.'&sig='.$livepollsig);
+			$port = $CFG['GEN']['livepollserverport'] ?? '3000';
+			$r = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/stopq?aid='.$aid.'&qn='.$qn.'&newstate='.$newstate.'&now='.$now.'&sig='.$livepollsig);
 
 			if ($r=='success') {
 				echo '{success: true}';
 			} else {
-				echo '{error: "'.$r.'"}';
+				echo '{error: "'.Sanitize::encodeStringforDisplay($r).'"}';
 			}
 			exit;
 

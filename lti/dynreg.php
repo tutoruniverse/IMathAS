@@ -18,7 +18,11 @@ function regerror($err) {
 }
 
 // Read configuration endpoint from query string
-$configurl = $_GET['openid_configuration'];
+$configurl = Sanitize::url($_GET['openid_configuration'] ?? '');
+if (substr($configurl,0,4) !== 'http') {
+    echo "Invalid openid_configuration URL";
+    exit;
+}
 $token = $_GET['registration_token'];
 
 // Call config endpoint to get config data
@@ -63,7 +67,7 @@ $domain = Sanitize::domainNameWithPort($_SERVER['HTTP_HOST']);
 $post = [
     'application_type' => 'web',
     'response_types' => ['id_token'],
-    'grant_types' => ["implict", "client_credentials"],
+    'grant_types' => ["implicit", "client_credentials"],
     "initiate_login_uri" => $basesiteurl.'/lti/login.php?u='.$uniqid,
     "redirect_uris" => [$basesiteurl.'/lti/launch.php'],
     "client_name" => $installname,
@@ -77,7 +81,9 @@ $post = [
         "custom_parameters" => [
             "context_history" => '$Context.id.history',
             'link_end_avail_time' => '$ResourceLink.available.endDateTime',
+            'link_user_end_avail_time' => '$ResourceLink.available.user.endDateTime',
             'link_end_sub_time' => '$ResourceLink.submission.endDateTime',
+            'link_user_end_sub_time' => '$ResourceLink.submission.user.endDateTime',
             'link_history' => '$ResourceLink.id.history'
         ],
         "claims" => ["iss", "sub", "name", "given_name", "family_name"],
@@ -88,7 +94,7 @@ $post = [
                 "label" => sprintf(_("%s Assessment"), $installname)
             ],
             [
-                "type" => "LtiResourceLink",
+                "type" => "LtiResourceLinkRequest",
                 "target_link_uri" => $basesiteurl.'/lti/launch.php'
             ]
         ]
@@ -98,6 +104,7 @@ $post = [
 $ch = curl_init($regurl);
 $authorization = "Authorization: Bearer ".$token; // Prepare the authorisation token
 curl_setopt($ch, CURLOPT_HTTPHEADER, array($authorization, 'Content-Type: application/json')); // Inject the token into the header
+curl_setopt($ch, CURLOPT_USERAGENT, Sanitize::simpleASCII($GLOBALS['installname'] ?? 'IMathAS'));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, 1); // Specify the request method as POST
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post)); // Set the posted fields

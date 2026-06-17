@@ -67,21 +67,21 @@ class CalculatedComplexAnswerBox implements AnswerBox
 
         if (in_array('generalcomplex', $ansformats)) {
             if ($isListAnswer) {
-                $tip = _('Enter your answer as a list of complex expressions.  Example: 2+5i,e^(2i)') . "<br/>";
+                $tip = _('Enter your answer as a list of complex expressions. Example: 2+5i,e^(2i)') . "<br/>";
                 $shorttip = _('Enter a list of complex expressions');
             } else {
-                $tip = _('Enter your answer as a complex expression.  Example: 5e^(2i)') . "<br/>";
+                $tip = _('Enter your answer as a complex expression. Example: 5e^(2i)') . "<br/>";
                 $shorttip = _('Enter a complex expression');
             }
         } else {
             if ($isListAnswer) {
-                $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas.  Example: 2+5i,-3-4i') . "<br/>";
+                $tip = _('Enter your answer as a list of complex numbers in a+bi form separated with commas. Example: 2+5i,-3-4i') . "<br/>";
                 $shorttip = _('Enter a list of complex numbers');
             } else {
-                $tip = _('Enter your answer as a complex number in a+bi form.  Example: 2+5i') . "<br/>";
+                $tip = _('Enter your answer as a complex number in a+bi form. Example: 2+5i') . "<br/>";
                 $shorttip = _('Enter a complex number');
             }
-            $tip .= formathint('each value',$ansformats,($reqdecimals!=='')?$reqdecimals:null,'calccomplex');
+            $tip .= formathint(_('each value'),$ansformats,($reqdecimals!=='')?$reqdecimals:null,'calccomplex');
         }
 
         $classes = ['text'];
@@ -90,7 +90,7 @@ class CalculatedComplexAnswerBox implements AnswerBox
         }
         $attributes = [
             'type' => 'text',
-            'size' => $answerboxsize,
+            'style' => 'width:'.sizeToCSS($answerboxsize),
             'name' => "qn$qn",
             'id' => "qn$qn",
             'value' => $la,
@@ -120,15 +120,20 @@ class CalculatedComplexAnswerBox implements AnswerBox
         }
         $preview .= "<span id=p$qn></span> ";
 
+        $nosolntype = 0;
         if (in_array('nosoln',$ansformats) || in_array('nosolninf',$ansformats)) {
-            list($out,$answer) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
+            list($out,$answer, $nosolntype) = setupnosolninf($qn, $out, $answer, $ansformats, $la, $ansprompt, $colorbox);
         }
 
         if ($answer !== '' && !is_array($answer) && !$isConditional) {
-            if (in_array('allowplusminus', $ansformats)) {
-                $answer = str_replace('+-','pm',$answer);
+            if ($nosolntype > 0) {
+                $sa = $answer;
+            } else {
+                if (in_array('allowplusminus', $ansformats)) {
+                    $answer = str_replace('+-','pm',$answer);
+                }
+                $sa = makeprettydisp($answer);
             }
-            $sa = makeprettydisp($answer);
         }
 
         // Done!

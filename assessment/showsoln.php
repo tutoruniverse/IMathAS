@@ -6,7 +6,7 @@ if (!isset($_GET['cid']) || $_GET['cid']==="embedq") {
 	require_once "../init_without_validate.php";
 
 	$cid = "embedq";
-	$_SESSION['secsalt'] = "12345";
+	$_SESSION['secsalt'] = $CFG['GEN']['embedsecret'] ?? "12345";
 	$_SESSION['graphdisp'] = 1;
 	$_SESSION['mathdisp'] = 1;
     $_SESSION['useed'] = 0;
@@ -18,6 +18,9 @@ if (!isset($_GET['cid']) || $_GET['cid']==="embedq") {
 	require_once "../init.php";
 }
 
+if (!isset($_GET['id'])) {
+	exit;
+}
 $id = Sanitize::onlyInt($_GET['id']);
 $sig = $_GET['sig'] ?? '';
 //$t = Sanitize::onlyInt($_GET['t']);
@@ -28,9 +31,30 @@ $isdiag = false;
 $useeqnhelper = false;
 $useeditor = 0;
 $isfw = false;
-require_once "header.php";
+$placeinhead = '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/vue/css/style.css?v=' . $lastvueupdate . '" />';
+$placeinhead .= '<link rel="stylesheet" type="text/css" href="' . $staticroot . '/assess2/print.css?v=' . $lastvueupdate . '" media="print">';
+$placeinhead .= '<style type="text/css"> #writtenexample { margin-top: 0px; } div.midwrapper > div { padding:10px;} </style>';
+$placeinhead .= '<script type="text/javascript">
+function toggleinlinebtn(n,p){ 
+	var btn = document.getElementById(p);
+	var el=document.getElementById(n);
+	if (el.style.display=="none") {
+		el.style.display="";
+		el.setAttribute("aria-hidden",false);
+		btn.setAttribute("aria-expanded",true);
+	} else {
+		el.style.display="none";
+		el.setAttribute("aria-hidden",true);
+		btn.setAttribute("aria-expanded",false);
+	}
+	var k=btn.innerHTML;
+	btn.innerHTML = k.match(/\[\+\]/)?k.replace(/\[\+\]/,"[-]"):k.replace(/\[\-\]/,"[+]");
+}
+</script>';
+$pagetitle = _('Written Example');
+require_once "../header.php";
 echo '<p><b style="font-size:110%">'._('Written Example').'</b> '._('of a similar problem').'</p>';
-if ($sig != md5($id.$_SESSION['secsalt'])) {
+if (!hash_equals(hash_hmac('sha256', $id, $_SESSION['secsalt']), $sig)) {
 	echo "invalid signature - not authorized to view the solution for this problem";
 	exit;
 }
@@ -68,8 +92,11 @@ $a2->setState($state);
 $disp = $a2->displayQuestion($qn, [
     'showallparts' => true,
     'showans' => false,
-    'showhints' => 0
+    'hideans' => true,
+    'showhints' => 0,
+    'includeans' => true
 ]);
+
 if ($showq) {
     echo printfilter(filter($disp['html']), false);
 }

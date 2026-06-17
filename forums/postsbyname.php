@@ -5,12 +5,12 @@
 	require_once "../init.php";
 
 
-	/*if (!isset($teacherid) && !isset($tutorid)) {
+	if (!isset($teacherid) && !isset($tutorid) && !isset($studentid)) {
 	   require_once "../header.php";
-	   echo "You must be a teacher to access this page\n";
+	   echo "You must be in the course to access this page\n";
 	   require_once "../footer.php";
 	   exit;
-	}*/
+	}
 	if (isset($teacherid)) {
 		$isteacher = true;
 	} else {
@@ -21,26 +21,36 @@
     $cid = Sanitize::courseId($_GET['cid']);
     $page = Sanitize::onlyInt($_GET['page'] ?? 0);
 
+	$stm = $DBH->prepare("SELECT settings,replyby,defdisplay,name,points,rubric,tutoredit, groupsetid,autoscore FROM imas_forums WHERE id=:id AND courseid=:cid");
+	$stm->execute(array(':id'=>$forumid, ':cid'=>$cid));
+	list($forumsettings, $replyby, $defdisplay, $forumname, $pointspos, $rubric, $tutoredit, $groupsetid,$autoscore) = $stm->fetch(PDO::FETCH_NUM);
+	if ($forumsettings === null) {
+		echo 'Invalid forum';
+		exit;
+	}
+
 	if (isset($_GET['markallread'])) {
 		$stm = $DBH->prepare("SELECT DISTINCT threadid FROM imas_forum_posts WHERE forumid=:forumid");
 		$stm->execute(array(':forumid'=>$forumid));
 		$now = time();
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-			$stm2 = $DBH->prepare("SELECT id FROM imas_forum_views WHERE userid=:userid AND threadid=:threadid");
+            /*
+            $stm2 = $DBH->prepare("INSERT INTO imas_forum_views (userid,threadid,lastview) 
+                VALUES (:userid, :threadid, :lastview)
+                ON DUPLICATE KEY UPDATE lastview=:lastview2");
+		    $stm2->execute(array(':userid'=>$userid, ':threadid'=>$row[0], ':lastview'=>$now, ':lastview2'=>$now));
+            */
+            $stm2 = $DBH->prepare("SELECT lastview FROM imas_forum_views WHERE userid=:userid AND threadid=:threadid");
 			$stm2->execute(array(':userid'=>$userid, ':threadid'=>$row[0]));
 			if ($stm2->rowCount()>0) {
-				$r2id = $stm2->fetchColumn(0);
-				$stm2 = $DBH->prepare("UPDATE imas_forum_views SET lastview=:lastview WHERE id=:id");
-				$stm2->execute(array(':lastview'=>$now, ':id'=>$r2id));
+				$stm2 = $DBH->prepare("UPDATE imas_forum_views SET lastview=:lastview WHERE userid=:userid AND threadid=:threadid");
+				$stm2->execute(array(':lastview'=>$now, ':userid'=>$userid, ':threadid'=>$row[0]));
 			} else{
 				$stm2 = $DBH->prepare("INSERT INTO imas_forum_views (userid,threadid,lastview) VALUES (:userid, :threadid, :lastview)");
 				$stm2->execute(array(':userid'=>$userid, ':threadid'=>$row[0], ':lastview'=>$now));
-		}
+		    }
 		}
 	}
-	$stm = $DBH->prepare("SELECT settings,replyby,defdisplay,name,points,rubric,tutoredit, groupsetid,autoscore FROM imas_forums WHERE id=:id");
-	$stm->execute(array(':id'=>$forumid));
-	list($forumsettings, $replyby, $defdisplay, $forumname, $pointspos, $rubric, $tutoredit, $groupsetid,$autoscore) = $stm->fetch(PDO::FETCH_NUM);
 	$allowanon = (($forumsettings&1)==1);
 	$allowmod = ($isteacher || (($forumsettings&2)==2));
 	$allowdel = ($isteacher || (($forumsettings&4)==4));
@@ -57,13 +67,14 @@
 
 	$placeinhead = '<link rel="stylesheet" href="'.$staticroot.'/forums/forums.css?ver=082911" type="text/css" />';
 	if ($haspoints && $caneditscore && $rubric != 0) {
-		$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/rubric.js?v=011823"></script>';
+		$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/rubric.js?v=090725"></script>';
 		require_once "../includes/rubric.php";
 	}
 	if ($caneditscore && $_SESSION['useed']!=0) {
 		$useeditor = "noinit";
 		$placeinhead .= '<script type="text/javascript"> initeditor("divs","fbbox",null,true);</script>';
 	}
+	$loadiconfont = true;
 	require_once "../header.php";
     echo "<div class=breadcrumb>";
     if (!isset($_SESSION['ltiitemtype']) || $_SESSION['ltiitemtype']!=0) {
@@ -95,6 +106,7 @@
 	       node.className = 'blockitems';
 	       butn.value = '-';
 	   }
+	   butn.setAttribute("aria-expanded", butn.value == '-');
 	}
 	function toggleshowall() {
 	  for (var i=0; i<bcnt; i++) {
@@ -102,6 +114,7 @@
 	    var butn = document.getElementById('butn'+i);
 	    node.className = 'blockitems';
 	    butn.value = '-';
+		butn.setAttribute("aria-expanded", true);
 	  }
 	  document.getElementById("toggleall").value = 'Collapse All';
 	  document.getElementById("toggleall").onclick = togglecollapseall;
@@ -118,6 +131,7 @@
 	    var butn = document.getElementById('butn'+i);
 	    node.className = 'hidden';
 	    butn.value = '+';
+		butn.setAttribute("aria-expanded", false);
 	  }
 	  document.getElementById("toggleall").value = 'Expand All';
 	  document.getElementById("toggleall").onclick = toggleshowall;
@@ -140,51 +154,27 @@
 			$(".reply").addClass("pseudohidden");
 		}
 	}
-	function onarrow(e,field) {
-		if (window.event) {
-			var key = window.event.keyCode;
-		} else if (e.which) {
-			var key = e.which;
-		}
+    $(function () {
+        $("input[type=text][id^=score]").on('keyup', function() {
+            var visel = $(".forumgrp > div:not(.pseudohidden) input[type=text][id^=score]:visible");
+            var idx = visel.index(this);
+            if (idx != -1) {
+                if (event.which == 38 && idx > 0) { 
+                    idx--; 
+                } else if ((event.which == 40 || event.which == 13) && idx < visel.length-1) {
+                    idx++;
+                } else {
+					return;
+				}
+                visel[idx].focus();
+				$(visel[idx]).closest('.initialpost,.reply')[0].scrollIntoView();
+            }
+        }).on('keypress', function() {
+            if (event.which == 13) { event.preventDefault(); }
+        });
+    })
+	
 
-		if (key==40 || key==38) {
-			var i;
-			for (i = 0; i < field.form.elements.length; i++)
-			   if (field == field.form.elements[i])
-			       break;
-
-		      if (key==38) {
-			      i = i-2;
-			      if (i<0) { i=0;}
-		      } else {
-			      i = (i + 2) % field.form.elements.length;
-		      }
-		      if (field.form.elements[i].type=='text') {
-			      field.form.elements[i].focus();
-		      }
-		      return false;
-		} else {
-			return true;
-		}
-	}
-	function onenter(e,field) {
-		if (window.event) {
-			var key = window.event.keyCode;
-		} else if (e.which) {
-			var key = e.which;
-		}
-		if (key==13) {
-			var i;
-			for (i = 0; i < field.form.elements.length; i++)
-			   if (field == field.form.elements[i])
-			       break;
-		      i = (i + 2) % field.form.elements.length;
-		      field.form.elements[i].focus();
-		      return false;
-		} else {
-			return true;
-		}
-	}
 	function GBviewThread(threadid) {
 		var qsb = "embed=true&cid="+cid+"&thread="+threadid+"&forum=<?php echo $forumid?>";
 		GB_show(_("Thread"),"posts.php?"+qsb,800,"auto");
@@ -274,11 +264,13 @@
 		printf("<b><pii class='pii-full-name'>%s</span></b> (", Sanitize::encodeStringForDisplay($name));
 		echo $postcnt.($postcnt==1?' post':' posts').', '.$replycnt. ($replycnt==1?' reply':' replies').')';
 		if ($hasuserimg==1) {
+			echo '<button type=button class="plain nopad" onclick="togglepic(this)">';
 			if(isset($GLOBALS['CFG']['GEN']['AWSforcoursefiles']) && $GLOBALS['CFG']['GEN']['AWSforcoursefiles'] == true) {
-				echo "<img class=\"pii-image\" src=\"{$urlmode}{$GLOBALS['AWSbucket']}.s3.amazonaws.com/cfiles/userimg_sm".Sanitize::onlyInt($uid).".jpg\"  onclick=\"togglepic(this)\" alt=\"Expand\"/>";
+				echo "<img class=\"pii-image\" src=\"{$urlmode}{$GLOBALS['AWSbucket']}.s3.amazonaws.com/cfiles/userimg_sm".Sanitize::onlyInt($uid).".jpg\" alt=\"User picture\" />";
 			} else {
-				echo "<img class=\"pii-image\" src=\"$imasroot/course/files/userimg_sm".Sanitize::onlyInt($uid).".jpg\"  onclick=\"togglepic(this)\" alt=\"Expand\"/>";
+				echo "<img class=\"pii-image\" src=\"$imasroot/course/files/userimg_sm".Sanitize::onlyInt($uid).".jpg\" alt=\"User picture\" />";
 			}
+			echo '</button>';
 		}
 		echo '<div class="forumgrp">'.$content.'</div>';
 	}
@@ -296,28 +288,50 @@
 
 		if ($line['parent']!=0) {
 			if ($line['userid']!=$userid && in_array($line['threadid'], $blockreplythreads)) { continue;}
-			$content .= '<div class="reply"><div class="block">';
-			$content .= '<span style="color:green;">';
+			$content .= '<div class="reply"><div class="block flexgroup">';
 			$replycnt++;
 		} else {
-			$content .= '<div class="initialpost"><div class="block">';
+			$content .= '<div class="initialpost"><div class="block flexgroup">';
 			$postcnt++;
 		}
 
-		$content .= '<span class="right">';
+		$content .= "<input type=\"button\" value=\"+\" onclick=\"toggleshow($cnt)\" id=\"butn$cnt\" aria-controls=\"m$cnt\" aria-expanded=\"false\" />";
+		$content .= '<span style="flex-grow:1">';
+		if ($line['parent']!=0) {
+			$content .= '<span style="color:#060">';
+		}
+		if ($line['parent'] != 0) {
+			$content .= '<span class="icon-forumreply" role="img" aria-label="reply" title="Reply"></span> ';
+		} else {
+			$content .= '<span class="icon-forumpost" role="img" aria-label="post" title="Post"></span> ';
+		}
+		$content .= '<b>'.Sanitize::encodeStringForDisplay($line['subject']).'</b>';
+		if ($line['parent']!=0) {
+			$content .= '</span>';
+		}
+		$dt = tzdate("D, M j, Y, g:i a",$line['postdate']);
+		$content .= ', Posted: '.Sanitize::encodeStringForDisplay($dt);
+
+		if ($line['lastview']==null || $line['postdate']>$line['lastview']) {
+			$content .= " <span class=noticetext>New</span>\n";
+		}
+		$content .= '</span>';
+
+		// right buttons
+		$content .= '<span class="nowrap">';
 		if ($haspoints) {
 			if ($caneditscore && $line['stuid']!==null) {
-				$content .= "<input type=text size=2 name=\"score[".Sanitize::onlyInt($line['id'])."]\" id=\"score".Sanitize::onlyInt($line['id'])."\" onkeypress=\"return onenter(event,this)\" onkeyup=\"onarrow(event,this)\" value=\"";
+				$content .= "<input type=text size=2 name=\"score[".Sanitize::onlyInt($line['id'])."]\" id=\"score".Sanitize::onlyInt($line['id'])."\" value=\"";
 				if (isset($scores[$line['id']])) {
 					$content .= Sanitize::encodeStringForDisplay($scores[$line['id']]);
 				}
 
-				$content .= "\"/> Pts ";
+				$content .= '"/> <label for="score'.Sanitize::onlyInt($line['id']).'">'._('Points').'</label> ';
 				if ($rubric != 0) {
 					$content .= printrubriclink($rubric,$pointspos,"score".Sanitize::onlyInt($line['id']), "feedback".Sanitize::onlyInt($line['id'])).' ';
 				}
 			} else if (($line['userid']==$userid || $canviewscore) && isset($scores[$line['id']])) {
-				$content .= "<span class=red> ".Sanitize::onlyFloat($scores[$line['id']])." pts</span> ";
+				$content .= "<span class=red> ".Sanitize::onlyFloat($scores[$line['id']])." points</span> ";
 			}
 		}
 		//$content .= "<a href=\"posts.php?cid=$cid&forum=$forumid&thread=".Sanitize::onlyInt($line['threadid'])."\">Thread</a> ";
@@ -336,23 +350,13 @@
 			//$content .= "<a href=\"postsbyname.php?cid=$cid&forum=$forumid&thread=".Sanitize::onlyInt($line['threadid'])."&modify=reply&replyto=".Sanitize::onlyInt($line['id'])."\">Reply</a>";
 		}
 		$content .= '</span>';
-		$content .= "<input type=\"button\" value=\"+\" onclick=\"toggleshow($cnt)\" id=\"butn$cnt\" />";
-		$content .= '<b>'.Sanitize::encodeStringForDisplay($line['subject']).'</b>';
-		if ($line['parent']!=0) {
-			$content .= '</span>';
-		}
-		$dt = tzdate("D, M j, Y, g:i a",$line['postdate']);
-		$content .= ', Posted: '.Sanitize::encodeStringForDisplay($dt);
 
-		if ($line['lastview']==null || $line['postdate']>$line['lastview']) {
-			$content .= " <span class=noticetext>New</span>\n";
-		}
 		$content .= '</div>';
 		$content .= "<div id=\"m$cnt\" class=\"hidden\">".Sanitize::outgoingHtml(filter($line['message']));
 		if ($haspoints) {
 			if ($caneditscore && $line['stuid']!==null) {
 				$content .= '<hr/>';
-				$content .= "Private Feedback: ";
+				$content .= '<label for="feedback'.Sanitize::onlyInt($line['id']).'">'._('Private Feedback').'</label>: ';
 				/*echo "<textarea cols=\"50\" rows=\"2\" name=\"feedback[". Sanitize::onlyInt($line['id'])."]\" id=\"feedback".Sanitize::onlyInt($line['id'])."\">";
 				if ($feedback[$line['id']]!==null) {
 					$content .= Sanitize::encodeStringForDisplay($feedback[$line['id']]);
@@ -388,7 +392,8 @@
 		echo "</form>";
 	}
 
-	echo "<p>Color code<br/>Black: New thread</br><span style=\"color:green;\">Green: Reply</span></p>";
+	echo '<p>Color code<br/>Black: New thread <span class="icon-forumpost" role="img" aria-label="post" title="Post"></span></br>';
+	echo '<span style="color:#060;">Green: Reply <span class="icon-forumreply" role="img" aria-label="reply" title="Reply"></span></span></p>';
 
 	echo "<p><a href=\"thread.php?cid=$cid&forum=$forumid&page=$page\">Back to Thread List</a></p>";
 

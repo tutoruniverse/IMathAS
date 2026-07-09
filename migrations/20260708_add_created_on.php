@@ -40,7 +40,7 @@ foreach ($tables as $table) {
 		return false;
 	}
 }
- 
+if ($DBH->inTransaction()) { $DBH->commit(); }
 echo "<p style='color: green;'>✓ Added created_on columns</p>";
 
 return true;

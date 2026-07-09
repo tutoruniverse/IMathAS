@@ -41,8 +41,6 @@ foreach ($tables as $table) {
 	}
 }
  
-$DBH->commit();
-
 echo "<p style='color: green;'>✓ Added created_on columns</p>";
 
 return true;

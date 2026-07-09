@@ -2935,6 +2935,9 @@ $found = preg_match("/^[a-z]+$/", "hello", $m);
 <li><strong>preg_replace(pattern,replacement,subject,[limit])</strong>: Replaces all regex matches in subject with replacement.
   <details class="example"><summary>Example</summary><pre>preg_replace("/\s+/", "_", "hello world foo")  // "hello_world_foo"
 preg_replace("/\d+/", "NUM", "abc 12 def 34")  // "abc NUM def NUM"</pre></details></li>
+<li><strong>levenshtein(string1,string2)</strong>: Finds the Levenshtein distance between two strings.
+  <details class="example"><summary>Example</summary><pre>levenshtein("hello","help")  // 2; one deletion, one replacement
+</pre></details></li>
 </ul>
 
 </div> <!-- h2 -->

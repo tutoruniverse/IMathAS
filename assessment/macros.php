@@ -52,7 +52,8 @@ array_push(
     'preg_replace',
     'intval',
     'floatval',
-    'uniqid'
+    'uniqid',
+    'levenshtein'
 );
 
 require_once __DIR__ . '/macros/randomizers.php';

@@ -503,10 +503,32 @@ class Imathas_LTI_Database implements LTI\Database
                         // sufficient rights; add them as a teacher
                         $stm = $this->dbh->prepare('INSERT INTO imas_teachers (userid,courseid) VALUES (?,?)');
                         $stm->execute(array($userid, $localcourse->get_courseid()));
+                        require_once '../includes/TeacherAuditLog.php';
+                        TeacherAuditLog::addTracking(
+                            $localcourse->get_courseid(),
+                            "Course Settings Change",
+                            null,
+                            [
+                                'action' => 'Add Teachers',
+                                'added' => $userid,
+                                'via' => 'auto by LTI'
+                            ]
+                        );
                     } else {
                         // add them as a tutor
                         $stm = $this->dbh->prepare('INSERT INTO imas_tutors (userid,courseid) VALUES (?,?)');
                         $stm->execute(array($userid, $localcourse->get_courseid()));
+                        require_once '../includes/TeacherAuditLog.php';
+                        TeacherAuditLog::addTracking(
+                            $localcourse->get_courseid(),
+                            "Roster Action",
+                            null,
+                            array(
+                                'action' => 'Add Tutors',
+                                'IDs' => $userid,
+                                'via' => 'auto by LTI'
+                            )
+                        );
                     }
                 }
             }
@@ -678,6 +700,17 @@ class Imathas_LTI_Database implements LTI\Database
     public function add_lti_course(string $contextid, int $platform_id,
         int $localcid, string $label = '', int $copiedfrom = 0
     ): int {
+        require_once '../includes/TeacherAuditLog.php';
+        TeacherAuditLog::addTracking(
+            $localcid,
+            "Course Settings Change",
+            $localcid,
+            [
+                'action'=>'Establish LTI course connection',
+                'type'=>'1.3',
+                'contextid'=>$contextid,
+            ]
+        );
         $stm = $this->dbh->prepare('INSERT INTO imas_lti_courses (contextid,org,courseid,contextlabel,copiedfrom) VALUES (?,?,?,?,?)');
         $stm->execute(array($contextid, 'LTI13-' . $platform_id, $localcid, $label, $copiedfrom));
         return $this->dbh->lastInsertId();

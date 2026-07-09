@@ -1576,6 +1576,17 @@ if ($linkparts[0]=='cid' || $linkparts[0]=='aid' || $linkparts[0]=='placein' || 
 				//reporterror("error - you are not an instructor or tutor on the $installname course this link is associated with.  If you are team-teaching this course, have the other instructor add you as a teacher or tutor on $installname then try again.");
 				$stm = $DBH->prepare("INSERT INTO imas_teachers (userid,courseid) VALUES (:userid, :courseid)");
 				$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
+				require_once 'includes/TeacherAuditLog.php';
+				TeacherAuditLog::addTracking(
+					$cid,
+					"Course Settings Change",
+					null,
+					[
+						'action' => 'Add Teachers',
+						'added' => $userid,
+						'via' => 'auto by LTI'
+					]
+				);
 			}
 		}
 		$timelimitmult = 1;
@@ -2843,6 +2854,17 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $ke
 			if ($stm->rowCount() == 0) {
 				$stm = $DBH->prepare("INSERT INTO imas_tutors (userid,courseid,section) VALUES (:userid, :courseid, :section)");
 				$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':section'=>$_SESSION['lti_context_label']));
+				require_once 'includes/TeacherAuditLog.php';
+				TeacherAuditLog::addTracking(
+					$destcid,
+					"Roster Action",
+					null,
+					array(
+						'action' => 'Add Tutors',
+						'IDs' => $userid,
+						'via' => 'auto by LTI'
+					)
+				);
 			}
 		}
 		$timelimitmult = 1;

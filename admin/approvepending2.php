@@ -159,7 +159,7 @@ if (!empty($_POST['newstatus'])) {
 		}
 
 		require_once "../includes/email.php";
-		send_email($row['email'], !empty($accountapproval)?$accountapproval:$sendfrom,
+		send_email(Sanitize::emailAddress($row['email']), !empty($accountapproval)?$accountapproval:$sendfrom,
 			$installname._(' Account Approval'), $message,
 			!empty($CFG['email']['new_acct_replyto'])?$CFG['email']['new_acct_replyto']:array(),
 			!empty($CFG['email']['new_acct_bcclist'])?$CFG['email']['new_acct_bcclist']:array(), 10);

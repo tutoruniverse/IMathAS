@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>diff help</title>
+        <link rel="stylesheet" href="help.css?v=112325" type="text/css" />
+    </head><body>
+<a name="top" id="top"></a>
+<p id="libhelpback"><a href="libhelp.php">&laquo; Back to Macro Library list</a> <a id="floating-top-btn" href="#top">&uarr; Top</a></p>
+<h1>Macro Library diff</h1>
+<p>A library of diffing functions for identifying differences.</p>
+<ul>
+<li><a href="#diffbychar">diffbychar</a></li>
+<li><a href="#diffbycharhtml">diffbycharhtml</a></li>
+<li><a href="#diff">diff</a></li>
+</ul>
+
+<h3 id="diffbychar"><a name="diffbychar">diffbychar</a></h3>
+<p><strong>diffbychar($old,$new)</strong></p>
+<p>Given two strings, compares them by-character to determine changes.</p>
+<p>Returns an array containing the character if no change, and an array 
+    with index 'd' for deletions and 'i' for insertions if changed.
+</p>
+<details class="example"><summary>Examples</summary><pre>diffbychar("3+2xy+5","3+45xy")
+// [3,"+",['d'=>[2],'i'=>[4,5]],"x","y",['d'=>["+",5],'i'=>[]]]
+</pre>
+</details>
+
+<h3 id="diffbycharhtml"><a name="diffbycharhtml">diffbycharhtml</a></h3>
+<p><strong>diffbycharhtml($old,$new,[$format])</strong></p>
+<p>Given two strings, compares them by-character to determine changes.</p>
+<p><b>format</b>: 1: show inserts, 2: show deletions, 3: show both</p>
+<p>Returns an html string, with insertions wrapped in &lt;ins&gt; tag, 
+    and deletions marked in &lt;del&gt; tag.
+</p>
+<details class="example"><summary>Examples</summary><pre>diffbycharhtml("3+2xy+5","3+45xy") // 3+&lt;del&gt;2&lt;/del&gt;&lt;ins&gt;45&lt;/ins&gt;xy&lt;del&gt;+5&lt;/del&gt;
+diffbycharhtml("3+2xy+5","3+45xy",2) // 3+&lt;del&gt;2&lt;/del&gt;xy&lt;del&gt;+5&lt;/del&gt;
+diffbycharhtml("3+2xy+5","3+45xy",1) // 3+&lt;ins&gt;45&lt;/ins&gt;xy
+</pre>
+</details>
+
+<h3 id="diff"><a name="diff">diff</a></h3>
+<p><strong>diff($old,$new)</strong></p>
+<p>Given two arrays, compares them by-entry to determine changes.</p>
+<p>Returns an array containing the entry if no change, and an array 
+    with index 'd' for deletions and 'i' for insertions if changed.
+    diffbychar uses this function, with the input strings split by 
+    character. If you'd prefer to split a different way, you can use
+    this function directly.
+</p>
+</body>
+</html>

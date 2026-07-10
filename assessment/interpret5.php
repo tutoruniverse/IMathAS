@@ -20,7 +20,7 @@ $GLOBALS['disallowedvar'] = array('$link','$qidx','$qnidx','$seed','$qdata','$to
   '$optionsPack','$partla','$partnum','$score','$disallowedvar','$allowedmacros','$allowedConstants',
   '$wherecount','$forloopcnt','$_forends','$countcnt','$myrights','$myspecialrights',
   '$this', '$quesData', '$toevalsoln', '$doShowAnswer', '$doShowAnswerParts','$teacherInGb',
-  '$_SERVER','$_POST','$_GET','$_FILES','$_REQUEST','$_SESSION','$_COOKIE','$_ENV');
+  '$_SERVER','$_POST','$_GET','$_FILES','$_REQUEST','$_SESSION','$_COOKIE','$_ENV','$DBH','$stm');
 
 //main interpreter function.  Returns PHP code string, or HTML if blockname==qtext
 function interpret($blockname,$anstype,$str,$countcnt=1,$included_qs=[])

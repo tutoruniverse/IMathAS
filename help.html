@@ -1988,11 +1988,18 @@ $str = &quot;What is $a/$b&quot;
 <p>
 In this example, $str now contains &quot;What is 3/5&quot;.
 </p>
+<p>If you need to insert a variable adjacent to text, you can wrap it in curly braces:</p>
+<pre>
+$a = rand(2,10)
+$str = &quot;The height is {$a}ft&quot;
+</pre>
+
 <p>Note that strings in single quotes will not interpolate variables</p>
 <p>As a warning, strings are interpolated literally, so if you had $a = -4 and 
     then defined $b = "$a^2" you would end up with "-4^2", which may not be 
     what you intended.  Use explicit parentheses in these cases.
 </p>
+
 <p>Warning: Strings that we as mathematicians think of as numbers are not numbers. 
 	If <code>$a = "3/4"</code>, that defines a string, and if you try to compute 
 	<code>$b = $a*5</code>, that's going to give an error, because you can't multiply 

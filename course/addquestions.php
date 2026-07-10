@@ -1327,7 +1327,7 @@ if ($overwriteBody==1) {
 		var itemarray = <?php echo json_encode($jsarr, JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE); ?>;
 		var beentaken = <?php echo ($beentaken) ? 1:0; ?>;
         var displaymethod = "<?php echo Sanitize::encodeStringForDisplay($displaymethod); ?>";
-        var lastitemhash = "<?php echo md5($itemorder); ?>";
+        var lastitemhash = "<?php echo md5($itemorder . $assessintro); ?>";
 		//$(refreshTable);
 		refreshTable();
 	</script>

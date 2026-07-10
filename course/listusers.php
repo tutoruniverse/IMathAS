@@ -327,15 +327,19 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 			if ($timelimitmult <= 0) {
 				$timelimitmult = '1.0';
 			}
+			$latepassmult = floatval($_POST['latepassmult']);
+			if ($latepassmult <= 0) {
+				$latepassmult = '1.0';
+			}
 			$latepasses = intval($_POST['latepasses']);
 			//echo $timelimitmult;
 
 			if ($locked==0) {
-				$stm = $DBH->prepare("UPDATE imas_students SET code=:code,section=:section,locked=:locked,timelimitmult=:timelimitmult,hidefromcourselist=:hidefromcourselist,latepass=:latepass WHERE userid=:userid AND courseid=:courseid");
-				$stm->execute(array(':code'=>$code, ':section'=>$section, ':locked'=>$locked, ':timelimitmult'=>$timelimitmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
+				$stm = $DBH->prepare("UPDATE imas_students SET code=:code,section=:section,locked=:locked,timelimitmult=:timelimitmult,latepassmult=:latepassmult,hidefromcourselist=:hidefromcourselist,latepass=:latepass WHERE userid=:userid AND courseid=:courseid");
+				$stm->execute(array(':code'=>$code, ':section'=>$section, ':locked'=>$locked, ':timelimitmult'=>$timelimitmult, ':latepassmult'=>$latepassmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
 			} else {
-				$stm = $DBH->prepare("UPDATE imas_students SET code=:code,section=:section,timelimitmult=:timelimitmult,hidefromcourselist=:hidefromcourselist,latepass=:latepass WHERE userid=:userid AND courseid=:courseid");
-				$stm->execute(array(':code'=>$code, ':section'=>$section, ':timelimitmult'=>$timelimitmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
+				$stm = $DBH->prepare("UPDATE imas_students SET code=:code,section=:section,timelimitmult=:timelimitmult,latepassmult=:latepassmult,hidefromcourselist=:hidefromcourselist,latepass=:latepass WHERE userid=:userid AND courseid=:courseid");
+				$stm->execute(array(':code'=>$code, ':section'=>$section, ':timelimitmult'=>$timelimitmult, ':latepassmult'=>$latepassmult, ':hidefromcourselist'=>$hide, ':latepass'=>$latepasses, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
 				$stm = $DBH->prepare("UPDATE imas_students SET locked=:locked WHERE userid=:userid AND courseid=:courseid AND locked=0");
 				$stm->execute(array(':locked'=>$locked, ':userid'=>$uidToUpdate, ':courseid'=>$cid));
             }
@@ -375,7 +379,7 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 			//header('Location: ' . $urlmode  . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\') . "/listusers.php?cid=$cid");
 			exit;
 		} else {
-			$query = "SELECT imas_users.*,imas_students.code,imas_students.section,imas_students.locked,imas_students.timelimitmult,imas_students.hidefromcourselist,imas_students.latepass FROM imas_users,imas_students ";
+			$query = "SELECT imas_users.*,imas_students.code,imas_students.section,imas_students.locked,imas_students.timelimitmult,imas_students.latepassmult,imas_students.hidefromcourselist,imas_students.latepass FROM imas_users,imas_students ";
 			$query .= "WHERE imas_users.id=imas_students.userid AND imas_users.id=:id AND imas_students.courseid=:courseid";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':id'=>$uidToUpdate, ':courseid'=>$cid));
@@ -726,6 +730,8 @@ if ($overwriteBody==1) {
 			<span class=formright><input type="text" name="code" value="<?php echo Sanitize::encodeStringForDisplay($lineStudent['code']); ?>"/></span><br class=form>
 			<span class=form>Time Limit Multiplier:</span>
 			<span class=formright><input type="number" min="0.01" step="0.01" name="timelimitmult" value="<?php echo Sanitize::encodeStringForDisplay($lineStudent['timelimitmult']); ?>"/></span><br class=form>
+			<span class=form>LatePass Time Multiplier:</span>
+			<span class=formright><input type="number" min="0.01" step="0.01" name="latepassmult" value="<?php echo Sanitize::encodeStringForDisplay($lineStudent['latepassmult']); ?>"/></span><br class=form>
 			<span class=form>LatePasses:</span>
 			<span class=formright><input type="number" min="0" name="latepasses" value="<?php echo Sanitize::encodeStringForDisplay($lineStudent['latepass']); ?>"/></span><br class=form>
 			<span class=form>Lock out of course?</span>

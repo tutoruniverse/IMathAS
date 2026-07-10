@@ -16,7 +16,7 @@
    $cid = Sanitize::courseId($_GET['cid']);
    require_once "../filter/filter.php";
 
-   $stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,latepasshrs FROM imas_courses WHERE id=:id");
+   $stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset FROM imas_courses WHERE id=:id");
    $stm->execute(array(':id'=>$cid));
    $line = $stm->fetch(PDO::FETCH_ASSOC);
    if ($line == null) {
@@ -27,7 +27,6 @@
    $pagetitle = $line['name'];
    $items = unserialize($line['itemorder']);
    $msgset = $line['msgset']%5;
-   $latepasshrs = $line['latepasshrs'];
 
     //get exceptions
    $now = time();

@@ -1590,8 +1590,9 @@ if ($linkparts[0]=='cid' || $linkparts[0]=='aid' || $linkparts[0]=='placein' || 
 			}
 		}
 		$timelimitmult = 1;
+		$latepassmult = 1;
 	} else {
-		$stm = $DBH->prepare("SELECT timelimitmult,latepass FROM imas_students WHERE userid=:userid AND courseid=:courseid");
+		$stm = $DBH->prepare("SELECT timelimitmult,latepass,latepassmult FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
 		if ($stm->rowCount() == 0) {
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
@@ -1613,8 +1614,9 @@ if ($linkparts[0]=='cid' || $linkparts[0]=='aid' || $linkparts[0]=='placein' || 
 				$setstuviewon = true;
 			}
 			$timelimitmult = 1;
+			$latepassmult = 1;
 		} else {
-			list($timelimitmult,$latepasses) = $stm->fetch(PDO::FETCH_NUM);
+			list($timelimitmult,$latepasses,$latepassmult) = $stm->fetch(PDO::FETCH_NUM);
 		}
 	}
 }
@@ -1690,7 +1692,7 @@ if ($linkparts[0]=='aid') {
 	if ($SESS['ltirole']!='instructor' && $line['allowlate']>0) {
 		$stm = $DBH->prepare("SELECT latepasshrs FROM imas_courses WHERE id=:id");
 		$stm->execute(array(':id'=>$cid));
-		$latepasshrs = $stm->fetchColumn(0);
+		$latepasshrs = $stm->fetchColumn(0) * $latepassmult;
 		require_once "./includes/exceptionfuncs.php";
 		$exceptionfuncs = new ExceptionFuncs($userid, $cid, true, $latepasses, $latepasshrs);
 		list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($exceptionrow, $line);
@@ -2868,8 +2870,9 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $ke
 			}
 		}
 		$timelimitmult = 1;
+		$latepassmult = 1;
 	} else {
-		$stm = $DBH->prepare("SELECT timelimitmult,latepass FROM imas_students WHERE userid=:userid AND courseid=:courseid");
+		$stm = $DBH->prepare("SELECT timelimitmult,latepass,latepassmult FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
 		if ($stm->rowCount() == 0) {
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
@@ -2891,8 +2894,9 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $ke
 				$setstuviewon = true;
 			}
 			$timelimitmult = 1;
+			$latepassmult = 1;
 		} else {
-            list($timelimitmult,$latepasses) = $stm->fetch(PDO::FETCH_NUM);
+            list($timelimitmult,$latepasses,$latepassmult) = $stm->fetch(PDO::FETCH_NUM);
 		}
 	}
 }
@@ -2967,7 +2971,7 @@ if ($keyparts[0]=='aid') {
 	if ($SESS['ltirole']!='instructor' && $line['allowlate']>0 && isset($latepasses) && isset($exceptionrow)) {
 		$stm = $DBH->prepare("SELECT latepasshrs FROM imas_courses WHERE id=:id");
 		$stm->execute(array(':id'=>$cid));
-		$latepasshrs = $stm->fetchColumn(0);
+		$latepasshrs = $stm->fetchColumn(0) * $latepassmult;
 		require_once "./includes/exceptionfuncs.php";
 		$exceptionfuncs = new ExceptionFuncs($userid, $cid, true, $latepasses, $latepasshrs);
 		list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($exceptionrow, $line);

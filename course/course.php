@@ -109,7 +109,7 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 		header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=".Sanitize::courseId($_GET['cid']).$btf . "&r=" . Sanitize::randomQueryStringParam());
 	}
 
-	$stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,toolset,latepasshrs FROM imas_courses WHERE id=:id");
+	$stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,toolset FROM imas_courses WHERE id=:id");
 	$stm->execute(array(':id'=>$cid));
 	$line = $stm->fetch(PDO::FETCH_ASSOC);
 	if ($line == null) {
@@ -122,7 +122,6 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 	$items = unserialize($line['itemorder']);
 	$msgset = $line['msgset']%5;
 	$toolset = $line['toolset'];
-	$latepasshrs = $line['latepasshrs'];
 	$useleftnav = true;
 
 	if (isset($teacherid) && isset($_GET['togglenewflag'])) { //handle toggle of NewFlag

@@ -10,7 +10,8 @@ function getCalendarEventData($cid, $userid, $stuview = false) {
 	global $DBH;
 
 	$studentinfo = array();
-	$stm = $DBH->prepare("SELECT id,section,latepass,timelimitmult FROM imas_students WHERE userid=:userid AND courseid=:courseid");
+	$latepassmult = 1;
+	$stm = $DBH->prepare("SELECT id,section,latepass,timelimitmult,latepassmult FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 	$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
 	$line = $stm->fetch(PDO::FETCH_ASSOC);
 	if ($line != false) {
@@ -18,6 +19,7 @@ function getCalendarEventData($cid, $userid, $stuview = false) {
 		$studentinfo['timelimitmult'] = $line['timelimitmult'];
 		$studentinfo['section'] = $line['section'];
 		$latepasses = $line['latepass'];
+		$latepassmult = $line['latepassmult'];
 	} else {
 		$latepasses = 0;
 		$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
@@ -38,6 +40,7 @@ function getCalendarEventData($cid, $userid, $stuview = false) {
 	if ($stuview) {
 		$studentinfo['timelimitmult'] = 1;
 		$studentinfo['section'] = "not a real section name";
+		$latepassmult = 1;
 	}
 	if (!isset($teacherid) && !isset($tutorid) && !isset($studentid)) {
 		echo 'Invalid token: invalid user credentials';
@@ -67,7 +70,7 @@ function getCalendarEventData($cid, $userid, $stuview = false) {
 	$itemorder = unserialize($row[1]);
 	$itemsimporder = array();
 
-	$exceptionfuncs = new ExceptionFuncs($userid, $cid, !empty($studentid), $latepasses, $row[2]);
+	$exceptionfuncs = new ExceptionFuncs($userid, $cid, !empty($studentid), $latepasses, $row[2] * $latepassmult);
 
 	flattenitems($itemorder,$itemsimporder,(isset($teacherid)||isset($tutorid))&&!$stuview, $studentinfo);
 

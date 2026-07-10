@@ -67,10 +67,9 @@
 	require_once "../includes/calendardisp.php";
 
 	if (isset($_GET['ajax'])) {
-		$stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,toolset,latepasshrs FROM imas_courses WHERE id=:id");
+		$stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,toolset FROM imas_courses WHERE id=:id");
 		$stm->execute(array(':id'=>$cid));
 		$line = $stm->fetch(PDO::FETCH_ASSOC);
-		$latepasshrs = $line['latepasshrs'];
 		$msgset = $line['msgset']%5;
 
 		showcalendar("showcalendar");
@@ -164,10 +163,9 @@
 		$latepasses = 0;
 	}
 
-	 $stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,toolset,latepasshrs FROM imas_courses WHERE id=:id");
+	 $stm = $DBH->prepare("SELECT name,itemorder,allowunenroll,msgset,toolset FROM imas_courses WHERE id=:id");
 	 $stm->execute(array(':id'=>$cid));
 	 $line = $stm->fetch(PDO::FETCH_ASSOC);
-	 $latepasshrs = $line['latepasshrs'];
 	 $msgset = $line['msgset']%5;
 
 	 showcalendar("showcalendar");

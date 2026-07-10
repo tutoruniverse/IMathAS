@@ -57,7 +57,7 @@ function copyStuData($destcid, $sourcecid = null) {
 		$existingstu[] = $row['userid'];
 	}
 	
-	$stufieldlist = 'userid,section,code,gbcomment,latepass,lastaccess,gbinstrcomment,locked,timelimitmult,stutype,custominfo';
+	$stufieldlist = 'userid,section,code,gbcomment,latepass,lastaccess,gbinstrcomment,locked,timelimitmult,latepassmult,stutype,custominfo';
 	$stufields = explode(',', $stufieldlist);
 	$execarr = array();
 	$stm = $DBH->prepare("SELECT $stufieldlist FROM imas_students WHERE courseid=?");

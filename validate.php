@@ -612,12 +612,13 @@ if ($hasusername) {
         } else {
             $cid = Sanitize::courseId($_SESSION['courseid']);
         }
-        $stm = $DBH->prepare("SELECT id,locked,timelimitmult,section,latepass,lastaccess,lticourseid,lockaid FROM imas_students WHERE userid=:userid AND courseid=:courseid");
+        $stm = $DBH->prepare("SELECT id,locked,timelimitmult,latepassmult,section,latepass,lastaccess,lticourseid,lockaid FROM imas_students WHERE userid=:userid AND courseid=:courseid");
         $stm->execute(array(':userid' => $userid, ':courseid' => $cid));
         $line = $stm->fetch(PDO::FETCH_ASSOC);
         if ($line != false) {
             $studentid = $line['id'];
             $studentinfo['timelimitmult'] = $line['timelimitmult'];
+            $studentinfo['latepassmult'] = $line['latepassmult'];
             $studentinfo['section'] = $line['section'];
             $studentinfo['latepasses'] = $line['latepass'];
             $studentinfo['lockaid'] = $line['lockaid'];
@@ -671,7 +672,7 @@ if ($hasusername) {
                         $stm = $DBH->prepare("INSERT INTO imas_students (userid,courseid) VALUES (?,?)");
                         $stm->execute(array($userid, $cid));
                         $studentid = $DBH->lastInsertId();
-                        $studentinfo = array('latepasses' => 0, 'timelimitmult' => 1, 'section' => null);
+                        $studentinfo = array('latepasses' => 0, 'timelimitmult' => 1, 'latepassmult' => 1, 'section' => null);
                     } else {
                         echo '<p>' . _('This course does not allow guest access.') . '</p>';
                         exit;
@@ -708,7 +709,7 @@ if ($hasusername) {
                 $coursedefstime = $coursedeftime;
             }
             $courseenddate = $crow['enddate'];
-            $latepasshrs = max(1,$crow['latepasshrs']);
+            $latepasshrs = max(1,$crow['latepasshrs']) * ($studentinfo['latepassmult'] ?? 1);
             $courseUIver = $crow['UIver'];
 
             if (isset($studentid) && !$inInstrStuView) {

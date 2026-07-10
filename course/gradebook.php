@@ -736,7 +736,7 @@ function gbstudisp($stu) {
 				$hasoutcomes = true;
 			}
 		}
-		$query = "SELECT imas_students.gbcomment,imas_students.gbinstrcomment,imas_users.email,imas_students.latepass,imas_students.section,imas_students.lastaccess FROM imas_students,imas_users WHERE ";
+		$query = "SELECT imas_students.gbcomment,imas_students.gbinstrcomment,imas_users.email,imas_students.latepass,imas_students.section,imas_students.lastaccess,imas_students.latepassmult FROM imas_students,imas_users WHERE ";
 		$query .= "imas_students.userid=imas_users.id AND imas_users.id=:id AND imas_students.courseid=:courseid";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':id'=>$stu, ':courseid'=>$_GET['cid']));
@@ -745,7 +745,8 @@ function gbstudisp($stu) {
 			require_once "../footer.php";
 			exit;
 		}
-		list($gbcomment,$gbinstrcomment,$stuemail,$latepasses,$stusection,$lastaccess) = $stm->fetch(PDO::FETCH_NUM);
+		list($gbcomment,$gbinstrcomment,$stuemail,$latepasses,$stusection,$lastaccess,$latepassmult) = $stm->fetch(PDO::FETCH_NUM);
+		$latepasshrs = $latepasshrs * $latepassmult;
 	}
 	$curdir = rtrim(dirname(__FILE__), '/\\');
 

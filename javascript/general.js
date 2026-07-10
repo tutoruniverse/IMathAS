@@ -2120,7 +2120,10 @@ function doImageUploadResize(el, callback) {
                 width = Math.round(img.width * ratio);
                 height = Math.round(img.height * ratio);
                 prefix = 'resized_';
-            }
+            } else if (originalFile.type === 'image/gif' || originalFile.type === 'image/png') {
+				callback(el, false);
+				return;
+			}
 
             canvas.width = width;
             canvas.height = height;

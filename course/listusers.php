@@ -505,7 +505,7 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		$haslatepasses = false;
 
 		$query = "SELECT imas_students.id,imas_students.userid,imas_users.FirstName,imas_users.LastName,imas_users.email,imas_users.SID,imas_students.lastaccess,";
-		$query .= "imas_students.section,imas_students.code,imas_students.locked,imas_users.hasuserimg,imas_students.timelimitmult,imas_students.latepass ";
+		$query .= "imas_students.section,imas_students.code,imas_students.locked,imas_users.hasuserimg,imas_students.timelimitmult,imas_students.latepassmult,imas_students.latepass ";
 		$query .= "FROM imas_students,imas_users WHERE imas_students.courseid=:courseid AND imas_students.userid=imas_users.id ";
 		if ($secfilter!=-1) {
 			$query .= "AND imas_students.section=:section ";
@@ -940,8 +940,8 @@ if ($overwriteBody==1) {
 			} else {
 				$numunlocked++;
 			}
-			if ($line['timelimitmult']!=1) {
-				$icons .= '<img src="'.$staticroot.'/img/time.png" alt="'._('Has a time limit multiplier set').'" title="'._('Has a time limit multiplier set').'"/> ';
+			if ($line['timelimitmult']!=1 || $line['latepassmult']!=1) {
+				$icons .= '<img src="'.$staticroot.'/img/time.png" alt="'._('Has a time limit or latepass multiplier set').'" title="'._('Has a time limit or latepass multiplier set').'"/> ';
 			}
 			if ($icons != '') {
 				$icons = '<a href="listusers.php?cid='.$cid.'&chgstuinfo=true&uid='.Sanitize::onlyInt($line['userid']).'">'.$icons.'</a>';

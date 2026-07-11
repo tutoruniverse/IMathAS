@@ -1,0 +1,338 @@
+<html>
+<head>
+<title>Text on Image Builder</title>
+<style>
+    body { font-family: sans-serif; margin: 20px; }
+    h1 { font-size: 1.3em; }
+    .upload-row { margin-bottom: 12px; }
+    .upload-row label { margin-right: 16px; }
+    #imageWrap { position: relative; display: inline-block; border: 1px dashed #999; min-width: 200px; min-height: 100px; }
+    #mainImage { display: block; }
+    #textBoxesLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .text-box {
+        position: absolute;
+        padding: 2px 4px;
+        cursor: move;
+        outline: none;
+        white-space: nowrap;
+        user-select: none;
+        touch-action: none;
+        border: 1px solid transparent;
+    }
+    .text-box.selected {
+        border: 1px dashed #0099ff;
+        background: rgba(0, 153, 255, 0.08);
+    }
+    #addTextBtn { margin: 12px 0; }
+    .text-controls-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        padding: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .text-controls-row input[type=text] { padding: 3px; }
+    .text-controls-row .text-input { width: 220px; }
+    .text-controls-row .fontsize-input { width: 70px; }
+    .text-controls-row .color-input { width: 40px; padding: 0; height: 26px; }
+    .position-display { width: 90px; color: #555; font-family: monospace; }
+    .delete-btn { color: #b00; cursor: pointer; }
+    #output { width: 100%; max-width: 900px; box-sizing: border-box; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<h1>Text on Image Builder</h1>
+
+<div class="upload-row">
+    <label>Image: <input type="file" id="imageUpload" accept="image/*"></label>
+    <label>Image width: <input type="number" id="imgSize" placeholder="auto" size="10" min="1"></label>
+</div>
+
+<div id="imageWrap">
+    <img id="mainImage" style="display:none;">
+    <div id="textBoxesLayer"></div>
+</div>
+
+<div>
+    <button type="button" id="addTextBtn">Add text</button>
+</div>
+
+<div id="textControls"></div>
+
+<h2>Output</h2>
+<p>In the question editor, in the Image Files section, upload your image 
+    and assign it the variable <code>$img</code>, and give it a placeholder description. 
+    Then copy this code into Common Control, edit the alt text, and place 
+    $textonimage in the Question Text.
+</p>
+<textarea id="output" readonly rows="6"></textarea>
+
+<script>
+(function() {
+    var items = [];
+    var nextId = 1;
+    var selectedId = null;
+    var boxEls = {};
+    var rowEls = {};
+
+    var imageUpload = document.getElementById('imageUpload');
+    var imgSizeInput = document.getElementById('imgSize');
+    var mainImage = document.getElementById('mainImage');
+    var textBoxesLayer = document.getElementById('textBoxesLayer');
+    var addTextBtn = document.getElementById('addTextBtn');
+    var textControls = document.getElementById('textControls');
+    var output = document.getElementById('output');
+
+    var originalWidth = null;
+
+    mainImage.addEventListener('load', function() {
+        originalWidth = mainImage.naturalWidth;
+        mainImage.style.width = '';
+        mainImage.style.height = '';
+        imgSizeInput.value = originalWidth;
+        generateOutput();
+    });
+
+    imageUpload.addEventListener('change', function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            mainImage.src = evt.target.result;
+            mainImage.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    imgSizeInput.addEventListener('input', function() {
+        var w = imgSizeInput.value.trim();
+        if (w !== '') {
+            mainImage.style.width = w + 'px';
+            mainImage.style.height = 'auto';
+        } else {
+            mainImage.style.width = '';
+            mainImage.style.height = '';
+        }
+        generateOutput();
+    });
+
+    addTextBtn.addEventListener('click', function() {
+        var offset = (items.length % 8) * 15;
+        var item = { id: nextId++, text: '', fontSize: '16', color: '#000000', left: 20 + offset, top: 20 + offset };
+        items.push(item);
+        addItemDom(item);
+        generateOutput();
+    });
+
+    document.addEventListener('pointerdown', function(e) {
+        if (!e.target.closest || !e.target.closest('.text-box')) {
+            selectItem(null);
+        }
+    });
+
+    function esc(str) {
+        return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$');
+    }
+
+    function fontSizeStr(val) {
+        val = (val || '').trim();
+        if (val === '' || val == "16") return '';
+        if (/^\d+(\.\d+)?$/.test(val)) return val + 'px';
+        return val;
+    }
+
+    function colorStr(val) {
+        val = (val || '').trim();
+        return val === '' ? '#000000' : val;
+    }
+
+    function isDefaultColor(val) {
+        var c = colorStr(val).toLowerCase();
+        return c === '#000000' || c === 'black';
+    }
+
+    function buildSpan(item) {
+        var styles = [];
+        var color = colorStr(item.color);
+        if (!isDefaultColor(item.color)) {
+            styles.push('color:' + color);
+        }
+        var fs = fontSizeStr(item.fontSize);
+        if (fs !== '') {
+            styles.push('font-size:' + fs);
+        }
+        var text = item.text || '';
+        if (styles.length) {
+            return "<span style='" + styles.join(';') + "'>" + text + '</span>';
+        }
+        return text;
+    }
+
+    function addItemDom(item) {
+        // control row
+        var row = document.createElement('div');
+        row.className = 'text-controls-row';
+
+        var textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.className = 'text-input';
+        textInput.placeholder = 'Text';
+        textInput.value = item.text;
+        textInput.addEventListener('input', function() {
+            item.text = textInput.value;
+            updateBox(item);
+            generateOutput();
+        });
+
+        var fontSizeInput = document.createElement('input');
+        fontSizeInput.type = 'number';
+        fontSizeInput.className = 'fontsize-input';
+        fontSizeInput.placeholder = 'Font size';
+        fontSizeInput.value = item.fontSize;
+        fontSizeInput.addEventListener('input', function() {
+            item.fontSize = fontSizeInput.value;
+            updateBox(item);
+            generateOutput();
+        });
+
+        var colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.className = 'color-input';
+        colorInput.value = item.color;
+        colorInput.addEventListener('input', function() {
+            item.color = colorInput.value;
+            updateBox(item);
+            generateOutput();
+        });
+
+        var posDisplay = document.createElement('span');
+        posDisplay.className = 'position-display';
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'delete-btn';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', function() {
+            removeItem(item.id);
+        });
+
+        row.appendChild(textInput);
+        row.appendChild(fontSizeInput);
+        row.appendChild(colorInput);
+        row.appendChild(posDisplay);
+        row.appendChild(delBtn);
+        textControls.appendChild(row);
+        rowEls[item.id] = { row: row, posDisplay: posDisplay };
+
+        // overlay box
+        var box = document.createElement('div');
+        box.className = 'text-box';
+        box.tabIndex = 0;
+        boxEls[item.id] = box;
+        textBoxesLayer.appendChild(box);
+
+        var dragging = false;
+        var startX, startY, startLeft, startTop;
+
+        box.addEventListener('pointerdown', function(e) {
+            selectItem(item.id);
+            box.focus();
+            dragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = item.left;
+            startTop = item.top;
+            box.setPointerCapture(e.pointerId);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        box.addEventListener('pointermove', function(e) {
+            if (!dragging) return;
+            item.left = startLeft + (e.clientX - startX);
+            item.top = startTop + (e.clientY - startY);
+            updateBox(item);
+            updatePositionDisplay(item);
+            generateOutput();
+        });
+
+        box.addEventListener('pointerup', function(e) {
+            dragging = false;
+        });
+
+        box.addEventListener('keydown', function(e) {
+            var step = e.shiftKey ? 10 : 1;
+            var moved = true;
+            if (e.key === 'ArrowLeft') item.left -= step;
+            else if (e.key === 'ArrowRight') item.left += step;
+            else if (e.key === 'ArrowUp') item.top -= step;
+            else if (e.key === 'ArrowDown') item.top += step;
+            else moved = false;
+            if (moved) {
+                e.preventDefault();
+                updateBox(item);
+                updatePositionDisplay(item);
+                generateOutput();
+            }
+        });
+
+        updateBox(item);
+        updatePositionDisplay(item);
+    }
+
+    function selectItem(id) {
+        selectedId = id;
+        for (var key in boxEls) {
+            boxEls[key].classList.toggle('selected', String(key) === String(id));
+        }
+    }
+
+    function removeItem(id) {
+        items = items.filter(function(i) { return i.id !== id; });
+        if (boxEls[id]) { boxEls[id].remove(); delete boxEls[id]; }
+        if (rowEls[id]) { rowEls[id].row.remove(); delete rowEls[id]; }
+        if (selectedId === id) selectedId = null;
+        generateOutput();
+    }
+
+    function updateBox(item) {
+        var box = boxEls[item.id];
+        box.style.left = item.left + 'px';
+        box.style.top = item.top + 'px';
+        box.style.color = colorStr(item.color);
+        box.style.fontSize = fontSizeStr(item.fontSize);
+        box.textContent = (item.text && item.text.trim() !== '') ? item.text : '(text)';
+    }
+
+    function updatePositionDisplay(item) {
+        rowEls[item.id].posDisplay.textContent = Math.round(item.left) + ', ' + Math.round(item.top);
+    }
+
+    function generateOutput() {
+        if (items.length === 0) {
+            output.value = '';
+            return;
+        }
+        var lines = [];
+        var sizeVal = imgSizeInput.value.trim();
+        if (sizeVal !== '' && Number(sizeVal) !== originalWidth) {
+            lines.push('$img = changeimagesize($img, ' + sizeVal + ')');
+        }
+        var parts = items.map(function(item) {
+            var spanHtml = buildSpan(item);
+            return '"' + esc(spanHtml) + '", ' + Math.round(item.left) + ', ' + Math.round(item.top);
+        });
+        lines.push('$img = replacealttext($img, "REPLACE ME: a description of the image and all the text you are putting on it")')
+        lines.push('$textonimage = textonimage($img, ' + parts.join(', ') + ')');
+        output.value = lines.join('\n');
+    }
+
+    generateOutput();
+})();
+</script>
+
+</body>
+</html>

@@ -151,54 +151,54 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 }
 
 //run cleanup operation, several in a batch
-$stm = $DBH->prepare("SELECT id,enddate FROM imas_courses WHERE cleanupdate>1 AND cleanupdate<? ORDER BY cleanupdate LIMIT 10");
-$stm->execute(array($now));
+$mainstm = $DBH->prepare("SELECT id,enddate FROM imas_courses WHERE cleanupdate>1 AND cleanupdate<? ORDER BY cleanupdate LIMIT 10");
+$mainstm->execute(array($now));
 // do up to 10, if we can start within 45 seconds of script start
-while (time() - $now < 45 && $row = $stm->fetch(PDO::FETCH_NUM)) {
-list($cidtoclean,$enddate) = $row;
-$skip = false;
-if ($enddate<2000000000) { //check to see if enddate reset
-	if ($enddate > $now - $old) {
-		// enddate has been updated - remove from cleaning plan
+while (time() - $now < 45 && $row = $mainstm->fetch(PDO::FETCH_NUM)) {
+	list($cidtoclean,$enddate) = $row;
+	$skip = false;
+	if ($enddate<2000000000) { //check to see if enddate reset
+		if ($enddate > $now - $old) {
+			// enddate has been updated - remove from cleaning plan
+			$skip = true;
+		}
+	}
+	// check to see if students have become active or course already emptied
+	$stuchk->execute(array($cidtoclean));
+	$stulast = $stuchk->fetchColumn(0);
+	if ($stulast === null || $stulast > $now - $old) {
+		// course is already empty, or new student activity - remove from cleanup
 		$skip = true;
 	}
-}
-// check to see if students have become active or course already emptied
-$stuchk->execute(array($cidtoclean));
-$stulast = $stuchk->fetchColumn(0);
-if ($stulast === null || $stulast > $now - $old) {
-	// course is already empty, or new student activity - remove from cleanup
-	$skip = true;
-}
 
-if (!$skip) {
-	$stm = $DBH->prepare("SELECT userid FROM imas_students WHERE courseid=?");
-	$stm->execute(array($cidtoclean));
-	$stus = array();
-	while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
-		$stus[] = $row['userid'];
+	if (!$skip) {
+		$stm = $DBH->prepare("SELECT userid FROM imas_students WHERE courseid=?");
+		$stm->execute(array($cidtoclean));
+		$stus = array();
+		while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+			$stus[] = $row['userid'];
+		}
+		// not including in transaction to prevent cleanup from stalling on a
+		// weird course
+		$updcrs->execute(array(0, $cidtoclean));
+
+		if (count($stus)>0) {
+			$DBH->beginTransaction();
+			unenrollstu($cidtoclean, $stus, true, false, true, 2);
+			$stm = $DBH->prepare("DELETE FROM imas_tutors WHERE courseid=?");
+			$stm->execute(array($cidtoclean));
+			// delete any lingering assessment records (likely belonging to teacher)
+			$stm = $DBH->prepare("DELETE ias FROM imas_assessment_sessions AS ias JOIN imas_assessments AS ia ON ias.assessmentid=ia.id WHERE ia.courseid=?");
+			$stm->execute(array($cidtoclean));
+			$stm = $DBH->prepare("DELETE iar FROM imas_assessment_records AS iar JOIN imas_assessments AS ia ON iar.assessmentid=ia.id WHERE ia.courseid=?");
+			$stm->execute(array($cidtoclean));
+			$DBH->commit();
+
+			$stm = $DBH->prepare("INSERT INTO imas_log (time,log) VALUES (?,?)");
+			$stm->execute([$now, "Course cleanup complete on $cidtoclean"]);
+		}
+	} else {
+		$updcrs->execute(array(0, $cidtoclean));
 	}
-	// not including in transaction to prevent cleanup from stalling on a
-	// weird course
-	$updcrs->execute(array(0, $cidtoclean));
-
-	if (count($stus)>0) {
-		$DBH->beginTransaction();
-		unenrollstu($cidtoclean, $stus, true, false, true, 2);
-        $stm = $DBH->prepare("DELETE FROM imas_tutors WHERE courseid=?");
-	    $stm->execute(array($cidtoclean));
-        // delete any lingering assessment records (likely belonging to teacher)
-        $stm = $DBH->prepare("DELETE ias FROM imas_assessment_sessions AS ias JOIN imas_assessments AS ia ON ias.assessmentid=ia.id WHERE ia.courseid=?");
-	    $stm->execute(array($cidtoclean));
-        $stm = $DBH->prepare("DELETE iar FROM imas_assessment_records AS iar JOIN imas_assessments AS ia ON iar.assessmentid=ia.id WHERE ia.courseid=?");
-	    $stm->execute(array($cidtoclean));
-		$DBH->commit();
-
-		$stm = $DBH->prepare("INSERT INTO imas_log (time,log) VALUES (?,?)");
-		$stm->execute([$now, "Course cleanup complete on $cidtoclean"]);
-	}
-} else {
-	$updcrs->execute(array(0, $cidtoclean));
-}
 }
 

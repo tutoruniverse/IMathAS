@@ -277,9 +277,13 @@ function init(paramarr, enableMQ, baseel) {
             loadedscripts.push(paramarr.scripts[i][1]);
         }
     }
+
     if (scriptqueue.length > 0 && processingscriptsqueue === false) {
         processScriptQueue();
     }
+  }
+  if (initstack.length > 0 && processingscriptsqueue === false) {
+    processScriptQueueNext();
   }
 }
 

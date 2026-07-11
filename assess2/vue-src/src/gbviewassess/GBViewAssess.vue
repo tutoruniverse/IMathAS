@@ -346,6 +346,9 @@
               </li>
             </ul>
           </div>
+          <div v-if="isDrill" class="questionpane introtext">
+            {{ drillGoalLabel(aData.drillsettings) }}
+          </div>
           <div
             v-for = "(qdata,qn) in curQuestions"
             :key = "qn"
@@ -384,6 +387,17 @@
                   </strong>
                 </span>
                 <span v-if="qdata[curQver[qn]].useda11yalt"> ({{ $t('gradebook-a11yalt') }})</span>
+              </div>
+              <div
+                v-if="isDrill && curDrillData[qn] && curDrillData[qn].drillresults.length > 0"
+                class="drill-history headerpane"
+              >
+                <strong>{{ $t('drill-history_title') }}</strong>
+                <ul>
+                  <li v-for="(r, idx) in curDrillData[qn].drillresults" :key="idx">
+                    {{ r.completed_disp }}: {{ drillResultLabel(r) }}
+                  </li>
+                </ul>
               </div>
               <div class="sidebyside" :class="{sidebysideon:sidebysideon}">
                 <div class="scrollpane">
@@ -575,6 +589,7 @@ import GbFeedback from '@/gbviewassess/GbFeedback.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import InterQuestionTextList from '@/components/InterQuestionTextList.vue';
 import InterQuestionText from '@/components/InterQuestionText.vue';
+import { drillGoalMixin } from '@/mixins/drillGoalMixin';
 
 import '../assess2.css';
 
@@ -593,6 +608,7 @@ export default {
     InterQuestionTextList,
     InterQuestionText
   },
+  mixins: [drillGoalMixin],
   data: function () {
     return {
       showOverride: false,
@@ -678,6 +694,15 @@ export default {
         return [];
       }
       return this.aData.assess_versions[store.curAver].questions;
+    },
+    isDrill () {
+      return this.aData.displaymethod === 'drill';
+    },
+    curDrillData () {
+      if (!this.isDrill) {
+        return {};
+      }
+      return this.aData.assess_versions[store.curAver].drilldata || {};
     },
     curAver () {
       return store.curAver;
@@ -1110,6 +1135,13 @@ export default {
 .bigquestionwrap .headerpane {
   padding: 8px;
   background-color: #eee;
+}
+.bigquestionwrap .drill-history {
+  background-color: #fff;
+}
+.drill-history ul {
+  list-style-type: none;
+  padding-left:10px;
 }
 .hoverbox {
   background-color: #fff; z-index: 9; box-shadow: 0px -3px 5px 0px rgb(0 0 0 / 75%);

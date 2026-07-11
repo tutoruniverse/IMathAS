@@ -9,9 +9,9 @@
         exit;
     }
     
-	$stm = $DBH->prepare("SELECT itemorder,viddata,intro,defpoints,courseid,ver,showhints,showwork FROM imas_assessments WHERE id=:id");
+	$stm = $DBH->prepare("SELECT itemorder,viddata,intro,defpoints,courseid,ver,showhints,showwork,drilljson,displaymethod FROM imas_assessments WHERE id=:id");
 	$stm->execute(array(':id'=>$aid));
-	list($rawitemorder, $viddata,$current_intro_json, $defpoints,$assesscourseid,$aver,$showhints,$showwork) = $stm->fetch(PDO::FETCH_NUM);
+	list($rawitemorder, $viddata,$current_intro_json, $defpoints,$assesscourseid,$aver,$showhints,$showwork,$rawdrilljson,$assessdisplaymethod) = $stm->fetch(PDO::FETCH_NUM);
 	if ($assesscourseid != $cid) {
 		echo "error: invalid ID";
 		exit;
@@ -302,6 +302,29 @@
 		}
     }
 
+	//update drill display names
+	$drilljsonchanged = false;
+	if ($assessdisplaymethod == 'drill' && isset($_POST['dispnames'])) {
+		$newdispnames = json_decode($_POST['dispnames'], true);
+		if (is_array($newdispnames)) {
+			$drilljson = ($rawdrilljson != '') ? json_decode($rawdrilljson, true) : array();
+			if (!is_array($drilljson)) { $drilljson = array(); }
+			$dispnames = array();
+			$stm = $DBH->prepare("SELECT id FROM imas_questions WHERE assessmentid=?");
+			$stm->execute(array($aid));
+			while ($qrow = $stm->fetch(PDO::FETCH_ASSOC)) {
+				$qkey = 'qn' . $qrow['id'];
+				if (!empty($newdispnames[$qkey])) {
+					$dispnames[$qkey] = Sanitize::stripHtmlTags($newdispnames[$qkey]);
+				}
+			}
+			$drilljson['dispnames'] = $dispnames;
+			$upd_drilljson = $DBH->prepare("UPDATE imas_assessments SET drilljson=? WHERE id=? AND courseid=?");
+			$upd_drilljson->execute(array(json_encode($drilljson), $aid, $cid));
+			$drilljsonchanged = ($upd_drilljson->rowCount() > 0);
+		}
+	}
+
 	$qarr = array(':itemorder'=>$_REQUEST['order'], ':viddata'=>$viddata, ':intro'=>$new_intro, ':id'=>$aid, ':courseid'=>$cid);
 	$query = "UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata,intro=:intro";
 	if (isset($_POST['defpts'])) {
@@ -337,6 +360,10 @@
 
         echo md5($_REQUEST['order'] . $new_intro);
 		//echo "OK";
+	} else if ($drilljsonchanged) {
+		// itemorder/points didn't change, but the drill display names did;
+		// the hash is unchanged since it doesn't depend on drilljson
+		echo md5($_REQUEST['order'] . $new_intro);
 	} else {
 		echo "error: not saved";
 	}

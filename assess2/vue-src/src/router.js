@@ -6,6 +6,7 @@ import Closed from './views/Closed.vue';
 import Summary from './views/Summary.vue';
 import ShowWork from './views/ShowWork.vue';
 import Skip from './views/Skip.vue';
+import Drill from './views/Drill.vue';
 import Full from './views/Full.vue';
 import Print from './views/Print.vue';
 import FullPaged from './views/FullPaged.vue';
@@ -53,6 +54,19 @@ const router = createRouter({
       path: '/skip/:qn',
       name: 'skip',
       component: Skip,
+      beforeEnter: (to, from, next) => {
+        // if no active attempt, route to launch
+        if (store.inProgress) {
+          next();
+        } else {
+          next({ path: '/', replace: true });
+        }
+      }
+    },
+    {
+      path: '/drill/:qn?',
+      name: 'drill',
+      component: Drill,
       beforeEnter: (to, from, next) => {
         // if no active attempt, route to launch
         if (store.inProgress) {

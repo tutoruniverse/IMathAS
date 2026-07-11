@@ -36,12 +36,14 @@
 <script>
 import Icons from '@/components/widgets/Icons.vue';
 import { store, actions } from '@/basicstore';
+import { drillGoalMixin } from '@/mixins/drillGoalMixin';
 
 export default {
   name: 'SettingsList',
   components: {
     Icons
   },
+  mixins: [drillGoalMixin],
   data: function () {
     return {
       now: new Date()
@@ -75,11 +77,22 @@ export default {
         if (settings.timelimit > 0) {
           out.push(this.getTimelimitObj());
         }
+
+        // drill goal
+        if (settings.displaymethod === 'drill') {
+          out.push(this.getDrillObj());
+        }
       }
       return out;
     }
   },
   methods: {
+    getDrillObj () {
+      return {
+        icon: 'info',
+        str: this.drillGoalLabel(store.assessInfo.drillsettings)
+      };
+    },
     getPointsObj () {
       var settings = store.assessInfo;
       var pointsobj = {

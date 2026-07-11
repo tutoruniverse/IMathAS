@@ -33,7 +33,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 
 	$cid = Sanitize::courseId($_GET['cid']);
 	$aid = Sanitize::onlyInt($_GET['aid']);
-	$stm = $DBH->prepare("SELECT courseid,ver,submitby,defpoints,name,intro,showhints,showwork,itemorder,displaymethod,defregens,defattempts FROM imas_assessments WHERE id=?");
+	$stm = $DBH->prepare("SELECT courseid,ver,submitby,defpoints,name,intro,showhints,showwork,itemorder,displaymethod,defregens,defattempts,drilljson FROM imas_assessments WHERE id=?");
 	$stm->execute(array($aid));
 	$row = $stm->fetch(PDO::FETCH_ASSOC);
 	if ($row === false || $row['courseid'] != $cid) {
@@ -54,6 +54,18 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 	$rawintro = $row['intro'];
     $row['showwork'] = ($row['showwork'] & 3);
 	$showtimewarning = ($row['defattempts'] > 1 || ($submitby=='by_question' && $row['defregens'] > 1));
+
+	$drillDispNames = array();
+	if ($displaymethod == 'drill' && !empty($row['drilljson'])) {
+		$drilljson = json_decode($row['drilljson'], true);
+		if (!empty($drilljson['dispnames']) && is_array($drilljson['dispnames'])) {
+			foreach ($drilljson['dispnames'] as $qkey => $dispname) {
+				// keys are "qn<id>", matching the pts/extracredit convention, so
+				// json_encode/JS never mistake this map for a numerically-indexed array
+				$drillDispNames[$qkey] = Sanitize::encodeStringForDisplay($dispname);
+			}
+		}
+	}
 
 	if (isset($_GET['grp'])) { $_SESSION['groupopt'.$aid] = Sanitize::onlyInt($_GET['grp']);}
 	if (isset($_GET['selfrom'])) {
@@ -614,6 +626,7 @@ if ($overwriteBody==1) {
 		var itemarray = <?php echo json_encode($jsarr, JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE); ?>;
 		var beentaken = <?php echo ($beentaken) ? 1:0; ?>;
         var displaymethod = "<?php echo Sanitize::encodeStringForDisplay($displaymethod); ?>";
+        var drillDispNames = <?php echo count($drillDispNames) ? json_encode($drillDispNames, JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE) : '{}'; ?>;
         var lastitemhash = "<?php echo md5($itemorder . $rawintro); ?>";
 		var useed = <?php echo Sanitize::onlyInt($_SESSION['userprefs']['useed']);?>;
 		//$(refreshTable);

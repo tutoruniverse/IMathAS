@@ -451,6 +451,9 @@ class AssessInfo
     if (isset($this->assessData['textmap'][$id])) {
         $out['text'] = $this->assessData['textmap'][$id];
     }
+    // Note: 'dispname' for drill mode is computed in AssessRecord::getQuestionObject()
+    // instead of here, since group/pool questions need the question NUMBER (not just
+    // the qid) to compute a stable per-slot numbered label - see getDrillDispname().
     return $out;
   }
 
@@ -1342,6 +1345,20 @@ class AssessInfo
     }
     unset($settings['extrefs']);
 
+    //unpack drilljson
+    $settings['drillsettings'] = array('style' => 'time_maxcorrect', 'n' => 10, 'dispnames' => new stdClass());
+    if ($settings['displaymethod'] === 'drill' && $settings['drilljson'] != '') {
+      $dj = json_decode($settings['drilljson'], true);
+      if (is_array($dj)) {
+        $settings['drillsettings']['style'] = $dj['style'] ?? 'time_maxcorrect';
+        $settings['drillsettings']['n'] = intval($dj['n'] ?? 10);
+        if (!empty($dj['dispnames'])) {
+          $settings['drillsettings']['dispnames'] = $dj['dispnames'];
+        }
+      }
+    }
+    unset($settings['drilljson']);
+
     // handle help features
     $settings['help_features'] = array(
       'message' => ($settings['msgtoinstr'] == 1),
@@ -1429,14 +1446,16 @@ class AssessInfo
                 'type' => 'pool',
                 'n' => 1,
                 'replace' => 0,
-                'qids' => array_map('intval', $sub)
+                'qids' => array_map('intval', $sub),
+                'grouplabel' => ''
                 );
             } else {
                 $order[$k] = array(
                 'type' => 'pool',
                 'n' => $pts[0],
                 'replace' => ($pts[1]==1),
-                'qids' => array_map('intval', array_slice($sub, 1))
+                'qids' => array_map('intval', array_slice($sub, 1)),
+                'grouplabel' => $pts[2] ?? ''
                 );
             }
             } else {

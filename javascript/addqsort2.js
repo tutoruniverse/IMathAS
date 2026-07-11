@@ -153,6 +153,9 @@ function refreshTable() {
     $("[id^=pts],[id^=grppts],#defpts")
         .off("change.pts")
         .on("change.pts", updatePts);
+    $("[id^=drilldispname]")
+        .off("change.drilldispname")
+        .on("change.drilldispname", updateDispNames);
     $("#curqtbl *").off("focus.tracker")
         .on("focus.tracker", function(e) {
             var col = $(this).closest("td,th").index();
@@ -948,6 +951,22 @@ function updatePts() {
     }
 }
 
+function updateDispNames() {
+    var haschg = false;
+    $("[id^=drilldispname]").each(function () {
+        var qkey = "qn" + $(this).attr("data-qid");
+        var newval = $(this).val();
+        if (newval != $(this).attr("data-lastval")) {
+            haschg = true;
+            $(this).attr("data-lastval", newval);
+        }
+        drillDispNames[qkey] = newval;
+    });
+    if (haschg) {
+        submitChanges();
+    }
+}
+
 function updateGrpN(num, old_num) {
     if (!confirm_textseg_dirty()) {
         //if aborted, restore old value
@@ -1419,10 +1438,17 @@ function generateTable() {
                             html += "selected=1";
                         }
                         html += ">" + _("With") + "</option></select>" + _(" replacement") + '</label>';
-                        html += '. <label class="nowrap">' + _("Label") + ': ';
-                        html += '<input size=20 type=text id="grplabel-' + i + '" ' + 
-                                'value="' + (itemarray[i][4] ?? '') + '" ' +
-                                'onchange="updateGrpLabel(' + i + ')"/></label>';
+                        if (displaymethod == 'drill') {
+                            html += '<br/><label class="small">' + _("Display name") + ': ';
+                            html += '<input size=18 type=text id="grplabel-' + i + '" ' +
+                                    'value="' + (itemarray[i][4] ?? '') + '" ' +
+                                    'onchange="updateGrpLabel(' + i + ')"/></label>';
+                        } else {
+                            html += '. <label class="nowrap">' + _("Label") + ': ';
+                            html += '<input size=20 type=text id="grplabel-' + i + '" ' +
+                                    'value="' + (itemarray[i][4] ?? '') + '" ' +
+                                    'onchange="updateGrpLabel(' + i + ')"/></label>';
+                        }
                         html += "</td>";
                         html +=
                             '<td class="nowrap c"><input size=2 type=number min=0 step=1 id="grppts-' +
@@ -1648,7 +1674,19 @@ function generateTable() {
                     curitems[j][1] +
                     '"/>';
                 
-                html += '<label for="qc'+ln+'" id="qsd'+ln+'">' + curitems[j][2] + "</label></td>"; //description
+                html += '<label for="qc'+ln+'" id="qsd'+ln+'">' + curitems[j][2] + "</label>"; //description
+                if (displaymethod == 'drill' && !curisgroup) {
+                    // grouped (pool) questions use the group's display name
+                    // (see the group header row) instead of an individual one
+                    var dispnameval = drillDispNames['qn' + curitems[j][0]] || '';
+                    html +=
+                        '<br/><label class="small">' + _('Display name') + ': ' +
+                        '<input type="text" size="18" id="drilldispname' + ln + '" ' +
+                        'data-qid="' + curitems[j][0] + '" ' +
+                        'placeholder="' + curitems[j][2] + '" ' +
+                        'value="' + dispnameval + '" data-lastval="' + dispnameval + '"/></label>';
+                }
+                html += "</td>";
                 html += '<td class="nowrap">';
                 if ((curitems[j][7] & 32) == 32) {
                     html += '<span title="' + _('Show Work') + '">' + 
@@ -2097,6 +2135,9 @@ function submitChanges() {
         outdata["defpts"] = $("#defpts").val();
     } else {
         outdata["extracredit"] = JSON.stringify(data[3]);
+    }
+    if (displaymethod == 'drill') {
+        outdata["dispnames"] = JSON.stringify(drillDispNames);
     }
     inTransit = true;
     $.ajax({

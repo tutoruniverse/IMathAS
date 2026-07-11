@@ -315,7 +315,7 @@ $include_from_assess_info = array(
   'extended_with', 'timelimit', 'timelimit_type', 'allowed_attempts',
   'showscores', 'intro', 'interquestion_text', 'resources', 'category_urls',
   'help_features', 'points_possible', 'showcat', 'enddate_in', 'displaymethod',
-  'lti_showmsg', 'lti_msgcnt', 'lti_forumcnt', 'retakewait'
+  'lti_showmsg', 'lti_msgcnt', 'lti_forumcnt', 'retakewait', 'drillsettings'
 );
 if ($in_practice) {
   array_push($include_from_assess_info, 'showscores', 'allowed_attempts');
@@ -422,6 +422,9 @@ if ($in_practice) {
 
 //prep date display
 prepDateDisp($assessInfoOut);
+
+// 
+$assessInfoOut['drawalt'] = (($_SESSION['userprefs']['drawentry'] ?? 1)==0);
 
 //output JSON object
 echo json_encode($assessInfoOut, JSON_INVALID_UTF8_IGNORE);

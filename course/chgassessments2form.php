@@ -9,6 +9,8 @@ $vueData = array(
 	'allowinstraddtutors' => (!isset($CFG['GEN']['allowinstraddtutors']) || $CFG['GEN']['allowinstraddtutors']==true),
 	'outcomeOptions' => $outcomeOptions,
 	'subtype' => 'DNC',
+	'drillstyle' => 'time_maxcorrect',
+	'drilln' => 10,
 	'defregens' => '',
 	'defregenpenalty' => '0',
 	'defregenpenaltyaftern' => '1',
@@ -205,7 +207,7 @@ $vueData = array(
 			<?php echo _('Core Options'); ?>
 		</div>
 		<div class="blockitems">
-			<div :class="{highlight:displaymethod !== 'DNC'}">
+			<div :class="{highlight:displaymethod !== 'DNC'}" v-show="subtype !== 'drill'">
 				<label class=form for="displaymethod"><?php echo _('Display style'); ?>:</label>
 				<span class=formright>
 					<select name="displaymethod" id="displaymethod" v-model="displaymethod">
@@ -237,6 +239,7 @@ $vueData = array(
 						<option value="DNC"><?php echo _('Do not change'); ?></option>
 						<option value="by_question"><?php echo _('Homework-style: new versions of individual questions'); ?></option>
 						<option value="by_assessment"><?php echo _('Quiz-style: retake whole assessment with new versions'); ?></option>
+						<option value="drill"><?php echo _('Drill style: practice questions until a goal is met'); ?></option>
 					</select>
 					<span class="noticetext small">
 						<br/>
@@ -244,47 +247,69 @@ $vueData = array(
 					</span>
 				</span><br class=form />
 
-				<span class=form><?php echo _('Versions'); ?>:</span>
-				<span class=formright>
+				<div v-if="subtype === 'drill'">
+					<label class=form for="drillstyle"><?php echo _('Drill style'); ?>:</label>
+					<span class=formright>
+						<select name="drillstyle" id="drillstyle" v-model="drillstyle" :required="changingCore">
+							<option value="time_maxcorrect"><?php echo _('Do as many correct as possible in N seconds'); ?></option>
+							<option value="count_time"><?php echo _('Do N questions then stop. Record time'); ?></option>
+							<option value="count_correct_time"><?php echo _('Do N questions correctly then stop. Record time'); ?></option>
+							<option value="count_correct_attempts"><?php echo _('Do N questions correctly then stop. Record total attempts'); ?></option>
+							<option value="streak_time"><?php echo _('Do N questions correctly in a row. Record time'); ?></option>
+							<option value="streak_attempts"><?php echo _('Do N questions correctly in a row. Record total attempts'); ?></option>
+						</select>
+					</span><br class=form />
 
-					<label for="defregens" v-show="subtype != 'by_assessment'">
-						<?php echo _('Number of versions for each question'); ?>:
-					</label>
-					<label for="defregens" v-show="subtype == 'by_assessment'">
-						<?php echo _('Number of times assessment can be taken'); ?>:
-					</label>
-					<input type=number min=1 max=100 size=3 id="defregens"
-						name="defregens" v-model.number="defregens"
-						:required="changingCore" />
-					<span v-if="defregens > 1">
-						<br/>
-						<?php echo sprintf(_('With a penalty of %1$s %% per version %2$s after %3$s full credit versions'), '<input type=number min=0 max=100 size=3 id="defregenpenalty"	name="defregenpenalty" v-model.number="defregenpenalty" :required="changingCore" />',
-						'<span v-if="defregenpenalty>0">','<input type=number min=1 :max="Math.min(defregens,9)" size=3 id="defregenpenaltyaftern"
-								name="defregenpenaltyaftern" v-model.number="defregenpenaltyaftern"
-								:required="changingCore" />'); ?>
-						</span>
-						<br/>
-						<span v-if="subtype == 'by_assessment'">
-							<label for="keepscore">
-								<?php echo _('Score to keep'); ?>:
-							</label>
-							<select id="keepscore" name="keepscore" v-model="keepscore"
-								 :required="changingCore">
-								<option value="DNC"><?php echo _('Do not change'); ?></option>
-								<option value="best"><?php echo _('Best'); ?></option>
-								<option value="last"><?php echo _('Last'); ?></option>
-								<option value="average"><?php echo _('Average'); ?></option>
-							</select>
+					<label class=form for="drilln">N=</label>
+					<span class=formright>
+						<input type=number min=1 max=1000 size=4 id="drilln"
+							name="drilln" v-model.number="drilln" :required="changingCore" />
+					</span><br class=form />
+				</div>
+
+				<div v-show="subtype !== 'drill'">
+					<span class=form><?php echo _('Versions'); ?>:</span>
+					<span class=formright>
+
+						<label for="defregens" v-show="subtype != 'by_assessment'">
+							<?php echo _('Number of versions for each question'); ?>:
+						</label>
+						<label for="defregens" v-show="subtype == 'by_assessment'">
+							<?php echo _('Number of times assessment can be taken'); ?>:
+						</label>
+						<input type=number min=1 max=100 size=3 id="defregens"
+							name="defregens" v-model.number="defregens"
+							:required="changingCore" />
+						<span v-if="defregens > 1">
 							<br/>
-							<label>
-								<?php echo _('Require wait between retakes');?>: 
-								<input type=text id="retakewait" name="retakewait" v-model="retakewait" 
-									:required="changingCore" size="5" />
-								<?php echo _('hours'); ?>
-							</label>
+							<?php echo sprintf(_('With a penalty of %1$s %% per version %2$s after %3$s full credit versions'), '<input type=number min=0 max=100 size=3 id="defregenpenalty"	name="defregenpenalty" v-model.number="defregenpenalty" :required="changingCore" />',
+							'<span v-if="defregenpenalty>0">','<input type=number min=1 :max="Math.min(defregens,9)" size=3 id="defregenpenaltyaftern"
+									name="defregenpenaltyaftern" v-model.number="defregenpenaltyaftern"
+									:required="changingCore" />'); ?>
+							</span>
+							<br/>
+							<span v-if="subtype == 'by_assessment'">
+								<label for="keepscore">
+									<?php echo _('Score to keep'); ?>:
+								</label>
+								<select id="keepscore" name="keepscore" v-model="keepscore"
+									 :required="changingCore">
+									<option value="DNC"><?php echo _('Do not change'); ?></option>
+									<option value="best"><?php echo _('Best'); ?></option>
+									<option value="last"><?php echo _('Last'); ?></option>
+									<option value="average"><?php echo _('Average'); ?></option>
+								</select>
+								<br/>
+								<label>
+									<?php echo _('Require wait between retakes');?>:
+									<input type=text id="retakewait" name="retakewait" v-model="retakewait"
+										:required="changingCore" size="5" />
+									<?php echo _('hours'); ?>
+								</label>
+							</span>
 						</span>
-					</span>
-				</span><br class=form />
+					</span><br class=form />
+				</div>
 
 
 				<span class=form><?php echo _('Tries'); ?>:</span>
@@ -854,11 +879,13 @@ createApp({
   data: function() { return <?php echo json_encode($vueData, JSON_INVALID_UTF8_IGNORE); ?>;},
   computed: {
 		coreSet: function() {
+			// drill mode doesn't use Versions (defregens/defregenpenalty/keepscore) -
+			// those 3 slots are auto-satisfied, and drilln stands in for defregens
 			let tot = (this.subtype === 'DNC' ? 0 : 1) +
-				(this.defregens === '' ? 0 : 1) +
-				(this.defregens > 1 && this.defregenpenalty === '' ? 0 : 1) +
-				(this.defregens > 1 && this.defregenpenalty > 0 && this.defregenpenaltyaftern === '' ? 0 : 1) +
-				(this.subtype === 'by_assessment' && this.defregens > 1 && this.keepscore === 'DNC' ? 0 : 1) +
+				(this.subtype === 'drill' ? (this.drilln === '' ? 0 : 1) : (this.defregens === '' ? 0 : 1)) +
+				(this.subtype === 'drill' ? 1 : (this.defregens > 1 && this.defregenpenalty === '' ? 0 : 1)) +
+				(this.subtype === 'drill' ? 1 : (this.defregens > 1 && this.defregenpenalty > 0 && this.defregenpenaltyaftern === '' ? 0 : 1)) +
+				(this.subtype === 'drill' ? 1 : (this.subtype === 'by_assessment' && this.defregens > 1 && this.keepscore === 'DNC' ? 0 : 1)) +
 				(this.defattempts === '' ? 0 : 1) +
 				(this.defattempts > 1 && this.defattemptpenalty === '' ? 0 : 1) +
 				(this.defattempts > 1 && this.defattemptpenalty > 0 && this.defattemptpenaltyaftern === '' ? 0 : 1) +

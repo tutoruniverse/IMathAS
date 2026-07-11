@@ -125,7 +125,9 @@ if (!(isset($teacherid))) {
                 }
 			}
 
-			if ($_POST['displaymethod'] !== 'DNC') {
+			// displaymethod is set via the "Drill style" submission-type option
+			// below (in the core options bundle) when subtype=='drill'
+			if ($_POST['displaymethod'] !== 'DNC' && $_POST['subtype'] !== 'drill') {
 				$sets[] = "displaymethod=:displaymethod";
 				$qarr[':displaymethod'] = Sanitize::simpleASCII($_POST['displaymethod']);
 			}
@@ -136,12 +138,25 @@ if (!(isset($teacherid))) {
 			}
 
 			// check the core settings for consistency
+			$isDrillChg = ($_POST['subtype'] === 'drill');
 			if ($_POST['subtype'] === 'DNC') {
 				$coreOK = false;
+			} else if ($isDrillChg) {
+				// drill uses by_question storage/grading under the hood
+				$submitby = 'by_question';
 			} else {
 				$submitby = Sanitize::simpleASCII($_POST['subtype']);
 			}
-			if ($_POST['defregens'] === '') {
+			if ($isDrillChg) {
+				// Versions section doesn't apply to drill; use an
+				// effectively-unlimited regen cap instead, matching
+				// addassessment2.php's single-assessment behavior
+				if ($_POST['drilln'] === '') {
+					$coreOK = false;
+				}
+				$defregens = 999;
+				$defregenpenalty = 0;
+			} else if ($_POST['defregens'] === '') {
 				$coreOK = false;
 			} else {
 				$defregens = Sanitize::onlyInt($_POST['defregens']);
@@ -165,7 +180,7 @@ if (!(isset($teacherid))) {
 					$defregenpenalty = 0;
 				}
 			}
-			if ($coreOK && $submitby == 'by_assessment' && $defregens > 1) {
+			if ($coreOK && !$isDrillChg && $submitby == 'by_assessment' && $defregens > 1) {
 				if ($_POST['keepscore'] === 'DNC') {
 					$coreOK = false;
 				} else {
@@ -252,6 +267,12 @@ if (!(isset($teacherid))) {
 				$qarr[':scoresingb'] = $scoresingb;
 				$sets[] = "ansingb=:ansingb";
 				$qarr[':ansingb'] = $ansingb ;
+
+				if ($isDrillChg) {
+					$sets[] = "displaymethod='drill'";
+					$newdrillstyle = Sanitize::simpleString($_POST['drillstyle'] ?? 'time_maxcorrect');
+					$newdrilln = max(1, Sanitize::onlyInt($_POST['drilln'] ?? 10));
+				}
 			}
 
 			if ($_POST['gbcategory'] !== 'DNC') {
@@ -490,6 +511,25 @@ if (!(isset($teacherid))) {
 				unset($metadata[':cid']);
 			}
 		}
+        if ($isDrillChg && $coreOK) {
+            // drilljson can't go through the generic bulk $sets update above
+            // since each assessment's existing per-question display names
+            // (dispnames) need to be preserved individually
+            $stm = $DBH->prepare("SELECT id,drilljson FROM imas_assessments WHERE id IN ($checkedlist) AND courseid=:cid");
+            $stm->execute(array(':cid'=>$cid));
+            $upd_drilljson = $DBH->prepare("UPDATE imas_assessments SET drilljson=? WHERE id=?");
+            while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+                $newdrilljson = array('style'=>$newdrillstyle, 'n'=>$newdrilln);
+                if ($row['drilljson'] != '') {
+                    $olddrilljson = json_decode($row['drilljson'], true);
+                    if (!empty($olddrilljson['dispnames'])) {
+                        $newdrilljson['dispnames'] = $olddrilljson['dispnames'];
+                    }
+                }
+                $upd_drilljson->execute(array(json_encode($newdrilljson), $row['id']));
+            }
+            $updated_settings = true;
+        }
         if ($_POST['lockforassess'] !== 'DNC') {
             // handle separately since must be limited to by_assess
             if (intval($_POST['lockforassess']) == 2) {

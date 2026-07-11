@@ -29,7 +29,9 @@ $vueData = array(
 	'datesbylti' => intval($line['date_by_lti']),
 	'allowpractice' => $line['reviewdate']>0,
 	'displaymethod' => $line['displaymethod'],
-	'subtype' => $line['submitby'],
+	'subtype' => ($line['displaymethod'] === 'drill') ? 'drill' : $line['submitby'],
+	'drillstyle' => $line['drilljson']['style'],
+	'drilln' => $line['drilljson']['n'],
 	'defregens' => $line['defregens'],
 	'defregenpenalty' => $defregenpenalty,
 	'defregenpenaltyaftern' => $defregenpenalty_aftern,
@@ -241,24 +243,27 @@ $vueData = array(
 			<?php echo _('Core Options');?>
 		</div>
 		<div class="blockitems">
-			<label class=form for="displaymethod"><?php echo _('Display style');?>:</label>
-			<span class=formright>
-				<select name="displaymethod" id=displaymethod v-model="displaymethod">
-					<option value="skip"><?php echo _('One question at a time');?></option>
-					<option value="full"><?php echo _('All questions at once, or in pages');?></option>
-					<option value="video_cued"><?php echo _('Video Cued');?></option>
-					<?php if (isset($CFG['GEN']['livepollserver'])) {
-						echo '<option value="livepoll">',_('Live Poll'),'</option>';
-					}?>
-				</select>
-				<a href="#" id="dispdetails" @click.prevent="doShowDisplayDialog"><?php echo _('Details');?></a>
-			</span><br class=form />
+			<div v-show="subtype != 'drill'">
+				<label class=form for="displaymethod"><?php echo _('Display style');?>:</label>
+				<span class=formright>
+					<select name="displaymethod" id=displaymethod v-model="displaymethod">
+						<option value="skip"><?php echo _('One question at a time');?></option>
+						<option value="full"><?php echo _('All questions at once, or in pages');?></option>
+						<option value="video_cued"><?php echo _('Video Cued');?></option>
+						<?php if (isset($CFG['GEN']['livepollserver'])) {
+							echo '<option value="livepoll">',_('Live Poll'),'</option>';
+						}?>
+					</select>
+					<a href="#" id="dispdetails" @click.prevent="doShowDisplayDialog"><?php echo _('Details');?></a>
+				</span><br class=form />
+			</div>
 
 			<label class="form" for="subtype"><?php echo _('Submission type');?>:</label>
 			<span class="formright">
 				<select name="subtype" id="subtype" v-model="subtype">
 					<option value="by_question"><?php echo _('Homework-style: new versions of individual questions');?></option>
 					<option value="by_assessment"><?php echo _('Quiz-style: retake whole assessment with new versions');?></option>
+					<option value="drill"><?php echo _('Drill style: practice questions until a goal is met');?></option>
 				</select>
 				<span v-if="taken" class="noticetext">
 					<br/>
@@ -266,49 +271,70 @@ $vueData = array(
 				</span>
 			</span><br class=form />
 
+			<div v-if="subtype == 'drill'">
+				<label class=form for="drillstyle"><?php echo _('Drill style');?>:</label>
+				<span class=formright>
+					<select name="drillstyle" id="drillstyle" v-model="drillstyle">
+						<option value="time_maxcorrect"><?php echo _('Do as many correct as possible in N seconds');?></option>
+						<option value="count_time"><?php echo _('Do N questions then stop. Record time');?></option>
+						<option value="count_correct_time"><?php echo _('Do N questions correctly then stop. Record time');?></option>
+						<option value="count_correct_attempts"><?php echo _('Do N questions correctly then stop. Record total attempts');?></option>
+						<option value="streak_time"><?php echo _('Do N questions correctly in a row. Record time');?></option>
+						<option value="streak_attempts"><?php echo _('Do N questions correctly in a row. Record total attempts');?></option>
+					</select>
+				</span><br class=form />
 
-			<span class=form><?php echo _('Versions');?>:</span>
-			<span class=formright>
+				<label class=form for="drilln">N=</label>
+				<span class=formright>
+					<input type=number min=1 max=1000 size=4 id="drilln"
+						name="drilln" v-model.number="drilln" />
+				</span><br class=form />
+			</div>
 
-				<label for="defregens" v-show="subtype == 'by_question'">
-					<?php echo _('Number of versions for each question');?>:
-				</label>
-				<label for="defregens" v-show="subtype == 'by_assessment'">
-					<?php echo _('Number of times assessment can be taken');?>:
-				</label>
-				<input type=number min=1 max=100 size=3 id="defregens"
-					name="defregens" v-model.number="defregens" />
-				<span v-if="defregens > 1">
-					<br/>
-					<?php echo _('With a penalty of');?>
-					<label><input type=number min=0 max=100 size=3 id="defregenpenalty"
-						name="defregenpenalty" v-model.number="defregenpenalty" />%
-					<?php echo _('per version');?></label>
-					<span v-show="defregenpenalty>0">
-						<?php echo _('after');?>
-						<label><input type=number min=1 :max="Math.min(defregens,9)" size=3 id="defregenpenaltyaftern"
-							name="defregenpenaltyaftern" v-model.number="defregenpenaltyaftern" />
-						<?php echo _('full-credit versions');?></label>
-					</span>
-					<br/>
-					<span v-if="subtype == 'by_assessment'">
-						<label for="keepscore">
-							<?php echo _('Score to keep');?>:
-						</label>
-						<select id="keepscore" name="keepscore" v-model="keepscore">
-							<option value="best"><?php echo _('Best');?></option>
-							<option value="last"><?php echo _('Last');?></option>
-							<option value="average"><?php echo _('Average');?></option>
-						</select>
+			<div v-show="subtype != 'drill'">
+				<span class=form><?php echo _('Versions');?>:</span>
+				<span class=formright>
+
+					<label for="defregens" v-show="subtype == 'by_question'">
+						<?php echo _('Number of versions for each question');?>:
+					</label>
+					<label for="defregens" v-show="subtype == 'by_assessment'">
+						<?php echo _('Number of times assessment can be taken');?>:
+					</label>
+					<input type=number min=1 max=999 size=3 id="defregens"
+						name="defregens" v-model.number="defregens" />
+					<span v-if="defregens > 1">
 						<br/>
-						<label>
-							<?php echo _('Require wait between retakes');?>: 
-							<input type=text id="retakewait" name="retakewait" v-model="retakewait" size="5" />
-							<?php echo _('hours'); ?>
-						</label>
+						<?php echo _('With a penalty of');?>
+						<label><input type=number min=0 max=100 size=3 id="defregenpenalty"
+							name="defregenpenalty" v-model.number="defregenpenalty" />%
+						<?php echo _('per version');?></label>
+						<span v-show="defregenpenalty>0">
+							<?php echo _('after');?>
+							<label><input type=number min=1 :max="Math.min(defregens,9)" size=3 id="defregenpenaltyaftern"
+								name="defregenpenaltyaftern" v-model.number="defregenpenaltyaftern" />
+							<?php echo _('full-credit versions');?></label>
+						</span>
+						<br/>
+						<span v-if="subtype == 'by_assessment'">
+							<label for="keepscore">
+								<?php echo _('Score to keep');?>:
+							</label>
+							<select id="keepscore" name="keepscore" v-model="keepscore">
+								<option value="best"><?php echo _('Best');?></option>
+								<option value="last"><?php echo _('Last');?></option>
+								<option value="average"><?php echo _('Average');?></option>
+							</select>
+							<br/>
+							<label>
+								<?php echo _('Require wait between retakes');?>:
+								<input type=text id="retakewait" name="retakewait" v-model="retakewait" size="5" />
+								<?php echo _('hours'); ?>
+							</label>
+						</span>
 					</span>
-				</span>
-			</span><br class=form />
+				</span><br class=form />
+			</div>
 
 
 			<span class=form><?php echo _('Tries');?>:</span>

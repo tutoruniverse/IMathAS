@@ -1,5 +1,5 @@
 <template>
-  <div class = "questionwrap questionpane" ref="main">
+  <div class = "questionwrap questionpane" ref="main" tabindex="-1">
     <div v-if = "!questionContentLoaded">
       {{ $t('loading') }}
     </div>
@@ -39,6 +39,7 @@
       v-html="questionData.html"
       class = "question"
       :id="'questionwrap' + qn"
+      :key="questionData.seed"
       ref = "thisqwrap"
     />
     <question-helps
@@ -132,7 +133,8 @@ export default {
       work: '',
       lastWorkVal: '',
       showWorkInput: false,
-      loadingAttempted: false
+      loadingAttempted: false,
+      mathrendered: false
     };
   },
   computed: {
@@ -190,6 +192,7 @@ export default {
       return (store.inProgress &&
         !store.inPrintView &&
         !this.disabled &&
+        store.assessInfo.displaymethod !== 'drill' &&
         this.hasSeqNext !== true &&
         (this.questionData.hasOwnProperty('score') ||
          this.questionData.status === 'attempted'
@@ -358,9 +361,10 @@ export default {
       if (this.questionData.rendered || !this.active) {
         return;
       }
+      this.mathrendered = false;
       setTimeout(window.drawPics, 100);
       window.initlinkmarkup(this.$refs.thisqwrap);
-      window.rendermathnode(this.$refs.thisqwrap);
+      window.rendermathnode(this.$refs.thisqwrap, ()=>this.mathrendered=true);
       window.initSageCell(this.$refs.thisqwrap);
       window.setupSeqPartToggles(this.$refs.thisqwrap);
       this.updateTime(true);
@@ -379,10 +383,36 @@ export default {
           }
         });
       }
-
+      
       window.imathasAssess.init(this.questionData.jsparams, store.enableMQ, this.$refs.thisqwrap);
       setTimeout(window.sendLTIresizemsg, 100);
       actions.setRendered(this.qn, true);
+      if (store.assessInfo.displaymethod === 'drill' && !store.assessInfo.drawalt) {
+        this.focusFirstInput();
+      }
+    },
+    focusFirstInput () {
+      if (!this.mathrendered) {
+        setTimeout(this.focusFirstInput, 50);
+        return; 
+      }
+      const container = this.$refs.thisqwrap;
+      if (!container) {
+        return;
+      }
+      const mqel = container.querySelector('span[id^="mqinput-"]');
+      if (mqel) {
+        window.MQ(mqel).focus();
+        window.MQ(mqel).select();
+      } else {
+        const inputEl = container.querySelector('input[id^="qn"],select[id^="qn"],textarea[id^="qn"]');
+        if (inputEl) {
+          inputEl.focus();
+          if (typeof inputEl.select === 'function') {
+            inputEl.select();
+          }
+        }
+      }
     },
     setSeqNextResult () {
       if (this.hasSeqNext && !this.questionData.jsparams.submitall) {

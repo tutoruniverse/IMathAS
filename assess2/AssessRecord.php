@@ -45,6 +45,7 @@ class AssessRecord
   private $inTransaction = false;
   private $new_excusals = [];
   private $include_errors = false;
+  private $drillLastOutcome = array();
 
   /**
    * Construct object
@@ -435,6 +436,11 @@ class AssessRecord
       if ($isWithdrawn) {
         $out['questions'][$k]['withdrawn'] = 1;
       }
+      if ($this->assess_info->getSetting('displaymethod') === 'drill') {
+        $out['questions'][$k]['drillstatus'] = 0;
+        $out['questions'][$k]['drillcount'] = 0;
+        $out['questions'][$k]['drillresults'] = array();
+      }
     }
     $this->data['assess_versions'][] = $out;
 
@@ -475,6 +481,259 @@ class AssessRecord
     // note that record needs to be saved
     $this->need_to_record = true;
     return $question;
+  }
+
+  /**
+   * Start (or restart) a drill session for a question. If the question's
+   * current version was already completed (drillcomplete set from a prior
+   * run), resets question_versions/drillcount so the run starts fresh.
+   * @param  int  $qn   Question #
+   * @param  int  $qid  Current Question ID
+   * @return int  Question ID of the version now active
+   */
+  public function startDrillQuestion($qn, $qid) {
+    $lastaver = count($this->data['assess_versions'])-1;
+    $qdata = &$this->data['assess_versions'][$lastaver]['questions'][$qn];
+    if (count($qdata['question_versions']) > 1 || !empty($qdata['drillcomplete'])) {
+      // a previous run completed (or left extra versions behind); reset for a fresh run
+      list($oldquestions, $oldseeds) = $this->getOldQuestions($qn);
+      list($newq, $newseed) = $this->assess_info->regenQuestionAndSeed($qid, $oldseeds, $oldquestions);
+      $qdata['question_versions'] = array(array(
+        'qid' => $newq,
+        'seed' => $newseed,
+        'tries' => array()
+      ));
+      $qdata['drillcount'] = 0;
+      unset($qdata['drillcomplete']);
+      $qid = $newq;
+      unset($this->data['autosaves'][$qn]);
+    }
+    $qdata['drillstatus'] = 1;
+    if ($this->assess_info->getSetting('drillsettings')['style'] === 'time_maxcorrect') {
+      $qdata['drillend'] = $this->now + $this->assess_info->getSetting('drillsettings')['n'];
+    } else {
+      unset($qdata['drillend']);
+    }
+    $this->need_to_record = true;
+    return $qid;
+  }
+
+  /**
+   * Stop the active drill session for a question (e.g. student navigated
+   * away without completing it). No score/version changes.
+   * @param  int  $qn   Question #
+   * @return void
+   */
+  public function stopDrillQuestion($qn) {
+    $lastaver = count($this->data['assess_versions'])-1;
+    $this->data['assess_versions'][$lastaver]['questions'][$qn]['drillstatus'] = 0;
+    unset($this->data['assess_versions'][$lastaver]['questions'][$qn]['drillend']);
+    $this->need_to_record = true;
+  }
+
+  /**
+   * Find the question number currently being actively drilled (drillstatus=1),
+   * if any. Only one question can be actively drilling at a time.
+   * @return int  Question #, or -1 if none is active
+   */
+  public function getActiveDrillQuestion() {
+    $lastaver = count($this->data['assess_versions'])-1;
+    foreach ($this->data['assess_versions'][$lastaver]['questions'] as $qn => $qdata) {
+      if (!empty($qdata['drillstatus'])) {
+        return $qn;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Check drill progress after a question has been scored: reshow as-is if
+   * still eligible for another try, auto-regenerate if this version is done
+   * but the drill goal isn't met yet, or complete the drill (drillcomplete,
+   * append to drillresults) if the goal (or time limit) has been reached.
+   * Call after AssessRecord::scoreQuestion() for a drill-mode question.
+   * @param  int  $qn   Question #
+   * @return void
+   */
+  public function processDrillProgress($qn) {
+    $lastaver = count($this->data['assess_versions'])-1;
+    $qdata = &$this->data['assess_versions'][$lastaver]['questions'][$qn];
+    if (empty($qdata['drillstatus'])) {
+      return; // not actively drilling
+    }
+    $drillsettings = $this->assess_info->getSetting('drillsettings');
+    $style = $drillsettings['style'];
+    $n = $drillsettings['n'];
+
+    $qobj = $this->getQuestionObject($qn, true, false, false);
+    $isCorrect = ($qobj['status'] === 'correct');
+    $triesExhausted = ($qobj['try'] >= $qobj['tries_max']);
+    $timedOut = ($style === 'time_maxcorrect' && !empty($qdata['drillend']) && $this->now >= $qdata['drillend']);
+
+    if (!$isCorrect && !$triesExhausted && !$timedOut) {
+      // still eligible for another try on this version; nothing to do
+      return;
+    }
+
+    // this version is done (correct, out of tries, or time expired) -
+    // update running progress per the style's rule
+    switch ($style) {
+      case 'count_time':
+        $qdata['drillcount']++;
+        break;
+      case 'streak_time':
+      case 'streak_attempts':
+        $qdata['drillcount'] = $isCorrect ? $qdata['drillcount'] + 1 : 0;
+        break;
+      default: // count_correct_time, count_correct_attempts, time_maxcorrect
+        if ($isCorrect) {
+          $qdata['drillcount']++;
+        }
+        break;
+    }
+
+    $goalMet = ($style === 'time_maxcorrect') ? $timedOut : ($qdata['drillcount'] >= $n);
+
+    if ($goalMet) {
+      $this->recordDrillCompletion($qdata, $style, $n);
+    } else if (!$isCorrect && $triesExhausted &&
+      $this->assess_info->getSetting('showans') === 'after_lastattempt'
+    ) {
+      // tries exhausted without a correct answer, and the assessment shows
+      // answers after the last attempt - pause here (leaving this version
+      // displayed, with its answer reveal, instead of immediately
+      // regenerating) until the student explicitly asks to move on via
+      // advanceDrillQuestion()
+      $qdata['drillawaitingnext'] = 1;
+    } else {
+      // keep drilling - regenerate a new version. Record the outcome that
+      // triggered this regen (request-scoped only, not persisted) so the
+      // response can tell the frontend what just happened, since the
+      // regenerated version's own status won't reflect it.
+      if ($isCorrect) {
+        $this->drillLastOutcome[$qn] = 'correct';
+      } else if ($qobj['status'] === 'partial') {
+        $this->drillLastOutcome[$qn] = 'partial';
+      } else {
+        $this->drillLastOutcome[$qn] = 'incorrect';
+      }
+      $this->buildNewQuestionVersion($qn, $qdata['question_versions'][count($qdata['question_versions'])-1]['qid']);
+    }
+    $this->need_to_record = true;
+  }
+
+  /**
+   * Move on from a version left displayed by processDrillProgress()'s
+   * showans='after_lastattempt' pause (see above), regenerating a new
+   * version. No-op (returns the current qid unchanged) if not actually
+   * awaiting a next question.
+   * @param  int  $qn   Question #
+   * @return int  Question ID of the version now active
+   */
+  public function advanceDrillQuestion($qn) {
+    $lastaver = count($this->data['assess_versions'])-1;
+    $qdata = &$this->data['assess_versions'][$lastaver]['questions'][$qn];
+    $curq = $qdata['question_versions'][count($qdata['question_versions'])-1];
+    if (empty($qdata['drillawaitingnext'])) {
+      return $curq['qid'];
+    }
+    unset($qdata['drillawaitingnext']);
+    $newqid = $this->buildNewQuestionVersion($qn, $curq['qid']);
+    $this->need_to_record = true;
+    return $newqid;
+  }
+
+  /**
+   * Compute the drill display name for a question. If the qid is part of a
+   * pool group ("select n from group"), uses the group's label - with a
+   * per-slot number appended when the group selects more than one - instead
+   * of the individual per-question display name, since a pool group's
+   * members typically share a conceptual name (e.g. "Add 1"/"Add 2").
+   *
+   * The per-slot number is derived from which question numbers currently
+   * hold a qid from this group's pool, sorted ascending - not from the
+   * (possibly shuffled) selection order in assignQuestionsAndSeeds(). This
+   * is deliberate: regenQuestionAndSeed() only ever swaps a qn's qid for
+   * another member of the *same* pool, so this qn-based set (and thus each
+   * qn's position within it) is stable across regens without needing any
+   * changes to the assignment/shuffle logic itself.
+   * @param  int    $qn    Question #
+   * @param  int    $qid   Current question ID for this qn
+   * @param  array  $aver  Current assess version data (for cross-question lookup)
+   * @return string
+   */
+  private function getDrillDispname($qn, $qid, $aver) {
+    $group = null;
+    foreach ($this->assess_info->getSetting('itemorder') as $entry) {
+      if (is_array($entry) && $entry['type'] === 'pool' && in_array($qid, $entry['qids'])) {
+        $group = $entry;
+        break;
+      }
+    }
+    if ($group === null) {
+      // not part of a group - individual per-question display name
+      $dispnames = $this->assess_info->getSetting('drillsettings')['dispnames'];
+      return (is_array($dispnames) && !empty($dispnames['qn' . $qid])) ? $dispnames['qn' . $qid] : '';
+    }
+    if ($group['grouplabel'] === '' || $group['n'] <= 1) {
+      return $group['grouplabel'];
+    }
+    $matchingQns = array();
+    foreach ($aver['questions'] as $otherQn => $qdata) {
+      $otherVers = $qdata['question_versions'];
+      $otherQid = $otherVers[count($otherVers) - 1]['qid'];
+      if (in_array($otherQid, $group['qids'])) {
+        $matchingQns[] = $otherQn;
+      }
+    }
+    sort($matchingQns);
+    $index = array_search($qn, $matchingQns);
+    return $group['grouplabel'] . ' ' . ($index + 1);
+  }
+
+  /**
+   * Force-finish a timed drill session (time_maxcorrect style) when the
+   * timer runs out client-side with no pending answer to score. Safe to
+   * call even if not actually timed out yet (it'll just no-op).
+   * @param  int  $qn   Question #
+   * @return void
+   */
+  public function finishDrillTimeout($qn) {
+    $lastaver = count($this->data['assess_versions'])-1;
+    $qdata = &$this->data['assess_versions'][$lastaver]['questions'][$qn];
+    if (empty($qdata['drillstatus']) || empty($qdata['drillend']) || $this->now < $qdata['drillend']) {
+      return; // not actively drilling, or not actually timed out
+    }
+    $drillsettings = $this->assess_info->getSetting('drillsettings');
+    $this->recordDrillCompletion($qdata, $drillsettings['style'], $drillsettings['n']);
+    $this->need_to_record = true;
+  }
+
+  /**
+   * Record a completed drill run: mark drillcomplete (distinct from
+   * scoreoverride, which is reserved for manual teacher grade overrides),
+   * append to drillresults, and clear drillstatus/drillend.
+   * @param  array  &$qdata  Reference to assess_versions[...]['questions'][qn]
+   * @param  string $style   Drill style key
+   * @param  int    $n       Drill N= setting
+   * @return void
+   */
+  private function recordDrillCompletion(&$qdata, $style, $n) {
+    $qdata['drillcomplete'] = 1;
+    $time = 0;
+    foreach ($qdata['question_versions'] as $qv) {
+      $time += $this->calcTimeActive($qv)['total'];
+    }
+    $qdata['drillresults'][] = array(
+      'style' => $style,
+      'n' => $n,
+      'time' => round($time),
+      'attempts' => count($qdata['question_versions']),
+      'correct' => $qdata['drillcount'],
+      'completed' => $this->now
+    );
+    $qdata['drillstatus'] = 0;
+    unset($qdata['drillend']);
   }
 
   /**
@@ -1506,6 +1765,23 @@ class AssessRecord
     $out = $this->assess_info->getQuestionSettings($curq['qid']);
     if ($this->teacherInGb) {
       $out['rubric'] = $this->assess_info->getQuestionSetting($curq['qid'], 'rubric');
+    }
+
+    if ($this->assess_info->getSetting('displaymethod') === 'drill') {
+      $out['drillstatus'] = $aver['questions'][$qn]['drillstatus'] ?? 0;
+      $out['drillcount'] = $aver['questions'][$qn]['drillcount'] ?? 0;
+      $out['drillresults'] = $aver['questions'][$qn]['drillresults'] ?? array();
+      $out['drillcomplete'] = !empty($aver['questions'][$qn]['drillcomplete']);
+      $out['drillawaitingnext'] = !empty($aver['questions'][$qn]['drillawaitingnext']);
+      if (isset($this->drillLastOutcome[$qn])) {
+        $out['drilllastoutcome'] = $this->drillLastOutcome[$qn];
+      }
+      $out['dispname'] = $this->getDrillDispname($qn, $curq['qid'], $aver);
+      if (!empty($aver['questions'][$qn]['drillend'])) {
+        // relative seconds remaining, not an absolute timestamp, to avoid
+        // client/server clock skew (matches timelimit_expiresin convention)
+        $out['drillend_in'] = max(0, $aver['questions'][$qn]['drillend'] - $this->now);
+      }
     }
 
     // get regen number for by_question
@@ -2793,8 +3069,16 @@ class AssessRecord
         if ($by_question) {
           $curAver['questions'][$qn]['scored_version'] = $qScoredVer;
         }
-        $curAver['questions'][$qn]['score'] = round($maxQscore + 1e-8,2);
-        $curAver['questions'][$qn]['rawscore'] = round($maxQrawscore + 1e-8,4);
+        if (!empty($curAver['questions'][$qn]['drillcomplete'])) {
+          // drill was completed - full credit regardless of the underlying
+          // per-part grading of the final try (distinct from scoreoverride,
+          // which is reserved for manual teacher grade overrides)
+          $curAver['questions'][$qn]['score'] = round($points[$curQver['qid']] + 1e-8, 2);
+          $curAver['questions'][$qn]['rawscore'] = 1;
+        } else {
+          $curAver['questions'][$qn]['score'] = round($maxQscore + 1e-8,2);
+          $curAver['questions'][$qn]['rawscore'] = round($maxQrawscore + 1e-8,4);
+        }
         $curAver['questions'][$qn]['time'] = $totalQtime;
         $aVerScore += $curAver['questions'][$qn]['score'];
         $verTime += $totalQtime;
@@ -3376,6 +3660,9 @@ class AssessRecord
       }
       $out['starttime'] = $aver['starttime'];
       $out['questions'] = $this->getGbQuestionsData($qVerToGet);
+      if ($this->assess_info->getSetting('displaymethod') === 'drill') {
+        $out['drilldata'] = $this->getGbDrillData();
+      }
       $out['endmsg'] = AssessUtils::getEndMsg(
         $this->assess_info->getSetting('endmsg'),
         $aver['score'],
@@ -3384,6 +3671,31 @@ class AssessRecord
       if ($this->assess_info->getSetting('singleshowwork')) {
         [$out['swgen'], $out['swgentime']] = $this->getGenShowwork($av);
       }
+    }
+    return $out;
+  }
+
+  /**
+   * Get per-question drill attempt history for the gradebook view.
+   * Keyed by qn, separate from getGbQuestionsData's per-version array
+   * (which GbQuestionSelect.vue relies on staying a plain numeric-indexed
+   * array) so this doesn't disturb that structure.
+   * @return array
+   */
+  public function getGbDrillData() {
+    $lastaver = count($this->data['assess_versions'])-1;
+    $out = array();
+    foreach ($this->data['assess_versions'][$lastaver]['questions'] as $qn => $qdata) {
+      $results = array();
+      foreach ($qdata['drillresults'] ?? array() as $r) {
+        $r['completed_disp'] = tzdate("n/j/y, g:i a", $r['completed']);
+        $results[] = $r;
+      }
+      $out[$qn] = array(
+        'drillresults' => $results,
+        'drillcomplete' => !empty($qdata['drillcomplete']),
+        'drillstatus' => $qdata['drillstatus'] ?? 0
+      );
     }
     return $out;
   }

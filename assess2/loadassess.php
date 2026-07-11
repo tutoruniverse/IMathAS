@@ -73,7 +73,7 @@ $include_from_assess_info = array(
   'timelimit_multiplier', 'latepasses_avail', 'latepass_extendto', 'keepscore',
   'noprint', 'overtime_penalty', 'overtime_grace', 'reqscorevalue', 
   'attemptext', 'showworktype', 'singleshowwork', 'latepass_enddate', 'latepass_after', 'latepass_reason',
-  'retakewait'
+  'retakewait', 'drillsettings'
 );
 $assessInfoOut = $assess_info->extractSettings($include_from_assess_info);
 

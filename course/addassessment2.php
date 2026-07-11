@@ -198,7 +198,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 									'viewingb','scoresingb','ansingb','gbcategory','caltag','shuffle',
 									'istutorial','noprint','showcat','allowlate','LPcutoff',
 									'timelimit','overtime_grace','overtime_penalty','password',
-									'reqscorejson','showhints',
+									'reqscorejson','drilljson','showhints',
 									'msgtoinstr','eqnhelper','posttoforum','extrefs','showtips',
 									'cntingb','minscore','deffeedbacktext','tutoredit','exceptionpenalty','exceptionpenaltyinterval','earlybonus',
 									'defoutcome','isgroup','groupsetid','groupmax','showwork','workcutoff');
@@ -237,7 +237,14 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 				}
 			}
 		} else { // set using values selected
-			$toset['displaymethod'] = Sanitize::stripHtmlTags($_POST['displaymethod']);
+			// "Drill style" is presented in the UI as a Submission type option
+			// (since it forces submitby, similarly to how by_assessment/by_question
+			// do), but is still stored as a displaymethod under the hood
+			$isDrillChg = ($_POST['subtype'] === 'drill');
+			if ($isDrillChg) {
+				$_POST['subtype'] = 'by_question';
+			}
+			$toset['displaymethod'] = $isDrillChg ? 'drill' : Sanitize::stripHtmlTags($_POST['displaymethod']);
 
 			$toset['submitby'] = Sanitize::stripHtmlTags($_POST['subtype']);
 			$toset['defregens'] = Sanitize::onlyInt($_POST['defregens']);
@@ -257,6 +264,19 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 				$toset['retakewait'] = Sanitize::onlyInt($_POST['retakewait'] ?? 0);
 			} else {
 				$toset['retakewait'] = 0;
+			}
+
+			if ($isDrillChg) {
+				// versions section is hidden for drill mode; use an effectively-unlimited
+				// regen cap instead, since drill auto-regenerates until the drill goal is met
+				$toset['defregens'] = 999;
+				$toset['defregenpenalty'] = 0;
+				$toset['drilljson'] = json_encode(array(
+					'style' => Sanitize::simpleString($_POST['drillstyle'] ?? 'time_maxcorrect'),
+					'n' => max(1, Sanitize::onlyInt($_POST['drilln'] ?? 10))
+				));
+			} else {
+				$toset['drilljson'] = '';
 			}
 
 			$toset['defattempts'] = Sanitize::onlyInt($_POST['defattempts']);
@@ -489,6 +509,16 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
       if (($introjson=json_decode($curassess['intro']))!==null) { //is json intro
         $introjson[0] = $toset['intro'];
         $toset['intro'] = json_encode($introjson);
+      }
+
+      if ($toset['displaymethod'] == 'drill' && !empty($curassess['drilljson'])) {
+        // preserve existing per-question display names
+        $olddrilljson = json_decode($curassess['drilljson'], true);
+        if (!empty($olddrilljson['dispnames'])) {
+          $newdrilljson = json_decode($toset['drilljson'], true);
+          $newdrilljson['dispnames'] = $olddrilljson['dispnames'];
+          $toset['drilljson'] = json_encode($newdrilljson);
+        }
       }
 
 			if (!$updategroupset) { // don't change group
@@ -739,6 +769,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 					$line['groupsetid'] = 0;
                     $line['reqscoretype'] = 0;
 					$line['reqscorejson'] = '';
+					$line['drilljson'] = '';
                     $line['showcat'] = 0;
                     $line['timelimit'] = 0;
 					$taken = false;
@@ -847,6 +878,11 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		} else { // single format; make into an array
 			$line['reqscorejson'] = [$line['reqscorejson']];
 		}
+	  }
+	  if ($line['drilljson'] == '') {
+	  	$line['drilljson'] = ['style'=>'time_maxcorrect', 'n'=>10];
+	  } else {
+	  	$line['drilljson'] = json_decode($line['drilljson'], true);
 	  }
       if ($taken) {
           $page_isTakenMsg = "<p>This assessment has already been taken.  Modifying some settings will mess up those assessment attempts, and those inputs ";

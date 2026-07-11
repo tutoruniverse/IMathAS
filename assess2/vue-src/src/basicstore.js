@@ -174,6 +174,15 @@ export const actions = {
             Router.push('/videocued');
           } else if (store.assessInfo.displaymethod === 'livepoll') {
             Router.push('/livepoll');
+          } else if (store.assessInfo.displaymethod === 'drill') {
+            if (store.assessInfo.intro !== '' ||
+              store.assessInfo.resources.length > 0 ||
+              !!store.assessInfo?.feedback
+            ) {
+              Router.push('/drill/0');
+            } else {
+              Router.push('/drill/1');
+            }
           }
         }
       })
@@ -184,14 +193,22 @@ export const actions = {
         store.inTransit = false;
       });
   },
-  loadQuestion (qn, regen, jumptoans, skipdirtycheck) {
-    this.prepForSave('all');
+  // drillaction (optional): one of 'start'/'stop'/'next', for drill mode's
+  // own question-version transitions. When set, this skips prepForSave and
+  // any pending autosave data - drill's start/stop/next don't submit or
+  // score anything, so there's nothing of the caller's to flush - and callers
+  // should pass skipdirtycheck too, since drill's nav dropdown fires stop
+  // without waiting on the user's typing to settle.
+  loadQuestion (qn, regen, jumptoans, skipdirtycheck, drillaction) {
+    if (!drillaction) {
+      this.prepForSave('all');
+    }
     if (store.inTransit) {
-      window.setTimeout(() => this.loadQuestion(qn, regen, jumptoans), 20);
+      window.setTimeout(() => this.loadQuestion(qn, regen, jumptoans, skipdirtycheck, drillaction), 20);
       return;
     } else if (store.somethingDirty && skipdirtycheck == null) {
       // if somethingDirty, wait a bit for change event to add to autosavequeue first
-      window.setTimeout(() => this.loadQuestion(qn, regen, jumptoans, true), 50);
+      window.setTimeout(() => this.loadQuestion(qn, regen, jumptoans, true, drillaction), 50);
       return;
     }
     store.inTransit = true;
@@ -208,11 +225,14 @@ export const actions = {
     data.append('practice', store.assessInfo.in_practice);
     data.append('regen', regen ? 1 : 0);
     data.append('jumptoans', jumptoans ? 1 : 0);
+    if (drillaction) {
+      data.append('drillaction', drillaction);
+    }
     if (store.assessInfo.preview_all) {
       data.append('preview_all', true);
     }
 
-    if (Object.keys(store.autosaveQueue).length > 0) {
+    if (!drillaction && Object.keys(store.autosaveQueue).length > 0) {
       actions.clearAutosaveTimer();
       this.addAutosaveData(data);
     }
@@ -262,6 +282,24 @@ export const actions = {
       .always(response => {
         store.inTransit = false;
       });
+  },
+  startDrill (qn) {
+    this.loadQuestion(qn, false, false, true, 'start');
+  },
+  stopDrill (qn) {
+    this.loadQuestion(qn, false, false, true, 'stop');
+  },
+  advanceDrill (qn) {
+    this.loadQuestion(qn, false, false, true, 'next');
+  },
+  handleDrillTimeout (qn) {
+    // go through the normal submit flow (not loadquestion.php) so the usual
+    // submit-time cleanup (MQeditor.resetEditor/imathasAssess.clearTips)
+    // runs and the question closes out properly; force=true since there may
+    // be nothing new to submit (e.g. timer ran out on a blank try) -
+    // scorequestion.php checks the active drill question's timeout
+    // regardless of whether anything was actually submitted for it
+    this.submitQuestion([qn], false, true);
   },
   prepForSave (qns) { // qns is array of ids, or 'all' to callback on all
     for (let k in window.callbackstack) {
@@ -406,11 +444,11 @@ export const actions = {
         store.inTransit = false;
       });
   },
-  submitQuestion (qns, endattempt) {
+  submitQuestion (qns, endattempt, force) {
     store.somethingDirty = false;
     this.clearAutosaveTimer();
     if (store.inTransit) {
-      window.setTimeout(() => this.submitQuestion(qns, endattempt), 20);
+      window.setTimeout(() => this.submitQuestion(qns, endattempt, force), 20);
       return;
     }
     store.inTransit = true;
@@ -434,7 +472,7 @@ export const actions = {
         changedWork = true;
       }
     }
-    if (Object.keys(changedQuestions).length === 0 && !changedWork && !endattempt) {
+    if (Object.keys(changedQuestions).length === 0 && !changedWork && !endattempt && !force) {
       store.errorMsg = 'nochange';
       store.inTransit = false;
       return;
@@ -583,7 +621,7 @@ export const actions = {
           } else {
             Router.push('/summary');
           }
-        } else if (qns.length === 1) {
+        } else if (qns.length === 1 && store.assessInfo.displaymethod !== 'drill') {
           // get new value
           const hasSeqNext = (qns.length === 1 && store.assessInfo.questions[qns[0]].jsparams &&
             store.assessInfo.questions[qns[0]].jsparams.hasseqnext);
@@ -591,12 +629,19 @@ export const actions = {
           nextTick(() => {
             var el;
             if (!hasSeqNext) {
-              el = document.getElementById('questionwrap' + qns[0]).parentNode.parentNode;
+              const wrapper = document.getElementById('questionwrap' + qns[0]);
+              if (!wrapper) {
+                return;
+              }
+              el = wrapper.parentNode.parentNode;
               window.$(el).find('.scoreresult').focus();
             } else {
               el = window.$('#questionwrap' + qns[0]).find('.seqsepwrap').last();
               el.focus();
               el = el[0];
+            }
+            if (!el) {
+              return;
             }
             var bounding = el.getBoundingClientRect();
             if (bounding.top < 0 || bounding.bottom > document.documentElement.clientHeight) {

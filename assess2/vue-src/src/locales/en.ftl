@@ -206,6 +206,66 @@ question-uploading = Uploading...
 question-intronext = To begin, navigate to a question using the selector or > Next button above.
 question-firstq = First Question
 
+# Drill
+drill-goal_time_maxcorrect = Do as many questions as possible in {$n} seconds.
+drill-goal_count_time = Complete {$n} questions as quickly as possible.
+drill-goal_count_correct_time = Complete {$n} questions correctly as quickly as possible.
+drill-goal_count_correct_attempts = Complete {$n} questions correctly with as few errors as possible.
+drill-goal_streak_time = Complete {$n} questions correctly in a row as quickly as possible.
+drill-goal_streak_attempts = Complete {$n} questions correctly in a row with as few errors as possible.
+drill-start = Start
+drill-incorrect_tryagain = Incorrect. Try again.
+drill-partial_tryagain = Partially incorrect. Try again.
+drill-correct_next = Correct. Try the next question.
+drill-incorrect_next = Incorrect, and out of tries. Try the next question.
+drill-partial_next = Partially incorrect, and out of tries. Try the next question.
+drill-outoftries = Out of tries. Review the answer below, then continue.
+drill-next = Next Question
+drill-complete = Nice work!
+drill-restart = Try Again
+drill-result_time_maxcorrect =
+    { $correct ->
+        [one] In {$n} seconds limit, 1 question correct.
+        *[other] In {$n} seconds limit, {$correct} questions correct.
+    }
+drill-result_count_time =
+    { $n ->
+        [one] Attempted 1 question in {$time} seconds.
+        *[other] Attempted {$n} questions in {$time} seconds.
+    }
+drill-result_count_correct_time =
+    { $n ->
+        [one] 1 question correct in {$time} seconds.
+        *[other] {$n} questions correct in {$time} seconds.
+    }
+drill-result_count_correct_attempts =
+    { $n ->
+        [one] 1 question correct in {$attempts} attempts.
+        *[other] {$n} questions correct in {$attempts} attempts.
+    }
+drill-result_streak_time =
+    { $n ->
+        [one] 1 question correct in a row in {$time} seconds.
+        *[other] {$n} questions correct in a row in {$time} seconds.
+    }
+drill-result_streak_attempts =
+    { $n ->
+        [one] 1 question correct in a row in {$attempts} attempts.
+        *[other] {$n} questions correct in a row in {$attempts} attempts.
+    }
+drill-progress_time_maxcorrect =
+    { $count ->
+        [one] Progress: 1 question correct.
+        *[other] Progress: {$count} questions correct.
+    }
+drill-progress_count_time = Progress: {$count} of {$n} questions attempted.
+drill-progress_count_correct = Progress: {$count} of {$n} questions answered correctly.
+drill-progress_streak = Progress: Streak of {$count} out of {$n} correct in a row.
+drill-best_correct = Personal best: {$n} correct
+drill-best_time = Personal best: {$n} seconds
+drill-best_attempts = Personal best: {$n} attempts
+drill-history_title = Drill Attempt History
+
 # Header
 header-score = Score: {$pts}/{$poss}
 header-practicescore = Practice score: {$pts}/{$poss}
@@ -215,6 +275,7 @@ header-possible =
         *[other] {$n} points possible
     }
 header-answered = Answered: {$n}/{$tot}
+header-drills_completed = Drills completed: {$n}/{$tot}
 header-assess_submit = Submit and End
 header-done = Done
 header-resources_header = Resources

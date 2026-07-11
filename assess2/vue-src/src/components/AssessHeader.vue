@@ -5,11 +5,13 @@
     <div style="flex-grow: 1">
       <h1>{{ ainfo.name }}</h1>
       <div>
-        <span
-          :class="{practicenotice: ainfo.in_practice}"
+        <span v-if="isDrill" class="subdued">
+          {{ drillsCompletedLabel }}
+        </span> <span
+          :class="{practicenotice: ainfo.in_practice, 'med-left':isDrill}"
         >
           {{ curScorePoints }}
-        </span> <span class="med-left subdued">
+        </span> <span v-if="!isDrill" class="med-left subdued">
           {{ curAnswered }}
         </span>
       </div>
@@ -190,6 +192,26 @@ export default {
     curAnswered () {
       const nQuestions = this.ainfo.questions.length;
       return this.$t('header-answered', { n: this.qAttempted, tot: nQuestions });
+    },
+    isDrill () {
+      return this.ainfo.displaymethod === 'drill';
+    },
+    drillsCompleted () {
+      // count of questions with at least 1 completed drill run. Drillresults
+      // is never cleared on restart, so this count doesn't drop when a
+      // student retries a drill they'd already completed.
+      let cnt = 0;
+      for (const i in this.ainfo.questions) {
+        if (this.ainfo.questions[i].drillresults &&
+          this.ainfo.questions[i].drillresults.length > 0
+        ) {
+          cnt++;
+        }
+      }
+      return cnt;
+    },
+    drillsCompletedLabel () {
+      return this.$t('header-drills_completed', { n: this.drillsCompleted, tot: this.ainfo.questions.length });
     },
     assessSubmitLabel () {
       if (this.ainfo.submitby === 'by_assessment') {

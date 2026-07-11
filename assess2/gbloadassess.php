@@ -165,7 +165,8 @@ $include_from_assess_info = array(
   'name', 'submitby', 'enddate', 'available', 'can_use_latepass', 'hasexception',
   'original_enddate', 'extended_with', 'latepasses_avail', 'points_possible',
   'latepass_extendto', 'latepass_enddate', 'allowed_attempts', 'keepscore', 'timelimit', 'ver',
-  'scoresingb', 'viewingb', 'latepass_status', 'help_features', 'attemptext'
+  'scoresingb', 'viewingb', 'latepass_status', 'help_features', 'attemptext',
+  'displaymethod', 'drillsettings'
 );
 if ($_REQUEST['loadtexts'] == 1) {
     $include_from_assess_info[] = 'intro';

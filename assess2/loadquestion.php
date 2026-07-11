@@ -38,6 +38,7 @@ if ($isActualTeacher && isset($_GET['uid'])) {
 $qn = Sanitize::onlyInt($_POST['qn']);
 $doRegen = !empty($_POST['regen']);
 $jumpToAnswer = !empty($_POST['jumptoans']);
+$drillAction = isset($_POST['drillaction']) ? Sanitize::simpleString($_POST['drillaction']) : '';
 
 $now = time();
 
@@ -130,7 +131,7 @@ $assess_info->loadLTIMsgPosts($userid, $canViewAll);
 $include_from_assess_info = array(
   'available', 'startdate', 'enddate', 'original_enddate', 'submitby',
   'extended_with', 'allowed_attempts', 'showscores', 'enddate_in', 'timelimit',
-  'lti_showmsg', 'lti_msgcnt', 'lti_forumcnt'
+  'lti_showmsg', 'lti_msgcnt', 'lti_forumcnt', 'drillsettings'
 );
 $assessInfoOut = $assess_info->extractSettings($include_from_assess_info);
 //get attempt info
@@ -190,6 +191,19 @@ if ($doRegen) {
   } else {
     echo '{"error": "out_of_regens"}';
     exit;
+  }
+}
+
+// Drill mode: start/restart or stop a drill session for this question
+if ($drillAction !== '' && $assess_info->getSetting('displaymethod') === 'drill') {
+  if ($drillAction === 'start') {
+    $qid = $assess_record->startDrillQuestion($qn, $qid);
+    $assess_info->loadQuestionSettings(array($qid), true, false);
+  } else if ($drillAction === 'stop') {
+    $assess_record->stopDrillQuestion($qn);
+  } else if ($drillAction === 'next') {
+    $qid = $assess_record->advanceDrillQuestion($qn);
+    $assess_info->loadQuestionSettings(array($qid), true, false);
   }
 }
 

@@ -30,6 +30,9 @@ if (isset($_SERVER['HTTP_X_AMZ_SNS_MESSAGE_TYPE'])) {
 }
 $now = time();
 $old = 24*60*60*(isset($CFG['cleanup']['old'])?$CFG['cleanup']['old']:610);
+$clearpw = 24*60*60*(isset($CFG['cleanup']['clearoldpw'])?$CFG['cleanup']['clearoldpw']:365);
+$delaudit = 24*60*60*($CFG['cleanup']['deloldaudit'] ?? 0);
+$delltiqueue = 24*60*60*($CFG['cleanup']['deloldltiqueue'] ?? 180);
 
 $DBH->beginTransaction();
 
@@ -91,4 +94,34 @@ $stm->execute(array($lastrun-$old, $now - $old, $lastrun-$old, $now - $old));
 $stm = $DBH->prepare("UPDATE imas_dbschema SET ver=? WHERE id=5");
 $stm->execute(array($now));
 $DBH->commit();
+
+// Moved from runcoursecleanup, as once a day is sufficient for these cleanups
+//clear out any old pw
+if ($clearpw>0) {
+	/*
+	As is, this will disable newly created accounts if they're not enrolled in anything,
+	which probably isn't ideal
+
+	$query = "UPDATE imas_users SET password=CONCAT('cleared_',MD5(CONCAT(SID, UUID()))) ";
+	$query .= "WHERE lastaccess<? AND rights<>11 AND rights<>76 AND rights<>77";
+	$stm = $DBH->prepare($query);
+	$stm->execute(array($now - $clearpw));
+	*/
+}
+
+if ($delaudit > 0) {
+    $query = "DELETE FROM imas_audit_log WHERE time<?";
+	$stm = $DBH->prepare($query);
+	$stm->execute(array($now - $delaudit));
+}
+
+if ($delltiqueue > 0) {
+    $query = "DELETE FROM imas_ltiqueue WHERE failures>6 AND sendon < ?";
+    $stm = $DBH->prepare($query);
+	$stm->execute(array($now - $delltiqueue));
+
+    $query = "DELETE FROM imas_log WHERE time < ? AND log LIKE 'LTI update giving up%'";
+    $stm = $DBH->prepare($query);
+	$stm->execute(array($now - $delltiqueue));
+}
 echo "Done";

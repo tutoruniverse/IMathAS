@@ -64,9 +64,7 @@ $old = 24*60*60*(isset($CFG['cleanup']['old'])?$CFG['cleanup']['old']:610);
 $delay = 24*60*60*(isset($CFG['cleanup']['delay'])?$CFG['cleanup']['delay']:120);
 $msgfrom = isset($CFG['cleanup']['msgfrom'])?$CFG['cleanup']['msgfrom']:0;
 $keepsent = isset($CFG['cleanup']['keepsent'])?$CFG['cleanup']['keepsent']:1;
-$clearpw = 24*60*60*(isset($CFG['cleanup']['clearoldpw'])?$CFG['cleanup']['clearoldpw']:365);
-$delaudit = 24*60*60*($CFG['cleanup']['deloldaudit'] ?? 0);
-$delltiqueue = 24*60*60*($CFG['cleanup']['deloldltiqueue'] ?? 180);
+
 
 //run notifications 10 in a batch
 
@@ -152,10 +150,12 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 	$num++;
 }
 
-//run cleanup operation, 1 in a batch
-$stm = $DBH->prepare("SELECT id,enddate FROM imas_courses WHERE cleanupdate>1 AND cleanupdate<? ORDER BY cleanupdate LIMIT 1");
+//run cleanup operation, several in a batch
+$stm = $DBH->prepare("SELECT id,enddate FROM imas_courses WHERE cleanupdate>1 AND cleanupdate<? ORDER BY cleanupdate LIMIT 10");
 $stm->execute(array($now));
-list($cidtoclean,$enddate) = $stm->fetch(PDO::FETCH_NUM);
+// do up to 10, if we can start within 45 seconds of script start
+while (time() - $now < 45 && $row = $stm->fetch(PDO::FETCH_NUM)) {
+list($cidtoclean,$enddate) = $row;
 $skip = false;
 if ($enddate<2000000000) { //check to see if enddate reset
 	if ($enddate > $now - $old) {
@@ -200,32 +200,5 @@ if (!$skip) {
 } else {
 	$updcrs->execute(array(0, $cidtoclean));
 }
-
-//clear out any old pw
-if ($clearpw>0) {
-	/*
-	As is, this will disable newly created accounts if they're not enrolled in anything,
-	which probably isn't ideal
-
-	$query = "UPDATE imas_users SET password=CONCAT('cleared_',MD5(CONCAT(SID, UUID()))) ";
-	$query .= "WHERE lastaccess<? AND rights<>11 AND rights<>76 AND rights<>77";
-	$stm = $DBH->prepare($query);
-	$stm->execute(array($now - $clearpw));
-	*/
 }
 
-if ($delaudit > 0) {
-    $query = "DELETE FROM imas_audit_log WHERE time<?";
-	$stm = $DBH->prepare($query);
-	$stm->execute(array($now - $delaudit));
-}
-
-if ($delltiqueue > 0) {
-    $query = "DELETE FROM imas_ltiqueue WHERE failures>6 AND sendon < ?";
-    $stm = $DBH->prepare($query);
-	$stm->execute(array($now - $delltiqueue));
-
-    $query = "DELETE FROM imas_log WHERE time < ? AND log LIKE 'LTI update giving up%'";
-    $stm = $DBH->prepare($query);
-	$stm->execute(array($now - $delltiqueue));
-}

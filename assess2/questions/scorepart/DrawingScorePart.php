@@ -1046,6 +1046,7 @@ class DrawingScorePart implements ScorePart
             }
 
             $scores = array(array(), array());
+            $dupstoignore = 0;
 
             foreach ($ansdots as $key=>$ansdot) {
                 $scores[$scoretype[$key]][$key] = 0;
@@ -1100,9 +1101,9 @@ class DrawingScorePart implements ScorePart
                             continue;
                         }
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedline[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
 
@@ -1120,9 +1121,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anscirc[2]-$circs[$i][2])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedcirc[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
 
@@ -1143,9 +1144,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($ansellipse[3]-$ellipses[$i][3])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedellipse[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
 
@@ -1167,9 +1168,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anshyperbola[3]-$hyperbolas[$i][3])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedhyperbola[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
 
@@ -1365,9 +1366,9 @@ class DrawingScorePart implements ScorePart
                             continue;
                         }
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedparab[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
 
@@ -1391,9 +1392,9 @@ class DrawingScorePart implements ScorePart
                             continue;
                         }
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedhparab[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             $usedcubic = [];
@@ -1410,9 +1411,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anscubic[2]-$cubics[$i][2])/abs($anscubic[2]) > $deftol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedcubic[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             //print_r($anscuberoots);
@@ -1431,9 +1432,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anscuberoot[2]-$cuberoots[$i][2])/abs($anscuberoot[2]) > $deftol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedcuberoot[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             $usedsqrt = [];
@@ -1453,9 +1454,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anssqrt[2]-$sqrts[$i][2])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedsqrt[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             $usedrat = [];
@@ -1472,9 +1473,9 @@ class DrawingScorePart implements ScorePart
                     if (sqrt(2)*abs($ansrat[2]-$rats[$i][2])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedrat[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             $usedexp = [];
@@ -1502,9 +1503,9 @@ class DrawingScorePart implements ScorePart
                     if ($ansexp[1]<=1 && abs($ansexp[0]*safepow($ansexp[1],$exps[$i][2]) - $exps[$i][3]) >$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedexp[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             $usedlogs = [];
@@ -1528,9 +1529,9 @@ class DrawingScorePart implements ScorePart
                     if ($anslog[1]<=1 && abs($anslog[0]*safepow($anslog[1],$logs[$i][2]) - $logs[$i][3]) >$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedlogs[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
-                    break;
                 }
             }
             $usedcos = [];
@@ -1556,9 +1557,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anscos[3]-$coss[$i][3])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $scores[$scoretype[$key]][$key] = 1;
                     $usedcos[$i] = 1;
-                    break;
                 }
             }
             $usedsec = [];
@@ -1584,9 +1585,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($anssec[3]-$secs[$i][3])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $scores[$scoretype[$key]][$key] = 1;
                     $usedsec[$i] = 1;
-                    break;
                 }
             }
             $usedtan = [];
@@ -1613,9 +1614,9 @@ class DrawingScorePart implements ScorePart
                     if (abs($atan[3]-$tans[$i][3])>$defpttol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $scores[$scoretype[$key]][$key] = 1;
                     $usedtan[$i] = 1;
-                    break;
                 }
             }
             $usedabs = [];
@@ -1634,13 +1635,13 @@ class DrawingScorePart implements ScorePart
                     if (abs($aabs[2]-$abs[$i][2])/(abs($aabs[2])+$toladj)>$deftol*$reltolerance) {
                         continue;
                     }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $scores[$scoretype[$key]][$key] = 1;
                     $usedabs[$i] = 1;
-                    break;
                 }
             }
             //extra stuff is total count of drawn items - # of scored items - # of correct optional items
-            $extrastuffpenalty = max((count($tplines)+count($dots)+count($odots)-count($scores[0])-array_sum($scores[1]))/(max(count($scores[0]),count($tplines)+count($dots)+count($odots))),0);
+            $extrastuffpenalty = max((count($tplines)+count($dots)+count($odots)-count($scores[0])-array_sum($scores[1])-$dupstoignore)/(max(count($scores[0]),count($tplines)+count($dots)+count($odots))),0);
             // don't need optional scores anymore
             $scores = $scores[0];
         } else if ($answerformat[0]=="inequality") {

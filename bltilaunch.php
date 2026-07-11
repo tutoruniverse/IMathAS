@@ -1483,9 +1483,9 @@ if ($linkparts[0]=='cid') {
 			if (isset($_SESSION['lti_duedate']) && $line['date_by_lti']>0 && $_SESSION['lti_duedate']!=$exceptionrow['enddate']) {
 				//if new due date is later, or no latepass used, then update
 				if ($exceptionrow['islatepass']==0 || $_SESSION['lti_duedate']>$exceptionrow['enddate']) {
-					$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+					$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0,manualexceptionend=:enddate2 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 					$stm->execute(array(':startdate'=>min($now, $line['startdate'], $exceptionrow['startdate']),
-						':enddate'=>$_SESSION['lti_duedate'], ':userid'=>$userid, ':assessmentid'=>$aid));
+						':enddate'=>$_SESSION['lti_duedate'], ':enddate2'=>$_SESSION['lti_duedate'], ':userid'=>$userid, ':assessmentid'=>$aid));
 				}
 			}
 			require_once "./includes/exceptionfuncs.php";
@@ -1494,8 +1494,8 @@ if ($linkparts[0]=='cid') {
 		} else if ($line['date_by_lti']==3 && isset($_SESSION['lti_duedate']) && ($line['enddate']!=$_SESSION['lti_duedate'] || $now<$line['startdate'])) {
 			//default dates already set by LTI, and users's date doesn't match - create new exception
 			//also create if it's before the default assessment startdate - since they could access via LMS, it should be available.
-			$stm = $DBH->prepare("INSERT INTO imas_exceptions (startdate,enddate,islatepass,is_lti,userid,assessmentid,itemtype) VALUES (?,?,?,?,?,?,'A')");
-			$stm->execute([min($now,$_SESSION['lti_duedate']), $_SESSION['lti_duedate'], 0, 1, $userid, $aid]);
+			$stm = $DBH->prepare("INSERT INTO imas_exceptions (startdate,enddate,islatepass,is_lti,manualexceptionend,userid,assessmentid,itemtype) VALUES (?,?,?,?,?,?,?,'A')");
+			$stm->execute([min($now,$_SESSION['lti_duedate']), $_SESSION['lti_duedate'], 0, 1, $_SESSION['lti_duedate'], $userid, $aid]);
 			$exceptionrow = [
 				'startdate' => min($now,$_SESSION['lti_duedate']), 
 				'enddate' => $_SESSION['lti_duedate'], 
@@ -2752,9 +2752,9 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='placein' || $keyparts[0]=='LTIkey') {
             if (isset($_SESSION['lti_duedate']) && $line['date_by_lti']>0 && $_SESSION['lti_duedate']!=$exceptionrow['enddate']) {
 				//if new due date is later, or no latepass used, then update
 				if ($exceptionrow['islatepass']==0 || $_SESSION['lti_duedate']>$exceptionrow['enddate']) {
-					$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+					$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0,manualexceptionend=:enddate2 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 					$stm->execute(array(':startdate'=>min($now, $line['startdate'], $exceptionrow['startdate']),
-						':enddate'=>$_SESSION['lti_duedate'], ':userid'=>$userid, ':assessmentid'=>$aid));
+						':enddate'=>$_SESSION['lti_duedate'], ':enddate2'=>$_SESSION['lti_duedate'], ':userid'=>$userid, ':assessmentid'=>$aid));
 				}
 			}
 			require_once "./includes/exceptionfuncs.php";
@@ -2763,8 +2763,8 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='placein' || $keyparts[0]=='LTIkey') {
 		} else if ($line['date_by_lti']==3 && isset($_SESSION['lti_duedate']) && ($line['enddate']!=$_SESSION['lti_duedate'] || $now<$line['startdate'])) {
 			//default dates already set by LTI, and users's date doesn't match - create new exception
 			//also create if it's before the default assessment startdate - since they could access via LMS, it should be available.
-			$stm = $DBH->prepare("INSERT INTO imas_exceptions (startdate,enddate,islatepass,is_lti,userid,assessmentid,itemtype) VALUES (?,?,?,?,?,?,'A')");
-			$stm->execute([min($now,$_SESSION['lti_duedate']), $_SESSION['lti_duedate'], 0, 1, $userid, $aid]);
+			$stm = $DBH->prepare("INSERT INTO imas_exceptions (startdate,enddate,islatepass,is_lti,manualexceptionend,userid,assessmentid,itemtype) VALUES (?,?,?,?,?,?,?,'A')");
+			$stm->execute([min($now,$_SESSION['lti_duedate']), $_SESSION['lti_duedate'], 0, 1, $_SESSION['lti_duedate'], $userid, $aid]);
 			$exceptionrow = [
 				'startdate' => min($now,$_SESSION['lti_duedate']), 
 				'enddate' => $_SESSION['lti_duedate'], 

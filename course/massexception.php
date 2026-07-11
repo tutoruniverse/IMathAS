@@ -24,6 +24,9 @@ require_once __DIR__."/../includes/checkdata.php";
 		$startdate = parsedatetime($_POST['sdate'],$_POST['stime']);
 		$enddate = parsedatetime($_POST['edate'],$_POST['etime']);
 		$epenalty = (isset($_POST['overridepenalty']))?intval($_POST['newpenalty']):null;
+		$epenaltyinterval = (isset($_POST['overridepenalty']))?(($_POST['newpenaltytype']==='increasing')?intval($_POST['newpenaltyinterval']):0):null;
+		$escope = (isset($_POST['overridepenalty']))?(isset($_POST['alsolatepass'])?'both':'exception_only'):null;
+		$emanualend = (isset($_POST['overridepenalty']))?$enddate:null;
 		$waivereqscore = (isset($_POST['waivereqscore']))?1:0;
 		if (isset($_POST['waiveworkcutoff'])) {
 			$waivereqscore += 2;
@@ -95,19 +98,19 @@ require_once __DIR__."/../includes/checkdata.php";
                     } else {
                         $thistimelimitext = 0;
                     }
-					$insertExceptionHolders[] = "(?,?,?,?,?,?,?,?,?)";
-					array_push($insertExceptionVals, $stu, $aid, $startdate, $enddate, $waivereqscore, $epenalty, $thistimelimitext, $attemptext, 'A');
+					$insertExceptionHolders[] = "(?,?,?,?,?,?,?,?,?,?,?,?)";
+					array_push($insertExceptionVals, $stu, $aid, $startdate, $enddate, $waivereqscore, $epenalty, $epenaltyinterval, $escope ?? 'both', $emanualend, $thistimelimitext, $attemptext, 'A');
 				}
 			}
 		}
 		//run update
 		if (count($addexcarr)>0 && count($toarr)>0) {
             if ($timelimitext == 0) {
-			    $stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=?,enddate=?,islatepass=0,waivereqscore=?,exceptionpenalty=?,timeext=?,attemptext=? WHERE userid IN ($uidplaceholders) AND assessmentid IN ($aidplaceholders) and itemtype='A'");
-                $stm->execute(array_merge(array($startdate, $enddate, $waivereqscore, $epenalty,$timelimitext,$attemptext), $toarr, $addexcarr));
+			    $stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=?,enddate=?,islatepass=0,waivereqscore=?,exceptionpenalty=?,exceptionpenaltyinterval=?,exceptionpenaltyscope=?,manualexceptionend=?,timeext=?,attemptext=? WHERE userid IN ($uidplaceholders) AND assessmentid IN ($aidplaceholders) and itemtype='A'");
+                $stm->execute(array_merge(array($startdate, $enddate, $waivereqscore, $epenalty,$epenaltyinterval,$escope ?? 'both',$emanualend,$timelimitext,$attemptext), $toarr, $addexcarr));
             } else {
-                // do one by one to handle timelimit diff 
-                $stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=?,enddate=?,islatepass=0,waivereqscore=?,exceptionpenalty=?,timeext=?,attemptext=? WHERE userid=? AND assessmentid=? and itemtype='A'");
+                // do one by one to handle timelimit diff
+                $stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=?,enddate=?,islatepass=0,waivereqscore=?,exceptionpenalty=?,exceptionpenaltyinterval=?,exceptionpenaltyscope=?,manualexceptionend=?,timeext=?,attemptext=? WHERE userid=? AND assessmentid=? and itemtype='A'");
                 foreach ($toarr as $stu) {
                     foreach ($addexcarr as $aid) {
                         if (isset($existingExceptions[$stu.'-'.$aid])) {
@@ -116,7 +119,7 @@ require_once __DIR__."/../includes/checkdata.php";
                             } else {
                                 $thistimelimitext = 0;
                             }
-                            $stm->execute([$startdate, $enddate, $waivereqscore, $epenalty,$thistimelimitext,$attemptext, $stu, $aid]);
+                            $stm->execute([$startdate, $enddate, $waivereqscore, $epenalty,$epenaltyinterval,$escope ?? 'both',$emanualend,$thistimelimitext,$attemptext, $stu, $aid]);
                         }
                     }
                 }
@@ -125,7 +128,7 @@ require_once __DIR__."/../includes/checkdata.php";
 
 		//run inserts
 		if (count($insertExceptionVals)>0) {
-			$query = "INSERT INTO imas_exceptions (userid,assessmentid,startdate,enddate,waivereqscore,exceptionpenalty,timeext,attemptext,itemtype) VALUES ";
+			$query = "INSERT INTO imas_exceptions (userid,assessmentid,startdate,enddate,waivereqscore,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend,timeext,attemptext,itemtype) VALUES ";
 			$query .= implode(',', $insertExceptionHolders);
 			$stm = $DBH->prepare($query);
 			$stm->execute($insertExceptionVals);
@@ -283,8 +286,7 @@ require_once __DIR__."/../includes/checkdata.php";
 	   span.form { float:none; display: inline-block; width: 140px;}
 	   span.formright { float:none; width: auto; display: inline-block;}
 	   fieldset.split { float:left; }
-	   .optionlist p.list { margin: 7px 0 7px 20px; padding: 0;}
-	   .optionlist input[type=checkbox] {margin-left:-20px;}
+	   .optionlist p.list { margin: 7px 0 7px 0; padding: 0 0 0 20px; text-indent: -25px;}
 	   </style>';
 	$placeinhead .= '<script>
 	$(function() {
@@ -299,6 +301,9 @@ require_once __DIR__."/../includes/checkdata.php";
         });
         $("input[name=attemptextnum]").on("input", function (e) {
             $("input[name=attemptext]").prop("checked", this.value.match(/^\s*\d+\s*$/) && parseInt(this.value) != 0);
+        });
+        $("#newpenaltytype").on("change", function (e) {
+            $("#newpenaltyintervalwrap").toggle(this.value == "increasing");
         });
 		$("form").on("submit", function(e) {
 			if ($("input[name=forceclear]").prop("checked")) {
@@ -391,9 +396,9 @@ require_once __DIR__."/../includes/checkdata.php";
 		}
 		echo "</h1>";
 	}
-	$query = "(SELECT ie.id AS eid,iu.LastName,iu.FirstName,ia.name as itemname,iu.id AS userid,ia.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.exceptionpenalty,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,ia.tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_assessments AS ia ";
+	$query = "(SELECT ie.id AS eid,iu.LastName,iu.FirstName,ia.name as itemname,iu.id AS userid,ia.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.exceptionpenalty,ie.exceptionpenaltyinterval,ie.exceptionpenaltyscope,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,ia.tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_assessments AS ia ";
 	$query .= "WHERE ie.itemtype='A' AND ie.assessmentid=ia.id AND ie.userid=iu.id AND ia.courseid=:courseid AND iu.id IN ($tolist) ) ";
-	$query .= "UNION ALL (SELECT ie.id AS eid,iu.LastName,iu.FirstName,i_f.name as itemname,iu.id AS userid,i_f.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.exceptionpenalty,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,2 AS tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_forums AS i_f ";
+	$query .= "UNION ALL (SELECT ie.id AS eid,iu.LastName,iu.FirstName,i_f.name as itemname,iu.id AS userid,i_f.id AS itemid,ie.startdate,ie.enddate,ie.waivereqscore,ie.exceptionpenalty,ie.exceptionpenaltyinterval,ie.exceptionpenaltyscope,ie.timeext,ie.attemptext,ie.islatepass,ie.itemtype,ie.is_lti,2 AS tutoredit FROM imas_exceptions AS ie,imas_users AS iu,imas_forums AS i_f ";
 	$query .= "WHERE (ie.itemtype='F' OR ie.itemtype='P' OR ie.itemtype='R') AND ie.assessmentid=i_f.id AND ie.userid=iu.id AND i_f.courseid=:courseid2 AND iu.id IN ($tolist) )";
 	if ($isall) {
 		$query .= "ORDER BY itemname,LastName,FirstName";
@@ -447,7 +452,15 @@ require_once __DIR__."/../includes/checkdata.php";
 					echo ' <i>('._('waives add work cutoff').')</i>';
                 }
 				if ($row['exceptionpenalty'] !== null) {
-					echo ' <i>('.sprintf(_('%d%% late penalty'), $row['exceptionpenalty']).')</i>';
+					if (!empty($row['exceptionpenaltyinterval'])) {
+						$penaltynote = sprintf(_('%d%% late penalty every %d hours'), $row['exceptionpenalty'], $row['exceptionpenaltyinterval']);
+					} else {
+						$penaltynote = sprintf(_('%d%% late penalty'), $row['exceptionpenalty']);
+					}
+					if ($row['exceptionpenaltyscope'] === 'exception_only') {
+						$penaltynote .= ', '._('exception only');
+					}
+					echo ' <i>('.$penaltynote.')</i>';
 				}
                 if ($row['timeext'] != 0) {
                     echo ' <i>('.sprintf(_('%d min time extension'), abs($row['timeext']));
@@ -517,7 +530,15 @@ require_once __DIR__."/../includes/checkdata.php";
 					$notesarr[$row['eid']] .= ' ('._('waives add work cutoff').')';
                 }
 				if ($row['exceptionpenalty'] !== null) {
-					$notesarr[$row['eid']] .= ' ('.sprintf(_('%d%% late penalty'), $row['exceptionpenalty']).')';
+					if (!empty($row['exceptionpenaltyinterval'])) {
+						$penaltynote = sprintf(_('%d%% late penalty every %d hours'), $row['exceptionpenalty'], $row['exceptionpenaltyinterval']);
+					} else {
+						$penaltynote = sprintf(_('%d%% late penalty'), $row['exceptionpenalty']);
+					}
+					if ($row['exceptionpenaltyscope'] === 'exception_only') {
+						$penaltynote .= ', '._('exception only');
+					}
+					$notesarr[$row['eid']] .= ' ('.$penaltynote.')';
 				}
                 if ($row['timeext'] != 0) {
                     $notesarr[$row['eid']] .= ' ('.sprintf(_('%d min time extension'), abs($row['timeext']));
@@ -625,7 +646,11 @@ require_once __DIR__."/../includes/checkdata.php";
 	echo '</p>';
 	echo '<p class="list"><label><input type="checkbox" name="waivereqscore"/> Waive "show based on an another assessment" requirements, if applicable.</label></p>';
 	echo '<p class="list"><label><input type="checkbox" name="waiveworkcutoff"/> Waive "add work cutoff", if applicable.</label></p>';
-    echo '<p class="list"><label><input type="checkbox" name="overridepenalty"/> Override default exception/LatePass penalty.</label>  <label>Deduct <input type="input" name="newpenalty" size="2" value="0"/>% for questions done while in exception.</label></p>';
+    echo '<p class="list"><label><input type="checkbox" name="overridepenalty"/> Override default exception/LatePass penalty.</label>  <label>Deduct
+    <select name="newpenaltytype" id="newpenaltytype"><option value="fixed">fixed</option><option value="increasing">increasing</option></select>
+    <input type="input" name="newpenalty" size="2" value="0"/>%
+    <span id="newpenaltyintervalwrap" style="display:none">per <input type="input" name="newpenaltyinterval" size="3" value="24"/> hours</span>
+    for questions done while in exception.</label><br/><label><input type="checkbox" name="alsolatepass"/> Also apply to questions done in LatePass.</label></p>';
     if ($courseUIver > 1) {
         echo '<p class="list"><label><input type="checkbox" name="timelimitext"/> If time limit is active or expired, allow additional time:</label> <label><input size=2 name="timelimitextmin" value="0"> additional minutes.</label>
         <span class="small" id="timelimitinfo" style="display:none"><br>Only applies to the most recent attempt. Be aware that depending on your settings, students may have already been shown the answers.

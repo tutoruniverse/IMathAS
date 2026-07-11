@@ -73,7 +73,9 @@ $vueData = array(
 	'minscore' => '',
 	'usedeffb' => 'DNC',
 	'tutoredit' => 'DNC',
-	'exceptionpenalty' => '',
+	'exceptionpenalty' => '0',
+	'exceptionpenaltytype' => 'DNC',
+	'exceptionpenaltyinterval' => '24',
 	'earlybonus' => '',
 	'earlybonushrs' => 1,
 	'defoutcome' => 'DNC',
@@ -789,13 +791,28 @@ $vueData = array(
 				</span><br class=form />
 			</div>
 
-			<div :class="{highlight:exceptionpenalty !== ''}">
-				<label for="exceptionpenalty" class=form>
+			<div :class="{highlight: exceptionpenaltytype !== 'DNC'}">
+				<label for="exceptionpenaltytype" class=form>
 					<?php echo _('Penalty for questions done while in exception/LatePass'); ?>:
 				</label>
 				<span class=formright>
-					<input type=text size=4 name="exceptionpenalty" id="exceptionpenalty"
-					 	v-model="exceptionpenalty">%
+					<select name="exceptionpenaltytype" id="exceptionpenaltytype" v-model="exceptionpenaltytype">
+						<option value="DNC"><?php echo _('Do not change'); ?></option>
+						<option value="fixed"><?php echo _('Fixed');?></option>
+						<option value="increasing"><?php echo _('Increasing');?></option>
+					</select>
+					<span v-if="exceptionpenaltytype != 'DNC'">
+						<input 
+							type=number size=3 name="exceptionpenalty" id="exceptionpenalty" min=0 max=99
+							v-model="exceptionpenalty" aria-label="<?php echo _('exception penalty percent');?>">%
+					</span>
+					<span v-if="exceptionpenaltytype=='increasing'">
+						<?php echo _('per');?>
+						<input type=number size=3 name="exceptionpenaltyinterval" id="exceptionpenaltyinterval" min=1 max=9999
+						 	v-model="exceptionpenaltyinterval"
+							aria-label="<?php echo _('exception penalty hours per increment');?>"
+						> <?php echo _('hours');?>
+					</span>
 				</span><br class=form />
 			</div>
 			<div :class="{highlight:earlybonus !== ''}">

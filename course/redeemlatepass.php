@@ -95,9 +95,9 @@
 
 	} else if (isset($_POST['confirm'])) {
 		//$addtime = $latepasshrs*60*60;
-		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,LPcutoff FROM imas_assessments WHERE id=:id AND courseid=:cid");
+		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,LPcutoff,exceptionpenalty,exceptionpenaltyinterval FROM imas_assessments WHERE id=:id AND courseid=:cid");
 		$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
-		list($allowlate,$enddate,$startdate,$LPcutoff) =$stm->fetch(PDO::FETCH_NUM) ?: [null,null,null,null];
+		list($allowlate,$enddate,$startdate,$LPcutoff,$exceptionpenalty,$exceptionpenaltyinterval) =$stm->fetch(PDO::FETCH_NUM) ?: [null,null,null,null,null,null];
 		if ($enddate === null || $enddate === false) {
 			echo 'Invalid aid';
 			exit;
@@ -105,17 +105,24 @@
 		if ($LPcutoff<$enddate) {
 			$LPcutoff = 0;  //ignore nonsensical values
 		}
-		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+		$overridepenalty = null; $overrideinterval = null; $overridescope = 'both'; $manualexceptionend = null;
+		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
 		$hasexception = false;
 		if ($stm->rowCount()==0) {
 			$usedlatepasses = 0;
 			$thised = $enddate;
 			$useexception = false;
-			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
+			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid, 'exceptionpenalty'=>$exceptionpenalty, 'exceptionpenaltyinterval'=>$exceptionpenaltyinterval));
 		} else {
 			$r = $stm->fetch(PDO::FETCH_ASSOC);
-			list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($r, array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
+			if ($r['exceptionpenalty'] !== null) {
+				$overridepenalty = $r['exceptionpenalty'];
+				$overrideinterval = $r['exceptionpenaltyinterval'];
+				$overridescope = $r['exceptionpenaltyscope'];
+				$manualexceptionend = $r['manualexceptionend'];
+			}
+			list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($r, array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid, 'exceptionpenalty'=>$exceptionpenalty, 'exceptionpenaltyinterval'=>$exceptionpenaltyinterval, 'overridepenalty'=>$overridepenalty, 'overrideinterval'=>$overrideinterval, 'overridescope'=>$overridescope, 'manualexceptionend'=>$manualexceptionend));
 			if ($useexception) {
 				if (!empty($r['is_lti'])) { //is_lti - use count in exception
 					$usedlatepasses = $r['islatepass'];
@@ -187,9 +194,9 @@
 		//$curBreadcrumb = "$breadcrumbbase <a href=\"course.php?cid=$cid\"> $coursename</a>\n";
 		//$curBreadcrumb .= " Redeem LatePass\n";
 		//echo "<div class=\"breadcrumb\">$curBreadcrumb</div>";
-		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,timelimit,LPcutoff,ver FROM imas_assessments WHERE id=:id AND courseid=:cid");
+		$stm = $DBH->prepare("SELECT allowlate,enddate,startdate,timelimit,LPcutoff,ver,exceptionpenalty,exceptionpenaltyinterval FROM imas_assessments WHERE id=:id AND courseid=:cid");
 		$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
-		list($allowlate,$enddate,$startdate,$timelimit,$LPcutoff,$aVer) =$stm->fetch(PDO::FETCH_NUM) ?: [null,null,null,null,null,null];
+		list($allowlate,$enddate,$startdate,$timelimit,$LPcutoff,$aVer,$exceptionpenalty,$exceptionpenaltyinterval) =$stm->fetch(PDO::FETCH_NUM) ?: [null,null,null,null,null,null,null,null];
 		if ($enddate === null || $enddate === false) {
 			echo 'Invalid aid';
 			exit;
@@ -197,16 +204,23 @@
 		if ($LPcutoff<$enddate) {
 			$LPcutoff = 0;  //ignore nonsensical values
 		}
-		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+		$overridepenalty = null; $overrideinterval = null; $overridescope = 'both'; $manualexceptionend = null;
+		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
 		$hasexception = false;
 		if ($stm->rowCount()==0) {
 			$usedlatepasses = 0;
 			$thised = $enddate;
-			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
+			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid, 'exceptionpenalty'=>$exceptionpenalty, 'exceptionpenaltyinterval'=>$exceptionpenaltyinterval));
 		} else {
 			$r = $stm->fetch(PDO::FETCH_ASSOC);
-			list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($r, array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid));
+			if ($r['exceptionpenalty'] !== null) {
+				$overridepenalty = $r['exceptionpenalty'];
+				$overrideinterval = $r['exceptionpenaltyinterval'];
+				$overridescope = $r['exceptionpenaltyscope'];
+				$manualexceptionend = $r['manualexceptionend'];
+			}
+			list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($r, array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid, 'exceptionpenalty'=>$exceptionpenalty, 'exceptionpenaltyinterval'=>$exceptionpenaltyinterval, 'overridepenalty'=>$overridepenalty, 'overrideinterval'=>$overrideinterval, 'overridescope'=>$overridescope, 'manualexceptionend'=>$manualexceptionend));
 			if ($useexception) {
 				if (!empty($r['is_lti'])) { //is_lti - use count in exception
 					$usedlatepasses = $r['islatepass'];
@@ -236,6 +250,33 @@
 
 		$timelimitstatus = $exceptionfuncs->getTimelimitStatus($aid, $aVer);
 
+		$penaltyNotice = '';
+		$hasOverride = ($overridepenalty !== null && $overridepenalty > 0);
+		if ($exceptionpenalty > 0 || $hasOverride) {
+			// whichever rate currently governs (override, if in force; else the assessment default)
+			if ($hasOverride && ($overridescope !== 'exception_only' || $manualexceptionend === null || $now <= $manualexceptionend)) {
+				$activePenalty = $overridepenalty;
+				$activeInterval = $overrideinterval;
+			} else {
+				$activePenalty = $exceptionpenalty;
+				$activeInterval = $exceptionpenaltyinterval;
+			}
+			if ($now <= $enddate) {
+				if ($activeInterval > 0) {
+					$penaltyNotice = sprintf(_('A penalty of %d%% every %d hours will apply to work done after the due date, %s.'), $activePenalty, $activeInterval, tzdate("D n/j/y, g:i a", $enddate));
+				} else {
+					$penaltyNotice = sprintf(_('A penalty of %d%% will apply to work done after the due date, %s.'), $activePenalty, tzdate("D n/j/y, g:i a", $enddate));
+				}
+			} else {
+				$currentPenaltyPct = ExceptionFuncs::calcEffectiveLatePenaltyPct($now, $enddate, $exceptionpenalty, $exceptionpenaltyinterval, $overridepenalty, $overrideinterval, $overridescope, $manualexceptionend);
+				if ($activeInterval > 0) {
+					$penaltyNotice = sprintf(_('A penalty of %d%% every %d hours applies to late work; currently a %d%% penalty applies.'), $activePenalty, $activeInterval, $currentPenaltyPct);
+				} else {
+					$penaltyNotice = sprintf(_('A penalty of %d%% applies to late work; currently a %d%% penalty applies.'), $activePenalty, $currentPenaltyPct);
+				}
+			}
+		}
+
 		if ($latepasses==0) { //shouldn't get here if 0
 			echo "<p>You have no late passes remaining.</p>";
 		} else if ($canuselatepass) {
@@ -255,7 +296,11 @@
 				} else {
 					echo "You can redeem one LatePass for a ".Sanitize::encodeStringForDisplay($latepasshrs)." hour extension on this assessment. ";
 				}
-				echo "</p><p>Are you sure you want to redeem a LatePass?</p>";
+				echo "</p>";
+				if ($penaltyNotice !== '') {
+					echo '<p class="noticetext">'.$penaltyNotice.'</p>';
+				}
+				echo "<p>Are you sure you want to redeem a LatePass?</p>";
 			} else {
 				echo "<p>Each LatePass gives a ".Sanitize::encodeStringForDisplay($latepasshrs)." hour extension on this assessment. ";
 				if ($limitedByCourseEnd) {
@@ -265,7 +310,11 @@
 				} else {
 					echo "You would need $LPneeded LatePasses to reopen this assignment. ";
 				}
-				echo "</p><p>Are you sure you want to redeem $LPneeded LatePasses?</p>";
+				echo "</p>";
+				if ($penaltyNotice !== '') {
+					echo '<p class="noticetext">'.$penaltyNotice.'</p>';
+				}
+				echo "<p>Are you sure you want to redeem $LPneeded LatePasses?</p>";
 			}
 			if ($timelimitstatus=='started') {
 				echo '<p class="noticetext">'._('Reminder: You have already started this assessment, and it has a time limit.  Using a LatePass does <b>not</b> extend or pause the time limit, only the due date.').'</p>';

@@ -106,12 +106,31 @@ export default {
         } else {
           dateobj.sub += ' ' + this.$t('setlist-extension');
         }
-        if (settings.exceptionpenalty > 0) {
+        if (settings.active_late_penalty && settings.active_late_penalty.penalty > 0) {
           const now = new Date().getTime();
+          const activePenalty = settings.active_late_penalty.penalty;
+          const activeInterval = settings.active_late_penalty.interval;
           if (settings.original_enddate * 1000 > now) {
-            dateobj.alert2 = this.$t('setlist-penalty_after', { p: settings.exceptionpenalty, date: settings.original_enddate_disp });
+            // not yet late - describe the rate that will apply once late
+            if (activeInterval > 0) {
+              dateobj.alert2 = this.$t('setlist-penalty_interval_after', {
+                p: activePenalty,
+                hrs: activeInterval,
+                date: settings.original_enddate_disp
+              });
+            } else {
+              dateobj.alert2 = this.$t('setlist-penalty_after', { p: activePenalty, date: settings.original_enddate_disp });
+            }
+          } else if (activeInterval > 0) {
+            // already late - current_late_penalty_pct is computed server-side since it may
+            // combine an earlier exception-only override with the assessment's default policy
+            dateobj.alert2 = this.$t('setlist-penalty_interval', {
+              p: activePenalty,
+              hrs: activeInterval,
+              cur: settings.current_late_penalty_pct
+            });
           } else {
-            dateobj.alert2 = this.$t('setlist-penalty', { p: settings.exceptionpenalty });
+            dateobj.alert2 = this.$t('setlist-penalty', { p: settings.current_late_penalty_pct });
           }
         }
       }

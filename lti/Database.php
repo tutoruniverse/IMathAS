@@ -1032,9 +1032,9 @@ class Imathas_LTI_Database implements LTI\Database
             if ($link->get_date_by_lti() > 0 && $lms_duedate != $exceptionrow['enddate']) {
                 //if new due date is later, or no latepass used, then update
                 if ($exceptionrow['islatepass'] == 0 || $lms_duedate > $exceptionrow['enddate']) {
-                    $stm = $this->dbh->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+                    $stm = $this->dbh->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0,manualexceptionend=:enddate2 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
                     $stm->execute(array(':startdate' => min($now, $lms_duedate, $exceptionrow['startdate']),
-                        ':enddate' => $lms_duedate, ':userid' => $userid, ':assessmentid' => $aid));
+                        ':enddate' => $lms_duedate, ':enddate2' => $lms_duedate, ':userid' => $userid, ':assessmentid' => $aid));
                 }
             }
         } else if ($link->get_date_by_lti() == 3 &&
@@ -1042,8 +1042,8 @@ class Imathas_LTI_Database implements LTI\Database
         ) {
             //default dates already set by LTI, and users's date doesn't match - create new exception
             //also create if it's before the default assessment startdate - since they could access via LMS, it should be available.
-            $stm = $this->dbh->prepare("INSERT INTO imas_exceptions (startdate,enddate,islatepass,is_lti,userid,assessmentid,itemtype) VALUES (?,?,?,?,?,?,'A')");
-            $stm->execute(array(min($now, $lms_duedate), $lms_duedate, 0, 1, $userid, $aid));
+            $stm = $this->dbh->prepare("INSERT INTO imas_exceptions (startdate,enddate,islatepass,is_lti,manualexceptionend,userid,assessmentid,itemtype) VALUES (?,?,?,?,?,?,?,'A')");
+            $stm->execute(array(min($now, $lms_duedate), $lms_duedate, 0, 1, $lms_duedate, $userid, $aid));
         }
     }
 

@@ -147,6 +147,19 @@ class ExceptionFuncs {
             $adata['enddate'] = $adata['original_enddate'];
         }
 
+        //compute the penalty that currently applies, based on the true original due date,
+        //before $adata['enddate'] potentially gets swapped below to a latepass-extended date
+        $currentPenaltyPct = self::calcEffectiveLatePenaltyPct(
+            $now,
+            $adata['enddate'],
+            $adata['exceptionpenalty'] ?? 0,
+            $adata['exceptionpenaltyinterval'] ?? 0,
+            $adata['overridepenalty'] ?? null,
+            $adata['overrideinterval'] ?? null,
+            $adata['overridescope'] ?? 'both',
+            $adata['manualexceptionend'] ?? null
+        );
+
 		$useexception = ($exception!==null && $exception!==false); //use by default
 		if ($useexception && !empty($exception['is_lti'])) {
 			//is LTI-set - use the exception
@@ -200,10 +213,10 @@ class ExceptionFuncs {
 				$latepasscnt = 0;
             }
 			if ($getcanusereason) {
-				$canuselatepass = $this->getCanUseAssessLatePass($adata, $latepasscnt, true);
+				$canuselatepass = $this->getCanUseAssessLatePass($adata, $latepasscnt, true, $currentPenaltyPct);
 				return array($useexception, $canuselatepass);
 			} else {
-                $canuselatepass = $this->getCanUseAssessLatePass($adata, $latepasscnt);
+                $canuselatepass = $this->getCanUseAssessLatePass($adata, $latepasscnt, false, $currentPenaltyPct);
 				return array($useexception, $canundolatepass, $canuselatepass);
 			}
 		} else {
@@ -224,7 +237,7 @@ class ExceptionFuncs {
 			$this->getViewedAssess();
 		}
 		$LPusereason = $this->getCanUseAssessLatePass($adata, $latepasscnt, true);
-		if ($LPusereason == 1 || $LPusereason > 6) { // 7 is review block, 8 is gb block
+		if ($LPusereason == 1 || $LPusereason == 7 || $LPusereason == 8) { // 7 is review block, 8 is gb block
 			return true;
 		} else {
 			return false;
@@ -235,9 +248,24 @@ class ExceptionFuncs {
 	// Typically used if exception doesn't already exist, called without second parameter
 	// Also called internally from getCanUseAssessException using second param
 	// latepasscnt is number of latepasses already used
-	public function getCanUseAssessLatePass($adata, $latepasscnt = 0, $getreason=false) {
+	public function getCanUseAssessLatePass($adata, $latepasscnt = 0, $getreason=false, $currentPenaltyPct = null) {
 		if ($this->latepasses == 0 && !$getreason) { // no latepasses to use; no need to check further
 			return false;
+		}
+		if ($currentPenaltyPct === null) {
+			// not pre-computed by getCanUseAssessException (e.g. called directly) - compute
+			// from whatever enddate/penalty info is available; defaults to 0 (never blocks)
+			// if those keys aren't present on $adata.
+			$currentPenaltyPct = self::calcEffectiveLatePenaltyPct(
+				time(),
+				$adata['enddate'],
+				$adata['exceptionpenalty'] ?? 0,
+				$adata['exceptionpenaltyinterval'] ?? 0,
+				$adata['overridepenalty'] ?? null,
+				$adata['overrideinterval'] ?? null,
+				$adata['overridescope'] ?? 'both',
+				$adata['manualexceptionend'] ?? null
+			);
 		}
 		$now = time();
 		$canuselatepass = false;
@@ -302,6 +330,8 @@ class ExceptionFuncs {
             $canuselatepass = 7; // practice mode block
         } else if (isset($this->viewedassess[$adata['id']]) && $this->viewedassess[$adata['id']]=='gb') {
             $canuselatepass = 8; // gb view block
+        } else if ($currentPenaltyPct >= 100) {
+            $canuselatepass = 10; // late penalty is already 100% or more; using a latepass wouldn't help
         } else {
             $canuselatepass = 1; // can use
         }
@@ -325,6 +355,50 @@ class ExceptionFuncs {
 		}
 		*/
 		return $canuselatepass;
+	}
+
+	//compute the penalty percent (0-100) over a single fixed/increasing rate, given how
+	//many seconds have elapsed since that rate's own start point.
+	//interval of 0 (or empty) means a fixed penalty (no growth over time).
+	//$closed=false (default) evaluates an ongoing lateness - i.e. "how late is this
+	//submission" - where being late by any amount immediately charges a full first
+	//interval (matches the confirmed design: "5% every 24 hours" charges 5% the instant
+	//work is late, 10% once 24hrs+ late, etc).
+	//$closed=true evaluates a closed, already-fully-elapsed duration instead (e.g. how
+	//much an exception-only override accrued over its own known window) - plain
+	//floor(hours)*rate, with no "immediately late" bump, since this isn't evaluating how
+	//late a submission is, just how much penalty accrued during a span that has ended.
+	public static function calcSegmentPct($elapsedSeconds, $penalty, $interval, $closed = false) {
+		if (empty($penalty) || $elapsedSeconds <= ($closed ? 0 : 10)) {
+			return 0;
+		}
+		if (!empty($interval)) {
+			$intervalsLate = floor($elapsedSeconds / ($interval * 3600)) + ($closed ? 0 : 1);
+			return min(100, $penalty * $intervalsLate);
+		}
+		return $penalty;
+	}
+
+	//resolve the effective cumulative late penalty percent (0-100) at $subtime, given
+	//the assessment's default penalty/interval and an optional per-student override.
+	//$overridePenalty null means no override is active - use the default throughout.
+	//$overrideScope 'both' applies the override for all late time; 'exception_only'
+	//applies the override only up through $manualExceptionEnd, after which the
+	//default policy accrues fresh from that boundary (added to whatever the override
+	//had already accrued by that point).
+	public static function calcEffectiveLatePenaltyPct($subtime, $origEnddate, $defaultPenalty, $defaultInterval, $overridePenalty, $overrideInterval, $overrideScope, $manualExceptionEnd) {
+		if ($overridePenalty === null) {
+			return self::calcSegmentPct($subtime - $origEnddate, $defaultPenalty, $defaultInterval);
+		}
+		if ($overrideScope !== 'exception_only' || $manualExceptionEnd === null || $subtime <= $manualExceptionEnd) {
+			return self::calcSegmentPct($subtime - $origEnddate, $overridePenalty, $overrideInterval);
+		}
+		//exception_only, and past the manual exception's own end: override accrued (as a
+		//closed, known duration) up to manualExceptionEnd, then the default policy accrues
+		//fresh from that boundary, evaluated as an ongoing lateness (immediate-bump) case
+		$pctA = self::calcSegmentPct($manualExceptionEnd - $origEnddate, $overridePenalty, $overrideInterval, true);
+		$pctB = self::calcSegmentPct($subtime - $manualExceptionEnd, $defaultPenalty, $defaultInterval);
+		return min(100, $pctA + $pctB);
 	}
 
 

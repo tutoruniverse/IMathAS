@@ -200,7 +200,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 									'timelimit','overtime_grace','overtime_penalty','password',
 									'reqscorejson','showhints',
 									'msgtoinstr','eqnhelper','posttoforum','extrefs','showtips',
-									'cntingb','minscore','deffeedbacktext','tutoredit','exceptionpenalty','earlybonus',
+									'cntingb','minscore','deffeedbacktext','tutoredit','exceptionpenalty','exceptionpenaltyinterval','earlybonus',
 									'defoutcome','isgroup','groupsetid','groupmax','showwork','workcutoff');
 			$fieldlist = implode(',', $fields);
 			$stm = $DBH->prepare("SELECT $fieldlist FROM imas_assessments WHERE id=:id AND courseid=:cid");
@@ -417,6 +417,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 
 			$toset['tutoredit'] = Sanitize::onlyInt($_POST['tutoredit']);
 			$toset['exceptionpenalty'] = Sanitize::onlyInt($_POST['exceptionpenalty']);
+			$toset['exceptionpenaltyinterval'] = ($_POST['exceptionpenaltytype'] === 'increasing') ? Sanitize::onlyInt($_POST['exceptionpenaltyinterval']) : 0;
 			$toset['defoutcome'] = Sanitize::onlyInt($_POST['defoutcome']);
 
 			$toset['earlybonus'] = 0;
@@ -730,6 +731,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
           $deffb = _("This assessment contains items that are not automatically graded.  Your grade may be inaccurate until your instructor grades these items.");
 					$line['tutoredit'] = isset($CFG['AMS']['tutoredit'])?$CFG['AMS']['tutoredit']:0;
 					$line['exceptionpenalty'] = isset($CFG['AMS']['exceptionpenalty'])?$CFG['AMS']['exceptionpenalty']:0;
+					$line['exceptionpenaltyinterval'] = isset($CFG['AMS']['exceptionpenaltyinterval'])?$CFG['AMS']['exceptionpenaltyinterval']:0;
 					$line['earlybonus'] = isset($CFG['AMS']['earlybonux'])?$CFG['AMS']['earlybonus']:0;
 					$line['defoutcome'] = 0;
 					$line['isgroup'] = isset($CFG['AMS']['isgroup'])?$CFG['AMS']['isgroup']:0;

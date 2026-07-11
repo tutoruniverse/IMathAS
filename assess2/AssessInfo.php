@@ -102,7 +102,7 @@ class AssessInfo
     } else if (!$isstu) {
       $this->setException($uid, false, $isstu, $latepasses, $latepasshrs, $courseenddate);
     } else {
-      $query = "SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty,waivereqscore,timeext,attemptext ";
+      $query = "SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend,waivereqscore,timeext,attemptext ";
       $query .= "FROM imas_exceptions WHERE userid=? AND assessmentid=? AND itemtype='A'";
       $stm = $this->DBH->prepare($query);
       $stm->execute(array($uid, $this->curAid));
@@ -127,7 +127,8 @@ class AssessInfo
         $courseenddate = $GLOBALS['courseenddate'] ?? 2000000000;
     }
     // resets, in case we're using setException multiple times
-    $resetkeys = ['exceptionpenalty','original_enddate','extended_with',
+    $resetkeys = ['overridepenalty','overrideinterval','overridescope','manualexceptionend',
+        'current_late_penalty_pct','active_late_penalty','original_enddate','extended_with',
         'timeext','attemptext', 'startdate', 'enddate', 'enddate_in',
         'latepasses_avail', 'latepass_extendto', 'latepass_enddate'];
     if (empty($this->resetdata)) { // set reset data on first run
@@ -154,9 +155,35 @@ class AssessInfo
     $this->assessData['hasexception'] = ($this->exception !== false);
 
     if ($this->exception !== false && isset($this->exception['exceptionpenalty']) && $this->exception['exceptionpenalty'] !== null) {
-      //override default exception penalty
-      $this->assessData['exceptionpenalty'] = $this->exception['exceptionpenalty'];
-    } 
+      //per-student override of the default exception/latepass penalty. Note assessData's
+      //own 'exceptionpenalty'/'exceptionpenaltyinterval' are left as the assessment's
+      //default - the override is tracked separately so scope-aware calculations (see
+      //getLatePenaltyParams()) can consider both the override and the default.
+      $this->assessData['overridepenalty'] = $this->exception['exceptionpenalty'];
+      $this->assessData['overrideinterval'] = $this->exception['exceptionpenaltyinterval'] ?? 0;
+      $this->assessData['overridescope'] = $this->exception['exceptionpenaltyscope'] ?? 'both';
+      $this->assessData['manualexceptionend'] = isset($this->exception['manualexceptionend']) ? intval($this->exception['manualexceptionend']) : null;
+    }
+
+    //precompute the currently-effective late penalty (using the true original due date,
+    //before assessData['enddate'] potentially gets swapped below to a latepass-extended date)
+    $origEnddate = $this->assessData['enddate'];
+    $defaultPenalty = $this->assessData['exceptionpenalty'] ?? 0;
+    $defaultInterval = $this->assessData['exceptionpenaltyinterval'] ?? 0;
+    $overridePenalty = $this->assessData['overridepenalty'] ?? null;
+    $overrideInterval = $this->assessData['overrideinterval'] ?? null;
+    $overrideScope = $this->assessData['overridescope'] ?? 'both';
+    $manualExceptionEnd = $this->assessData['manualexceptionend'] ?? null;
+    $now = time();
+    $this->assessData['current_late_penalty_pct'] = ExceptionFuncs::calcEffectiveLatePenaltyPct(
+      $now, $origEnddate, $defaultPenalty, $defaultInterval,
+      $overridePenalty, $overrideInterval, $overrideScope, $manualExceptionEnd
+    );
+    if ($overridePenalty !== null && ($overrideScope !== 'exception_only' || $manualExceptionEnd === null || $now <= $manualExceptionEnd)) {
+      $this->assessData['active_late_penalty'] = ['penalty'=>$overridePenalty, 'interval'=>$overrideInterval];
+    } else {
+      $this->assessData['active_late_penalty'] = ['penalty'=>$defaultPenalty, 'interval'=>$defaultInterval];
+    }
 
     if ($this->exception !== false && isset($this->exception['waivereqscore']) && ($this->exception['waivereqscore']&2) == 2) {
       //remove work cutoff
@@ -440,6 +467,24 @@ class AssessInfo
     } else {
       return false;
     }
+  }
+
+  /**
+   * Get the late-penalty settings needed to resolve the effective penalty at any
+   * given submission timestamp (assessment default + optional per-student override).
+   * Pass these (in order) to ExceptionFuncs::calcEffectiveLatePenaltyPct().
+   * @return array [defaultPenalty, defaultInterval, overridePenalty, overrideInterval,
+   *                overrideScope, manualExceptionEnd]
+   */
+  public function getLatePenaltyParams() {
+    return [
+      $this->assessData['exceptionpenalty'] ?? 0,
+      $this->assessData['exceptionpenaltyinterval'] ?? 0,
+      $this->assessData['overridepenalty'] ?? null,
+      $this->assessData['overrideinterval'] ?? null,
+      $this->assessData['overridescope'] ?? 'both',
+      $this->assessData['manualexceptionend'] ?? null,
+    ];
   }
 
   /**

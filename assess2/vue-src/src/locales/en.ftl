@@ -109,6 +109,8 @@ setlist-latepass_used =
 setlist-extension = You were granted an extension.
 setlist-penalty = A penalty of {$p}% will be applied.
 setlist-penalty_after = A penalty of {$p}% will be applied after {$date}.
+setlist-penalty_interval = A penalty of {$p}% every {$hrs} hours is being applied for late work; a {$cur}% penalty currently applies.
+setlist-penalty_interval_after = A penalty of {$p}% every {$hrs} hours will be applied after {$date}.
 setlist-earlybonus = A bonus of {$p}% will be applied until {$date}.
 setlist-take = 
     { $n ->
@@ -671,3 +673,4 @@ latepass-reason6 = LatePasses cannot be used because you do not have enough Late
 latepass-reason7 = LatePasses cannot be used because you have opened this assessment in Practice Mode, and that blocks use of LatePasses.
 latepass-reason8 = LatePasses cannot be used because you have reviewed this assessment in the Gradebook, and that blocks use of LatePasses.
 latepass-reason9 = LatePasses cannot be used because you are out of attempts.
+latepass-reason10 = LatePasses cannot be used because the late penalty is already 100% or more.

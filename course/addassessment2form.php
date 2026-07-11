@@ -89,6 +89,8 @@ $vueData = array(
 	'allowinstraddtutors' => (!isset($CFG['GEN']['allowinstraddtutors']) || $CFG['GEN']['allowinstraddtutors']==true),
 	'tutoredit' => $line['tutoredit'],
 	'exceptionpenalty' => $line['exceptionpenalty'],
+	'exceptionpenaltytype' => ($line['exceptionpenaltyinterval'] > 0) ? 'increasing' : 'fixed',
+	'exceptionpenaltyinterval' => ($line['exceptionpenaltyinterval'] > 0) ? $line['exceptionpenaltyinterval'] : 24,
 	'earlybonus' => ($line['earlybonus'] % 100),
 	'earlybonushrs' => max(1,floor($line['earlybonus'] / 100)),
 	'defoutcome' => $line['defoutcome'],
@@ -744,12 +746,23 @@ $vueData = array(
 				</span><br class="form" />
 			</div>
 
-			<label for="exceptionpenalty" class=form>
+			<label for="exceptionpenaltytype" class=form>
 				<?php echo _('Penalty for questions done while in exception/LatePass');?>:
 			</label>
 			<span class=formright>
+				<select name="exceptionpenaltytype" id="exceptionpenaltytype" v-model="exceptionpenaltytype">
+					<option value="fixed"><?php echo _('Fixed');?></option>
+					<option value="increasing"><?php echo _('Increasing');?></option>
+				</select>
 				<input type=number size=3 name="exceptionpenalty" id="exceptionpenalty" min=0 max=99
-				 	v-model="exceptionpenalty">%
+				 	v-model="exceptionpenalty" aria-label="<?php echo _('exception penalty percent');?>">%
+				<span v-if="exceptionpenaltytype=='increasing'">
+					<?php echo _('per');?>
+					<input type=number size=3 name="exceptionpenaltyinterval" id="exceptionpenaltyinterval" min=1 max=9999
+					 	v-model="exceptionpenaltyinterval"
+						aria-label="<?php echo _('exception penalty hours per increment');?>"
+					> <?php echo _('hours');?>
+				</span>
 			</span><br class=form />
 
 			<label for="earlybonus" class=form>

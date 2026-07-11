@@ -237,7 +237,7 @@ function copyitem($itemid, $gbcats = false, $sethidden = false)
         $query = "SELECT name,summary,intro,startdate,enddate,reviewdate,LPcutoff,
 			timelimit,minscore,displaymethod,defpoints,defattempts,deffeedback,
 			defpenalty,itemorder,shuffle,gbcategory,password,cntingb,showcat,showhints,showtips,
-			allowlate,exceptionpenalty,earlybonus,noprint,avail,groupmax,isgroup,groupsetid,endmsg,
+			allowlate,exceptionpenalty,exceptionpenaltyinterval,earlybonus,noprint,avail,groupmax,isgroup,groupsetid,endmsg,
 			deffeedbacktext,eqnhelper,caltag,calrtag,tutoredit,posttoforum,msgtoinstr,
 			istutorial,viddata,reqscorejson,reqscoretype,ancestors,defoutcome,
 			posttoforum,ptsposs,extrefs,submitby,showscores,showans,viewingb,scoresingb,

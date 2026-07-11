@@ -102,6 +102,9 @@ if (!(isset($teacherid) || (isset($tutorid) && $tutoredit == 3))) { // loaded by
 			$waivereqscore += 2;
 		}
         $epenalty = (isset($_POST['overridepenalty']))?intval($_POST['newpenalty']):null;
+        $epenaltyinterval = (isset($_POST['overridepenalty']))?(($_POST['newpenaltytype']==='increasing')?intval($_POST['newpenaltyinterval']):0):null;
+        $escope = (isset($_POST['overridepenalty']))?(isset($_POST['alsolatepass'])?'both':'exception_only'):null;
+        $emanualend = (isset($_POST['overridepenalty']))?$enddate:null;
         $timelimitext = (isset($_POST['timelimitext'])) ? intval($_POST['timelimitextmin']) : 0;
         $attemptext = (isset($_POST['attemptext'])) ? intval($_POST['attemptextnum']) : 0;
 
@@ -143,14 +146,14 @@ if (!(isset($teacherid) || (isset($tutorid) && $tutoredit == 3))) { // loaded by
 		$stm->execute(array(':userid'=>$uid, ':assessmentid'=>$aid));
 		$row = $stm->fetch(PDO::FETCH_NUM);
 		if ($row != null) {
-			$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,islatepass=0,waivereqscore=:waivereqscore,exceptionpenalty=:exceptionpenalty,timeext=:timeext,attemptext=:attemptext WHERE id=:id");
-			$stm->execute(array(':startdate'=>$startdate, ':enddate'=>$enddate, ':waivereqscore'=>$waivereqscore, ':exceptionpenalty'=>$epenalty, ':timeext'=>$timelimitext, ':attemptext'=>$attemptext, ':id'=>$row[0]));
+			$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,islatepass=0,waivereqscore=:waivereqscore,exceptionpenalty=:exceptionpenalty,exceptionpenaltyinterval=:exceptionpenaltyinterval,exceptionpenaltyscope=:exceptionpenaltyscope,manualexceptionend=:manualexceptionend,timeext=:timeext,attemptext=:attemptext WHERE id=:id");
+			$stm->execute(array(':startdate'=>$startdate, ':enddate'=>$enddate, ':waivereqscore'=>$waivereqscore, ':exceptionpenalty'=>$epenalty, ':exceptionpenaltyinterval'=>$epenaltyinterval, ':exceptionpenaltyscope'=>($escope ?? 'both'), ':manualexceptionend'=>$emanualend, ':timeext'=>$timelimitext, ':attemptext'=>$attemptext, ':id'=>$row[0]));
 		} else {
-			$query = "INSERT INTO imas_exceptions (userid,assessmentid,startdate,enddate,waivereqscore,exceptionpenalty,timeext,attemptext,itemtype) VALUES ";
-			$query .= "(:userid, :assessmentid, :startdate, :enddate, :waivereqscore, :exceptionpenalty, :timeext, :attemptext, 'A')";
+			$query = "INSERT INTO imas_exceptions (userid,assessmentid,startdate,enddate,waivereqscore,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend,timeext,attemptext,itemtype) VALUES ";
+			$query .= "(:userid, :assessmentid, :startdate, :enddate, :waivereqscore, :exceptionpenalty, :exceptionpenaltyinterval, :exceptionpenaltyscope, :manualexceptionend, :timeext, :attemptext, 'A')";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':userid'=>$uid, ':assessmentid'=>$aid, ':startdate'=>$startdate, ':enddate'=>$enddate,
-				':waivereqscore'=>$waivereqscore, ':exceptionpenalty'=>$epenalty, ':timeext'=>$timelimitext, ':attemptext'=>$attemptext));
+				':waivereqscore'=>$waivereqscore, ':exceptionpenalty'=>$epenalty, ':exceptionpenaltyinterval'=>$epenaltyinterval, ':exceptionpenaltyscope'=>($escope ?? 'both'), ':manualexceptionend'=>$emanualend, ':timeext'=>$timelimitext, ':attemptext'=>$attemptext));
 		}
 		if (isset($_POST['eatlatepass'])) {
 			$n = intval($_POST['latepassn']);
@@ -240,7 +243,7 @@ if (!(isset($teacherid) || (isset($tutorid) && $tutoredit == 3))) { // loaded by
 		$aVer = $row[3];
 
 		//check if exception already exists
-		$stm = $DBH->prepare("SELECT id,startdate,enddate,waivereqscore,exceptionpenalty,timeext,attemptext FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+		$stm = $DBH->prepare("SELECT id,startdate,enddate,waivereqscore,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,timeext,attemptext FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm->execute(array(':userid'=>$uid, ':assessmentid'=>$aid));
 		$erow = $stm->fetch(PDO::FETCH_ASSOC);
 		$page_isExceptionMsg = "";
@@ -254,6 +257,8 @@ if (!(isset($teacherid) || (isset($tutorid) && $tutoredit == 3))) { // loaded by
 			$etime = tzdate("g:i a",$erow['enddate']);
 			$curwaive = $erow['waivereqscore'];
             $curepenalty = $erow['exceptionpenalty'];
+            $curepenaltyinterval = $erow['exceptionpenaltyinterval'];
+            $curescope = $erow['exceptionpenaltyscope'];
             $timeext = $erow['timeext'];
             $attemptext = $erow['attemptext'];
 		} else {
@@ -261,6 +266,8 @@ if (!(isset($teacherid) || (isset($tutorid) && $tutoredit == 3))) { // loaded by
             $attemptext = 0;
             $curwaive = 0;
             $curepenalty = null;
+            $curepenaltyinterval = null;
+            $curescope = 'both';
         }
 		if ($isDateByLTI) {
 			$page_isExceptionMsg .= '<p class="noticetext">Note: You have opted to allow your LMS to set assessment dates.  If you need to give individual ';
@@ -309,6 +316,9 @@ if ($overwriteBody==1) {
         });
         $("input[name=attemptextnum]").on("input", function (e) {
             $("input[name=attemptext]").prop("checked", this.value.match(/^\s*\d+\s*$/) && parseInt(this.value) != 0);
+        });
+        $("#newpenaltytype").on("change", function (e) {
+            $("#newpenaltyintervalwrap").toggle(this.value == "increasing");
         });
     })
 	</script>
@@ -361,7 +371,15 @@ if ($aVer == 1) { // only allow this option for old assess UI for now. TODO
 		<span class="form"><input type="checkbox" name="waiveworkcutoff" id="waiveworkcutoff" <?php if (($curwaive&2)==2) echo 'checked="checked"';?>/></span>
 		<span class="formright"><label for=waiveworkcutoff>Waive "add work cutoff", if applicable</label>.</span><br class="form"/>
 		<span class="form"><input type="checkbox" name="overridepenalty" id="overridepenalty"  <?php if ($curepenalty!==null) echo 'checked="checked"';?>/></span>
-		<span class="formright"><label for=overridepenalty>Override default exception/LatePass penalty.</label>  <label>Deduct <input type="input" name="newpenalty" size="2" value="<?php echo ($curepenalty===null)?0:Sanitize::onlyFloat($curepenalty);?>"/>% for questions done while in exception.</label></span><br class="form"/>
+		<span class="formright"><label for=overridepenalty>Override default exception/LatePass penalty.</label>  <label>Deduct
+			<select name="newpenaltytype" id="newpenaltytype">
+				<option value="fixed" <?php if (empty($curepenaltyinterval)) echo 'selected';?>>fixed</option>
+				<option value="increasing" <?php if (!empty($curepenaltyinterval)) echo 'selected';?>>increasing</option>
+			</select>
+			<input type="input" name="newpenalty" size="2" value="<?php echo ($curepenalty===null)?0:Sanitize::onlyFloat($curepenalty);?>"/>%
+			<span id="newpenaltyintervalwrap" <?php if (empty($curepenaltyinterval)) echo 'style="display:none"';?>>per <input type="input" name="newpenaltyinterval" size="3" value="<?php echo empty($curepenaltyinterval)?24:Sanitize::onlyInt($curepenaltyinterval);?>"/> hours</span>
+			for questions done while in exception.</label>
+			<br/><label><input type="checkbox" name="alsolatepass" id="alsolatepass" <?php if ($curescope !== 'exception_only') echo 'checked="checked"';?>/> Also apply to questions done in LatePass.</label></span><br class="form"/>
 <?php
 if ($aVer > 1) { // only for new assess
 ?>

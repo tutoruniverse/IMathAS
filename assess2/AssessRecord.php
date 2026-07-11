@@ -12,6 +12,7 @@ require_once __DIR__ . '/questions/models/ShowAnswer.php';
 require_once __DIR__ . '/questions/ScoreEngine.php';
 require_once __DIR__ . '/questions/models/ScoreQuestionParams.php';
 require_once __DIR__ . '/../includes/TeacherAuditLog.php';
+require_once __DIR__ . '/../includes/exceptionfuncs.php';
 
 use IMathAS\assess2\questions\QuestionGenerator;
 use IMathAS\assess2\questions\models\QuestionParams;
@@ -1896,7 +1897,7 @@ class AssessRecord
     }
 
     $qsettings = $this->assess_info->getQuestionSettings($qver['qid']);
-    $exceptionPenalty = $this->assess_info->getSetting('exceptionpenalty');
+    $latePenaltyParams = $this->assess_info->getLatePenaltyParams();
     $earlyBonus = $this->assess_info->getSetting('earlybonus');
     $overtimePenalty = $this->assess_info->getSetting('overtime_penalty');
 
@@ -1971,7 +1972,7 @@ class AssessRecord
             $retakepenalty['n'],
             $due_date,           // the due date
             $starttime + $submissions[$parttry['sub']], // submission time
-            $exceptionPenalty,
+            $latePenaltyParams,
             $earlyBonus,
             isset($assessver['timelimit_end']) ? $assessver['timelimit_end'] : 0,
             $overtimePenalty,
@@ -4144,7 +4145,9 @@ class AssessRecord
    * @param  int $regen_penalty
    * @param  int $regen_penalty_after
    * @param  int $duedate    Original due date timestamp
-   * @param  int $exceptionpenalty
+   * @param  array $latePenaltyParams  [defaultPenalty, defaultInterval, overridePenalty,
+   *              overrideInterval, overrideScope, manualExceptionEnd] - see
+   *              AssessInfo::getLatePenaltyParams() / ExceptionFuncs::calcEffectiveLatePenaltyPct()
    * @param  array $earlybonus
    * @param  int $timelimitEnd
    * @param  int $overtimePenalty
@@ -4154,7 +4157,7 @@ class AssessRecord
    * @return float  score after penalties if $returnPenalties = false
    *         array(score, array of penalties) if $returnPenalties = true
    */
-  private function scoreAfterPenalty($score, $points, $try, $retry_penalty, $retry_penalty_after, $regen, $regen_penalty, $regen_penalty_after, $duedate, $subtime, $exceptionpenalty, $earlybonus, $timelimitEnd, $overtimePenalty, $returnPenalties = false) {
+  private function scoreAfterPenalty($score, $points, $try, $retry_penalty, $retry_penalty_after, $regen, $regen_penalty, $regen_penalty_after, $duedate, $subtime, $latePenaltyParams, $earlybonus, $timelimitEnd, $overtimePenalty, $returnPenalties = false) {
     $base = $score * $points;
     $penalties = array();
     if ($retry_penalty > 0) {
@@ -4173,10 +4176,13 @@ class AssessRecord
         $penalties[] = array('type'=>'regen', 'pct'=>$totalPenalty);
       }
     }
-    if ($exceptionpenalty > 0 && $subtime > $duedate+10) {
-      $base *= (1 - $exceptionpenalty / 100);
-      if ($base < 0) { $base = 0; }
-      $penalties[] = array('type'=>'late', 'pct'=>$exceptionpenalty);
+    if ($subtime > $duedate+10) {
+      $totalPenalty = ExceptionFuncs::calcEffectiveLatePenaltyPct($subtime, $duedate, ...$latePenaltyParams);
+      if ($totalPenalty > 0) {
+        $base *= (1 - $totalPenalty / 100);
+        if ($base < 0) { $base = 0; }
+        $penalties[] = array('type'=>'late', 'pct'=>$totalPenalty);
+      }
     }
     if ($earlybonus[0] > 0 && $subtime < $duedate - 3600 * $earlybonus[1]) {
       $base *= (1 + $earlybonus[0] / 100);

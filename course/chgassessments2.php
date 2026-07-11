@@ -585,7 +585,8 @@ if (!(isset($teacherid))) {
 			);
 		}
         if ($_POST['copyopts'] != 'DNC' || $_POST['defpoints'] !== '' || 
-            isset($_POST['removeperq']) || $_POST['exceptionpenalty'] !== '' ||
+            isset($_POST['removeperq']) || 
+			($_POST['exceptionpenaltytype'] !== 'DNC' && $_POST['exceptionpenalty'] !== '') ||
             $_POST['subtype'] !== 'DNC'
         ) {
             require_once "../includes/updateptsposs.php";

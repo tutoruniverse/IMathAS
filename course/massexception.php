@@ -646,11 +646,13 @@ require_once __DIR__."/../includes/checkdata.php";
 	echo '</p>';
 	echo '<p class="list"><label><input type="checkbox" name="waivereqscore"/> Waive "show based on an another assessment" requirements, if applicable.</label></p>';
 	echo '<p class="list"><label><input type="checkbox" name="waiveworkcutoff"/> Waive "add work cutoff", if applicable.</label></p>';
-    echo '<p class="list"><label><input type="checkbox" name="overridepenalty"/> Override default exception/LatePass penalty.</label>  <label>Deduct
-    <select name="newpenaltytype" id="newpenaltytype"><option value="fixed">fixed</option><option value="increasing">increasing</option></select>
-    <input type="input" name="newpenalty" size="2" value="0"/>%
-    <span id="newpenaltyintervalwrap" style="display:none">per <input type="input" name="newpenaltyinterval" size="3" value="24"/> hours</span>
-    for questions done while in exception.</label><br/><label><input type="checkbox" name="alsolatepass"/> Also apply to questions done in LatePass.</label></p>';
+    echo '<p class="list"><label><input type="checkbox" name="overridepenalty"/> Override default exception/LatePass penalty.</label>  Deduct
+    	<select name="newpenaltytype" id="newpenaltytype" aria-label="'. _('exception penalty type') .'">
+		<option value="fixed">fixed</option><option value="increasing">increasing</option>
+		</select>
+    	<input type="input" name="newpenalty" size="2" value="0" aria-label="'. _('exception penalty percent') . '"/>%
+    	<span id="newpenaltyintervalwrap" style="display:none">per <input type="input" name="newpenaltyinterval" size="3" value="24" aria-label="'. _('exception penalty hours per increment').'"/> hours</span>
+    	for questions done while in exception.<br/><label><input type="checkbox" name="alsolatepass"/> Also apply to questions done in LatePass.</label></p>';
     if ($courseUIver > 1) {
         echo '<p class="list"><label><input type="checkbox" name="timelimitext"/> If time limit is active or expired, allow additional time:</label> <label><input size=2 name="timelimitextmin" value="0"> additional minutes.</label>
         <span class="small" id="timelimitinfo" style="display:none"><br>Only applies to the most recent attempt. Be aware that depending on your settings, students may have already been shown the answers.

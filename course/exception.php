@@ -371,14 +371,14 @@ if ($aVer == 1) { // only allow this option for old assess UI for now. TODO
 		<span class="form"><input type="checkbox" name="waiveworkcutoff" id="waiveworkcutoff" <?php if (($curwaive&2)==2) echo 'checked="checked"';?>/></span>
 		<span class="formright"><label for=waiveworkcutoff>Waive "add work cutoff", if applicable</label>.</span><br class="form"/>
 		<span class="form"><input type="checkbox" name="overridepenalty" id="overridepenalty"  <?php if ($curepenalty!==null) echo 'checked="checked"';?>/></span>
-		<span class="formright"><label for=overridepenalty>Override default exception/LatePass penalty.</label>  <label>Deduct
-			<select name="newpenaltytype" id="newpenaltytype">
+		<span class="formright"><label for=overridepenalty>Override default exception/LatePass penalty.</label> 
+			<select name="newpenaltytype" id="newpenaltytype" aria-label="<?php echo _('exception penalty type'); ?>">
 				<option value="fixed" <?php if (empty($curepenaltyinterval)) echo 'selected';?>>fixed</option>
 				<option value="increasing" <?php if (!empty($curepenaltyinterval)) echo 'selected';?>>increasing</option>
 			</select>
-			<input type="input" name="newpenalty" size="2" value="<?php echo ($curepenalty===null)?0:Sanitize::onlyFloat($curepenalty);?>"/>%
-			<span id="newpenaltyintervalwrap" <?php if (empty($curepenaltyinterval)) echo 'style="display:none"';?>>per <input type="input" name="newpenaltyinterval" size="3" value="<?php echo empty($curepenaltyinterval)?24:Sanitize::onlyInt($curepenaltyinterval);?>"/> hours</span>
-			for questions done while in exception.</label>
+			<input type="input" name="newpenalty" size="2" value="<?php echo ($curepenalty===null)?0:Sanitize::onlyFloat($curepenalty);?>" aria-label="<?php echo _('exception penalty percent');?>"/>%
+			<span id="newpenaltyintervalwrap" <?php if (empty($curepenaltyinterval)) echo 'style="display:none"';?>>per <input type="input" name="newpenaltyinterval" size="3" value="<?php echo empty($curepenaltyinterval)?24:Sanitize::onlyInt($curepenaltyinterval);?>" aria-label="<?php echo _('exception penalty hours per increment');?>"/> hours</span>
+			for questions done while in exception.
 			<br/><label><input type="checkbox" name="alsolatepass" id="alsolatepass" <?php if ($curescope !== 'exception_only') echo 'checked="checked"';?>/> Also apply to questions done in LatePass.</label></span><br class="form"/>
 <?php
 if ($aVer > 1) { // only for new assess

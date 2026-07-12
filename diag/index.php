@@ -30,11 +30,13 @@
 		<div id=\"headerdiagindex\" class=\"pagetitle\"><h1>", _('Available Diagnostics'), "</h1></div>
 		<ul class=\"nomark\">";
 		$stm = $DBH->query("SELECT id,name FROM imas_diags WHERE public&3=3");
-		if ($stm->rowCount()==0) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row === false) {
 			echo "<li>", _('No diagnostics are available through this page at this time'), "</li>";
 		}
-		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		while ($row !== false) {
 			echo "<li><a href=\"$imasroot/diag/index.php?id=" . Sanitize::onlyInt($row[0]) . "\">".Sanitize::encodeStringForDisplay($row[1])."</a></li>";
+			$row = $stm->fetch(PDO::FETCH_NUM);
 		}
 		echo "</ul></div>";
 		require_once "../footer.php";
@@ -187,8 +189,8 @@ if (isset($_POST['SID'])) {
 			$stm = $DBH->prepare("SELECT id,goodfor FROM imas_diag_onetime WHERE code=:code AND diag=:diag");
 			$stm->execute(array(':code'=>strtoupper($_POST['passwd']), ':diag'=>$diagid));
 			$passwordnotfound = false;
-			if ($stm->rowCount()>0) {
-				$row = $stm->fetch(PDO::FETCH_NUM);
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
 				if ($row[1]==0) {  //onetime
 					$stm = $DBH->prepare("DELETE FROM imas_diag_onetime WHERE id=:id");
 					$stm->execute(array(':id'=>$row[0]));
@@ -212,7 +214,8 @@ if (isset($_POST['SID'])) {
 			if ($passwordnotfound) {
 				$stm = $DBH->prepare("SELECT password FROM imas_users WHERE SID=:SID");
 				$stm->execute(array(':SID'=>$diagSID));
-				if ($stm->rowCount()>0 && strtoupper($stm->fetchColumn(0))==strtoupper($_POST['passwd'])) {
+				$pwcol = $stm->fetchColumn(0);
+				if ($pwcol !== false && strtoupper($pwcol)==strtoupper($_POST['passwd'])) {
 
 				} else {
 					echo "<html><body>", _('Error, password incorrect or expired.'), "  <a href=\"index.php?id=" . Sanitize::onlyInt($diagid) . "\">", _('Try Again'), "</a>\n";
@@ -239,8 +242,9 @@ if (isset($_POST['SID'])) {
 	$query .= "AND istu.courseid=? WHERE iu.SID=?";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array($pcid, $diagSID));
-	if ($stm->rowCount()>0) {
-		list($userid, $stuid, $stuemail) = $stm->fetch(PDO::FETCH_NUM);
+	$userrow = $stm->fetch(PDO::FETCH_NUM);
+	if ($userrow !== false) {
+		list($userid, $stuid, $stuemail) = $userrow;
 		if ($stuid == null) { // was unenrolled from course. reenroll
 			if (!isset($_POST['timelimitmult'])) {
 				$_POST['timelimitmult'] = 1;
@@ -262,13 +266,15 @@ if (isset($_POST['SID'])) {
 			$d = null;
 			$stm2 = $DBH->prepare("SELECT id,starttime FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid");
 			$stm2->execute(array(':userid'=>$userid, ':assessmentid'=>$paid));
-			if ($stm2->rowCount()>0) {
-				$d = $stm2->fetch(PDO::FETCH_NUM);
+			$d2 = $stm2->fetch(PDO::FETCH_NUM);
+			if ($d2 !== false) {
+				$d = $d2;
 			} else {
 				$stm2 = $DBH->prepare("SELECT userid,starttime FROM imas_assessment_records WHERE userid=:userid AND assessmentid=:assessmentid");
 				$stm2->execute(array(':userid'=>$userid, ':assessmentid'=>$paid));
-				if ($stm2->rowCount()>0) {
-					$d = $stm2->fetch(PDO::FETCH_NUM);
+				$d2 = $stm2->fetch(PDO::FETCH_NUM);
+				if ($d2 !== false) {
+					$d = $d2;
 				}
 			}
 			if ($d !== null) {

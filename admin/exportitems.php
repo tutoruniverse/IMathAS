@@ -103,12 +103,10 @@ if (!(isset($teacherid))) {   //NO PERMISSIONS
 				$stm2->execute(array(':itemid'=>$row[1]));
 				$filenames = array();
 				$filedescr = array();
-				if ($stm2->rowCount()>0) {
-					   while ($frow = $stm2->fetch(PDO::FETCH_NUM)) {
-						   $filedescr[$frow[0]] = $frow[1];
-						   $filenames[$frow[0]] = getcoursefileurl($frow[2],true);
-					   }
-				}
+				while ($frow = $stm2->fetch(PDO::FETCH_NUM)) {
+					   $filedescr[$frow[0]] = $frow[1];
+					   $filenames[$frow[0]] = getcoursefileurl($frow[2],true);
+				   }
 				$stm2 = $DBH->prepare("SELECT * FROM imas_inlinetext WHERE id=:id");
 				$stm2->execute(array(':id'=>$row[1]));
 				$line = $stm2->fetch(PDO::FETCH_ASSOC);

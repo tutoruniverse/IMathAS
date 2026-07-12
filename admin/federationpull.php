@@ -27,11 +27,11 @@ $placeinhead = '<style type="text/css">ins {background-color: #d4fcbc;} del {bac
 //look up the peer to call
 $stm = $DBH->prepare('SELECT peername,peerdescription,secret,url FROM imas_federation_peers WHERE id=:id');
 $stm->execute(array(':id'=>$peer));
-if ($stm->rowCount()==0) {
+$peerinfo = $stm->fetch(PDO::FETCH_ASSOC);
+if ($peerinfo === false) {
 	echo 'Invalid peer ID';
 	exit;
 }
-$peerinfo = $stm->fetch(PDO::FETCH_ASSOC);
 if (function_exists("hash_hmac")) {
 	$computed_signature =  base64_encode(hash_hmac('sha256', $mypeername, $peerinfo['secret'], true));
 } else {
@@ -41,11 +41,11 @@ if (function_exists("hash_hmac")) {
 //see if we have a pull to continue
 $stm = $DBH->prepare('SELECT id,pulltime,step,fileurl,record FROM imas_federation_pulls WHERE step<10 AND peerid=:id ORDER BY pulltime DESC LIMIT 1');
 $res = $stm->execute(array(':id'=>$peer));
-if ($stm->rowCount()==0 || $_GET['stage']==-1) {
+$pullstatus = $stm->fetch(PDO::FETCH_ASSOC);
+if ($pullstatus === false || $_GET['stage']==-1) {
 	$continuing = false;
 } else {
 	$continuing = true;
-	$pullstatus = $stm->fetch(PDO::FETCH_ASSOC);
 	$record = json_decode($pullstatus['record'], true);
 	$since = $record['since'];
 }
@@ -56,10 +56,9 @@ if (!$continuing) {  //start a fresh pull
 	//look up our last successful pull to them
 	$stm = $DBH->prepare('SELECT pulltime FROM imas_federation_pulls WHERE peerid=:id AND step=99 ORDER BY pulltime DESC LIMIT 1');
 	$res = $stm->execute(array(':id'=>$peer));
-	if ($stm->rowCount()==0) {
+	$since = $stm->fetchColumn(0);
+	if ($since === false) {
 		$since = 0;
-	} else {
-		$since = $stm->fetchColumn(0);
 	}
 
 	$record = array('since'=>$since);

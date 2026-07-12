@@ -86,8 +86,8 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 		//student could have started, so better check to make sure it still doesn't exist
 		$stm = $DBH->prepare("SELECT id FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid ORDER BY id");
 		$stm->execute(array(':userid'=>$get_uid, ':assessmentid'=>$aid));
-		if ($stm->rowCount()>0) {
-			$asid = $stm->fetchColumn(0);
+		$asid = $stm->fetchColumn(0);
+		if ($asid !== false) {
 		} else {
 			$stm = $DBH->prepare("SELECT * FROM imas_assessments WHERE id=:id");
 			$stm->execute(array(':id'=>$aid));
@@ -104,8 +104,9 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 				$query .= "WHERE i_sgm.userid=:userid AND i_sg.groupsetid=:groupsetid";
 				$stm = $DBH->prepare($query);
 				$stm->execute(array(':userid'=>$get_uid, ':groupsetid'=>$adata['groupsetid']));
-				if ($stm->rowCount()>0) {
-					$agroupid = $stm->fetchColumn(0);
+				$row = $stm->fetchColumn(0);
+				if ($row !== false) {
+					$agroupid = $row;
 					$stm = $DBH->prepare("SELECT userid FROM imas_stugroupmembers WHERE stugroupid=:stugroupid AND userid<>:uid");
 					$stm->execute(array(':stugroupid'=>$agroupid, ':uid'=>$get_uid));
 					while ($row = $stm->fetch(PDO::FETCH_NUM)) {
@@ -118,9 +119,9 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 					$fieldstocopy = 'assessmentid,agroupid,questions,seeds,scores,attempts,lastanswers,starttime,endtime,bestseeds,bestattempts,bestscores,bestlastanswers,feedback,reviewseeds,reviewattempts,reviewscores,reviewlastanswers,reattempting,reviewreattempting,timeontask,ver';
 					$stm = $DBH->prepare("SELECT $fieldstocopy FROM imas_assessment_sessions WHERE userid IN ($ph) AND assessmentid=? ORDER BY id");
 					$stm->execute(array_merge($stugroupmem, array($aid)));
-					if ($stm->rowCount()>0) {
+					$row = $stm->fetch(PDO::FETCH_ASSOC);
+					if ($row !== false) {
 						$doadd = false;
-						$row = $stm->fetch(PDO::FETCH_ASSOC);
 						$fieldstocopyarr = explode(',',$fieldstocopy);
 						$insrow = ":".implode(',:',$fieldstocopyarr);
 						$query = "INSERT INTO imas_assessment_sessions (userid,$fieldstocopy) ";
@@ -161,8 +162,9 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 			$query .= "JOIN imas_assessments AS ia ON ias.assessmentid=ia.id WHERE ias.id=:id AND ia.courseid=:courseid";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':id'=>$asid, ':courseid'=>$cid));
-			if ($stm->rowCount()>0) {
-				list($aid, $ltisourcedid, $uid, $bestscores) = $stm->fetch(PDO::FETCH_NUM);
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
+				list($aid, $ltisourcedid, $uid, $bestscores) = $row;
 				if (strlen($ltisourcedid)>1) {
 					require_once "../includes/ltioutcomes.php";
 					updateLTIgrade('delete',$ltisourcedid,$aid,$uid);
@@ -263,7 +265,7 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 			$query .= "JOIN imas_assessments AS ia ON ias.assessmentid=ia.id WHERE ias.id=:id AND ia.courseid=:courseid";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':id'=>$asid, ':courseid'=>$cid));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 				$qp = getasidquery($asid);
 				$aid = $qp[2];
 				deleteasidfilesbyquery2($qp[0],$qp[1],$qp[2],1);
@@ -614,11 +616,11 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 		} else {
 			$stm->execute(array(':id'=>$asid, ':courseid'=>$cid));
 		}
-		if ($stm->rowCount()==0) {
+		$line=$stm->fetch(PDO::FETCH_ASSOC);
+		if ($line === false) {
 			echo "uh oh.  Bad assessment id";
 			exit;
 		}
-		$line=$stm->fetch(PDO::FETCH_ASSOC);
 		$GLOBALS['assessver'] = $line['ver'];
 		if (function_exists('onAssessVer')) {
 			onAssessVer($line);
@@ -705,11 +707,12 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 			$query .= "(SELECT DISTINCT rubric FROM imas_questions WHERE assessmentid=:assessmentid AND rubric>0)";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':assessmentid'=>$line['assessmentid']));
-			if ($stm->rowCount()>0) {
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
 				$rubrics = array();
-				while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				do {
 					$rubrics[] = $row;
-				}
+				} while ($row = $stm->fetch(PDO::FETCH_NUM));
 				echo printrubrics($rubrics);
 			}
 			unset($rubrics);
@@ -774,8 +777,8 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 		$stm2 = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm2->execute(array(':userid'=>$get_uid, ':assessmentid'=>$line['assessmentid']));
 		$useexception = false;
-		if ($stm2->rowCount()>0) {
-			$exception = $stm2->fetch(PDO::FETCH_ASSOC);
+		$exception = $stm2->fetch(PDO::FETCH_ASSOC);
+		if ($exception !== false) {
 			$exped = $exception['enddate'];
 			if ($exped>$saenddate) {
 				$saenddate = $exped;
@@ -1243,9 +1246,10 @@ if (isset($CFG['hooks']['course/gb-viewasid'])) {
 		if ($istutor || $isteacher) {
 			$stm = $DBH->prepare("SELECT sel1name,sel2name FROM imas_diags WHERE cid=:cid");
 			$stm->execute(array(':cid'=>$cid));
-			if ($stm->rowCount()>0) {
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
 				$isdiag = true;
-				list($sel1name,$sel2name) = $stm->fetch(PDO::FETCH_NUM);
+				list($sel1name,$sel2name) = $row;
 			}
 		}
 		$stm = $DBH->prepare("SELECT FirstName,LastName,SID FROM imas_users WHERE id=:id");

@@ -38,11 +38,11 @@ function delitembyid($itemid) {
 		$stm = $DBH->prepare("SELECT filename FROM imas_instr_files WHERE itemid=:itemid");
 		$stm->execute(array(':itemid'=>$typeid));
 		//$uploaddir = rtrim(dirname(__FILE__), '/\\') .'/files/';
-		$file_src = $DBH->prepare("SELECT id FROM imas_instr_files WHERE filename=:filename");
+		$file_src = $DBH->prepare("SELECT COUNT(id) FROM imas_instr_files WHERE filename=:filename");
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 			if (substr($row[0],0,4)!='http' && strpos($row[0], $cid.'/') === 0) {
 				$file_src->execute(array(':filename'=>$row[0]));
-				if ($file_src->rowCount()==1) {
+				if ($file_src->fetchColumn(0)==1) {
 					//unlink($uploaddir . $row[0]);
 					deletecoursefile($row[0]);
 				}
@@ -75,9 +75,9 @@ function delitembyid($itemid) {
 				$stm->execute(array($fileid));
 			}
 		} else if (strpos($text, 'file:'.$cid.'/') === 0 && empty($CFG['GEN']['skip_old_linked_delete'])) { //delete file if not used
-			$stm = $DBH->prepare("SELECT id FROM imas_linkedtext WHERE text=:text");
+			$stm = $DBH->prepare("SELECT COUNT(id) FROM imas_linkedtext WHERE text=:text");
 			$stm->execute(array(':text'=>$text));
-			if ($stm->rowCount()==1) {
+			if ($stm->fetchColumn(0)==1) {
 				//$uploaddir = rtrim(dirname(__FILE__), '/\\') .'/files/';
 				$filename = substr($text,5);
 				//unlink($uploaddir . $filename);

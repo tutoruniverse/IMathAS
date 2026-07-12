@@ -41,7 +41,8 @@ if (isset($_GET['tb'])) {
 if (!empty($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_linkedtext WHERE id=?");
 	$stm->execute(array($linkid));
-	if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $cid) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false || $row[0] != $cid) {
 		echo _("Invalid ID");
 		exit;
 	}
@@ -233,7 +234,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 						// no file id - old file, so do it the old way
 						$stm = $DBH->prepare("SELECT id FROM imas_linkedtext WHERE text=:text LIMIT 2");
 						$stm->execute(array(':text'=>$text));
-						if ($stm->rowCount()==1) {
+						if (count($stm->fetchAll(PDO::FETCH_NUM))==1) {
 							//$uploaddir = rtrim(dirname(__FILE__), '/\\') .'/files/';
 							$filename = substr($text,5);
 							deletecoursefile($filename);
@@ -436,12 +437,10 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		$stm->execute(array(':courseid'=>$cid));
 		$page_gbcatSelect = array('val'=>[], 'label'=>[]);
 		$i=0;
-		if ($stm->rowCount()>0) {
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				$page_gbcatSelect['val'][$i] = $row[0];
-				$page_gbcatSelect['label'][$i] = $row[1];
-				$i++;
-			}
+		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			$page_gbcatSelect['val'][$i] = $row[0];
+			$page_gbcatSelect['label'][$i] = $row[1];
+			$i++;
 		}
 		$page_tutorSelect['label'] = array(_("No access to scores"),_("View Scores"),_("View and Edit Scores"));
 		$page_tutorSelect['val'] = array(2,0,1);

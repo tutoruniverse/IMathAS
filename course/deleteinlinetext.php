@@ -31,9 +31,8 @@ if (!(isset($teacherid))) {
 		$DBH->beginTransaction();
 		$stm = $DBH->prepare("SELECT id FROM imas_items WHERE typeid=:typeid AND itemtype='InlineText' AND courseid=:courseid");
 		$stm->execute(array(':typeid'=>$textid, ':courseid'=>$cid));
-		if ($stm->rowCount()>0) {
-			$itemid = $stm->fetchColumn(0);
-
+		$itemid = $stm->fetchColumn(0);
+		if ($itemid !== false) {
 			delitembyid($itemid);
 
 			removeItemFromItemorder($cid, $itemid, $block);

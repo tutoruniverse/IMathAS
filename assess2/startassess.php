@@ -371,12 +371,13 @@ if ($assess_info->getSetting('displaymethod') === 'video_cued') {
 if ($assess_info->getSetting('displaymethod') === 'livepoll') {
   $stm = $DBH->prepare("SELECT curquestion,curstate,seed,startt FROM imas_livepoll_status WHERE assessmentid=:assessmentid");
   $stm->execute(array(':assessmentid'=>$aid));
-  if ($stm->rowCount()==0) {
+  $row = $stm->fetch(PDO::FETCH_ASSOC);
+  if ($row === false) {
     $assessInfoOut['livepoll_status'] = array("curquestion"=>0, "curstate"=>0, "seed"=>0, "startt"=>0);
     $stm = $DBH->prepare("INSERT INTO imas_livepoll_status (assessmentid,curquestion,curstate) VALUES (:assessmentid, :curquestion, :curstate) ON DUPLICATE KEY UPDATE curquestion=curquestion");
     $stm->execute(array(':assessmentid'=>$aid, ':curquestion'=>0, ':curstate'=>0));
   } else {
-    $assessInfoOut['livepoll_status'] = array_map('intval', $stm->fetch(PDO::FETCH_ASSOC));
+    $assessInfoOut['livepoll_status'] = array_map('intval', $row);
 
   }
   $livepollroom = $aid.'-'.($isteacher ? 'teachers':'students');

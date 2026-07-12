@@ -88,11 +88,12 @@
 	}
 	$stm = $DBH->prepare("SELECT text,title FROM imas_linkedtext WHERE id=:id AND courseid=:cid");
 	$stm->execute(array(':id'=>intval($_GET['id']), ':cid'=>$cid));
-	if ($stm->rowCount()==0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false) {
 		echo "Invalid ID";
 		exit;
 	}
-	list($text,$title) = $stm->fetch(PDO::FETCH_NUM);
+	list($text,$title) = $row;
 	$titlesimp = strip_tags($title);
 
 	require_once "../header.php";

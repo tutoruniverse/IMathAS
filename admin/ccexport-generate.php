@@ -564,8 +564,8 @@ function getorg($it,$parent,&$res,$ind,$mod_depth) {
 				fwrite($fp,"</head><body>");
 				$stm = $DBH->prepare("SELECT revision FROM imas_wiki_revisions WHERE wikiid=:wikiid AND stugroupid=0 ORDER BY id DESC LIMIT 1");
 				$stm->execute(array(':wikiid'=>$iteminfo[$item][1]));
-				if ($stm->rowCount()>0) {
-					$row = $stm->fetch(PDO::FETCH_NUM);
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row !== false) {
 					$text = $row[0];
 					if (strlen($text)>6 && substr($text,0,6)=='**wver') {
 						$wikiver = substr($text,6,strpos($text,'**',6)-6);

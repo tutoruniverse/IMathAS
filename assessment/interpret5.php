@@ -63,11 +63,12 @@ function getquestionqtext($m, $included_qs) {
 	}
 	$stm = $DBH->prepare("SELECT qtext FROM imas_questionset WHERE id=:id");
 	$stm->execute(array(':id'=>$m[2]));
-	if ($stm->rowCount()==0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false) {
 		echo _('bad question id in includeqtextfrom');
 		return "";
 	} else {
-		$str = $stm->fetchColumn(0);
+		$str = $row[0];
 		$included_qs[] = $m[2];
 		$str = preg_replace_callback('/(include|import)qtextfrom\((\d+)\)/',function($m) use ($included_qs) { return getquestionqtext($m, $included_qs); }, $str);
 		return $str;
@@ -875,11 +876,12 @@ function tokenize($str,$anstype,$countcnt,$included_qs=[]) {
                 } else {
                     $stm = $DBH->prepare("SELECT control,qtype FROM imas_questionset WHERE id=:id");
                     $stm->execute(array(':id'=>$out));
-                    if ($stm->rowCount()==0) {
+                    $row = $stm->fetch(PDO::FETCH_NUM);
+                    if ($row === false) {
                         //was an error, return error token
                         return array(array('',9));
                     } else {
-                        list($thiscontrol, $thisqtype) = $stm->fetch(PDO::FETCH_NUM);
+                        list($thiscontrol, $thisqtype) = $row;
                         //$inside = interpretline(mysql_result($result,0,0),$anstype);
                         $inside = interpret('control',$anstype,$thiscontrol,$countcnt+1, [$out, ...$included_qs ]);
                         if ($thisqtype!=$anstype) {

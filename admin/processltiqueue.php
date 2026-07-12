@@ -308,15 +308,17 @@ function LTIqueuePostdataCallback($data) {
 		$keyparts = explode('_',$data['key']);
 		$stm = $DBH->prepare("SELECT ltisecret FROM imas_courses WHERE id=:id");
 		$stm->execute(array(':id'=>$keyparts[1]));
-		if ($stm->rowCount()>0) {
-			$secret = $stm->fetchColumn(0);
+		$fetchedsecret = $stm->fetchColumn(0);
+		if ($fetchedsecret !== false) {
+			$secret = $fetchedsecret;
 			$LTIsecrets[$data['key']] = $secret;
 		}
 	} else {
 		$stm = $DBH->prepare("SELECT password FROM imas_users WHERE SID=:SID AND (rights=11 OR rights=76 OR rights=77)");
 		$stm->execute(array(':SID'=>$data['key']));
-		if ($stm->rowCount()>0) {
-				$secret = $stm->fetchColumn(0);
+		$fetchedsecret = $stm->fetchColumn(0);
+		if ($fetchedsecret !== false) {
+				$secret = $fetchedsecret;
 				$LTIsecrets[$data['key']] = $secret;
 		}
 	}

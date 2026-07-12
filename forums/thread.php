@@ -152,8 +152,9 @@ if (($postby>0 && $postby<2000000000) || ($replyby>0 && $replyby<2000000000)) {
 	if (isset($studentid) && !isset($_SESSION['stuview'])) {
 		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,waivereqscore,itemtype FROM imas_exceptions WHERE assessmentid=:assessmentid AND userid=:userid AND (itemtype='F' OR itemtype='P' OR itemtype='R')");
 		$stm->execute(array(':assessmentid'=>$forumid, ':userid'=>$userid));
-		if ($stm->rowCount()>0) {
-			$exception = $stm->fetch(PDO::FETCH_ASSOC);
+		$fetchedexception = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($fetchedexception !== false) {
+			$exception = $fetchedexception;
 		}
 		$latepasses = $studentinfo['latepasses'];
 		$exceptionfuncs = new ExceptionFuncs($userid, $cid, true, $studentinfo['latepasses'], $latepasshrs);
@@ -216,8 +217,9 @@ if ($groupsetid>0) {
 		$query .= "WHERE i_sgm.userid=:userid AND i_sg.groupsetid=:groupsetid";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':userid'=>$userid, ':groupsetid'=>$groupsetid));
-		if ($stm->rowCount()>0) {
-			list($groupid,$groupname) = $stm->fetch(PDO::FETCH_NUM);
+		$grouprow = $stm->fetch(PDO::FETCH_NUM);
+		if ($grouprow !== false) {
+			list($groupid,$groupname) = $grouprow;
 		} else {
 			$groupid=0;
 		}
@@ -300,7 +302,7 @@ if (isset($_GET['search']) && trim($_GET['search'])!='') {
 	if (!isset($_GET['allforums']) && $postbeforeview && !$canviewall) {
 		$stm = $DBH->prepare("SELECT id FROM imas_forum_posts WHERE forumid=:forumid AND parent=0 AND userid=:userid LIMIT 1");
 		$stm->execute(array(':forumid'=>$forumid, ':userid'=>$userid));
-		$oktoshow = ($stm->rowCount()>0);
+		$oktoshow = ($stm->fetch(PDO::FETCH_NUM) !== false);
 		if (!$oktoshow) {
 			echo '<p>'._('This search is blocked. In this forum, you must post your own thread before you can read those posted by others.').'</p>';
 			require_once "../footer.php";
@@ -410,7 +412,7 @@ if (isset($_GET['markallread'])) {
         */
         $stm2 = $DBH->prepare("SELECT lastview FROM imas_forum_views WHERE userid=:userid AND threadid=:threadid");
         $stm2->execute(array(':userid'=>$userid, ':threadid'=>$row[0]));
-        if ($stm2->rowCount()>0) {
+        if ($stm2->fetch(PDO::FETCH_NUM) !== false) {
             $stm2 = $DBH->prepare("UPDATE imas_forum_views SET lastview=:lastview WHERE userid=:userid AND threadid=:threadid");
             $stm2->execute(array(':lastview'=>$now, ':userid'=>$userid, ':threadid'=>$row[0]));
         } else{

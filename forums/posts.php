@@ -88,9 +88,8 @@ if (isset($_GET['marktagged'])) {
 if (($postby>0 && $postby<2000000000) || ($replyby>0 && $replyby<2000000000)) {
 	$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,waivereqscore,itemtype FROM imas_exceptions WHERE assessmentid=:assessmentid AND userid=:userid AND (itemtype='F' OR itemtype='P' OR itemtype='R')");
 	$stm->execute(array(':assessmentid'=>$forumid, ':userid'=>$userid));
-	if ($stm->rowCount()>0) {
-		$exception = $stm->fetch(PDO::FETCH_ASSOC);
-	} else {
+	$exception = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($exception === false) {
 		$exception = null;
 	}
 	require_once "../includes/exceptionfuncs.php";
@@ -132,8 +131,9 @@ if ($groupsetid>0) {
 			$query .= "WHERE i_sgm.userid=:userid AND i_sg.groupsetid=:groupsetid";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':userid'=>$userid, ':groupsetid'=>$groupsetid));
-			if ($stm->rowCount()>0) {
-				$groupid = $stm->fetchColumn(0);
+			$groupidcol = $stm->fetchColumn(0);
+			if ($groupidcol !== false) {
+				$groupid = $groupidcol;
 			} else {
 				$groupid=0;
 			}
@@ -145,7 +145,7 @@ if ($groupsetid>0) {
 			$groupid = intval($_GET['grp']);
 			$stm = $DBH->prepare("SELECT id FROM imas_stugroupmembers WHERE stugroupid=:stugroupid AND userid=:userid");
 			$stm->execute(array(':stugroupid'=>$groupid, ':userid'=>$userid));
-			if ($stm->rowCount()==0) {
+			if ($stm->fetch(PDO::FETCH_NUM) === false) {
 				echo 'Invalid group - try again';
 				exit;
 			}
@@ -183,8 +183,8 @@ require_once "../header.php";
 if ($haspoints && $caneditscore && $rubric != 0) {
 	$stm = $DBH->prepare("SELECT id,rubrictype,rubric FROM imas_rubrics WHERE id=:id");
 	$stm->execute(array(':id'=>$rubric));
-	if ($stm->rowCount()>0) {
-		$row = $stm->fetch(PDO::FETCH_NUM);
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		// $row data is sanitized by printrubrics().
 		echo printrubrics(array($row));
 	}
@@ -201,7 +201,7 @@ if (!$canviewall) {
 if ($postbeforeview && !$canviewall) {
 	$stm = $DBH->prepare("SELECT id FROM imas_forum_posts WHERE forumid=:forumid AND parent=0 AND userid=:userid LIMIT 1");
 	$stm->execute(array(':forumid'=>$forumid, ':userid'=>$userid));
-	$oktoshow = ($stm->rowCount()>0);
+	$oktoshow = ($stm->fetch(PDO::FETCH_NUM) !== false);
 	if (!$oktoshow) {
 		$stm = $DBH->prepare("SELECT posttype FROM imas_forum_posts WHERE id=:id");
 		$stm->execute(array(':id'=>$threadid));
@@ -306,9 +306,9 @@ if ($oktoshow) {
         $query .= "AND ias.userid=:ownerid WHERE ia.courseid=:courseid AND (ia.name=:name OR ia.name=:name2) ORDER BY asid DESC";
         $stm = $DBH->prepare($query);
         $stm->execute(array(':courseid'=>$cid, ':name'=>$matches[2], ':name2'=>htmlentities($matches[2]), ':ownerid'=>intval($children[0][0])));
-        if ($stm->rowCount()>0) {
+        $r = $stm->fetch(PDO::FETCH_ASSOC);
+        if ($r !== false) {
             $posttoforumqn = intval($matches[1]);
-            $r = $stm->fetch(PDO::FETCH_ASSOC);
             $posttoforumaidver = intval($r['ver']);
             $posttoforumaid = intval($r['id']);
         }
@@ -511,8 +511,9 @@ if ($oktoshow) {
 		$stm->execute($array);
 		// $result = mysql_query($query) or die("Query failed : $query " . mysql_error());
 
-		if ($stm->rowCount()>0) {
-			$prevth = $stm->fetchColumn(0);
+		$prevthcol = $stm->fetchColumn(0);
+		if ($prevthcol !== false) {
+			$prevth = $prevthcol;
 			$prevthforum = $forumid;
 		}
 		$query ="SELECT id FROM imas_forum_threads WHERE forumid=:forumid AND id>:threadid AND lastposttime<:now ";
@@ -527,8 +528,9 @@ if ($oktoshow) {
 		//$query = "SELECT id FROM imas_forum_posts WHERE forumid='$forumid' AND threadid>'$threadid' AND parent=0 ORDER BY threadid LIMIT 1";
 		// $result = mysql_query($query) or die("Query failed : $query " . mysql_error());
 
-		if ($stm->rowCount()>0) {
-			$nextth = $stm->fetchColumn(0);
+		$nextthcol = $stm->fetchColumn(0);
+		if ($nextthcol !== false) {
+			$nextth = $nextthcol;
 			$nextthforum = $forumid;
 		}
 	}
@@ -543,8 +545,9 @@ if ($oktoshow) {
 	$stm = $DBH->prepare("SELECT lastview,tagged FROM imas_forum_views WHERE userid=:userid AND threadid=:threadid");
 	$stm->execute(array(':userid'=>$userid, ':threadid'=>$threadid));
 
-	if ($stm->rowCount()>0) {
-		list($lastview, $tagged) = $stm->fetch(PDO::FETCH_NUM);
+	$viewrow = $stm->fetch(PDO::FETCH_NUM);
+	if ($viewrow !== false) {
+		list($lastview, $tagged) = $viewrow;
 		$stm = $DBH->prepare("UPDATE imas_forum_views SET lastview=:lastview WHERE userid=:userid AND threadid=:threadid");
 		$stm->execute(array(':lastview'=>$now, ':userid'=>$userid, ':threadid'=>$threadid));
 	} else {
@@ -702,9 +705,9 @@ function printchildren($base,$restricttoowner=false) {
 				$query .= "AND ias.userid=:ownerid WHERE ia.courseid=:courseid AND (ia.name=:name OR ia.name=:name2) ORDER BY asid DESC";
 				$stm = $DBH->prepare($query);
 				$stm->execute(array(':courseid'=>$cid, ':name'=>$matches[2], ':name2'=>htmlentities($matches[2]), ':ownerid'=>intval($ownerid[$child])));
-				if ($stm->rowCount()>0) {
+				$r = $stm->fetch(PDO::FETCH_ASSOC);
+				if ($r !== false) {
 					$qn = $matches[1];
-					$r = $stm->fetch(PDO::FETCH_ASSOC);
 					echo " <a class=\"small\" href=\"$imasroot/course/gb-viewasid.php?cid=$cid&uid={$ownerid[$child]}&asid={$r['asid']}#qwrap$qn\" target=\"_blank\">[assignment]</a>";
 				}
 			}

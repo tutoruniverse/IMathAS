@@ -160,8 +160,8 @@ if ($myrights < 100 && empty($CFG['GEN']['allowinstraddstus'])) {
 			}
 			$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
 			$stm->execute(array(':SID'=>Sanitize::stripHtmlTags($arr[0])));
-			if ($stm->rowCount()>0) {
-				$id = $stm->fetchColumn(0);
+			$id = $stm->fetchColumn(0);
+			if ($id !== false) {
 				echo "Username <span class='pii-username'>".Sanitize::encodeStringForDisplay($arr[0])."</span> already existed in system; using existing<br/>\n";
 			} else {
 				$pw = password_hash($arr[6], PASSWORD_DEFAULT);
@@ -173,7 +173,7 @@ if ($myrights < 100 && empty($CFG['GEN']['allowinstraddstus'])) {
 			if ($_POST['enrollcid']!=0 || !$isadmin) {
 				$stm = $DBH->prepare("SELECT id FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid'=>$id, ':courseid'=>$ncid));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetchColumn(0) !== false) {
 					echo "Username <span class='pii-username'>".Sanitize::encodeStringForDisplay($arr[0])."</span> already enrolled in course.  Skipping<br/>";
 					continue;
 				}

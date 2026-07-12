@@ -34,11 +34,11 @@ if (isset($toolparts[3])) {
 $tool = intval($tool);
 $stm = $DBH->prepare("SELECT * from imas_external_tools WHERE id=:id AND (courseid=:courseid OR (courseid=0 AND (groupid=:groupid OR groupid=0)))");
 $stm->execute(array(':id'=>$tool, ':courseid'=>$cid, ':groupid'=>$groupid));
-if ($stm->rowCount()==0) {
+$line = $stm->fetch(PDO::FETCH_ASSOC);
+if ($line === false) {
 	echo '<html><body>Invalid tool</body></html>';
 	exit;
 }
-$line = $stm->fetch(PDO::FETCH_ASSOC);
 
 require_once "blti_util.php";
 $parms = array();

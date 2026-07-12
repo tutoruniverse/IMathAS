@@ -170,8 +170,8 @@ if (!(isset($teacherid) || (isset($tutorid) && $tutoredit == 3))) { // loaded by
 			$allqsameseed = (($shuffle&2)==2);
 			$stm = $DBH->prepare("SELECT id,questions,lastanswers,scores FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid");
 			$stm->execute(array(':userid'=>$uid, ':assessmentid'=>$aid));
-			if ($stm->rowCount()>0) {
-				$row = $stm->fetch(PDO::FETCH_NUM);
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
 				if (strpos($row[1],';')===false) {
 					$questions = explode(",",$row[1]);
 					$bestquestions = $questions;

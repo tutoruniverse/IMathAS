@@ -53,7 +53,8 @@ if (isset($_GET['tb'])) {
 if (isset($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_inlinetext WHERE id=?");
 	$stm->execute(array(intval($_GET['id'])));
-	if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $_GET['cid']) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false || $row[0] != $_GET['cid']) {
 		echo "Invalid ID";
 		exit;
 	}
@@ -147,7 +148,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 					if (substr($row[2],0,4)!='http') {
 						$filestoremove[] = $row[0];
 						$src_file_stm->execute(array(':filename'=>$row[2]));
-						if ($src_file_stm->rowCount()==0) {
+						if ($src_file_stm->fetch(PDO::FETCH_NUM) === false) {
 							//$uploaddir = rtrim(dirname(__FILE__), '/\\') .'/files/';
 							//unlink($uploaddir . $row[2]);
 							deletecoursefile($row[2]);
@@ -345,11 +346,12 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		$page_fileorderCount = count($fileorder);
 		$i = 0;
 		$page_FileLinks = array();
-		if ($stm->rowCount()>0) {
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
+			do {
 				$filedescr[$row[0]] = $row[1];
 				$filenames[$row[0]] = $row[2];
-			}
+			} while ($row = $stm->fetch(PDO::FETCH_NUM));
 			foreach ($fileorder as $k=>$fid) {
 				$page_FileLinks[$k]['link'] = $filenames[$fid];
 				$page_FileLinks[$k]['desc'] = $filedescr[$fid];

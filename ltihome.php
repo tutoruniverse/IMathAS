@@ -32,7 +32,7 @@ if ($_SESSION['ltiitemtype']==0) {
 	$cid = $stm->fetchColumn(0);
 	$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=:courseid AND userid=:userid");
 	$stm->execute(array(':courseid'=>$cid, ':userid'=>$userid));
-	if ($stm->rowCount()==0) {
+	if ($stm->fetch(PDO::FETCH_NUM) === false) {
 		$role = 'tutor';
 	} else {
 		$role = 'teacher';
@@ -45,7 +45,8 @@ if ($_SESSION['ltiitemtype']==0) {
     $shortorg = explode(':', $_SESSION['ltiorg'])[0];
 	$stm = $DBH->prepare("SELECT courseid FROM imas_lti_courses WHERE contextid=:contextid AND org LIKE :org");
     $stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':org'=>"$shortorg:%"));
-	if ($stm->rowCount()==0) {
+	$cidcol = $stm->fetchColumn(0);
+	if ($cidcol === false) {
 		$hascourse = false;
 		if (isset($_SESSION['lti_launch_get']) && isset($_SESSION['lti_launch_get']['cid'])) {
 			$cid = intval($_SESSION['lti_launch_get']['cid']);
@@ -57,7 +58,7 @@ if ($_SESSION['ltiitemtype']==0) {
 		}
 	} else {
 		$hascourse = true;
-		$cid = $stm->fetchColumn(0);
+		$cid = $cidcol;
 	}
 	if ($hascourse) {
         $shortorg = explode(':', $_SESSION['ltiorg'])[0];
@@ -65,7 +66,8 @@ if ($_SESSION['ltiitemtype']==0) {
 		$query .= "AND org LIKE :org AND linkid=:linkid";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':org'=>"$shortorg:%", ':linkid'=>$_SESSION['lti_resource_link_id']));
-		if ($stm->rowCount()==0) {
+		$placementrow = $stm->fetch(PDO::FETCH_NUM);
+		if ($placementrow === false) {
 			$hasplacement = false;
 			if (isset($_SESSION['lti_launch_get']) && isset($_SESSION['lti_launch_get']['aid'])) {
 				$aid = intval($_SESSION['lti_launch_get']['aid']);
@@ -82,7 +84,7 @@ if ($_SESSION['ltiitemtype']==0) {
 			}
 		} else {
 			$hasplacement = true;
-			list($placementid,$placementtype,$typeid) = $stm->fetch(PDO::FETCH_NUM);
+			list($placementid,$placementtype,$typeid) = $placementrow;
 		}
 		$role = 'teacher';
 	}
@@ -93,7 +95,7 @@ $createcourse = Sanitize::onlyInt($_POST['createcourse'] ?? 0);
 if (!empty($createcourse)) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_teachers WHERE courseid=:courseid AND userid=:userid");
 	$stm->execute(array(':courseid'=>$createcourse, ':userid'=>$userid));
-	if ($stm->rowCount()>0) {
+	if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 		$cid = $createcourse;
 	} else if ($myrights < 40) {
 		echo 'Insufficient rights for this action';
@@ -382,23 +384,25 @@ if (!$hascourse || isset($_GET['chgcourselink'])) {
 	echo _('Select a course to link with.  If it is a template course, a copy will be created for you:').'<br/> <select name="createcourse" onchange="updateCourseSelector(this)"> ';
 	$stm = $DBH->prepare("SELECT ic.id,ic.name FROM imas_courses AS ic,imas_teachers WHERE imas_teachers.courseid=ic.id AND imas_teachers.userid=:userid AND ic.available<4 ORDER BY ic.name");
 	$stm->execute(array(':userid'=>$userid));
-	if ($stm->rowCount()>0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		echo '<optgroup label="'._('Your Courses').'">';
-		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		do {
 			printf('<option value="%d">%s</option>' ,Sanitize::onlyInt($row[0]), Sanitize::encodeStringForDisplay($row[1]));
-		}
+		} while ($row = $stm->fetch(PDO::FETCH_NUM));
 		echo '</optgroup>';
 	}
 	$stm = $DBH->query("SELECT id,name,copyrights,termsurl FROM imas_courses WHERE istemplate > 0 AND (istemplate&1)=1 AND copyrights=2 AND available<4 ORDER BY name");
-	if ($stm->rowCount()>0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		echo '<optgroup label="'._('Template Courses').'">';
-		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		do {
 			echo '<option value="'.Sanitize::encodeStringForDisplay($row[0]).'"';
 			if ($row[3]!='') {
 				echo ' data-termsurl="'.Sanitize::encodeStringForDisplay($row[3]).'"';
 			}
 			echo '>'.Sanitize::encodeStringForDisplay($row[1]).'</option>';
-		}
+		} while ($row = $stm->fetch(PDO::FETCH_NUM));
 		echo '</optgroup>';
 	}
 
@@ -406,15 +410,16 @@ if (!$hascourse || isset($_GET['chgcourselink'])) {
 	$query .= "iu.groupid=:groupid AND ic.istemplate > 0 AND (ic.istemplate&2)=2 AND ic.copyrights>0 AND ic.available<4 ORDER BY ic.name";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':groupid'=>$groupid));
-	if ($stm->rowCount()>0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		echo '<optgroup label="'._('Group Template Courses').'">';
-		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		do {
 			echo '<option value="'.Sanitize::onlyInt($row[0]).'"';
 			if ($row[3]!='') {
 				echo ' data-termsurl="'.Sanitize::encodeStringForDisplay($row[3]).'"';
 			}
 			echo '>'.Sanitize::encodeStringForDisplay($row[1]).'</option>';
-		}
+		} while ($row = $stm->fetch(PDO::FETCH_NUM));
 		echo '</optgroup>';
 	}
 
@@ -448,11 +453,12 @@ if (!$hascourse || isset($_GET['chgcourselink'])) {
 	}
 	$stm = $DBH->prepare("SELECT id,name FROM imas_assessments WHERE courseid=:courseid ORDER BY name");
 	$stm->execute(array(':courseid'=>$cid));
-	if ($stm->rowCount()>0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		echo '<optgroup label="'._('Assessments').'">';
-		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+		do {
 			printf('<option value="%d">%s</option>', Sanitize::onlyInt($row[0]), Sanitize::encodeStringForDisplay($row[1]));
-		}
+		} while ($row = $stm->fetch(PDO::FETCH_NUM));
 		echo '</optgroup>';
 	}
 	if (!isset($_SESSION['lti_selection_type']) || $_SESSION['lti_selection_type']=='all') {

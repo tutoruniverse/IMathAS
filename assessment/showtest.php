@@ -167,8 +167,9 @@
 					if ($sa!='N') {
 						$stm = $DBH->prepare("SELECT id FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid ORDER BY id LIMIT 1");
 						$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
-						if ($stm->rowCount()>0) {
-							echo '<p><a href="../course/gb-viewasid.php?cid='.$cid.'&asid='.$stm->fetchColumn(0).'" ';
+						$row = $stm->fetch(PDO::FETCH_NUM);
+						if ($row !== false) {
+							echo '<p><a href="../course/gb-viewasid.php?cid='.$cid.'&asid='.$row[0].'" ';
 							if (!$actas && $canuselatepass) {
 								echo ' onclick="return confirm(\''._('If you view this scored assignment, you will not be able to use a LatePass on it').'\');"';
 							}
@@ -362,8 +363,9 @@
 				$query .= "WHERE i_sgm.userid=:userid AND i_sg.groupsetid=:groupsetid";
 				$stm = $DBH->prepare($query);
 				$stm->execute(array(':userid'=>$userid, ':groupsetid'=>$adata['groupsetid']));
-				if ($stm->rowCount()>0) {
-					$stugroupid = $stm->fetchColumn(0);
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row !== false) {
+					$stugroupid = $row[0];
 					$_SESSION['groupid'] = $stugroupid;
 				} else {
 					if ($adata['isgroup']==3) {
@@ -411,13 +413,14 @@
 				$query = "INSERT INTO imas_assessment_sessions (userid,assessmentid,questions,seeds,scores,attempts,lastanswers,starttime,bestscores,bestattempts,bestseeds,bestlastanswers,reviewscores,reviewattempts,reviewseeds,reviewlastanswers,agroupid,feedback,ver) VALUES ";
 				$cnt = 0;
 				$insval = array();
-				if ($stm->rowCount()>0) {
-					while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row !== false) {
+					do {
 						if ($cnt>0) {$query .= ',';}
 						$query .= "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,2)";
 						array_push($insval, $row[0], $_GET['id'], $qlist, $seedlist, $scorelist, $attemptslist, $lalist, $starttime, $bestscorelist, $bestattemptslist, $bestseedslist, $bestlalist, $scorelist, $attemptslist, $reviewseedlist, $lalist, $stugroupid, $deffeedbacktext);
 						$cnt++;
-					}
+					} while ($row = $stm->fetch(PDO::FETCH_NUM));
 					$stm = $DBH->prepare($query);
 					$stm->execute($insval);
 				}
@@ -683,12 +686,13 @@
 	if ($testsettings['displaymethod']=='LivePoll') {
 		$stm = $DBH->prepare("SELECT curquestion,curstate,seed,startt FROM imas_livepoll_status WHERE assessmentid=:assessmentid");
 		$stm->execute(array(':assessmentid'=>$testsettings['id']));
-		if ($stm->rowCount()==0) {
+		$row = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($row === false) {
 			$LPinf = array("curquestion"=>0, "curstate"=>0, "seed"=>0, "startt"=>0);
 			$stm = $DBH->prepare("INSERT INTO imas_livepoll_status (assessmentid,curquestion,curstate) VALUES (:assessmentid, :curquestion, :curstate) ON DUPLICATE KEY UPDATE curquestion=curquestion");
 			$stm->execute(array(':assessmentid'=>$testsettings['id'], ':curquestion'=>0, ':curstate'=>0));
 		} else {
-			$LPinf = $stm->fetch(PDO::FETCH_ASSOC);
+			$LPinf = $row;
 		}
 		$testsettings['shuffle'] = $testsettings['shuffle'] | 4; //force all students same seed
 		$hideAllHeaderNav = true; //hide header nav to expand real estate for questions / results
@@ -1316,8 +1320,8 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 					$thisuser = $_POST['user'.$i];
 					$stm = $DBH->prepare("SELECT id,agroupid FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid ORDER BY id LIMIT 1");
 					$stm->execute(array(':userid'=>$_POST['user'.$i], ':assessmentid'=>$testsettings['id']));
-					if ($stm->rowCount()>0) {
-						$row = $stm->fetch(PDO::FETCH_NUM);
+					$row = $stm->fetch(PDO::FETCH_NUM);
+					if ($row !== false) {
 						if ($row[1]>0) {
 							echo "<p>", _(sprintf('%s already has a group.  No change made', Sanitize::encodeStringForDisplay($thisusername))), "</p>";
 							$loginfo .= "$thisusername already in group. ";
@@ -1368,10 +1372,13 @@ if (!isset($_REQUEST['embedpostback']) && empty($_POST['backgroundsaveforlater']
 				$query .= "WHERE i_sgm.userid=:userid AND i_sg.groupsetid=:groupsetid";
 				$stm = $DBH->prepare($query);
 				$stm->execute(array(':userid'=>$userid, ':groupsetid'=>$testsettings['groupsetid']));
-				if ($stm->rowCount()==0) {
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row === false) {
 					echo '<p>', _('Group error.  Please try reaccessing the assessment from the course page'), '</p>';
+					$agroupid = false;
+				} else {
+					$agroupid = $row[0];
 				}
-				$agroupid = $stm->fetchColumn(0);
 				$_SESSION['groupid'] = $agroupid;
 			} else {
 				$agroupid = $_SESSION['groupid'];

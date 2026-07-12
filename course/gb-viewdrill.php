@@ -29,11 +29,11 @@ if (!isset($teacherid)) {
 }
 $stm = $DBH->prepare("SELECT * FROM imas_drillassess WHERE id=:id AND courseid=:courseid");
 $stm->execute(array(':id'=>$daid, ':courseid'=>$cid));
-if ($stm->rowCount()==0) {
+$dadata = $stm->fetch(PDO::FETCH_ASSOC);
+if ($dadata === false) {
 	echo 'Invalid drill id.';
 	exit;
 }
-$dadata = $stm->fetch(PDO::FETCH_ASSOC);
 $n = $dadata['n'];
 $showtype = $dadata['showtype'];
 $scoretype = $dadata['scoretype'];

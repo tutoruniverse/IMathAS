@@ -13,10 +13,10 @@ class IMathASLTIOAuthDataStore extends OAuthDataStore {
         if (isset($GLOBALS['LTImode']) && $GLOBALS['LTImode']=="consumer") {
         	$stm = $DBH->prepare("SELECT secret FROM imas_external_tools WHERE ltikey=:ltikey");
         	$stm->execute(array(':ltikey'=>$consumer_key));
-        	if ($stm->rowCount()==0) {
+          $secret = $stm->fetchColumn(0);
+        	if ($secret === false) {
         		return NULL;
         	}
-          $secret = $stm->fetchColumn(0);
         	$consumer = new OAuthConsumer($consumer_key,$secret);
 		      return $consumer;
         }
@@ -39,8 +39,8 @@ class IMathASLTIOAuthDataStore extends OAuthDataStore {
       		$stm = $DBH->prepare("SELECT password,rights,groupid FROM imas_users WHERE SID=:SID AND (rights=11 OR rights=76 OR rights=77)");
       		$stm->execute(array(':SID'=>$keyparts[0]));
       	}
-      	if ($stm->rowCount()>0) {
-          $row = $stm->fetch(PDO::FETCH_NUM);
+      	$row = $stm->fetch(PDO::FETCH_NUM);
+      	if ($row !== false) {
           $secret = $row[0];
       		if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $keyparts[0]=='LTIkey') {
       			$rights = 11;
@@ -69,8 +69,9 @@ class IMathASLTIOAuthDataStore extends OAuthDataStore {
         global $DBH;
         $stm = $DBH->prepare("SELECT id FROM imas_ltinonces WHERE nonce=:nonce");
         $stm->execute(array(':nonce'=>$nonce));
-      	if ($stm->rowCount()>0) {
-      		return $stm->fetchColumn(0);
+      	$noncecol = $stm->fetchColumn(0);
+      	if ($noncecol !== false) {
+      		return $noncecol;
       	} else {
       		return NULL;
       	}

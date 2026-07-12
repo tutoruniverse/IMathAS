@@ -63,7 +63,8 @@ unset($dbpassword);
 		}
 	}
 	$stm = $DBH->query("SELECT ver FROM imas_dbschema WHERE id=1");
-	if ($stm===false || $stm->rowCount()==0) {//for upgrading older versions
+	$verval = ($stm===false) ? false : $stm->fetchColumn(0);
+	if ($verval===false) {//for upgrading older versions
 		$handle = @fopen("upgradecounter.txt",'r');
 		if ($handle===false) {
 			$last = 0;
@@ -75,7 +76,7 @@ unset($dbpassword);
 			fclose($handle);
 		}
 	} else {
-		$last = $stm->fetchColumn(0);
+		$last = $verval;
 	}
 }
 
@@ -170,27 +171,29 @@ unset($dbpassword);
 				$out = '';
 				$query = "SELECT id,ownerid,name FROM imas_diags";
 				$stm = $DBH->query($query);
-				if ($stm->rowCount()>0) {
+				$diagrow = $stm->fetch(PDO::FETCH_NUM);
+				if ($diagrow !== false) {
 					$owners = array();
 					$dnames = array();
-					while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-						$owners[$row[1]][] = intval($row[0]);
-						$dnames[$row[0]] = intval($row[2]);
-					}
+					do {
+						$owners[$diagrow[1]][] = intval($diagrow[0]);
+						$dnames[$diagrow[0]] = intval($diagrow[2]);
+					} while ($diagrow = $stm->fetch(PDO::FETCH_NUM));
 					$ow = array_keys($owners);
 					$users = array();
 					$stm = $DBH->prepare("SELECT id,LastName,FirstName FROM imas_users WHERE groupid=:groupid AND rights>59 ORDER BY id");
 					foreach ($ow as $ogrp) {
 						$stm->execute(array(':groupid'=>$ogrp));
-						if ($stm->rowCount()==0) {
+						$grouprows = $stm->fetchAll(PDO::FETCH_NUM);
+						if (count($grouprows)==0) {
 							echo "Orphaned Diags: ".implode(',',$owners[$ogrp]).'<br/>';
-						} else if ($stm->rowCount()==1) {
-							$uid = $stm->fetchColumn(0);
+						} else if (count($grouprows)==1) {
+							$uid = $grouprows[0][0];
 							$query = "UPDATE imas_diags SET ownerid=$uid WHERE id IN (".implode(',',$owners[$ogrp]).")";
 							$DBH->query($query);
 						} else {
 							$ops = '';
-							while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+							foreach ($grouprows as $row) {
 								$ops .= sprintf('<option value="%d">%s, %s</option>', $row[0],
 									Sanitize::encodeStringForDisplay($row[1]), Sanitize::encodeStringForDisplay($row[2]));
 							}

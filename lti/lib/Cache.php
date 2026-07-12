@@ -43,7 +43,7 @@ class Cache {
     public function check_nonce($nonce) {
       $stm = $this->dbh->prepare('SELECT id FROM imas_ltinonces WHERE nonce=?');
       $stm->execute(array($nonce));
-      if ($stm->rowCount()>0) {
+      if ($stm->fetchColumn() !== false) {
         return true;
       } else {
         return false;

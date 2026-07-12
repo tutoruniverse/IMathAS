@@ -433,7 +433,7 @@ if ($myrights<20) {
 				$_POST['name'] = str_replace(array(',','\\"','\\\'','~'),"",$_POST['name']);
 				$stm = $DBH->prepare("SELECT * FROM imas_libraries WHERE name=:name AND parent=:parent");
 				$stm->execute(array(':name'=>$_POST['name'], ':parent'=>$_POST['parentlib']));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetch() !== false) {
 					$overwriteBody =1;
 					$body = "Library already exists by that name with this parent.\n";
 					$body .= "<p><a href=\"managelibs.php?cid=$cid&modify=new\">Try Again</a></p>\n";

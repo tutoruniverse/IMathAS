@@ -32,7 +32,8 @@ if (isset($_GET['tb'])) {
 if (!empty($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_forums WHERE id=?");
 	$stm->execute(array(intval($_GET['id'])));
-	if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $_GET['cid']) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false || $row[0] != $_GET['cid']) {
 		echo "Invalid ID";
 		exit;
 	}
@@ -247,7 +248,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		}
 		$stm = $DBH->prepare("SELECT id FROM imas_forum_subscriptions WHERE forumid=:forumid AND userid=:userid");
 		$stm->execute(array(':forumid'=>$newforumid, ':userid'=>$userid));
-		if ($stm->rowCount()>0) {
+		if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 			if (!isset($_POST['subscribe'])) {
 				$stm = $DBH->prepare("DELETE FROM imas_forum_subscriptions WHERE forumid=:forumid AND userid=:userid");
 				$stm->execute(array(':forumid'=>$newforumid, ':userid'=>$userid));
@@ -267,7 +268,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$hassubscrip = false;
 			$stm = $DBH->prepare("SELECT id FROM imas_forum_subscriptions WHERE forumid=:forumid AND userid=:userid");
 			$stm->execute(array(':forumid'=>$forumid, ':userid'=>$userid));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 				$hassubscrip = true;
 			}
 			$stm = $DBH->prepare("SELECT * FROM imas_forums WHERE id=:id");
@@ -288,7 +289,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			if ($groupsetid>0) {
 				$stm = $DBH->prepare("SELECT * FROM imas_forum_threads WHERE forumid=:forumid AND stugroupid>0 LIMIT 1");
 				$stm->execute(array(':forumid'=>$forumid));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetch(PDO::FETCH_ASSOC) !== false) {
 					$hasgroupthreads = true;
 				} else {
 					$hasgroupthreads = false;

@@ -33,8 +33,9 @@ if (isset($_POST['convert']) && $_POST['convert']=='all') {
 } else {
 	$stm = $DBH->prepare("SELECT intro,itemorder,ver FROM imas_assessments WHERE id=:id AND courseid=:courseid");
 	$stm->execute(array(':id'=>$aid, ':courseid'=>$cid));
-	if ($stm->rowCount()==0) {echo "Invalid id"; exit;}
-	list($current_intro_json,$qitemorder,$aver) = $stm->fetch(PDO::FETCH_NUM);
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false) {echo "Invalid id"; exit;}
+	list($current_intro_json,$qitemorder,$aver) = $row;
 	if ($aver>1) {
 		$addassess = 'addassessment2.php';
 	} else {

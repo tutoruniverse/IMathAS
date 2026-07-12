@@ -56,7 +56,8 @@ if (isset($_GET['id'])) {
 if (isset($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_assessments WHERE id=?");
 	$stm->execute(array(intval($_GET['id'])));
-	if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $_GET['cid']) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false || $row[0] != $_GET['cid']) {
 		echo "Invalid ID";
 		exit;
 	}

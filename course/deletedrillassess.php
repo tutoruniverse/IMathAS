@@ -27,8 +27,8 @@ if (!(isset($_GET['cid'])) || !(isset($_GET['block']))) { //if the cid is missin
 	if (isset($_POST['remove']) && $_POST['remove']=="really") {
 		$stm = $DBH->prepare("SELECT id FROM imas_items WHERE typeid=:typeid AND itemtype='Drill' AND courseid=:courseid");
 		$stm->execute(array(':typeid'=>$daid, ':courseid'=>$cid));
-		if ($stm->rowCount()>0) {
-			$itemid = $stm->fetchColumn(0);
+		$itemid = $stm->fetchColumn(0);
+		if ($itemid !== false) {
 			$DBH->beginTransaction();
 
 			delitembyid($itemid);

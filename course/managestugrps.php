@@ -187,9 +187,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 					}
 					$stm2 = $DBH->prepare($query);
 					$stm2->execute(array(':agroupid'=>$grpid, ':assessmentid'=>$aid));
-					if ($stm2->rowCount()>0) {
+					$rowgrptest = $stm2->fetch(PDO::FETCH_ASSOC);
+					if ($rowgrptest !== false) {
 						//asid already exists for group - use it
-						$rowgrptest = $stm2->fetch(PDO::FETCH_ASSOC);
 						$grpasidexists = true;
 					} else {
 						//use asid from first student assessment
@@ -203,9 +203,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 						}
 						$stm2 = $DBH->prepare($query);
 						$stm2->execute(array(':assessmentid'=>$aid));
-						if ($stm2->rowCount()>0) {
+						$rowgrptest = $stm2->fetch(PDO::FETCH_ASSOC);
+						if ($rowgrptest !== false) {
 							// first student - grab their data to copy to others
-							$rowgrptest = $stm2->fetch(PDO::FETCH_ASSOC);
 
 							// remaining students: delete any files in their existing records
 							// since we'll be overwriting them
@@ -236,9 +236,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 								$stm2 = $DBH->prepare("SELECT id,agroupid FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid");
 							}
 							$stm2->execute(array(':userid'=>$stuid, ':assessmentid'=>$aid));
-							if ($stm2->rowCount()>0) {
+							$row = $stm2->fetch(PDO::FETCH_NUM);
+							if ($row !== false) {
 								$loginfo .= "updating ias for $stuid.";
-								$row = $stm2->fetch(PDO::FETCH_NUM);
 								$sets = array();
 								foreach ($fieldstocopyarr as $k=>$val) {
 									$sets[] = "$val=:$val";
@@ -337,7 +337,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		if (isset($_POST['grpsize']) && intval($_POST['grpsize'])>0) {
 			$stm = $DBH->prepare("SELECT id FROM imas_stugroups WHERE groupsetid=?");
 			$stm->execute(array($grpsetid));
-			if ($stm->rowCount()==0) { //check there's no existing groups;
+			if ($stm->fetch(PDO::FETCH_NUM) === false) { //check there's no existing groups;
 				if (isset($_POST['inclocked'])) {
 					$stm = $DBH->prepare("SELECT userid,section FROM imas_students WHERE courseid=?");
 				} else {
@@ -395,9 +395,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$stm->execute(array(':id'=>$grpsetid));
 			$page_grpsetname = $stm->fetchColumn(0);
 
-            $stm = $DBH->prepare("SELECT DISTINCT section FROM imas_students WHERE imas_students.courseid=:courseid AND imas_students.section IS NOT NULL ORDER BY section");
+            $stm = $DBH->prepare("SELECT COUNT(DISTINCT section) FROM imas_students WHERE imas_students.courseid=:courseid AND imas_students.section IS NOT NULL");
             $stm->execute(array(':courseid'=>$cid));
-            $hassection = ($stm->rowCount()>1);
+            $hassection = ($stm->fetchColumn(0)>1);
 
 			$curBreadcrumb .= " &gt; <a href=\"managestugrps.php?cid=$cid\">Manage Student Groups</a> &gt; <a href=\"managestugrps.php?cid=$cid&grpsetid=$grpsetid\">".Sanitize::encodeStringForDisplay($page_grpsetname)."</a> &gt; Create Random Groups";
 		}
@@ -504,9 +504,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		$grpids = implode(',',array_keys($page_grps));
 
 		natsort($page_grps);
-		$stm = $DBH->prepare("SELECT DISTINCT section FROM imas_students WHERE imas_students.courseid=:courseid AND imas_students.section IS NOT NULL ORDER BY section");
+		$stm = $DBH->prepare("SELECT COUNT(DISTINCT section) FROM imas_students WHERE imas_students.courseid=:courseid AND imas_students.section IS NOT NULL");
 		$stm->execute(array(':courseid'=>$cid));
-        $hassection = ($stm->rowCount()>1);
+        $hassection = ($stm->fetchColumn(0)>1);
 
 		if ($hassection) {
 			$stm = $DBH->prepare("SELECT usersort FROM imas_gbscheme WHERE courseid=:courseid");

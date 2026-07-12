@@ -106,7 +106,8 @@
 	if ($gbItem != 'new') {
 		$stm = $DBH->prepare("SELECT courseid FROM imas_gbitems WHERE id=?");
 		$stm->execute(array($gbItem));
-		if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $cid) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row === false || $row[0] != $cid) {
 			echo "Invalid ID";
 			exit;
 		}
@@ -593,15 +594,12 @@
 			echo "selected=1 ";
 		}
 		echo ">Default</option>\n";
-		if ($stm->rowCount()>0) {
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				printf('<option value="%d" ', Sanitize::encodeStringForDisplay($row[0]));
-				if ($gbcat==$row[0]) {
-					echo "selected=1 ";
-				}
-				printf(">%s</option>\n", Sanitize::encodeStringForDisplay($row[1]));
+		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			printf('<option value="%d" ', Sanitize::encodeStringForDisplay($row[0]));
+			if ($gbcat==$row[0]) {
+				echo "selected=1 ";
 			}
-
+			printf(">%s</option>\n", Sanitize::encodeStringForDisplay($row[1]));
 		}
 		echo "</select></span><br class=form>\n";
 
@@ -673,8 +671,9 @@
 	if ($rubric != 0) {
 		$stm = $DBH->prepare("SELECT id,rubrictype,rubric FROM imas_rubrics WHERE id=:id");
 		$stm->execute(array(':id'=>$rubric));
-		if ($stm->rowCount()>0) {
-			echo printrubrics(array($stm->fetch(PDO::FETCH_NUM)));
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
+			echo printrubrics(array($row));
 		}
 	}
 ?>

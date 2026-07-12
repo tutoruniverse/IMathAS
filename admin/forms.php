@@ -461,8 +461,8 @@ switch($_GET['action']) {
 			$query .= "JOIN imas_users AS iu on ic.ownerid=iu.id WHERE ic.id=:id";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':id'=>$_GET['id']));
-			if ($stm->rowCount()==0) {break;}
 			$line = $stm->fetch(PDO::FETCH_ASSOC);
+			if ($line === false) {break;}
 		}
 
 		$stm = $DBH->prepare("SELECT id FROM imas_users WHERE (rights=11 OR rights=76 OR rights=77) AND groupid=?");
@@ -477,7 +477,7 @@ switch($_GET['action']) {
 			//show limited info version
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=? AND userid=?");
 			$stm->execute(array($_GET['id'], $userid));
-			if ($stm->rowCount()==0) {
+			if ($stm->fetchColumn() === false) {
 				echo _("You don't have the authority for this action");
 				break;
 			}
@@ -555,8 +555,8 @@ switch($_GET['action']) {
 		if ($_GET['action']=='modify') {
 			$stm = $DBH->prepare("SELECT * FROM imas_courses WHERE id=:id");
 			$stm->execute(array(':id'=>$_GET['id']));
-			if ($stm->rowCount()==0) {break;}
 			$line = $stm->fetch(PDO::FETCH_ASSOC);
+			if ($line === false) {break;}
 			if ($myrights<75 && $line['ownerid']!=$userid) {
 				echo _("You don't have the authority for this action"); break;
 			} else if ($myrights > 74) {
@@ -660,12 +660,12 @@ switch($_GET['action']) {
 					$query .= "ON ic.ownerid=iu.id WHERE ic.id=:id";
 					$stm = $DBH->prepare($query);
 					$stm->execute(array(':id'=>$ctc));
-					if ($stm->rowCount()==0) {
+					$ctcinfo = $stm->fetch(PDO::FETCH_ASSOC);
+					if ($ctcinfo === false) {
 						echo '<p>Invalid course. <a href="addcourse.php">Try again</a></p>';
 						require_once "../footer.php";
 						exit;
 					}
-					$ctcinfo = $stm->fetch(PDO::FETCH_ASSOC);
 					//check permissions
 					if (($ctcinfo['copyrights']==0 && $ctcinfo['ownerid'] != $userid) ||
 						($ctcinfo['copyrights']==1 && $ctcinfo['groupid']!=$groupid)) {
@@ -1791,7 +1791,8 @@ switch($_GET['action']) {
 			$query .= " ORDER BY LastName, FirstName LIMIT 200";
 			$stm = $DBH->prepare($query);
 			$stm->execute($qarr);
-			if ($stm->rowCount()==0) {
+			$row = $stm->fetch(PDO::FETCH_ASSOC);
+			if ($row === false) {
 				echo '<p>',_('No matches'),' <a href="forms.php?from='.Sanitize::encodeUrlParam($from).'&action=findstudent">',_('Try again'),'</a></p>';
 			} else {
 				echo '<table class="gb"><thead><th>Student</th><th>Username</th><th>Course</th>';
@@ -1801,7 +1802,7 @@ switch($_GET['action']) {
 				}
 				echo '</thead><tbody>';
 				$i = 0;
-				while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+				do {
 					echo ($i==0)?'<tr class=even>':'<tr class=odd>'; $i = 1-$i;
 					echo '<td>';
 					echo '<a href="../course/gradebook.php?cid='.Sanitize::onlyInt($row['cid']).'&stu='.Sanitize::onlyInt($row['id']).'">';
@@ -1814,7 +1815,7 @@ switch($_GET['action']) {
                         echo _('Edit').'</a></td>';
 					}
 					echo '</td></tr>';
-				}
+				} while ($row = $stm->fetch(PDO::FETCH_ASSOC));
 				echo '</tbody></table>';
 			}
 		}

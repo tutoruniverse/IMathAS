@@ -116,8 +116,9 @@ $qsetIds = array();
 $stmsel = $DBH->prepare("SELECT id FROM imas_questionset WHERE uniqueid=?");
 foreach ($questionSet as $n=>$data) {
   $stmsel->execute(array($data['uniqueid']));
-  if ($stmsel->rowCount() > 0) {
-    $data['id'] = $stmsel->fetchColumn(0);
+  $row = $stmsel->fetch(PDO::FETCH_NUM);
+  if ($row !== false) {
+    $data['id'] = $row[0];
     $qsetIds[$n] = $data['id'];
     $action = 'REPLACE';
   } else {

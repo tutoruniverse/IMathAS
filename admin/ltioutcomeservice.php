@@ -81,7 +81,7 @@ $userid = intval($userid);
 //check is a student
 $stm = $DBH->prepare("SELECT id FROM imas_students WHERE courseid=:courseid AND userid=:userid");
 $stm->execute(array(':courseid'=>$cid, ':userid'=>$userid));
-if ($stm->rowCount()==0) {
+if ($stm->fetch(PDO::FETCH_NUM) === false) {
 	//fwrite($fp, "not stu\n");
 	failmessage('replaceResult');
 }
@@ -110,8 +110,8 @@ if (strpos($xml,'replaceResultRequest')!==false) {
 	//fwrite($fp, "Writing score $score,$possible,$points for $gbitem user $userid\n");
 	$stm = $DBH->prepare("SELECT id,score FROM imas_grades WHERE gradetypeid=:gradetypeid AND gradetype='exttool' AND userid=:userid");
 	$stm->execute(array(':gradetypeid'=>$linkid, ':userid'=>$userid));
-	if ($stm->rowCount()>0) {
-		$row = $stm->fetch(PDO::FETCH_NUM);
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		$stm = $DBH->prepare("UPDATE imas_grades SET score=:score WHERE id=:id");
 		$stm->execute(array(':score'=>$points, ':id'=>$row[0]));
 	} else {
@@ -127,8 +127,8 @@ if (strpos($xml,'replaceResultRequest')!==false) {
 	}
 	$stm = $DBH->prepare("SELECT id,score FROM imas_grades WHERE gradetypeid=:gradetypeid AND gradetype='exttool' AND userid=:userid");
 	$stm->execute(array(':gradetypeid'=>$linkid, ':userid'=>$userid));
-	if ($stm->rowCount()>0) {
-		$row = $stm->fetch(PDO::FETCH_NUM);
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		successmessage('readResult',$msgid,round($row[1]/$possible,3));
 	} else {
 		successmessage('readResult',$msgid,'');

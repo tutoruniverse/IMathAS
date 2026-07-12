@@ -145,8 +145,9 @@ if (isset($_POST['tname'])) {
 				$stm = $DBH->prepare($qsel."WHERE id=:id AND groupid=:groupid");
 				$stm->execute(array(':id'=>$id, ':groupid'=>$groupid));
 			}
-			if ($stm->rowCount()==0) { die("invalid id");}
-			list($name,$url,$key,$secret,$custom,$privacy,$grp) = $stm->fetch(PDO::FETCH_NUM);
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row === false) { die("invalid id");}
+			list($name,$url,$key,$secret,$custom,$privacy,$grp) = $row;
 			$custom = str_replace('&',"\n",$custom);
 		}
 		$tochg = array('name','url','key','secret','custom');
@@ -212,10 +213,11 @@ if (isset($_POST['tname'])) {
 			$stm->execute(array(':courseid'=>$cid));
 		}
 		echo '<ul class="nomark">';
-		if ($stm->rowCount()==0) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row === false) {
 			echo '<li>No tools</li>';
 		} else {
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			do {
 				echo '<li>' . Sanitize::encodeStringForDisplay($row[1]);
 				if ($isadmin) {
 					if ($row[2]==null) {
@@ -227,7 +229,7 @@ if (isset($_POST['tname'])) {
 				echo ' <a href="externaltools.php?cid=' . $cid . $ltfrom . '&amp;id=' . Sanitize::onlyInt($row[0]) . '">Edit</a> ';
 				echo '| <a href="externaltools.php?cid=' . $cid . Sanitize::encodeUrlParam($ltfrom) . '&amp;id=' . Sanitize::onlyInt($row[0]) . '&amp;delete=ask">Delete</a> ';
 				echo '</li>';
-			}
+			} while ($row = $stm->fetch(PDO::FETCH_NUM));
 		}
 		echo '</ul>';
 		echo '<p><a href="externaltools.php?cid='.$cid.'&amp;id=new">Add a Tool</a></p>';

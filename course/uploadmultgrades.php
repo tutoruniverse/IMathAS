@@ -55,8 +55,9 @@ if (!(isset($teacherid))) {
 				//we're going to check that this id really belongs to this course.  Don't want cross-course hacking :)
 				$stm = $DBH->prepare("SELECT id FROM imas_gbitems WHERE id=:id AND courseid=:courseid");
 				$stm->execute(array(':id'=>$_POST["coloverwrite$col"], ':courseid'=>$cid));
-				if ($stm->rowCount()>0) {
-					$gbitemid[$col] = $stm->fetchColumn(0);
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row !== false) {
+					$gbitemid[$col] = $row[0];
 					//delete old grades
 					//$query = "DELETE FROM imas_grades WHERE gbitemid={$gbitemid[$col]}";
 					//mysql_query($query) or die("Query failed : " . mysql_error());
@@ -247,10 +248,8 @@ if ($overwriteBody==1) {
 		$stm = $DBH->prepare("SELECT id,name FROM imas_gbcats WHERE courseid=:courseid");
 		$stm->execute(array(':courseid'=>$cid));
 		$gbcatoptions = '<option value="0" selected=1>Default</option>';
-		if ($stm->rowCount()>0) {
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				$gbcatoptions .= "<option value=\"".Sanitize::onlyInt($row[0])."\">".Sanitize::encodeStringForDisplay($row[1])."</option>\n";
-			}
+		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			$gbcatoptions .= "<option value=\"".Sanitize::onlyInt($row[0])."\">".Sanitize::encodeStringForDisplay($row[1])."</option>\n";
 		}
 		foreach ($columndata as $col=>$data) {
 			$col = intval($col);

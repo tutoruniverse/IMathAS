@@ -147,15 +147,15 @@
 			$aname = $matches[2];
 			$stm = $DBH->prepare("SELECT id,startdate,enddate,allowlate,LPcutoff,ver FROM imas_assessments WHERE (name=:name OR name=:name2) AND courseid=:courseid");
 			$stm->execute(array(':name'=>$aname, ':name2'=>htmlentities($aname), ':courseid'=>$line['courseid']));
-			if ($stm->rowCount()>0) {
-				$adata = $stm->fetch(PDO::FETCH_ASSOC);
+			$adata = $stm->fetch(PDO::FETCH_ASSOC);
+			if ($adata !== false) {
 				$due = $adata['enddate'];
 
 				//list($aid,$due) = $stm->fetch(PDO::FETCH_NUM);
 				$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 				$stm->execute(array(':userid'=>$line['msgfrom'], ':assessmentid'=>$adata['id']));
-				if ($stm->rowCount()>0) {
-					$exception = $stm->fetch(PDO::FETCH_ASSOC);
+				$exception = $stm->fetch(PDO::FETCH_ASSOC);
+				if ($exception !== false) {
 					require_once "../includes/exceptionfuncs.php";
 					$exceptionfuncs = new ExceptionFuncs($userid, $cid, true);
 					$useexception = $exceptionfuncs->getCanUseAssessException($exception, $adata, true);
@@ -167,7 +167,7 @@
 				if ($adata['ver'] > 1) {
 					$stm = $DBH->prepare("SELECT userid FROM imas_assessment_records WHERE assessmentid=:assessmentid AND userid=:userid");
 					$stm->execute(array(':assessmentid'=>$adata['id'], ':userid'=>$line['msgfrom']));
-					if ($stm->rowCount()>0) {
+					if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 						echo " | <a href=\"$imasroot/assess2/gbviewassess.php?cid=".Sanitize::courseId($line['courseid'])."&uid=".Sanitize::encodeUrlParam($line['msgfrom'])."&aid=".Sanitize::onlyInt($adata['id'])."#qwrap".Sanitize::encodeUrlParam($qn)."\" target=\"_blank\">assignment</a>";
 						if ($due<2000000000) {
 							echo ' <span class="small">Due '.Sanitize::encodeStringForDisplay($duedate).'</span>';
@@ -176,8 +176,8 @@
 				} else {
 					$stm = $DBH->prepare("SELECT id FROM imas_assessment_sessions WHERE assessmentid=:assessmentid AND userid=:userid");
 					$stm->execute(array(':assessmentid'=>$adata['id'], ':userid'=>$line['msgfrom']));
-					if ($stm->rowCount()>0) {
-						$asid = $stm->fetchColumn(0);
+					$asid = $stm->fetchColumn(0);
+					if ($asid !== false) {
 						echo " | <a href=\"$imasroot/course/gb-viewasid.php?cid=".Sanitize::courseId($line['courseid'])."&uid=".Sanitize::encodeUrlParam($line['msgfrom'])."&asid=".Sanitize::onlyInt($asid)."#qwrap".Sanitize::encodeUrlParam($qn)."\" target=\"_blank\">assignment</a>";
 						if ($due<2000000000) {
 							echo ' <span class="small">Due '.Sanitize::encodeStringForDisplay($duedate).'</span>';
@@ -217,13 +217,13 @@
 				if ($msgset==1 && !$isteacher) { //check if sending to teacher
 					$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid and courseid=:courseid");
 					$stm->execute(array(':userid'=>$line['msgfrom'], ':courseid'=>$line['courseid']));
-					if ($stm->rowCount()==0) {
+					if ($stm->fetch(PDO::FETCH_NUM) === false) {
 						$cansendmsgs = false;
 					}
 				} else if ($msgset==2 && !$isteacher) { //check if sending to stu
 					$stm = $DBH->prepare("SELECT id FROM imas_students WHERE userid=:userid and courseid=:courseid");
 					$stm->execute(array(':userid'=>$line['msgfrom'], ':courseid'=>$line['courseid']));
-					if ($stm->rowCount()==0) {
+					if ($stm->fetch(PDO::FETCH_NUM) === false) {
 						$cansendmsgs = false;
 					}
 				}

@@ -185,8 +185,8 @@ if (isset($_GET['modify'])) { //adding or modifying post
 				if ($isteacher && isset($_POST['points']) && trim($_POST['points'])!='') {
 					$stm = $DBH->prepare("SELECT id FROM imas_grades WHERE gradetype='forum' AND refid=:refid");
 					$stm->execute(array(':refid'=>$_GET['replyto']));
-					if ($stm->rowCount()>0) {
-						$gradeid = $stm->fetchColumn(0);
+					$gradeid = $stm->fetchColumn(0);
+					if ($gradeid !== false) {
 						$stm = $DBH->prepare("UPDATE imas_grades SET score=:score WHERE id=:id");
 						$stm->execute(array(':score'=>$_POST['points'], ':id'=>$gradeid));
 
@@ -270,7 +270,8 @@ if (isset($_GET['modify'])) { //adding or modifying post
 			$query .= "iu.id=ifs.userid AND ifs.forumid=:forumid AND iu.id<>:userid";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':forumid'=>$forumid, ':userid'=>$userid));
-			if ($stm->rowCount()>0) {
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
 				$message  = "<h3>This is an automated message.  Do not respond to this email</h3>\r\n";
 				$message .= "<p>A new post has been made in forum $forumname in course ".Sanitize::encodeStringForDisplay($coursename)."</p>\r\n";
 				$message .= "<p>Subject:".Sanitize::encodeStringForDisplay($_POST['subject'])."</p>";
@@ -278,11 +279,12 @@ if (isset($_GET['modify'])) { //adding or modifying post
 				$message .= "<a href=\"" . $GLOBALS['basesiteurl'] . "/forums/$returnurl\">";
 				$message .= "View Posting</a>\r\n";
 			}
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			while ($row !== false) {
 				$row[0] = trim($row[0]);
 				if ($row[0]!='' && $row[0]!='none@none.com') {
 					send_email($row[0], $sendfrom, _('New forum post notification'), $message, array(), array(), 1);
 				}
+				$row = $stm->fetch(PDO::FETCH_NUM);
 			}
 		}
 		//now handle any files
@@ -484,11 +486,12 @@ if (isset($_GET['modify'])) { //adding or modifying post
 							$stm = $DBH->prepare($query);
 							$stm->execute($array);
 							// $result = mysql_query($query) or die("Query failed : $query " . mysql_error());
-							if ($stm->rowCount()>0) {
+							$row = $stm->fetch(PDO::FETCH_NUM);
+							if ($row !== false) {
 								$notice =  _('This question has already been posted about. Please read and participate in the existing discussion using the link below.');
-								while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+								do {
 									$notice .=  "<br/><a href=\"posts.php?cid=$cid&forum=$forumid&thread=" . Sanitize::encodeUrlParam($row[0]) . "\">".Sanitize::encodeStringForDisplay($line['subject'])."</a>";
-								}
+								} while ($row = $stm->fetch(PDO::FETCH_NUM));
 							}
 						}
 					}
@@ -764,7 +767,7 @@ if (isset($_GET['modify'])) { //adding or modifying post
 			// if not teacher, do not allow deletion of post with replies
 			$stm = $DBH->prepare("SELECT id FROM imas_forum_posts WHERE parent=:parent");
 			$stm->execute(array(':parent'=>$toremove));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 				$go = false;
 			}
 		}
@@ -832,7 +835,7 @@ if (isset($_GET['modify'])) { //adding or modifying post
 		if (!$isteacher) {
 			$stm = $DBH->prepare("SELECT id FROM imas_forum_posts WHERE parent=:parent");
 			$stm->execute(array(':parent'=>$toremove));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 			echo "Someone has replied to this post, so you cannot remove it.  <a href=\"$returnurl\">Back</a>";
 				require_once "../footer.php";
 				exit;

@@ -234,10 +234,11 @@ $placeinhead .= '<script type="text/javascript">$(function() {
 require_once "../header.php";
 $stm = $DBH->prepare("SELECT value FROM imas_bookmarks WHERE userid=:userid AND courseid=:courseid AND name=:name");
 $stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':name'=>'TR'.$_GET['folder']));
-if ($stm->rowCount()==0) {
+$row = $stm->fetch(PDO::FETCH_NUM);
+if ($row === false) {
 	$openitem = '';
 } else {
-	$openitem = $stm->fetchColumn(0);
+	$openitem = $row[0];
 }
 
 $foundfirstitem = '';

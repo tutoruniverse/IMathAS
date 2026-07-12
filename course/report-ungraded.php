@@ -94,7 +94,7 @@ if (isset($_POST['cat'])) {
                                 if (!isset($qver['tries'])) { continue; }
                                 foreach ($qver['tries'] as $pn=>$part) {
                                     $lasttry = count($part) - 1;
-                                    if ($part[$lasttry]['raw'] == -2 && 
+                                    if (($part[$lasttry]['raw'] ?? 0) == -2 && 
                                         !isset($qver['scoreoverride'][$pn]) &&
                                         empty($qver['feedback'])
                                     ) {

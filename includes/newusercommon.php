@@ -118,7 +118,7 @@ function checkNewUserValidation($required = array('SID','firstname','lastname','
 	  $sid_value = Sanitize::stripHtmlTags($_POST['SID']);
 	  $stm = $DBH->prepare('SELECT id FROM imas_users WHERE SID=:sid');
 	  $stm->execute(array(':sid'=>$sid_value));
-	  if ($stm->rowCount()>0) {
+	  if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 	    $errors[] =  "$loginprompt '" . Sanitize::encodeStringForDisplay($sid_value) . "' is already used. ";
 	  }
 	}

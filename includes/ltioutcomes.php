@@ -141,8 +141,9 @@ function updateLTI1p1grade($action,$sourcedid,$aid,$uid,$grade=0,$sendnow=false)
 				} else {
 					$stm = $DBH->prepare("SELECT ltisecret FROM imas_assessments WHERE id=:id");
 					$stm->execute(array(':id'=>$aid));
-					if ($stm->rowCount()>0) {
-						$secret = $stm->fetchColumn(0);
+					$row = $stm->fetch(PDO::FETCH_NUM);
+					if ($row !== false) {
+						$secret = $row[0];
 						$_SESSION[$ltikey.'-'.$aid.'-secret'] = $secret;
 					} else {
 						$secret = '';
@@ -159,8 +160,9 @@ function updateLTI1p1grade($action,$sourcedid,$aid,$uid,$grade=0,$sendnow=false)
 				$keyparts = explode('_',$ltikey);
 				$stm = $DBH->prepare("SELECT ltisecret FROM imas_courses WHERE id=:id");
 				$stm->execute(array(':id'=>$keyparts[1]));
-				if ($stm->rowCount()>0) {
-					$secret = $stm->fetchColumn(0);
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row !== false) {
+					$secret = $row[0];
 					$_SESSION[$ltikey.'-'.$aid.'-secret'] = $secret;
 				} else {
 					$secret = '';
@@ -173,8 +175,9 @@ function updateLTI1p1grade($action,$sourcedid,$aid,$uid,$grade=0,$sendnow=false)
 					$stm = $DBH->prepare("SELECT password FROM imas_users WHERE SID=:SID AND (rights=11 OR rights=76 OR rights=77)");
 					$stm->execute(array(':SID'=>$ltikey));
 				}
-				if ($stm->rowCount()>0) {
-					$secret = $stm->fetchColumn(0);
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row !== false) {
+					$secret = $row[0];
 					$_SESSION[$ltikey.'-'.$aid.'-secret'] = $secret;
 				} else {
 					$secret = '';

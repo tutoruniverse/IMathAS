@@ -39,8 +39,9 @@ function parseqs($file,$touse,$rights) {
 		$toundel = array();
 		$stm = $DBH->prepare("SELECT id,adddate,lastmoddate,deleted FROM imas_questionset WHERE uniqueid=:uniqueid");
 		$stm->execute(array(':uniqueid'=>$qd['uqid']));
-		if ($stm->rowCount()>0) {
-			list($qsetid, $adddate, $lastmoddate, $deleted) = $stm->fetch(PDO::FETCH_NUM);
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
+			list($qsetid, $adddate, $lastmoddate, $deleted) = $row;
 			$exists = true;
 		} else {
 			$exists = false;

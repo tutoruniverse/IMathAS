@@ -15,11 +15,11 @@ require_once "../includes/filehandler.php";
 $peerName = Sanitize::stripHtmlTags($_GET['peer']);
 $stm = $DBH->prepare("SELECT id,secret FROM imas_federation_peers WHERE peername=:peername");
 $stm->execute(array(':peername'=>$peerName));
-if ($stm->rowCount()==0) {
+$peer = $stm->fetch(PDO::FETCH_ASSOC);
+if ($peer === false) {
 	echo '{error:"Unknown peer"}';
 	exit;
 }
-$peer = $stm->fetch(PDO::FETCH_ASSOC);
 if (function_exists("hash_hmac")) {
 	$computed_signature =  base64_encode(hash_hmac('sha256', $_GET['peer'], $peer['secret'], true));
 } else {

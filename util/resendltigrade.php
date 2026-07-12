@@ -33,11 +33,11 @@ if (!isset($_POST['aid']) || !isset($_POST['uid'])) {
   }
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':aid'=>$aid, ':uid'=>$uid));
-	if ($stm->rowCount()==0) {
+	$results = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($results === false) {
 		echo "No record found";
 		exit;
 	}
-	$results = $stm->fetch(PDO::FETCH_ASSOC);
 
 	if ($ver == 1) {
 		$results['scores'] = getpts($results['scores']);
@@ -51,14 +51,16 @@ if (!isset($_POST['aid']) || !isset($_POST['uid'])) {
 			$keyparts = explode('_',$ltikey);
 			$stm = $DBH->prepare("SELECT ltisecret FROM imas_courses WHERE id=:id");
 			$stm->execute(array(':id'=>$keyparts[1]));
-			if ($stm->rowCount()>0) {
-				$secret = $stm->fetchColumn(0);
+			$secretcol = $stm->fetchColumn(0);
+			if ($secretcol !== false) {
+				$secret = $secretcol;
 			}
 		} else {
 			$stm = $DBH->prepare("SELECT password FROM imas_users WHERE SID=:SID AND (rights=11 OR rights=76 OR rights=77)");
 			$stm->execute(array(':SID'=>$ltikey));
-			if ($stm->rowCount()>0) {
-				$secret = $stm->fetchColumn(0);
+			$secretcol = $stm->fetchColumn(0);
+			if ($secretcol !== false) {
+				$secret = $secretcol;
 			}
 		}
 	}

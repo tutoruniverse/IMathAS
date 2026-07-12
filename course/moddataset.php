@@ -268,14 +268,15 @@
 
 				$stm = $DBH->prepare("SELECT id,filename,var,alttext FROM imas_qimages WHERE qsetid=:qsetid");
 				$stm->execute(array(':qsetid'=>$_GET['id']));
-				$imgcnt = $stm->rowCount();
-				while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				$imgrows = $stm->fetchAll(PDO::FETCH_NUM);
+				$imgcnt = count($imgrows);
+				foreach ($imgrows as $row) {
 					$_POST['imgvar-'.$row[0]] = preg_replace('/[^\w\[\]]/','', $_POST['imgvar-'.$row[0]]);
 					if (isset($_POST['delimg-'.$row[0]])) {
 						if (substr($row[1],0,4)!='http') {
-							$stm2 = $DBH->prepare("SELECT id FROM imas_qimages WHERE filename=:filename");
+							$stm2 = $DBH->prepare("SELECT COUNT(*) FROM imas_qimages WHERE filename=:filename");
 							$stm2->execute(array(':filename'=>$row[1]));
-							if ($stm2->rowCount()==1) {
+							if ($stm2->fetchColumn()==1) {
 								deleteqimage($row[1]);
 							}
 						}

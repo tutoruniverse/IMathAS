@@ -52,7 +52,7 @@ if (!empty($_POST['newowner'])) {
 	if ($stm->rowCount()>0) {
 		$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=:courseid AND userid=:userid");
 		$stm->execute(array(':courseid'=>$cid, ':userid'=>$ownerid));
-		if ($stm->rowCount()==0) {
+		if ($stm->fetch(PDO::FETCH_NUM) === false) {
 			$stm = $DBH->prepare("INSERT INTO imas_teachers (userid,courseid) VALUES (:userid, :courseid)");
 			$stm->execute(array(':userid'=>$ownerid, ':courseid'=>$cid));
 		}

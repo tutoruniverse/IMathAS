@@ -44,11 +44,12 @@ class AssessHelpers
     }
   	$stm = $DBH->prepare("SELECT * FROM imas_assessment_records WHERE assessmentid=? FOR UPDATE");
   	$stm->execute(array($aid));
-  	if ($stm->rowCount() > 0) {
+  	$row = $stm->fetch(PDO::FETCH_ASSOC);
+  	if ($row !== false) {
   		$assess_info = new AssessInfo($DBH, $aid, $cid, false);
   		$assess_info->loadQuestionSettings('all', false, false);
         $submitby = $assess_info->getSetting('submitby');
-  		while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+  		do {
             if (!isset($timelimitmults[$row['userid']])) {
                 continue; // skip instructor records or other lingering ones
             }
@@ -79,7 +80,7 @@ class AssessHelpers
                     }
                 }
             }
-  		}
+  		} while ($row = $stm->fetch(PDO::FETCH_ASSOC));
     }
     if ($transaction) {  
           $DBH->commit();
@@ -103,19 +104,20 @@ class AssessHelpers
 
   	$stm = $DBH->prepare("SELECT * FROM imas_assessment_records WHERE assessmentid=? AND userid=? FOR UPDATE");
   	$stm->execute(array($aid, $uid));
-  	if ($stm->rowCount() > 0) {
+  	$row = $stm->fetch(PDO::FETCH_ASSOC);
+  	if ($row !== false) {
   		$assess_info = new AssessInfo($DBH, $aid, $cid, false);
         $assess_info->loadException($uid, true, 0, $latepasshrs, $courseenddate);
         $assess_info->applyTimelimitMultiplier($timelimitmult);
         $assess_info->loadQuestionSettings('all', false, false);
         $submitby = $assess_info->getSetting('submitby');
-  		while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+  		do {
   			$assess_record = new AssessRecord($DBH, $assess_info, false);
             $assess_record->setRecord($row);
             $orig_gb_score = $assess_record->getGbScore();
             $assess_record->reTotalAssess();
             $gbscore = $assess_record->getGbScore();
-            if ($orig_gb_score['gbscore'] != $gbscore['gbscore']) {  
+            if ($orig_gb_score['gbscore'] != $gbscore['gbscore']) {
                 $assess_record->saveRecord();
                 // update LTI grade
                 $lti_sourcedid = $assess_record->getLTIsourcedId();
@@ -126,7 +128,7 @@ class AssessHelpers
                     calcandupdateLTIgrade($lti_sourcedid, $aid, $uid, $gbscore['gbscore'], true, $aidposs, false);
                 }
             }
-  		}
+  		} while ($row = $stm->fetch(PDO::FETCH_ASSOC));
     }
     $DBH->commit();
   }

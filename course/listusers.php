@@ -105,29 +105,30 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		if (isset($_POST['username'])) {
 			$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
 			$stm->execute(array(':SID'=>$_POST['username']));
-			if ($stm->rowCount()==0) {
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row === false) {
 				$overwriteBody = 1;
 				$body = "Error, username doesn't exist. <a href=\"listusers.php?cid=$cid&enroll=student\">Try again</a>\n";
 				if ($CFG['GEN']['allowinstraddstus']) {
 					$body .= "or <a href=\"listusers.php?cid=$cid&newstu=new\">create and enroll a new student</a>";
 				}
 			} else {
-				$id = $stm->fetchColumn(0);
+				$id = $row[0];
 				$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid'=>$id, ':courseid'=>$cid));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetch() !== false) {
 					echo "Teachers can't be enrolled as students - use Student View, or create a separate student account.";
 					exit;
 				}
 				$stm = $DBH->prepare("SELECT id FROM imas_tutors WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid'=>$id, ':courseid'=>$cid));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetch() !== false) {
 					echo "Tutors can't be enrolled as students.";
 					exit;
 				}
 				$stm = $DBH->prepare("SELECT id FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid'=>$id, ':courseid'=>$cid));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetch() !== false) {
 					echo "This username is already enrolled in the class.";
 					exit;
 				}
@@ -240,7 +241,7 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 					$un = $_POST['SID'];
 					$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
 					$stm->execute(array(':SID'=>$un));
-					if ($stm->rowCount()>0) {
+					if ($stm->fetch() !== false) {
 						$updateusername = false;
 					} else {
 						$updateusername = true;
@@ -446,9 +447,10 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		//imas_students.section field, so filter will act the same.
 		$stm = $DBH->prepare("SELECT sel2name,sel2list FROM imas_diags WHERE cid=:cid");
 		$stm->execute(array(':cid'=>$cid));
-		if ($stm->rowCount()>0) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
 			$isdiag = true;
-			list($limitname,$sel2list) = $stm->fetch(PDO::FETCH_NUM);
+			list($limitname,$sel2list) = $row;
 			$sel2list = str_replace('~',';',$sel2list);
 			$sections = array_unique(explode(';',$sel2list));
 		}
@@ -470,12 +472,13 @@ if (!isset($teacherid)) { // loaded by a NON-teacher
 		$pagetitle = "Student Roster";
 		$stm = $DBH->prepare("SELECT DISTINCT section FROM imas_students WHERE imas_students.courseid=:courseid AND imas_students.section IS NOT NULL ORDER BY section");
 		$stm->execute(array(':courseid'=>$cid));
-		if ($stm->rowCount()>0) {
+		$sectionrows = $stm->fetchAll(PDO::FETCH_NUM);
+		if (count($sectionrows)>0) {
 			$hassection = true;
 			$sectionselect = "<br/><select id=\"secfiltersel\" onchange=\"chgsecfilter()\"><option value=\"-1\" " ;
 			if ($secfilter==-1) {$sectionselect .= 'selected=1';}
 			$sectionselect .=  '>'._('All').'</option>';
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			foreach ($sectionrows as $row) {
 				$sectionselect .=  "<option value=\"" . Sanitize::encodeStringForDisplay($row[0]) . "\" ";
 				if ($row[0]==$secfilter) {
 					$sectionselect .=  'selected=1';

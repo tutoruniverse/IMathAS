@@ -99,9 +99,10 @@
 	//imas_students.section field, so filter will act the same.
 	$stm = $DBH->prepare("SELECT sel2name,sel2list FROM imas_diags WHERE cid=:cid");
 	$stm->execute(array(':cid'=>$cid));
-	if ($stm->rowCount()>0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		$isdiag = true;
-		list($limitname,$sel2list) = $stm->fetch(PDO::FETCH_NUM);
+		list($limitname,$sel2list) = $row;
 		$sel2list = str_replace('~',';',$sel2list);
 		$sections = array_unique(explode(';',$sel2list));
 	}

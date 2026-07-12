@@ -205,7 +205,8 @@ $curBreadcrumb .= "Teacher Audit Log\n";
 if (isset($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_assessments WHERE id=?");
 	$stm->execute(array(intval($_GET['id'])));
-	if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $_GET['cid']) {
+	$courseid = $stm->fetchColumn(0);
+	if ($courseid === false || $courseid != $_GET['cid']) {
 		echo "Invalid ID";
 		exit;
 	}

@@ -27,14 +27,16 @@ if (!isset($_POST['sourcedid'])) {
 			$keyparts = explode('_',$ltikey);
 			$stm = $DBH->prepare("SELECT ltisecret FROM imas_courses WHERE id=:id");
 			$stm->execute(array(':id'=>$keyparts[1]));
-			if ($stm->rowCount()>0) {
-				$secret = $stm->fetchColumn(0);
+			$secretcol = $stm->fetchColumn(0);
+			if ($secretcol !== false) {
+				$secret = $secretcol;
 			}
 		} else {
 			$stm = $DBH->prepare("SELECT password FROM imas_users WHERE SID=:SID AND (rights=11 OR rights=76 OR rights=77)");
 			$stm->execute(array(':SID'=>$ltikey));
-			if ($stm->rowCount()>0) {
-				$secret = $stm->fetchColumn(0);
+			$secretcol = $stm->fetchColumn(0);
+			if ($secretcol !== false) {
+				$secret = $secretcol;
 			}
 		}
 	}

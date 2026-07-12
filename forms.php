@@ -84,7 +84,8 @@ switch($_GET['action']) {
                 $fullopt = 'style="display:none;';
             }
 			$stm = $DBH->query("SELECT id,name FROM imas_courses WHERE istemplate > 0 AND (istemplate&4)=4 AND available<4 ORDER BY name");
-			if ($stm->rowCount()>0) {
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			if ($row !== false) {
                 $doselfenroll = true;
                 if (isset($CFG['GEN']['COPPA'])) {
                     echo '<p class="fullopt" style="display:none">';
@@ -95,9 +96,9 @@ switch($_GET['action']) {
 				echo '<select id="courseselect" name="courseselect" onchange="courseselectupdate(this);">';
 				echo '<option value="0" selected="selected">',_('My teacher gave me a course ID (enter below)'),'</option>';
 				echo '<optgroup label="Self-study courses">';
-				while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+				do {
 					echo '<option value="'.Sanitize::encodeStringForDisplay($row[0]).'">'.Sanitize::encodeStringForDisplay($row[1]).'</option>';
-				}
+				} while ($row = $stm->fetch(PDO::FETCH_NUM));
 				echo '</optgroup>';
                 echo '</select></p>';
                 if (isset($CFG['GEN']['COPPA'])) {
@@ -469,7 +470,8 @@ switch($_GET['action']) {
 		echo "<form id=\"pageform\" method=post action=\"actions.php?action=enroll$gb\">";
 		$doselfenroll = false;
         $stm = $DBH->query("SELECT id,name FROM imas_courses WHERE istemplate > 0 AND (istemplate&4)=4 AND available<4 ORDER BY name");
-        if ($stm->rowCount()>0) {
+        $row = $stm->fetch(PDO::FETCH_NUM);
+        if ($row !== false) {
             $stm2 = $DBH->prepare("SELECT jsondata FROM imas_users WHERE id=?");
             $stm2->execute(array($userid));
             $jsondata = json_decode($stm2->fetchColumn(0), true);
@@ -482,9 +484,9 @@ switch($_GET['action']) {
 			echo '<p><select id="courseselect" name="courseselect" onchange="courseselectupdate(this);">';
 			echo '<option value="0" selected="selected">',_('My teacher gave me a course ID (enter below)').'</option>';
 			echo '<optgroup label="Self-study courses">';
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			do {
 				echo '<option value="'.Sanitize::encodeStringForDisplay($row[0]).'">'.Sanitize::encodeStringForDisplay($row[1]).'</option>';
-			}
+			} while ($row = $stm->fetch(PDO::FETCH_NUM));
 			echo '</optgroup>';
 			echo '</select></p>';
 			echo '<div id="courseinfo">';
@@ -616,38 +618,41 @@ switch($_GET['action']) {
 		$allcourses = array();
 		$stm = $DBH->prepare("SELECT ic.id,ic.name FROM imas_courses AS ic JOIN imas_teachers AS it ON ic.id=it.courseid WHERE it.userid=:userid ORDER BY ic.name");
 		$stm->execute(array(':userid'=>$userid));
-		if ($stm->rowCount()>0) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
 			echo '<p><b>',_('Courses you\'re teaching'),':</b> ',_('Check'),': <a href="#" onclick="$(\'.teaching\').prop(\'checked\',true);return false;">',_('All'),'</a> <a href="#" onclick="$(\'.teaching\').prop(\'checked\',false);return false;">',_('None'),'</a>';
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			do {
 				$allcourses[] = $row[0];
 				echo '<br/><input type="checkbox" name="checked[]" class="teaching" value="'.Sanitize::encodeStringForDisplay($row[0]).'" id="c'.Sanitize::encodeStringForDisplay($row[0]).'"';
 				if (!in_array($row[0],$hidelist)) {echo 'checked="checked"';}
 				echo '/> <label for="c'.Sanitize::encodeStringForDisplay($row[0]).'">'.Sanitize::encodeStringForDisplay($row[1]).'</label>';
-			}
+			} while ($row = $stm->fetch(PDO::FETCH_NUM));
 			echo '</p>';
 		}
 		$stm = $DBH->prepare("SELECT ic.id,ic.name FROM imas_courses AS ic JOIN imas_tutors AS it ON ic.id=it.courseid WHERE it.userid=:userid ORDER BY ic.name");
 		$stm->execute(array(':userid'=>$userid));
-		if ($stm->rowCount()>0) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
 			echo '<p><b>',_('Courses you\'re tutoring'),':</b> ',_('Check'),': <a href="#" onclick="$(\'.tutoring\').prop(\'checked\',true);return false;">',_('All'),'</a> <a href="#" onclick="$(\'.tutoring\').prop(\'checked\',false);return false;">',_('None'),'</a>';
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			do {
 				$allcourses[] = Sanitize::encodeStringForDisplay($row[0]);
 				echo '<br/><input type="checkbox" name="checked[]" class="tutoring" value="'.Sanitize::encodeStringForDisplay($row[0]).'" id="c'.Sanitize::encodeStringForDisplay($row[0]).'"';
 				if (!in_array($row[0],$hidelist)) {echo 'checked="checked"';}
 				echo '/> <label for="c'.Sanitize::encodeStringForDisplay($row[0]).'">'.Sanitize::encodeStringForDisplay($row[1]).'</label>';
-			}
+			} while ($row = $stm->fetch(PDO::FETCH_NUM));
 			echo '</p>';
 		}
 		$stm = $DBH->prepare("SELECT ic.id,ic.name FROM imas_courses AS ic JOIN imas_students AS it ON ic.id=it.courseid WHERE it.userid=:userid ORDER BY ic.name");
 		$stm->execute(array(':userid'=>$userid));
-		if ($stm->rowCount()>0) {
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
 			echo '<p><b>',_('Courses you\'re taking'),':</b> ',_('Check'),': <a href="#" onclick="$(\'.taking\').prop(\'checked\',true);return false;">',_('All'),'</a> <a href="#" onclick="$(\'.taking\').prop(\'checked\',false);return false;">',_('None'),'</a>';
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			do {
 				$allcourses[] = $row[0];
 				echo '<br/><input type="checkbox" name="checked[]" class="taking" value="'.Sanitize::encodeStringForDisplay($row[0]).'" id="c'.Sanitize::encodeStringForDisplay($row[0]).'"';
 				if (!in_array($row[0],$hidelist)) {echo 'checked="checked"';}
 				echo '/> <label for="c'.Sanitize::encodeStringForDisplay($row[0]).'">'.Sanitize::encodeStringForDisplay($row[1]).'</label>';
-			}
+			} while ($row = $stm->fetch(PDO::FETCH_NUM));
 			echo '</p>';
 		}
 		echo '<input type="hidden" name="allcourses" value="'.Sanitize::encodeStringForDisplay(implode(',',$allcourses)).'"/>';

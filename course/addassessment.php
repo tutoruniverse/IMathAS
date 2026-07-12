@@ -749,33 +749,27 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
             $stm->execute(array(':courseid'=>$cid));
             $page_copyFromSelect = array('val'=>array(), 'label'=>array());
             $i=0;
-            if ($stm->rowCount()>0) {
-                while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-                    $page_copyFromSelect['val'][$i] = $row[0];
-                    $page_copyFromSelect['label'][$i] = $row[1];
-                    $i++;
-                }
+            while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+                $page_copyFromSelect['val'][$i] = $row[0];
+                $page_copyFromSelect['label'][$i] = $row[1];
+                $i++;
             }
             $stm = $DBH->prepare("SELECT id,name FROM imas_gbcats WHERE courseid=:courseid");
             $stm->execute(array(':courseid'=>$cid));
             $page_gbcatSelect = array('val'=>[], 'label'=>[]);
             $i=0;
-            if ($stm->rowCount()>0) {
-                while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-                    $page_gbcatSelect['val'][$i] = $row[0];
-                    $page_gbcatSelect['label'][$i] = $row[1];
-                    $i++;
-                }
+            while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+                $page_gbcatSelect['val'][$i] = $row[0];
+                $page_gbcatSelect['label'][$i] = $row[1];
+                $i++;
             }
             $stm = $DBH->prepare("SELECT id,name FROM imas_outcomes WHERE courseid=:courseid");
             $stm->execute(array(':courseid'=>$cid));
             $page_outcomes = array();
             $i=0;
-            if ($stm->rowCount()>0) {
-                while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-                    $page_outcomes[$row[0]] = $row[1];
-                    $i++;
-                }
+            while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+                $page_outcomes[$row[0]] = $row[1];
+                $i++;
             }
             $page_outcomes[0] = 'No default outcome selected';
 

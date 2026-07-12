@@ -27,11 +27,12 @@
 
 	$stm = $DBH->prepare("SELECT minscore,timelimit,deffeedback,enddate,name,defpoints,itemorder,groupsetid,ver,deffeedbacktext,scoresingb FROM imas_assessments WHERE id=:id AND courseid=:cid");
 	$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
-	if ($stm->rowCount()==0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false) {
 		echo "Invalid ID";
 		exit;
 	}
-	list($minscore,$timelimit,$deffeedback,$enddate,$name,$defpoints,$itemorder,$groupsetid,$aver,$deffeedbacktext,$scoresingb) = $stm->fetch(PDO::FETCH_NUM);
+	list($minscore,$timelimit,$deffeedback,$enddate,$name,$defpoints,$itemorder,$groupsetid,$aver,$deffeedbacktext,$scoresingb) = $row;
 	$deffeedback = explode('-',$deffeedback);
 	$assessmenttype = $deffeedback[0];
 
@@ -137,8 +138,9 @@
 				$stu_name = $DBH->prepare($query);
 			}
 			$stu_name->execute(array(':stugroupid'=>$row[0]));
-			if ($stu_name->rowCount()>0) {
-				$row[1] .= ' ('.implode(', ', $stu_name->fetch(PDO::FETCH_NUM)).' &isin;)';
+			$stunamerow = $stu_name->fetch(PDO::FETCH_NUM);
+			if ($stunamerow !== false) {
+				$row[1] .= ' ('.implode(', ', $stunamerow).' &isin;)';
 			}
 		}
 		$groupnames[$row[0]] = $row[1];

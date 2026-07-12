@@ -25,7 +25,8 @@ if (isset($_GET['tb'])) {
 if (isset($_GET['id'])) {
 	$stm = $DBH->prepare("SELECT courseid FROM imas_wikis WHERE id=?");
 	$stm->execute(array(intval($_GET['id'])));
-	if ($stm->rowCount()==0 || $stm->fetchColumn(0) != $_GET['cid']) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false || $row[0] != $_GET['cid']) {
 		echo "Invalid ID";
 		exit;
 	}
@@ -158,7 +159,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$settings = $line['settings'];
 			$stm = $DBH->prepare("SELECT id FROM imas_wiki_revisions WHERE wikiid=:wikiid");
 			$stm->execute(array(':wikiid'=>$_GET['id']));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 				$started = true;
 			} else {
 				$started = false;

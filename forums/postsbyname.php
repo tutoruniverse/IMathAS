@@ -44,7 +44,7 @@
             */
             $stm2 = $DBH->prepare("SELECT lastview FROM imas_forum_views WHERE userid=:userid AND threadid=:threadid");
 			$stm2->execute(array(':userid'=>$userid, ':threadid'=>$row[0]));
-			if ($stm2->rowCount()>0) {
+			if ($stm2->fetch(PDO::FETCH_NUM) !== false) {
 				$stm2 = $DBH->prepare("UPDATE imas_forum_views SET lastview=:lastview WHERE userid=:userid AND threadid=:threadid");
 				$stm2->execute(array(':lastview'=>$now, ':userid'=>$userid, ':threadid'=>$row[0]));
 			} else{
@@ -90,7 +90,7 @@
 	if (!$canviewall && $postbeforeview) {
 		$stm = $DBH->prepare("SELECT id FROM imas_forum_posts WHERE forumid=:forumid AND parent=0 AND userid=:userid LIMIT 1");
 		$stm->execute(array(':forumid'=>$forumid, ':userid'=>$userid));
-		if ($stm->rowCount()==0) {
+		if ($stm->fetch(PDO::FETCH_NUM) === false) {
 			echo '<p>This page is blocked. In this forum, you must post your own thread before you can read those posted by others.</p>';
 			require_once "../footer.php";
 			exit;
@@ -193,8 +193,8 @@
 	if ($haspoints && $caneditscore && $rubric != 0) {
 		$stm = $DBH->prepare("SELECT id,rubrictype,rubric FROM imas_rubrics WHERE id=:id");
 		$stm->execute(array(':id'=>$rubric));
-		if ($stm->rowCount()>0) {
-			$row = $stm->fetch(PDO::FETCH_NUM);
+		$row = $stm->fetch(PDO::FETCH_NUM);
+		if ($row !== false) {
 			// $row data is sanitized by printrubrics().
 			echo printrubrics(array($row));
 		}
@@ -216,8 +216,9 @@
 		$query .= "WHERE i_sgm.userid=:userid AND i_sg.groupsetid=:groupsetid";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':userid'=>$userid, ':groupsetid'=>$groupsetid));
-		if ($stm->rowCount()>0) {
-			$groupid = $stm->fetchColumn(0);
+		$groupidcol = $stm->fetchColumn(0);
+		if ($groupidcol !== false) {
+			$groupid = $groupidcol;
 		} else {
 			$groupid=0;
 		}

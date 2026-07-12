@@ -127,12 +127,13 @@ $stm = $DBH->prepare("SELECT id,name FROM imas_gbcats WHERE courseid=:courseid")
 $stm->execute(array(':courseid'=>$cid));
 $i=0;
 $page_gbcatSelect = array('val'=>[], 'label'=>[]);
-if ($stm->rowCount()>0) {
-	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+$row = $stm->fetch(PDO::FETCH_NUM);
+if ($row !== false) {
+	do {
 		$page_gbcatSelect['val'][$i] = $row[0];
 		$page_gbcatSelect['label'][$i] = $row[1];
 		$i++;
-	}
+	} while ($row = $stm->fetch(PDO::FETCH_NUM));
 }
 
 $sdate = tzdate("m/d/Y",time());

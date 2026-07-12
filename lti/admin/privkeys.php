@@ -50,10 +50,11 @@ $stm = $DBH->prepare('SELECT kid,publickey,created_at FROM imas_lti_keys WHERE k
 $stm->execute(array($keyseturl));
 echo '<form method="post" action="privkeys.php">';
 echo '<ul class=nomark>';
-if ($stm->rowCount()===0) {
+$row = $stm->fetch(PDO::FETCH_ASSOC);
+if ($row === false) {
   echo '<li>'._('No private keys').'</li>';
 }
-while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+while ($row !== false) {
   echo '<li>'._('Key ID: ').Sanitize::encodeStringForDisplay($row['kid']).', '._('Created: ');
   echo date("M j Y ", strtotime($row['created_at']));
   $pubkey = Sanitize::encodeStringForJavascript('<pre>'.$row['publickey'].'</pre>');
@@ -63,6 +64,7 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
   echo 'onclick="return confirm(\''._('Are you SURE you want to delete this key?').'\');">';
   echo _('Delete').'</button>';
   echo '</li>';
+  $row = $stm->fetch(PDO::FETCH_ASSOC);
 }
 echo '</ul>';
 echo '<p><button type=submit name="newkey" value=1>'._('Add New Key').'</button></p>';

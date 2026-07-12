@@ -285,10 +285,11 @@ if (isset($_GET['launch'])) {
 				$stm = $DBH->prepare('SELECT password,id,mfa FROM imas_users WHERE SID=:sid');
 				$stm->execute(array(':sid'=>$_POST['curSID']));
 				//if (mysql_num_rows($result)==0) {
-				if ($stm->rowCount()==0) {
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row === false) {
 					$infoerr = 'Username (key) is not valid';
 				} else {
-					list($realpw,$tmpuserid,$mfadata) = $stm->fetch(PDO::FETCH_NUM); //DB mysql_result($result,0,0);
+					list($realpw,$tmpuserid,$mfadata) = $row; //DB mysql_result($result,0,0);
 					if (password_verify($_POST['curPW'],$realpw)) {
                         if ($mfadata != '') {
                             $mfadata = json_decode($mfadata, true);
@@ -519,11 +520,11 @@ if (isset($_GET['launch'])) {
 	$linkparts = explode("-",$_REQUEST['custom_view_folder']);
 	$stm = $DBH->prepare('SELECT itemorder FROM imas_courses WHERE id=:cid');
 	$stm->execute(array(':cid'=>$linkparts[0]));
-	if ($stm->rowCount()==0) {
+	$row = $stm->fetch(PDO::FETCH_ASSOC); //DB mysql_fetch_row($result2);
+	if ($row === false) {
 		reporterror(_("invalid course identifier in folder view launch"));
 	} else {
 		$cid = intval($linkparts[0]);
-		$row = $stm->fetch(PDO::FETCH_ASSOC); //DB mysql_fetch_row($result2);
 		$items = unserialize($row['itemorder']);
 		function findfolder($items,$n,$loc) {
 			foreach ($items as $k=>$b) {
@@ -719,8 +720,8 @@ if (isset($_GET['launch'])) {
 	$query .= "ORDER BY iu.rights, lti.id";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':org'=>"$shortorg:%", ':ltiuserid'=>$ltiuserid));
-	if ($stm->rowCount()>0) { //yup, we know them
-		$userrow = $stm->fetch(PDO::FETCH_ASSOC);
+	$userrow = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($userrow !== false) { //yup, we know them
 		$userid = $userrow['userid'];
 		if (((!empty($_REQUEST['lis_person_name_given']) && !empty($_REQUEST['lis_person_name_family'])) || !empty($_REQUEST['lis_person_name_full'])) &&
 		   ((count($keyparts)==1 && $ltirole=='learner') || (count($keyparts)>2 && $keyparts[2]==1 && $ltirole=='learner') )) {
@@ -863,7 +864,8 @@ $query = "SELECT placementtype,typeid FROM imas_lti_placements WHERE ";
 $query .= "contextid=:contextid AND linkid=:linkid AND typeid>0 AND org LIKE :org";
 $stm = $DBH->prepare($query);
 $stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':linkid'=>$_SESSION['lti_resource_link_id'], ':org'=>"$shortorg:%"));
-if ($stm->rowCount()==0) {
+$placementrow = $stm->fetch(PDO::FETCH_NUM);
+if ($placementrow === false) {
 	if (isset($_SESSION['place_aid'])) {
 		$stm = $DBH->prepare('SELECT courseid,name FROM imas_assessments WHERE id=:aid');
 		$stm->execute(array(':aid'=>$_SESSION['place_aid']));
@@ -878,7 +880,8 @@ if ($stm->rowCount()==0) {
 		//look to see if we've already linked this context_id with a course
 		$stm = $DBH->prepare('SELECT courseid,copiedfrom FROM imas_lti_courses WHERE contextid=:contextid AND org LIKE :org');
 		$stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':org'=>"$shortorg:%"));
-		if ($stm->rowCount()==0) {
+		$lticourserow = $stm->fetch(PDO::FETCH_NUM);
+		if ($lticourserow === false) {
             if ($aidsourcecid == -1) { // not enough info to proceed
                 $diaginfo = "(Debug info: 2a-{$_SESSION['place_aid']})";
 			    reporterror(_("The originally linked assignment does not appear to exist anymore.")." $diaginfo");
@@ -889,7 +892,7 @@ if ($stm->rowCount()==0) {
 				$copycourse = "notify";
 				$stm = $DBH->prepare('SELECT id FROM imas_teachers WHERE courseid=:aidsourcecid AND userid=:userid');
 				$stm->execute(array(':aidsourcecid'=>$aidsourcecid, ':userid'=>$userid));
-				if ($stm->rowCount()>0) {
+				if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 					$copycourse="ask";
 					if (isset($_POST['docoursecopy']) && $_POST['docoursecopy']=="useexisting") {
 						$destcid = $aidsourcecid;
@@ -1213,7 +1216,7 @@ if ($stm->rowCount()==0) {
 				$ltilog
 			);
 		} else {
-			list($destcid, $copiedfromcid) = $stm->fetch(PDO::FETCH_NUM);
+			list($destcid, $copiedfromcid) = $lticourserow;
 		}
 		if ($destcid==$aidsourcecid) {
 			//aid is in destination course - just make placement
@@ -1227,8 +1230,9 @@ if ($stm->rowCount()==0) {
 				$anregex = '^([0-9]+:)?'.$aidtolookfor.MYSQL_RIGHT_WRDBND;
 				$stm = $DBH->prepare("SELECT id FROM imas_assessments WHERE ancestors REGEXP :ancestors AND courseid=:destcid");
 				$stm->execute(array(':ancestors'=>$anregex, ':destcid'=>$destcid));
-				if ($stm->rowCount()>0) {
-					$aid = $stm->fetchColumn(0);
+				$aidcol = $stm->fetchColumn(0);
+				if ($aidcol !== false) {
+					$aid = $aidcol;
 					//echo "here 2: $aid";
 					$foundaid = true;
 					//echo "found 1";
@@ -1247,8 +1251,9 @@ if ($stm->rowCount()==0) {
 					for ($i=$ciddepth;$i>=0;$i--) {  //starts one course back from aidsourcecid because of the unshift
 						$stm = $DBH->prepare("SELECT id FROM imas_assessments WHERE ancestors REGEXP :ancestors AND courseid=:cid");
 						$stm->execute(array(':ancestors'=>'^([0-9]+:)?'.$aidtolookfor.MYSQL_RIGHT_WRDBND, ':cid'=>$ancestors[$i]));
-						if ($stm->rowCount()>0) {
-							$aidtolookfor = $stm->fetchColumn(0);
+						$aidtolookforcol = $stm->fetchColumn(0);
+						if ($aidtolookforcol !== false) {
+							$aidtolookfor = $aidtolookforcol;
 						} else {
 							$foundsubaid = false;
 							break;
@@ -1307,18 +1312,19 @@ if ($stm->rowCount()==0) {
 
 				$stm = $DBH->prepare("SELECT id FROM imas_assessments WHERE name=:name AND courseid=:courseid");
 				$stm->execute(array(':name'=>$aidsourcename, ':courseid'=>$destcid));
-				if ($stm->rowCount()>0) {
-					$aid = $stm->fetchColumn(0);
+				$aidcol2 = $stm->fetchColumn(0);
+				if ($aidcol2 !== false) {
+					$aid = $aidcol2;
 					//echo "here 7: $aid";
 				} else {
 					// no assessment with same title - need to copy assessment from destination to source course
 					require_once "includes/copyiteminc.php";
 					$stm = $DBH->prepare("SELECT id FROM imas_items WHERE itemtype='Assessment' AND typeid=:typeid");
 					$stm->execute(array(':typeid'=>$_SESSION['place_aid']));
-					if ($stm->rowCount()==0) {
+					$sourceitemid = $stm->fetchColumn(0);
+					if ($sourceitemid === false) {
 						reporterror(sprintf("Error.  Assessment ID %s not found.","'{$_SESSION['place_aid']}'"));
 					}
-					$sourceitemid = $stm->fetchColumn(0);
 					$cid = $destcid;
 
 					$stm = $DBH->prepare("SELECT itemorder,dates_by_lti,UIver FROM imas_courses WHERE id=:id");
@@ -1353,7 +1359,7 @@ if ($stm->rowCount()==0) {
 		reporterror(_("This placement is not yet set up"));
 	}
 } else {
-	$row = $stm->fetch(PDO::FETCH_NUM);
+	$row = $placementrow;
 	if ($row[0]=='course') {
 		$linkparts = array('cid',$row[1]);
 	} else if ($row[0]=='assess') {
@@ -1379,12 +1385,13 @@ if ($_SESSION['lti_keytype']=='cc-of') {
 	//look to see if we've already linked this context_id with a course
 	$stm = $DBH->prepare("SELECT courseid FROM imas_lti_courses WHERE contextid=:contextid AND org LIKE :org");
 	$stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':org'=>"$shortorg:%"));
-	if ($stm->rowCount()==0) {
+	$courselinkcid = $stm->fetchColumn(0);
+	if ($courselinkcid === false) {
 		//if instructor, see if the source course is ours
 		if ($_SESSION['ltirole']=='instructor') {
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=:courseid AND userid=:userid");
 			$stm->execute(array(':courseid'=>$linkcid, ':userid'=>$userid));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 				$stm = $DBH->prepare("INSERT INTO imas_lti_courses (org,contextid,courseid,contextlabel) VALUES (:org, :contextid, :courseid, :contextlabel)");
 				$stm->execute(array(
 					':org'=>$_SESSION['ltiorg'],
@@ -1409,7 +1416,6 @@ if ($_SESSION['lti_keytype']=='cc-of') {
 			reporterror(_("Course connection not established yet.  Notify your instructor they need to click this link to set it up."));
 		}
 	} else {
-		$courselinkcid = $stm->fetchColumn(0);
 		if ($courselinkcid != $linkcid) {
 			reporterror(_("This course in the LMS is not associated with the course this link is pointing to."));
 		}
@@ -1531,11 +1537,11 @@ if ($linkparts[0]=='cid') {
 } else if ($linkparts[0]=='folder') {
 	$stm = $DBH->prepare("SELECT itemorder FROM imas_courses WHERE id=:id");
 	$stm->execute(array(':id'=>$linkparts[1]));
-	if ($stm->rowCount()==0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false) {
 		reporterror(_("invalid course identifier in folder view launch"));
 	} else {
 		$cid = intval($linkparts[1]);
-		$row = $stm->fetch(PDO::FETCH_NUM);
 		$items = unserialize($row[0]);
 		function findfolder($items,$n,$loc) {
 			foreach ($items as $k=>$b) {
@@ -1568,11 +1574,11 @@ if ($linkparts[0]=='cid' || $linkparts[0]=='aid' || $linkparts[0]=='placein' || 
 	if ($_SESSION['ltirole']=='instructor') {
 		$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-		if ($stm->rowCount() == 0) {
+		if ($stm->fetch(PDO::FETCH_NUM) === false) {
 			//see if they're a tutor - that's just as good.
 			$stm = $DBH->prepare("SELECT id FROM imas_tutors WHERE userid=:userid AND courseid=:courseid");
 			$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-			if ($stm->rowCount() == 0) {
+			if ($stm->fetch(PDO::FETCH_NUM) === false) {
 				//reporterror("error - you are not an instructor or tutor on the $installname course this link is associated with.  If you are team-teaching this course, have the other instructor add you as a teacher or tutor on $installname then try again.");
 				$stm = $DBH->prepare("INSERT INTO imas_teachers (userid,courseid) VALUES (:userid, :courseid)");
 				$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
@@ -1594,13 +1600,14 @@ if ($linkparts[0]=='cid' || $linkparts[0]=='aid' || $linkparts[0]=='placein' || 
 	} else {
 		$stm = $DBH->prepare("SELECT timelimitmult,latepass,latepassmult FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-		if ($stm->rowCount() == 0) {
+		$studentrow = $stm->fetch(PDO::FETCH_NUM);
+		if ($studentrow === false) {
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
 			$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-			if ($stm->rowCount() == 0) {
+			if ($stm->fetch(PDO::FETCH_NUM) === false) {
 				$stm = $DBH->prepare("SELECT id FROM imas_tutors WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-				if ($stm->rowCount() == 0) {
+				if ($stm->fetch(PDO::FETCH_NUM) === false) {
 					$stm = $DBH->prepare("SELECT deflatepass FROM imas_courses WHERE id=:id");
 					$stm->execute(array(':id'=>$cid));
 					$deflatepass = $stm->fetchColumn(0);
@@ -1616,7 +1623,7 @@ if ($linkparts[0]=='cid' || $linkparts[0]=='aid' || $linkparts[0]=='placein' || 
 			$timelimitmult = 1;
 			$latepassmult = 1;
 		} else {
-			list($timelimitmult,$latepasses,$latepassmult) = $stm->fetch(PDO::FETCH_NUM);
+			list($timelimitmult,$latepasses,$latepassmult) = $studentrow;
 		}
 	}
 }
@@ -1962,10 +1969,11 @@ if (isset($_GET['launch'])) {
 				//provided current SID/PW pair
 				$stm = $DBH->prepare("SELECT password,id,mfa FROM imas_users WHERE SID=:SID");
 				$stm->execute(array(':SID'=>$_POST['curSID']));
-				if ($stm->rowCount()==0) {
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row === false) {
 					$infoerr = 'Username (key) is not valid';
 				} else {
-					list($realpw,$queryuserid,$mfadata) = $stm->fetch(PDO::FETCH_NUM);
+					list($realpw,$queryuserid,$mfadata) = $row;
 					if (password_verify($_POST['curPW'],$realpw)) {
                         $userid = $queryuserid;
                         if ($mfadata != '') {
@@ -2405,8 +2413,9 @@ if (isset($_GET['launch'])) {
 	$query .= "ORDER BY iu.rights, lti.id";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':org'=>"$shortorg:%", ':ltiuserid'=>$ltiuserid));
-	if ($stm->rowCount() > 0) {
-		$userid = $stm->fetchColumn(0);
+	$useridcol = $stm->fetchColumn(0);
+	if ($useridcol !== false) {
+		$userid = $useridcol;
 	} else {
 		//student is not known.  Bummer.  Better figure out what to do with them :)
 
@@ -2521,19 +2530,21 @@ if (((count($keyparts)==1 || $_SESSION['lti_keytype']=='gc') && $_SESSION['lti_k
     $query .= "contextid=:contextid AND linkid=:linkid AND typeid>0 AND org LIKE :org";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':linkid'=>$_SESSION['lti_resource_link_id'], ':org'=>"$shortorg:%"));
-	if ($stm->rowCount()==0) {
+	$placementrow2 = $stm->fetch(PDO::FETCH_NUM);
+	if ($placementrow2 === false) {
 		if (isset($_SESSION['place_aid'])) {
 			//look to see if we've already linked this context_id with a course
 			$stm = $DBH->prepare("SELECT courseid FROM imas_lti_courses WHERE contextid=:contextid AND org LIKE :org");
 			$stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':org'=>"$shortorg:%"));
-			if ($stm->rowCount()==0) {
+			$lticourserow2 = $stm->fetchColumn(0);
+			if ($lticourserow2 === false) {
 				if ($_SESSION['lti_keytype']=='cc-g') {
 					//if instructor, see if the source course is ours
 					$copycourse = true;
 					if ($_SESSION['ltirole']=='instructor') {
 						$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=:courseid AND userid=:userid");
 						$stm->execute(array(':courseid'=>$_SESSION['place_aid'][0], ':userid'=>$userid));
-						if ($stm->rowCount()>0) {
+						if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 							$copycourse=false;
 							$destcid = intval($_SESSION['place_aid'][0]);
 						}
@@ -2616,7 +2627,7 @@ if (((count($keyparts)==1 || $_SESSION['lti_keytype']=='gc') && $_SESSION['lti_k
 					);
 				}
 			} else {
-				$destcid = $stm->fetchColumn(0);
+				$destcid = $lticourserow2;
 			}
 			if ($destcid==$_SESSION['place_aid'][0]) {
 				//aid is in destination course - just make placement
@@ -2625,8 +2636,9 @@ if (((count($keyparts)==1 || $_SESSION['lti_keytype']=='gc') && $_SESSION['lti_k
 				//aid is in source course.  Let's see if we already copied it.
 				$stm = $DBH->prepare("SELECT id FROM imas_assessments WHERE ancestors REGEXP :ancregex AND courseid=:destcid");
 				$stm->execute(array(':ancregex'=>'^([0-9]+:)?'.intval($_SESSION['place_aid'][1]).MYSQL_RIGHT_WRDBND, ':destcid'=>$destcid));
-				if ($stm->rowCount()>0) {
-					$aid = $stm->fetchColumn(0);
+				$aidcol3 = $stm->fetchColumn(0);
+				if ($aidcol3 !== false) {
+					$aid = $aidcol3;
 				} else {
 					//aid is in source course.  Let's look and see if there's an assessment in destination with the same title.
 					//THIS SHOULD BE REMOVED - only included to accomodate people doing things the wrong way.
@@ -2635,8 +2647,9 @@ if (((count($keyparts)==1 || $_SESSION['lti_keytype']=='gc') && $_SESSION['lti_k
 					$sourceassessname = $stm->fetchColumn(0);
 					$stm = $DBH->prepare("SELECT id FROM imas_assessments WHERE name=:name AND courseid=:courseid");
 					$stm->execute(array(':name'=>$sourceassessname, ':courseid'=>$destcid));
-					if ($stm->rowCount()>0) {
-						$aid = $stm->fetchColumn(0);
+					$aidcol4 = $stm->fetchColumn(0);
+					if ($aidcol4 !== false) {
+						$aid = $aidcol4;
 					} else {
 						// no assessment with same title - need to copy assessment from destination to source course
 						require_once "includes/copyiteminc.php";
@@ -2648,11 +2661,12 @@ if (((count($keyparts)==1 || $_SESSION['lti_keytype']=='gc') && $_SESSION['lti_k
 
 						$stm = $DBH->prepare("SELECT id FROM imas_items WHERE itemtype='Assessment' AND typeid=:typeid");
 						$stm->execute(array(':typeid'=>$_SESSION['place_aid'][1]));
-						if ($stm->rowCount()==0) {
+						$newitemsrc = $stm->fetchColumn(0);
+						if ($newitemsrc === false) {
 							reporterror(sprintf(_("Error.  Assessment ID %s not found."),"'{$_SESSION['place_aid'][1]}'"));
 						}
 
-						$newitem = copyitem($stm->fetchColumn(0),array());
+						$newitem = copyitem($newitemsrc,array());
 						$stm = $DBH->prepare("SELECT typeid FROM imas_items WHERE id=:id");
 						$stm->execute(array(':id'=>$newitem));
 						$aid = $stm->fetchColumn(0);
@@ -2674,7 +2688,7 @@ if (((count($keyparts)==1 || $_SESSION['lti_keytype']=='gc') && $_SESSION['lti_k
 			reporterror(_("This placement is not yet set up"));
 		}
 	} else {
-        $row = $stm->fetch(PDO::FETCH_NUM);
+        $row = $placementrow2;
 		if ($row[0]=='course') {
 			$keyparts = array('cid',$row[1]);
 		} else if ($row[0]=='assess') {
@@ -2800,7 +2814,8 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='placein' || $keyparts[0]=='LTIkey') {
 } else if ($keyparts[0]=='folder') {
 	$stm2 = $DBH->prepare("SELECT itemorder FROM imas_courses WHERE id=:id");
 	$stm2->execute(array(':id'=>$keyparts[1]));
-	if ($stm2->rowCount()==0) {
+	$row = $stm2->fetch(PDO::FETCH_NUM);
+	if ($row === false) {
 		reporterror(_("invalid course identifier in folder view launch"));
 	} else {
 		$cid = intval($keyparts[1]);
@@ -2810,11 +2825,10 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='placein' || $keyparts[0]=='LTIkey') {
 			$query .= "imas_tutors.courseid=:courseid AND imas_users.SID=:SID";
 			$stm3 = $DBH->prepare($query);
 			$stm3->execute(array(':courseid'=>$cid, ':SID'=>$usid[0]));
-			if ($stm3->rowCount()==0) {
+			if ($stm3->fetch(PDO::FETCH_NUM) === false) {
 				reporterror(_("not authorized to view folders in this course"));
 			}
 		}
-		$row = $stm2->fetch(PDO::FETCH_NUM);
 		$items = unserialize($row[0]);
 		function findfolder($items,$n,$loc) {
 			foreach ($items as $k=>$b) {
@@ -2850,10 +2864,10 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $ke
 	if ($_SESSION['ltirole']=='instructor') {
 		$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-		if ($stm->rowCount() == 0) {
+		if ($stm->fetch(PDO::FETCH_NUM) === false) {
 			$stm = $DBH->prepare("SELECT id FROM imas_tutors WHERE userid=:userid AND courseid=:courseid");
 			$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-			if ($stm->rowCount() == 0) {
+			if ($stm->fetch(PDO::FETCH_NUM) === false) {
 				$stm = $DBH->prepare("INSERT INTO imas_tutors (userid,courseid,section) VALUES (:userid, :courseid, :section)");
 				$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':section'=>$_SESSION['lti_context_label']));
 				require_once 'includes/TeacherAuditLog.php';
@@ -2874,13 +2888,14 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $ke
 	} else {
 		$stm = $DBH->prepare("SELECT timelimitmult,latepass,latepassmult FROM imas_students WHERE userid=:userid AND courseid=:courseid");
 		$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-		if ($stm->rowCount() == 0) {
+		$studentrow2 = $stm->fetch(PDO::FETCH_NUM);
+		if ($studentrow2 === false) {
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
 			$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-			if ($stm->rowCount() == 0) {
+			if ($stm->fetch(PDO::FETCH_NUM) === false) {
 				$stm = $DBH->prepare("SELECT id FROM imas_tutors WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid));
-				if ($stm->rowCount() == 0) {
+				if ($stm->fetch(PDO::FETCH_NUM) === false) {
 					$stm = $DBH->prepare("SELECT deflatepass FROM imas_courses WHERE id=:id");
 					$stm->execute(array(':id'=>$cid));
 					$deflatepass = $stm->fetchColumn(0);
@@ -2896,7 +2911,7 @@ if ($keyparts[0]=='cid' || $keyparts[0]=='aid' || $keyparts[0]=='placein' || $ke
 			$timelimitmult = 1;
 			$latepassmult = 1;
 		} else {
-            list($timelimitmult,$latepasses,$latepassmult) = $stm->fetch(PDO::FETCH_NUM);
+            list($timelimitmult,$latepasses,$latepassmult) = $studentrow2;
 		}
 	}
 }

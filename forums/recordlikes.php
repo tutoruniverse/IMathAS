@@ -35,7 +35,7 @@ if ($like==0) {
 } else {
 	$stm = $DBH->prepare("SELECT id FROM imas_forum_likes WHERE postid=:postid AND userid=:userid");
 	$stm->execute(array(':postid'=>$postid, ':userid'=>$userid));
-	if ($stm->rowCount()>0) {
+	if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 		$aff = 0;
 	} else {
 		$query = "INSERT INTO imas_forum_likes (userid,threadid,postid,type) VALUES ";

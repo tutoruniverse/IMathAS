@@ -29,11 +29,11 @@ $now = time();
 
 $stm = $DBH->prepare("SELECT * FROM imas_drillassess WHERE id=:id AND courseid=:courseid");
 $stm->execute(array(':id'=>$daid, ':courseid'=>$cid));
-if ($stm->rowCount()==0) {
+$dadata = $stm->fetch(PDO::FETCH_ASSOC);
+if ($dadata === false) {
 	echo _("Invalid drill assessment id");
 	exit;
 }
-$dadata = $stm->fetch(PDO::FETCH_ASSOC);
 $n = $dadata['n'];
 $sa = $dadata['showtype'];
 $showscore = ($sa==0 || $sa==1 || $sa==4);
@@ -67,7 +67,8 @@ $lastanswers = array();
 $rawscores = array();
 $stm = $DBH->prepare("SELECT * FROM imas_drillassess_sessions WHERE drillassessid=:drillassessid AND userid=:userid");
 $stm->execute(array(':drillassessid'=>$daid, ':userid'=>$userid));
-if ($stm->rowCount()==0) {
+$sessdata = $stm->fetch(PDO::FETCH_ASSOC);
+if ($sessdata === false) {
 	//new
 	$curitem = -1;
 	$seed = rand(1,9999);
@@ -77,7 +78,6 @@ if ($stm->rowCount()==0) {
 	$stm->execute(array(':drillassessid'=>$daid, ':userid'=>$userid, ':scorerec'=>$scorerecarr));
 	$starttime = 0;
 } else {
-	$sessdata = $stm->fetch(PDO::FETCH_ASSOC);
 	$curitem = $sessdata['curitem'];
 	if ($curitem > -1) {
 		$curitemid = $itemids[$curitem];

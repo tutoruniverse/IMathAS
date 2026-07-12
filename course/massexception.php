@@ -146,8 +146,8 @@ require_once __DIR__."/../includes/checkdata.php";
 					$allqsameseed = (($shuffle&2)==2);
 					$stm = $DBH->prepare("SELECT id,questions,lastanswers,scores FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid");
 					$stm->execute(array(':userid'=>$stu, ':assessmentid'=>$aid));
-					if ($stm->rowCount()>0) {
-						$row = $stm->fetch(PDO::FETCH_NUM);
+					$row = $stm->fetch(PDO::FETCH_NUM);
+					if ($row !== false) {
 						if (strpos($row[1],';')===false) {
 							$questions = explode(",",$row[1]);
 						} else {
@@ -234,13 +234,14 @@ require_once __DIR__."/../includes/checkdata.php";
 			foreach($addfexcarr as $fid) {
 				$stm = $DBH->prepare("SELECT id FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid and (itemtype='F' OR itemtype='P' OR itemtype='R')");
 				$stm->execute(array(':userid'=>$stu, ':assessmentid'=>$fid));
-				if ($stm->rowCount()==0) {
+				$row = $stm->fetch(PDO::FETCH_NUM);
+				if ($row === false) {
 					$query = "INSERT INTO imas_exceptions (userid,assessmentid,startdate,enddate,itemtype) VALUES ";
 					$query .= "(:userid, :assessmentid, :startdate, :enddate, :itemtype)";
 					$stm = $DBH->prepare($query);
 					$stm->execute(array(':userid'=>$stu, ':assessmentid'=>$fid, ':startdate'=>$postbydate, ':enddate'=>$replybydate, ':itemtype'=>$forumitemtype));
 				} else {
-					$eid = $stm->fetchColumn(0);
+					$eid = $row[0];
 					$stm = $DBH->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,islatepass=0,itemtype=:itemtype WHERE id=:id");
 					$stm->execute(array(':startdate'=>$postbydate, ':enddate'=>$replybydate, ':itemtype'=>$forumitemtype, ':id'=>$eid));
 				}
@@ -407,10 +408,11 @@ require_once __DIR__."/../includes/checkdata.php";
 	}
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':courseid'=>$cid, ':courseid2'=>$cid));
+	$existingexceptions = $stm->fetchAll(PDO::FETCH_ASSOC);
 
 	echo '<h2>'._("Existing Exceptions").'</h2>';
 	echo '<fieldset><legend>'._("Existing Exceptions").'</legend>';
-	if ($stm->rowCount()>0) {
+	if (count($existingexceptions)>0) {
 		//echo "<h3>Existing Exceptions</h3>";
 		echo "Select exceptions to clear. ";
 		echo 'Check: <a href="#" onclick="return chkAllNone(\'qform\',\'clears[]\',true)">All</a> <a href="#" onclick="return chkAllNone(\'qform\',\'clears[]\',false)">None</a>. ';
@@ -418,7 +420,7 @@ require_once __DIR__."/../includes/checkdata.php";
 		echo '<ul>';
 		if ($isall) {
 			$lasta = 0;
-			while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+			foreach ($existingexceptions as $row) {
                 if ($istutor && $row['tutoredit'] != 3) { continue; }
 				$sdate = tzdate("m/d/y g:i a", $row['startdate']);
 				$edate = tzdate("m/d/y g:i a", $row['enddate']);
@@ -485,7 +487,7 @@ require_once __DIR__."/../includes/checkdata.php";
 			$lasts = 0;
 			$assessarr = array();
 			$notesarr = array();
-			while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+			foreach ($existingexceptions as $row) {
                 if ($istutor && $row['tutoredit'] != 3) { continue; }
 				$sdate = tzdate("m/d/y g:i a", $row['startdate']);
 				$edate = tzdate("m/d/y g:i a", $row['enddate']);

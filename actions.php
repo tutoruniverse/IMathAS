@@ -137,7 +137,7 @@ require_once "includes/sanitize.php";
 			//look for existing account. ignore any LTI accounts
 			$stm = $DBH->prepare("SELECT SID FROM imas_users WHERE email=:email AND SID NOT LIKE 'lti-%'");
 			$stm->execute(array(':email'=>$_POST['email']));
-			if ($stm->rowCount()>0) {
+			if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 				$nologo = true;
                 $_SESSION['newuserstart'] = time() - 10;
 				require_once "header.php";

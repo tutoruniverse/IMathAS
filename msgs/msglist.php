@@ -85,9 +85,10 @@ if (isset($_GET['getstulist'])) {
 	} else {
 		$stm = $DBH->prepare("SELECT section FROM imas_students WHERE userid=? AND courseid=? UNION ALL SELECT section FROM imas_tutors WHERE userid=? AND courseid=?");
 		$stm->execute(array($userid, $cid, $userid, $cid));
-		if ($stm->rowCount() > 0) {
+		$sectioncol = $stm->fetchColumn(0);
+		if ($sectioncol !== false) {
 			$isauth = true;
-			$studentinfo = ['section' => $stm->fetchColumn(0)];
+			$studentinfo = ['section' => $sectioncol];
 		}
 	}
 	if (!$isauth) {
@@ -527,7 +528,7 @@ if (isset($_GET['add'])) {
 			} else if ($courseid != $cid) {
 				$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:userid AND courseid=:courseid");
 				$stm->execute(array(':userid' => $userid, ':courseid' => $courseid));
-				if ($stm->rowCount() != 0) {
+				if ($stm->fetch(PDO::FETCH_NUM) !== false) {
 					$ismsgsrcteacher = true;
 				}
 			}
@@ -558,8 +559,9 @@ if (isset($_GET['add'])) {
 					$query .= "imas_teachers.courseid=:courseid ORDER BY imas_users.LastName";
 					$stm = $DBH->prepare($query);
 					$stm->execute(array(':courseid' => $courseid));
-					$cnt = $stm->rowCount();
-					while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+					$teacherrows = $stm->fetchAll(PDO::FETCH_NUM);
+					$cnt = count($teacherrows);
+					foreach ($teacherrows as $row) {
 						echo "<option value=\"" . Sanitize::onlyInt($row[0]) . "\"";
 						if ($cnt == 1 && $msgset == 1 && !$isteacher) {
 							echo ' selected="selected"';
@@ -957,11 +959,12 @@ $address = $GLOBALS['basesiteurl'] . "/msgs/msglist.php?cid=$cid&filtercid=";
 
 					$stm = $DBH->prepare($query);
 					$stm->execute($qarr);
-					if ($stm->rowCount() == 0) {
+					$line = $stm->fetch(PDO::FETCH_ASSOC);
+					if ($line === false) {
 						echo "<tr><td></td><td>No messages</td><td></td></tr>";
 					}
 					$cnt = 0;
-					while ($line = $stm->fetch(PDO::FETCH_ASSOC)) {
+					while ($line !== false) {
 						if (trim($line['title']) == '') {
 							$line['title'] = '[No Subject]';
 						}
@@ -1034,6 +1037,7 @@ $address = $GLOBALS['basesiteurl'] . "/msgs/msglist.php?cid=$cid&filtercid=";
 						echo "<td>$senddate</td></tr>";
 
 						$cnt++;
+						$line = $stm->fetch(PDO::FETCH_ASSOC);
 					}
 					?>
 				</tbody>

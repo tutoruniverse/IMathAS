@@ -14,11 +14,12 @@
 	$lid = intval($_GET['lid']);
 	$stm = $DBH->prepare("SELECT title,text,points FROM imas_linkedtext WHERE id=:id AND courseid=:courseid");
 	$stm->execute(array(':id'=>$lid, ':courseid'=>$cid));
-	if ($stm->rowCount()==0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row === false) {
 		echo "invalid item";
 		exit;
 	}
-	list($name,$text,$points) = $stm->fetch(PDO::FETCH_NUM);
+	list($name,$text,$points) = $row;
 	$toolparts = explode('~~',substr($text,8));
 	if (isset($toolparts[3])) {
 		$gbcat = $toolparts[3];

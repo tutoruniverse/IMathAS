@@ -109,13 +109,13 @@
 		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
 		$hasexception = false;
-		if ($stm->rowCount()==0) {
+		$r = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($r === false) {
 			$usedlatepasses = 0;
 			$thised = $enddate;
 			$useexception = false;
 			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid, 'exceptionpenalty'=>$exceptionpenalty, 'exceptionpenaltyinterval'=>$exceptionpenaltyinterval));
 		} else {
-			$r = $stm->fetch(PDO::FETCH_ASSOC);
 			if ($r['exceptionpenalty'] !== null) {
 				$overridepenalty = $r['exceptionpenalty'];
 				$overrideinterval = $r['exceptionpenaltyinterval'];
@@ -208,12 +208,12 @@
 		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti,exceptionpenalty,exceptionpenaltyinterval,exceptionpenaltyscope,manualexceptionend FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$aid));
 		$hasexception = false;
-		if ($stm->rowCount()==0) {
+		$r = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($r === false) {
 			$usedlatepasses = 0;
 			$thised = $enddate;
 			$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass(array('startdate'=>$startdate, 'enddate'=>$enddate, 'allowlate'=>$allowlate, 'LPcutoff'=>$LPcutoff, 'id'=>$aid, 'exceptionpenalty'=>$exceptionpenalty, 'exceptionpenaltyinterval'=>$exceptionpenaltyinterval));
 		} else {
-			$r = $stm->fetch(PDO::FETCH_ASSOC);
 			if ($r['exceptionpenalty'] !== null) {
 				$overridepenalty = $r['exceptionpenalty'];
 				$overrideinterval = $r['exceptionpenaltyinterval'];

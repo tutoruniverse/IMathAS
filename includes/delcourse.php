@@ -102,9 +102,9 @@ function deleteCourse($cid) {
 		$stm->execute(array(':itemid'=>$ilid[0]));
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 			if (substr($row[0],0,4)!='http' && strpos($row[0], $cid.'/') === 0) {
-				$stm2 = $DBH->prepare("SELECT id FROM imas_instr_files WHERE filename=:filename");
+				$stm2 = $DBH->prepare("SELECT COUNT(*) FROM imas_instr_files WHERE filename=:filename");
 				$stm2->execute(array(':filename'=>$row[0]));
-				if ($stm2->rowCount()==1) {
+				if ($stm2->fetchColumn(0)==1) {
 					//unlink($uploaddir . $row[0]);
 					deletecoursefile($row[0]);
 				}
@@ -131,9 +131,9 @@ function deleteCourse($cid) {
 				$stm->execute(array($fileid));
 			}
 		} else if (strpos($row[0], 'file:'.$cid.'/') === 0 && empty($CFG['GEN']['skip_old_linked_delete'])) { // if file is from this course
-			$stm2 = $DBH->prepare("SELECT id FROM imas_linkedtext WHERE text=:text");
+			$stm2 = $DBH->prepare("SELECT COUNT(*) FROM imas_linkedtext WHERE text=:text");
 			$stm2->execute(array(':text'=>$row[0]));
-			if ($stm2->rowCount()==1) {
+			if ($stm2->fetchColumn(0)==1) {
 				//$uploaddir = rtrim(dirname(__FILE__), '/\\') .'/../course/files/';
 				$filename = substr($row[0],5);
 				//unlink($uploaddir . $filename);

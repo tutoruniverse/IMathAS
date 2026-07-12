@@ -453,13 +453,14 @@ if (!(isset($teacherid))) {
 		getsubinfo($items,'0','','Assessment','&nbsp;&nbsp;');
 		$stm = $DBH->prepare("SELECT id,name,gbcategory FROM imas_assessments WHERE courseid=:courseid ORDER BY name");
 		$stm->execute(array(':courseid'=>$cid));
-		if ($stm->rowCount()==0) {
+		$assessrows = $stm->fetchAll(PDO::FETCH_NUM);
+		if (count($assessrows)==0) {
 			$page_assessListMsg = "<li>No Assessments to change</li>\n";
 		} else {
 			$page_assessListMsg = "";
 			$i=0;
 			$page_assessSelect = array();
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			foreach ($assessrows as $row) {
 				$page_assessSelect['val'][$i] = $row[0];
 				$page_assessSelect['label'][$i] = $row[1];
 				$agbcats[$row[0]] = $row[2];
@@ -472,12 +473,10 @@ if (!(isset($teacherid))) {
 		$page_gbcatSelect = array('val'=>[], 'label'=>[]);
 		$page_gbcatSelect['val'][0] = 0;
 		$page_gbcatSelect['label'][0] ='Default';
-		if ($stm->rowCount()>0) {
-			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-				$page_gbcatSelect['val'][$i] = $row[0];
-				$page_gbcatSelect['label'][$i] = $row[1];
-				$i++;
-			}
+		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+			$page_gbcatSelect['val'][$i] = $row[0];
+			$page_gbcatSelect['label'][$i] = $row[1];
+			$i++;
 		}
 
 		$page_forumSelect = array();

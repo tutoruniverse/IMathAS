@@ -58,8 +58,9 @@ function copyitem($itemid, $gbcats = false, $sethidden = false)
     $now = time();
     $stm = $DBH->prepare("SELECT itemtype,typeid,courseid FROM imas_items WHERE id=:id");
     $stm->execute(array(':id' => $itemid));
-    if ($stm->rowCount() == 0) {return false;}
-    list($itemtype, $typeid, $sourcecid) = $stm->fetch(PDO::FETCH_NUM);
+    $row = $stm->fetch(PDO::FETCH_NUM);
+    if ($row === false) {return false;}
+    list($itemtype, $typeid, $sourcecid) = $row;
     if ($itemtype == "InlineText") {
         //$query = "INSERT INTO imas_inlinetext (courseid,title,text,startdate,enddate) ";
         //$query .= "SELECT '$cid',title,text,startdate,enddate FROM imas_inlinetext WHERE id='$typeid'";
@@ -803,11 +804,12 @@ function getiteminfo($itemid)
     global $DBH;
     $stm = $DBH->prepare("SELECT itemtype,typeid FROM imas_items WHERE id=:id");
     $stm->execute(array(':id' => $itemid));
-    if ($stm->rowCount() == 0) {
+    $row = $stm->fetch(PDO::FETCH_NUM);
+    if ($row === false) {
         echo "Uh oh, item #" . Sanitize::onlyInt($itemid) . " doesn't appear to exist";
         return array(false, false, false, false);
     }
-    list($itemtype, $typeid) = $stm->fetch(PDO::FETCH_NUM);
+    list($itemtype, $typeid) = $row;
     if ($itemtype === 'Calendar') {
         return array($itemtype, 'Calendar', '');
     }
@@ -967,8 +969,9 @@ function copyrubrics($offlinerubrics = array())
         //$rubrow = addslashes_deep($stm->fetch(PDO::FETCH_NUM));
         //$srcrub = $stm2->fetch(PDO::FETCH_ASSOC);
         $rub_search_stm->execute(array(':rubric' => $srcrub['rubric'], ':ownerid' => $userid, ':groupid' => $groupid));
-        if ($rub_search_stm->rowCount() > 0) {
-            $newid = $rub_search_stm->fetchColumn(0);
+        $rub_search_row = $rub_search_stm->fetch(PDO::FETCH_NUM);
+        if ($rub_search_row !== false) {
+            $newid = $rub_search_row[0];
             //echo "found existing of mine, $newid<br/>";
         } else {
             $rub_ins_stm->execute(array(':ownerid' => $userid, ':name' => $srcrub['name'], ':rubrictype' => $srcrub['rubrictype'], ':rubric' => $srcrub['rubric']));
@@ -1017,7 +1020,7 @@ function handleextoolcopy($sourcecid)
     $toolmap = array();
     $stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE courseid=:courseid AND userid=:userid");
     $stm->execute(array(':courseid' => $sourcecid, ':userid' => $userid));
-    if ($stm->rowCount() > 0) {
+    if ($stm->fetch(PDO::FETCH_NUM) !== false) {
         $oktocopycoursetools = true;
     }
     $toolidlist = implode(',', array_map('intval', $exttooltrack));
@@ -1035,8 +1038,9 @@ function handleextoolcopy($sourcecid)
         if (!isset($toolmap[$row['id']])) {
             //try url matching of existing tools in the destination course
             $ext_search_stm->execute(array(':courseid' => $cid, ':url' => $row['url']));
-            if ($ext_search_stm->rowCount() > 0) {
-                $toolmap[$row['id']] = $ext_search_stm->fetchColumn(0);
+            $ext_search_row = $ext_search_stm->fetch(PDO::FETCH_NUM);
+            if ($ext_search_row !== false) {
+                $toolmap[$row['id']] = $ext_search_row[0];
             }
         }
         if (isset($toolmap[$row['id']])) {

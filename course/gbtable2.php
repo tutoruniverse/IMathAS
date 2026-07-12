@@ -38,9 +38,10 @@ $isdiag = false;
 if ($canviewall) {
 	$stm = $DBH->prepare("SELECT sel1name,sel2name FROM imas_diags WHERE cid=:cid");
 	$stm->execute(array(':cid'=>$cid));
-	if ($stm->rowCount()>0) {
+	$row = $stm->fetch(PDO::FETCH_NUM);
+	if ($row !== false) {
 		$isdiag = true;
-		list($sel1name, $sel2name) = $stm->fetch(PDO::FETCH_NUM);
+		list($sel1name, $sel2name) = $row;
 		if ($sel1name[0]=='!') {
 			$sel1name = substr($sel1name,1);
 		}

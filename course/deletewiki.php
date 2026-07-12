@@ -29,9 +29,8 @@ if (!(isset($_GET['cid'])) || !(isset($_GET['block']))) { //if the cid is missin
 		$DBH->beginTransaction();
 		$stm = $DBH->prepare("SELECT id FROM imas_items WHERE typeid=:typeid AND itemtype='Wiki' AND courseid=:courseid");
 		$stm->execute(array(':typeid'=>$wikiid, ':courseid'=>$cid));
-		if ($stm->rowCount()>0) {
-			$itemid = $stm->fetchColumn(0);
-
+		$itemid = $stm->fetchColumn(0);
+		if ($itemid !== false) {
 			delitembyid($itemid);
 
 			removeItemFromItemorder($cid, $itemid, $block);

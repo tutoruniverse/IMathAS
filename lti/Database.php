@@ -124,7 +124,9 @@ class Imathas_LTI_Database implements LTI\Database
             } else {
                 $stm = $this->dbh->prepare('SELECT * FROM imas_lti_platforms WHERE issuer=?');
                 $stm->execute(array($iss));
-                if ($stm->rowCount() > 1) {
+                $countstm = $this->dbh->prepare('SELECT COUNT(*) FROM imas_lti_platforms WHERE issuer=?');
+                $countstm->execute(array($iss));
+                if ($countstm->fetchColumn(0) > 1) {
                     throw new OIDC_Exception("Multiple registrations found for this issuer. Platform must provide client_id on launch.", 1);
                 }
             }
@@ -1150,8 +1152,9 @@ class Imathas_LTI_Database implements LTI\Database
             for ($i = $ciddepth; $i >= 0; $i--) { //starts one course back from aidsourcecid because of the unshift
                 $stm = $this->dbh->prepare("SELECT id FROM imas_assessments WHERE ancestors REGEXP :ancestors AND courseid=:cid");
                 $stm->execute(array(':ancestors' => '^([0-9]+:)?' . $aidtolookfor . MYSQL_RIGHT_WRDBND, ':cid' => $ancestors[$i]));
-                if ($stm->rowCount() > 0) {
-                    $aidtolookfor = $stm->fetchColumn(0);
+                $foundaid = $stm->fetchColumn(0);
+                if ($foundaid !== false) {
+                    $aidtolookfor = $foundaid;
                 } else {
                     $foundsubaid = false;
                     break;

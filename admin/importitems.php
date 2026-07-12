@@ -122,10 +122,11 @@ function additem($itemtoadd,$item,$questions,$qset) {
 			//add question or get system id.
 			$stm = $DBH->prepare("SELECT id,adddate,lastmoddate,deleted FROM imas_questionset WHERE uniqueid=:uniqueid");
 			$stm->execute(array(':uniqueid'=>$questions[$qid]['uqid']));
-			$questionexists = ($stm->rowCount()>0);
+			$row = $stm->fetch(PDO::FETCH_NUM);
+			$questionexists = ($row !== false);
 			//echo "Question ID ".$questions[$qid]['uqid'].($questionexists?" exists":" not found");
 			if ($questionexists) {
-				list($thisqsetid, $qadddate, $qlastmoddate, $qdeleted) = $stm->fetch(PDO::FETCH_NUM);
+				list($thisqsetid, $qadddate, $qlastmoddate, $qdeleted) = $row;
 			}
 			if ($questionexists && ($qdeleted==1 || $_POST['merge']==1 || $_POST['merge']==2)) {
 				$questions[$qid]['qsetid'] = $thisqsetid;

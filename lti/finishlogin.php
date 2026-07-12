@@ -50,10 +50,11 @@ if ($localuserid === false) {
     // check login
     $stm = $DBH->prepare('SELECT password,id,groupid,mfa FROM imas_users WHERE SID=:sid');
     $stm->execute(array(':sid'=>$_POST['curSID']));
-    if ($stm->rowCount()==0) {
+    $row = $stm->fetch(PDO::FETCH_NUM);
+    if ($row === false) {
       $err = _('Existing username or password is not valid');
     } else {
-      list($realpw,$tmpuserid,$tmpgroupid,$mfadata) = $stm->fetch(PDO::FETCH_NUM);
+      list($realpw,$tmpuserid,$tmpgroupid,$mfadata) = $row;
       if (password_verify($_POST['curPW'],$realpw)) {
         // valid login
         if ($mfadata !== '') {

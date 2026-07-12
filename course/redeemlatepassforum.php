@@ -41,10 +41,10 @@
 		echo "Un-use LatePass</div>";
 		$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,waivereqscore,itemtype FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND (itemtype='F' OR itemtype='R' OR itemtype='P')");
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$fid));
-		if ($stm->rowCount()==0) {
+		$row = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($row === false) {
 			echo '<p>Invalid</p>';
 		} else {
-			$row = $stm->fetch(PDO::FETCH_ASSOC);
 			if ($row['islatepass']==0) {
 				echo '<p>Invalid</p>';
 			} else {
@@ -129,8 +129,8 @@
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$fid));
 		$hasexception = false;
 		$usedlatepassespost = 0; $usedlatepassesreply = 0;
-
-		if ($stm->rowCount()==0) { //no existing exception
+		$row = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($row === false) { //no existing exception
 			$usedlatepasses = 0;
 			$thispostby = $postby;
 			$thisreplyby = $replyby;
@@ -144,7 +144,7 @@
 			list($canundolatepassP, $canundolatepassR, $canundolatepass, $canuselatepassP, $canuselatepassR, $thispostby, $thisreplyby, $ed) = $exceptionfuncs->getCanUseLatePassForums(null, $fdata);
 			$hasexception = false;
 		} else {
-			$r = $stm->fetch(PDO::FETCH_ASSOC);
+			$r = $row;
 			list($canundolatepassP, $canundolatepassR, $canundolatepass, $canuselatepassP, $canuselatepassR, $thispostby, $thisreplyby, $ed) = $exceptionfuncs->getCanUseLatePassForums($r, $fdata);
 			$itemtype = $r['itemtype'];
 			$hasexception = true;
@@ -215,7 +215,8 @@
 		$stm->execute(array(':userid'=>$userid, ':assessmentid'=>$fid));
 		$hasexception = false;
 		$usedlatepassespost = 0; $usedlatepassesreply = 0;
-		if ($stm->rowCount()==0) {
+		$r = $stm->fetch(PDO::FETCH_ASSOC);
+		if ($r === false) {
 			if ($allowlateon==0) {
 				$itemtype = 'F';
 			} else if ($allowlateon==2) {
@@ -227,7 +228,6 @@
 
 		} else {
 			$hasexception = true;
-			$r = $stm->fetch(PDO::FETCH_ASSOC);
 			$usedlatepassespost = min(max(0,round(($r['startdate'] - $postby)/($latepasshrs*3600) + .05)), $r['islatepass']);
 			$usedlatepassesreply = min(max(0,round(($r['enddate'] - $replyby)/($latepasshrs*3600) + .05)), $r['islatepass']);
 			list($canundolatepassP, $canundolatepassR, $canundolatepass, $canuselatepasspost, $canuselatepassreply, $thispostby, $thisreplyby, $ed) = $exceptionfuncs->getCanUseLatePassForums($r, $fdata);

@@ -23,6 +23,14 @@
     background-color: #f0f0f0;
 }
 
+.tree-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    flex: 0 0 auto;
+}
+
 .tree-item-content:focus {
     outline: 2px solid #0066cc;
     outline-offset: -2px;

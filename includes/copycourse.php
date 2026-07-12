@@ -206,6 +206,7 @@ function copyassess($aid, $destcid) {
   list($items,$datesbylti,$convertAssessVer) = $stm->fetch(PDO::FETCH_NUM);
   $items = unserialize($items);
   $newitem = copyitem($sourceitemid,array());
+  applyCourseLinkRemap($sourcecid);
   $stm = $DBH->prepare("SELECT typeid FROM imas_items WHERE id=:id");
   $stm->execute(array(':id'=>$newitem));
   $aid = $stm->fetchColumn(0);

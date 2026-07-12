@@ -38,7 +38,7 @@ while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 
 
 function copysubone(&$items,$parent,$copyinside,&$addtoarr) {
-	global $blockcnt,$tocopy, $gbcats, $outcomes;
+	global $blockcnt,$tocopy, $gbcats, $outcomes, $blockidmap;
 	foreach ($items as $k=>$item) {
 		if (is_array($item)) {
 			if (($parent.'-'.($k+1)==$tocopy) || $copyinside) { //copy block
@@ -46,6 +46,7 @@ function copysubone(&$items,$parent,$copyinside,&$addtoarr) {
 				$newblock['name'] = $item['name'].$_POST['append'];
 				$newblock['id'] = $blockcnt;
 				$blockcnt++;
+				$blockidmap[$item['id']] = $newblock['id'];
 				$newblock['startdate'] = $item['startdate'];
 				$newblock['enddate'] = $item['enddate'];
 				$newblock['avail'] = $item['avail'];
@@ -90,6 +91,7 @@ $DBH->beginTransaction();
 
 $notimportant = array();
 copysubone($items,'0',false,$notimportant);
+applyCourseLinkRemap($sourcecid);
 copyrubrics();
 $itemorder = serialize($items);
 $stm = $DBH->prepare("UPDATE imas_courses SET itemorder=:itemorder,blockcnt=:blockcnt WHERE id=:id");

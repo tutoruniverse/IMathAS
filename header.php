@@ -71,10 +71,11 @@ div.breadcrumb { display:none;}
 var imasroot = '<?php echo $imasroot; ?>'; var cid = <?php echo (isset($cid) && is_numeric($cid))?$cid:0; ?>;
 var staticroot = '<?php echo $staticroot; ?>';
 var uselocaljs = <?php echo !empty($CFG['GEN']['uselocaljs']) ? 'true' : 'false'; ?>;
+var usertype = <?php if (isset($teacherid)) { echo 2; } else if (isset($tutorid)) { echo 1; } else { echo 0; }?>;
 <?php if (!empty($CFG['nocommathousandsseparator'])) { echo 'var commasep = false;'; } ?>
 <?php if (isset($CFG['S3']['altendpoint'])) { echo 'var altfilesendpoint = "'.Sanitize::encodeStringForDisplay($CFG['S3']['altendpoint']).'";';} ?>
 </script>
-<script src="<?php echo $staticroot;?>/javascript/general.js?v=070326c"></script>
+<script src="<?php echo $staticroot;?>/javascript/general.js?v=071126b"></script>
 <?php
 // override allowedImgDomains if set in config
 if (isset($CFG['GEN']['allowedImgDomains'])) {

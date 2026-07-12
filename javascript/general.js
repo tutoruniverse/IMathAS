@@ -569,8 +569,8 @@ function initeditor(edmode,edids,css,inline,setupfunction,extendsetup){
 		selector: selectorstr,
 		inline: inlinemode,
 		license_key: 'gpl',
-		cache_suffix: '?v=070326c',
-		plugins: "lists advlist autolink image charmap anchor searchreplace code link media table rollups asciimath asciisvg attach snippet emoticons accordion ableplayer drawing mathquill",
+		cache_suffix: '?v=071126b',
+		plugins: "lists advlist autolink image charmap anchor searchreplace code link media table rollups asciimath asciisvg attach snippet emoticons accordion ableplayer drawing mathquill" + (usertype>0?" courselink":""),
 		menubar: false,
 		toolbar1: "myEdit myInsert styles | bold italic underline subscript superscript | forecolor backcolor | snippet code",
 		toolbar2: " alignleft aligncenter alignright | bullist numlist outdent indent  | attach link unlink image | table | asciimath mathquill asciisvg | saveclose",
@@ -1136,7 +1136,7 @@ jQuery(function() {
 	if (m = window.location.href.match(/course\.php.*cid=(\d+).*folder=([\d\-]+)/)) {
 		window.sessionStorage.setItem('btf'+m[1], m[2]);
 	}
-	jQuery('a[href*="course.php"]').each(function(i,el) {
+	jQuery('a[href*="course.php"]:not(.courselink)').each(function(i,el) {
 		if (!el.href.match(/folder=/) && (m=el.href.match(/cid=(\d+)/))) {
 			var btf = window.sessionStorage.getItem('btf'+m[1]) || '';
 			if (btf !== '') {

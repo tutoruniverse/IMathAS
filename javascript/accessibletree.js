@@ -125,6 +125,14 @@ class AccessibleTreeWidget {
             selectionContainer.appendChild(input);
         }
 
+        // Optional icon (caller-provided trusted HTML, e.g. a type badge/img)
+        let iconEl = null;
+        if (item.icon) {
+            iconEl = document.createElement('span');
+            iconEl.className = 'tree-icon';
+            iconEl.innerHTML = item.icon;
+        }
+
         // Label
         const label = document.createElement('span');
         label.className = 'tree-label';
@@ -147,6 +155,9 @@ class AccessibleTreeWidget {
         
         content.appendChild(expander);
         content.appendChild(selectionContainer);
+        if (iconEl) {
+            content.appendChild(iconEl);
+        }
         content.appendChild(label);
         if (item.links || (canHaveChildren && this.options.selectionMode === 'multi')) {
             let linkspan = document.createElement("span");

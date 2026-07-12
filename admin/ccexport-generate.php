@@ -12,6 +12,7 @@ $loadmathfilter = 1;
 $loadgraphfilter = 1;
 require_once "../filter/filter.php";
 require_once "../includes/filehandler.php";
+require_once "../includes/courselinkinc.php";
 
 if (!empty($CFG['GEN']['mathimgurlexport'])) {
 	$mathimgurl = $CFG['GEN']['mathimgurlexport'];
@@ -164,6 +165,7 @@ if ($linktype=='canvas') {
 
 function filtercapture($str,&$res) {
 	global $newdir,$imgcnt,$imasroot,$addmathabs,$mathimgurl,$filedir,$linktype;
+	$str = stripCourseLinks($str);
 	$str = forcefiltermath($str);
 	$str = forcefiltergraph($str);
 	$graphfiles = getgraphfilenames($str);

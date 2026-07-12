@@ -28,6 +28,25 @@
    $items = unserialize($line['itemorder']);
    $msgset = $line['msgset']%5;
 
+   if (isset($_GET['blockid']) && $_GET['blockid']!=='') {
+	   require_once "../includes/courselinkinc.php";
+	   $resolvedpath = findBlockPath($items, intval($_GET['blockid']));
+	   if ($resolvedpath !== false) {
+		   $_GET['folder'] = $resolvedpath;
+	   }
+   } else if (isset($_GET['showinline']) && $_GET['showinline']!=='') {
+	   require_once "../includes/courselinkinc.php";
+	   $stm = $DBH->prepare("SELECT id FROM imas_items WHERE courseid=:courseid AND itemtype='InlineText' AND typeid=:typeid");
+	   $stm->execute(array(':courseid' => $cid, ':typeid' => intval($_GET['showinline'])));
+	   $leafitemid = $stm->fetchColumn();
+	   if ($leafitemid !== false) {
+		   $resolvedpath = findLeafParentPath($items, $leafitemid);
+		   if ($resolvedpath !== false) {
+			   $_GET['folder'] = $resolvedpath;
+		   }
+	   }
+   }
+
     //get exceptions
    $now = time();
    $exceptions = array();

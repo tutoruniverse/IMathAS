@@ -3,6 +3,7 @@
 require_once __DIR__ . "/updateptsposs.php";
 require_once __DIR__ . "/migratesettings.php";
 require_once __DIR__ . "/reqscorefuncs.php";
+require_once __DIR__ . "/courselinkinc.php";
 
 //boost operation time
 
@@ -25,6 +26,7 @@ $assessnewid = array();
 $exttooltrack = array();
 $itemtypemap = array();
 $autoexcusetrack = array();
+$blockidmap = array(); // old block 'id' => new block 'id'
 if (!isset($replacebyarr)) {
     $replacebyarr = array();
 }
@@ -478,7 +480,7 @@ function copyitem($itemid, $gbcats = false, $sethidden = false)
 
 function copysub($items, $parent, &$addtoarr, $gbcats = false, $sethidden = false)
 {
-    global $checked, $blockcnt, $cid, $sourcecid;
+    global $checked, $blockcnt, $cid, $sourcecid, $blockidmap;
     if (intval($cid) == intval($sourcecid)) {
         $samecourse = true;
     } else {
@@ -494,6 +496,7 @@ function copysub($items, $parent, &$addtoarr, $gbcats = false, $sethidden = fals
                 $newblock['name'] = $item['name'] . $_POST['append'];
                 $newblock['id'] = $blockcnt;
                 $blockcnt++;
+                $blockidmap[$item['id']] = $newblock['id'];
                 $newblock['startdate'] = $item['startdate'];
                 $newblock['enddate'] = $item['enddate'];
                 $newblock['avail'] = $sethidden ? 0 : $item['avail'];
@@ -607,6 +610,140 @@ function doaftercopy($sourcecid, &$newitems)
         handleextoolcopy($sourcecid);
         removeGrouplimits($newitems);
     }
+    applyCourseLinkRemap($sourcecid);
+}
+
+// Scans and remaps/strips <a class="courselink"> anchors in the text fields
+// of every item just copied, using $itemtypemap/$blockidmap built up during
+// this copy operation. Must be called after all copyitem() calls for this
+// operation have completed, since it's a fixed point over the tracking maps
+// -- see includes/courselinkinc.php for the remap rules.
+function applyCourseLinkRemap($sourcecid)
+{
+    global $DBH, $cid, $itemtypemap, $blockidmap;
+    if (count($itemtypemap) == 0) {
+        return;
+    }
+    if (intval($cid) === intval($sourcecid)) {
+        // same-course copy -- leave courselinks pointing at their original
+        // targets rather than cross-linking to sibling copies made in this
+        // same operation.  May want to change this...
+        return;
+    }
+    // plain HTML/text columns, scanned and replaced as flat strings.
+    // Assessment.endmsg and .intro are handled separately below -- endmsg is
+    // a serialized PHP array of messages, and intro is sometimes a
+    // JSON-encoded array of per-question intro sections -- neither is a
+    // plain string, so neither can be blind-replaced.
+    $fieldsByType = array(
+        'InlineText' => array('text'),
+        'LinkedText' => array('text', 'summary'),
+        'Forum' => array('description', 'postinstr', 'replyinstr'),
+        'Wiki' => array('description'),
+        'Drill' => array('summary', 'itemdescr'),
+        'Assessment' => array('summary', 'deffeedbacktext'),
+    );
+    $tableByType = array(
+        'InlineText' => 'imas_inlinetext',
+        'LinkedText' => 'imas_linkedtext',
+        'Forum' => 'imas_forums',
+        'Wiki' => 'imas_wikis',
+        'Drill' => 'imas_drillassess',
+        'Assessment' => 'imas_assessments',
+    );
+    foreach ($itemtypemap as $key => $newid) {
+        if (!$newid) {
+            continue;
+        }
+        $itemtype = null;
+        foreach ($fieldsByType as $t => $fields) {
+            if (strncmp($key, $t, strlen($t)) === 0) {
+                $itemtype = $t;
+                break;
+            }
+        }
+        if ($itemtype === null) {
+            continue; // Calendar, or a hook-added type with no scannable text field
+        }
+        $fields = $fieldsByType[$itemtype];
+        $table = $tableByType[$itemtype];
+        $stm = $DBH->prepare("SELECT " . implode(',', $fields) . " FROM $table WHERE id=:id");
+        $stm->execute(array(':id' => $newid));
+        $row = $stm->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            continue;
+        }
+        $updates = array();
+        foreach ($fields as $f) {
+            if (!empty($row[$f]) && strpos($row[$f], 'courselink') !== false) {
+                $new = remapCourseLinks($row[$f], $sourcecid, $cid, $itemtypemap, $blockidmap);
+                if ($new !== $row[$f]) {
+                    $updates[$f] = $new;
+                }
+            }
+        }
+        if ($itemtype === 'Assessment') {
+            $stm3 = $DBH->prepare("SELECT intro FROM imas_assessments WHERE id=:id");
+            $stm3->execute(array(':id' => $newid));
+            $rawintro = $stm3->fetchColumn();
+            if (!empty($rawintro) && strpos($rawintro, 'courselink') !== false) {
+                $newintro = transformAssessmentIntro($rawintro, function ($html) use ($sourcecid, $cid, &$itemtypemap, &$blockidmap) {
+                    return remapCourseLinks($html, $sourcecid, $cid, $itemtypemap, $blockidmap);
+                });
+                if ($newintro !== $rawintro) {
+                    $updates['intro'] = $newintro;
+                }
+            }
+
+            $stm3 = $DBH->prepare("SELECT endmsg FROM imas_assessments WHERE id=:id");
+            $stm3->execute(array(':id' => $newid));
+            $rawendmsg = $stm3->fetchColumn();
+            if (!empty($rawendmsg) && strpos($rawendmsg, 'courselink') !== false) {
+                $endmsg = unserialize($rawendmsg);
+                if (is_array($endmsg)) {
+                    $changed = false;
+                    if (!empty($endmsg['def']) && strpos($endmsg['def'], 'courselink') !== false) {
+                        $new = remapCourseLinks($endmsg['def'], $sourcecid, $cid, $itemtypemap, $blockidmap);
+                        if ($new !== $endmsg['def']) {
+                            $endmsg['def'] = $new;
+                            $changed = true;
+                        }
+                    }
+                    if (!empty($endmsg['commonmsg']) && strpos($endmsg['commonmsg'], 'courselink') !== false) {
+                        $new = remapCourseLinks($endmsg['commonmsg'], $sourcecid, $cid, $itemtypemap, $blockidmap);
+                        if ($new !== $endmsg['commonmsg']) {
+                            $endmsg['commonmsg'] = $new;
+                            $changed = true;
+                        }
+                    }
+                    if (!empty($endmsg['msgs']) && is_array($endmsg['msgs'])) {
+                        foreach ($endmsg['msgs'] as $sc => $msg) {
+                            if (!empty($msg) && strpos($msg, 'courselink') !== false) {
+                                $new = remapCourseLinks($msg, $sourcecid, $cid, $itemtypemap, $blockidmap);
+                                if ($new !== $msg) {
+                                    $endmsg['msgs'][$sc] = $new;
+                                    $changed = true;
+                                }
+                            }
+                        }
+                    }
+                    if ($changed) {
+                        $updates['endmsg'] = serialize($endmsg);
+                    }
+                }
+            }
+        }
+        if (count($updates) > 0) {
+            $setsql = array();
+            $params = array(':id' => $newid);
+            foreach ($updates as $f => $v) {
+                $setsql[] = "$f=:$f";
+                $params[":$f"] = $v;
+            }
+            $stm2 = $DBH->prepare("UPDATE $table SET " . implode(',', $setsql) . " WHERE id=:id");
+            $stm2->execute($params);
+        }
+    }
 }
 
 function removeGrouplimits(&$items)
@@ -621,8 +758,8 @@ function removeGrouplimits(&$items)
 
 function copyallsub($items, $parent, &$addtoarr, $gbcats = false, $sethidden = false)
 {
-    global $blockcnt, $reqscoretrack, $assessnewid;
-    
+    global $blockcnt, $reqscoretrack, $assessnewid, $blockidmap;
+
     if (!empty($_POST['append']) && $_POST['append'][0] != ' ') {
         $_POST['append'] = ' ' . $_POST['append'];
     }
@@ -635,6 +772,7 @@ function copyallsub($items, $parent, &$addtoarr, $gbcats = false, $sethidden = f
             $newblock['name'] = $item['name'] . $_POST['append'];
             $newblock['id'] = $blockcnt;
             $blockcnt++;
+            $blockidmap[$item['id']] = $newblock['id'];
             $newblock['startdate'] = $item['startdate'];
             $newblock['enddate'] = $item['enddate'];
             $newblock['avail'] = $sethidden ? 0 : $item['avail'];

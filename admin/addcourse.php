@@ -12,8 +12,8 @@ if ($myrights < 40) {
 
 
 $placeinhead = '<script src="'.$staticroot.'/javascript/copyitemslist.js?v=081125" type="text/javascript"></script>';
-$placeinhead .= '<script src="'.$staticroot.'/javascript/accessibletree.js?v=070625"></script>';
-$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=070625" type="text/css" />';
+$placeinhead .= '<script src="'.$staticroot.'/javascript/accessibletree.js?v=071126"></script>';
+$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=071126" type="text/css" />';
 require_once "../header.php";
 
 echo '<div class=breadcrumb>'.$breadcrumbbase.' '._('Add New Course').'</div>';

@@ -33,7 +33,7 @@ if (isset($_GET['libtree']) && $_GET['libtree']=="popup") {
         exit;
     }
     $placeinhead = '<script src="'.$staticroot.'/javascript/accessibletree.js?v=041726"></script>';
-    $placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=070625" type="text/css" />';
+    $placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=071126" type="text/css" />';
     $noskipnavlink = true;
     $hideAllHeaderNav = true;
     $flexwidth = true;

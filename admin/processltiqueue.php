@@ -141,6 +141,8 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 						'lasttry' => ($row['failures']>=6)
 					)
 				);
+			} else if ($updater1p3->token_giveup($platformid)) {
+				giveupQueueItem($row['hash']);
 			} else {
 				$updater1p3->update_sendon($row['hash'], $platformid);
 			}
@@ -247,6 +249,8 @@ if (count($round2)>0 &&  $timeused < 40) {
 						'lasttry' => ($row['failures']>=6)
 					)
 				);
+			} else if ($updater1p3->token_giveup($platformid)) {
+				giveupQueueItem($row['hash']);
 			} else {
 				$updater1p3->update_sendon($row['hash'], $platformid);
 			}
@@ -436,4 +440,10 @@ function deleteInvalid($hash) {
 	global $DBH;
 	$delfromqueue = $DBH->prepare("DELETE FROM imas_ltiqueue WHERE hash=?");
     $delfromqueue->execute([$hash]);
+}
+
+function giveupQueueItem($hash) {
+	global $DBH;
+	$stm = $DBH->prepare("UPDATE imas_ltiqueue SET failures=7 WHERE hash=?");
+    $stm->execute([$hash]);
 }

@@ -21,6 +21,11 @@ if (!defined('TOOL_HOST')) {
 }
 
 class LTI_Grade_Update {
+  // number of consecutive token-request failures for a platform (at the
+  // 300*n^2-second, 24hr-capped backoff below) before we give up on any
+  // currently-queued grade updates for that platform (~1 week of retries)
+  const TOKEN_FAILURE_GIVEUP = 18;
+
   private $dbh;
   private $access_tokens = [];
   private $private_key = [];
@@ -65,6 +70,7 @@ class LTI_Grade_Update {
       return false;
     } else {
       $row['failed'] = (substr($row['token'],0,6)==='failed');
+      $row['failcount'] = $row['failed'] ? intval(substr($row['token'],6)) : 0;
       $this->access_tokens[$platform_id] = $row;
       return true;
     }
@@ -84,6 +90,19 @@ class LTI_Grade_Update {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Checks if token requests for a platform have been failing long enough
+   * (~1 week) that we should give up on individual queued grade updates
+   * that are stuck waiting on a token for it.
+   * Call after have_token(), which populates the failure count.
+   *
+   * @param  int  $platform_id imas_lti_platforms.id
+   * @return bool
+   */
+  public function token_giveup(int $platform_id): bool {
+    return ($this->access_tokens[$platform_id]['failcount'] ?? 0) >= self::TOKEN_FAILURE_GIVEUP;
   }
 
   /**
@@ -229,9 +248,9 @@ class LTI_Grade_Update {
   public function get_access_token(int $platform_id, string $client_id='', string $token_server='', string $auth_server='') {
     // see if we already have the token in our private variable cache
     if (isset($this->access_tokens[$platform_id]) &&
-      $this->access_tokens[$platform_id]['expires'] < time()
+      $this->access_tokens[$platform_id]['expires'] >= time()
     ) {
-      return $this->access_tokens[$platform_id]['token'];
+      return $this->access_tokens[$platform_id]['failed'] ? false : $this->access_tokens[$platform_id]['token'];
     }
 
     // see if we already have a token in the the database
@@ -251,8 +270,9 @@ class LTI_Grade_Update {
       $stm->execute(array($platform_id, $scopehash));
     } else {
       $row['failed'] = (substr($row['token'],0,6)==='failed');
+      $row['failcount'] = $row['failed'] ? intval(substr($row['token'],6)) : 0;
       $this->access_tokens[$platform_id] = $row;
-      return $row['token'];
+      return $row['failed'] ? false : $row['token'];
     }
 
     // Need to request a token
@@ -313,9 +333,12 @@ class LTI_Grade_Update {
     $scopehash = md5('https://purl.imsglobal.org/spec/lti-ags/scope/score');
     $stm = $this->dbh->prepare('REPLACE INTO imas_lti_tokens (platformid, scopes, token, expires) VALUES (?,?,?,?)');
     $stm->execute(array($platform_id, $scopehash, $token_data['access_token'], time() + $token_data['expires_in'] - 1));
+    $failed = (substr($token_data['access_token'],0,6)==='failed');
     $this->access_tokens[$platform_id] = array(
       'token' => $token_data['access_token'],
-      'expires' => time() + $token_data['expires_in'] - 1
+      'expires' => time() + $token_data['expires_in'] - 1,
+      'failed' => $failed,
+      'failcount' => $failed ? intval(substr($token_data['access_token'],6)) : 0
     );
   }
 
@@ -374,6 +397,11 @@ class LTI_Grade_Update {
             $logstm = $this->dbh->prepare("INSERT INTO imas_log (time,log) VALUES (?,?)");
             $logstm->execute([time(), $logdata]);
         }
+        if ($failures == self::TOKEN_FAILURE_GIVEUP) {
+            $logdata = 'Grade token failure for platform '. $platform_id . ' hit '.$failures.' failures; queued grade updates for this platform will be given up on';
+            $logstm = $this->dbh->prepare("INSERT INTO imas_log (time,log) VALUES (?,?)");
+            $logstm->execute([time(), $logdata]);
+        }
         $token_data = [
             'access_token' => 'failed'.$failures,
             'scope' => 'https://purl.imsglobal.org/spec/lti-ags/scope/score',
@@ -382,6 +410,7 @@ class LTI_Grade_Update {
         // store failure
         $this->store_access_token($platform_id, $token_data);
   }
+
 
   /**
    * Get client_id and auth_token_url and auth_server for a platform

@@ -34,6 +34,7 @@ class MultipleAnswerAnswerBox implements AnswerBox
         $options = $this->answerBoxParams->getQuestionWriterVars();
         $colorbox = $this->answerBoxParams->getColorboxKeyword();
         $assessmentId = $this->answerBoxParams->getAssessmentId();
+        $showGbDetails = $this->answerBoxParams->getShowGbDetails();
 
         $out = '';
         $tip = '';
@@ -114,6 +115,27 @@ class MultipleAnswerAnswerBox implements AnswerBox
         } else {
             $labits = explode('|', $la);
         }
+
+        // For detailed per-item correctness (gb/review), $answers may list
+        // multiple valid "or" alternative answer sets; use whichever
+        // alternative the student's answer set is closest to.
+        // disabled for now because it's basically a guess
+        //  also needs styling
+        $bestCorrectSet = [];
+        /*
+        if ($showGbDetails && !$isConditional && trim($answers) !== '') {
+            $bestDiff = null;
+            foreach (explode(' or ', $answers) as $altAnswers) {
+                $altSet = array_map('trim', explode(',', $altAnswers));
+                $diff = count(array_diff($altSet, $labits)) + count(array_diff($labits, $altSet));
+                if ($bestDiff === null || $diff < $bestDiff) {
+                    $bestDiff = $diff;
+                    $bestCorrectSet = $altSet;
+                }
+            }
+        }
+        */
+
         if (empty($displayformat)) {
             $displayformat = 'list';
         }
@@ -147,14 +169,21 @@ class MultipleAnswerAnswerBox implements AnswerBox
         }
 
         for ($i = 0; $i < count($randkeys); $i++) {
+            $isChecked = in_array($randkeys[$i], $labits);
+            $checkboxClass = '';
+            if (!empty($bestCorrectSet)) {
+                $checkboxClass = ($isChecked == in_array($randkeys[$i], $bestCorrectSet)) ? 'ansgrn' : 'ansred';
+            }
             if ($displayformat == "horiz") {
                 $out .= "<div class=choice><label for=\"qn$qn-$i\">{$questions[$randkeys[$i]]}</label><br/>";
-                $out .= "<input type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\" ";
-                if (in_array($randkeys[$i], $labits)) {$out .= 'checked';}
+                $out .= "<input type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\"" .
+                    ($checkboxClass !== '' ? " class=\"$checkboxClass\"" : '') . " ";
+                if ($isChecked) {$out .= 'checked';}
                 $out .= " /></div> \n";
             } else if ($displayformat == "inline") {
-                $out .= "<input type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\" ";
-                if (in_array($randkeys[$i], $labits)) {$out .= 'checked';}
+                $out .= "<input type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\"" .
+                    ($checkboxClass !== '' ? " class=\"$checkboxClass\"" : '') . " ";
+                if ($isChecked) {$out .= 'checked';}
                 $out .= " /><label for=\"qn$qn-$i\">{$questions[$randkeys[$i]]}</label> ";
             } else if ($displayformat == 'column') {
                 if ($i % $itempercol == 0) {
@@ -163,12 +192,14 @@ class MultipleAnswerAnswerBox implements AnswerBox
                     }
                     $out .= '<div class="match"><ul class=nomark>';
                 }
-                $out .= "<li><input type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\" ";
-                if (in_array($randkeys[$i], $labits)) {$out .= 'checked';}
+                $out .= "<li><input type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\"" .
+                    ($checkboxClass !== '' ? " class=\"$checkboxClass\"" : '') . " ";
+                if ($isChecked) {$out .= 'checked';}
                 $out .= " /><label for=\"qn$qn-$i\">{$questions[$randkeys[$i]]}</label></li> \n";
             } else {
-                $out .= "<li><input class=\"unind\" type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\" ";
-                if (in_array($randkeys[$i], $labits)) {$out .= 'checked';}
+                $out .= "<li><input class=\"unind" . ($checkboxClass !== '' ? " $checkboxClass" : '') .
+                    "\" type=checkbox name=\"qn$qn" . "[$i]\" value=$i id=\"qn$qn-$i\" ";
+                if ($isChecked) {$out .= 'checked';}
                 $out .= " /><label for=\"qn$qn-$i\">{$questions[$randkeys[$i]]}</label></li> \n";
             }
         }

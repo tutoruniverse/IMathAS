@@ -34,6 +34,7 @@ class MatchingAnswerBox implements AnswerBox
         $options = $this->answerBoxParams->getQuestionWriterVars();
         $colorbox = $this->answerBoxParams->getColorboxKeyword();
         $assessmentId = $this->answerBoxParams->getAssessmentId();
+        $showGbDetails = $this->answerBoxParams->getShowGbDetails();
 
         // FIXME: The following code needs to be updated
         //        - $qn is always the question number (never $qn+1)
@@ -146,8 +147,17 @@ class MatchingAnswerBox implements AnswerBox
                 $out .= '<li class="nowrap">';
             } else {
                 $out .= '<li>';
-            }
-            $out .= "<select name=\"qn$qn-$i\" id=\"qn$qn-$i\">";
+            }                    
+            $out .= "<select name=\"qn$qn-$i\" id=\"qn$qn-$i\"";
+            if ($showGbDetails && !$isConditional) {
+                if (!empty($matchlist)) {
+                    $correctKeys = array_map('trim', explode(' or ', $matchlist[$randqkeys[$i]]));
+                } else {
+                    $correctKeys = [(string) $randqkeys[$i]];
+                }
+                $out .= 'class="'. (in_array((string) $laval, $correctKeys, true) ? 'ansgrn' : 'ansred') .'"';
+            }   
+            $out .= '>';
             $out .= '<option value="-" ';
             if ($laval == '-' || strcmp($laval, '') == 0) {
                 $out .= 'selected="1"';

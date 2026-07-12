@@ -139,6 +139,7 @@ class QuestionHtmlGenerator
         $correctAnswerWrongFormat = $this->questionParams->getCorrectAnswerWrongFormat();
         $printFormat = $this->questionParams->getPrintFormat();
         $teacherInGb = $this->questionParams->getTeacherInGb();
+        $showGbDetails = $this->questionParams->getShowGbDetails();
         $graphdispmode = $_SESSION['userprefs']['graphdisp'] ?? 1;
         $drawentrymode = $_SESSION['userprefs']['drawentry'] ?? 1;
 
@@ -610,6 +611,7 @@ class QuestionHtmlGenerator
                     ->setAssessmentId($this->questionParams->getAssessmentId())
                     ->setStudentLastAnswers($lastAnswersAllParts[$atIdx] ?? '')
                     ->setColorboxKeyword($questionColor)
+                    ->setShowGbDetails($showGbDetails)
                     ->setCorrectAnswerWrongFormat($correctAnswerWrongFormat[$atIdx] ?? false);
 
                 try {
@@ -705,6 +707,7 @@ class QuestionHtmlGenerator
                 ->setIsConditional(false)
                 ->setStudentLastAnswers($lastAnswer)
                 ->setColorboxKeyword($questionColor)
+                ->setShowGbDetails($showGbDetails)
                 ->setCorrectAnswerWrongFormat($correctAnswerWrongFormat[0] ?? false);
 
             try {

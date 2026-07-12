@@ -2521,7 +2521,8 @@ class AssessRecord
         ->setLastRawScores($qcolors)
         ->setSeqPartDone($seqPartDone)
         ->setCorrectAnswerWrongFormat($correctAnswerWrongFormat)
-        ->setTeacherInGb($this->teacherInGb);
+        ->setTeacherInGb($this->teacherInGb)
+        ->setShowGbDetails($force_answers);
     if ($this->dispqn !== null) {
       $questionParams->setDisplayQuestionNumber($this->dispqn);
     }

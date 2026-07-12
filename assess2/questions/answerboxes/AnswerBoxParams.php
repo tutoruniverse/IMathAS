@@ -22,6 +22,7 @@ class AnswerBoxParams
     private $studentLastAnswers;
     private $correctAnswerWrongFormat = false;
     private $colorboxKeyword;
+    private $showGbDetails = false;
 
     /**
      * Get the variables created by the question writer's code.
@@ -309,6 +310,33 @@ class AnswerBoxParams
     public function setColorboxKeyword(?string $colorboxKeyword)
     {
         $this->colorboxKeyword = $colorboxKeyword;
+        return $this;
+    }
+
+    /**
+     * Get whether correct answers are being shown to the current viewer
+     * (teacher in gradebook, or student after answers were released).
+     *
+     * Answer boxes with multiple sub-items (matching, multiple answer, etc)
+     * can use this to mark individual items as correct/incorrect, rather
+     * than relying solely on the single colorboxKeyword for the whole box.
+     *
+     * @return bool
+     */
+    public function getShowGbDetails(): bool
+    {
+        return $this->showGbDetails;
+    }
+
+    /**
+     * Set whether correct answers are being shown to the current viewer.
+     *
+     * @param bool $showGbDetails
+     * @return AnswerBoxParams
+     */
+    public function setShowGbDetails(bool $showGbDetails)
+    {
+        $this->showGbDetails = $showGbDetails;
         return $this;
     }
 }

@@ -321,7 +321,10 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$toset['noprint'] = empty($_POST['noprint']) ? 0 : 1;
             if (!empty($_POST['lockforassess']) && $_POST['subtype'] == 'by_assessment') {
                 $toset['noprint'] += 2;
-            } 
+            }
+            if (!empty($_POST['nodetailedsoln'])) {
+                $toset['noprint'] += 4;
+            }
 			$toset['showcat'] = empty($_POST['showcat']) ? 0 : 1;
 			$toset['showwork'] = Sanitize::onlyInt($_POST['showwork']);
             if (isset($_POST['showworktype'])) {

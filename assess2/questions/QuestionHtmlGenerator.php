@@ -117,6 +117,7 @@ class QuestionHtmlGenerator
 
         $doShowAnswer = $this->questionParams->getShowAnswer();
         $doShowAnswerParts = $this->questionParams->getShowAnswerParts();
+        $noDetailedSoln = $this->questionParams->getNoDetailedSoln();
 
         if (ShowAnswer::ALWAYS == $doShowAnswer) {
             $nosabutton = true;
@@ -1057,7 +1058,7 @@ class QuestionHtmlGenerator
           }
         }
         // display detailed solution, if allowed and set
-        if (($doShowAnswer || $doShowDetailedSoln) && ($quesData['solutionopts']&4)==4 && $quesData['solution'] != '') {
+        if (!$noDetailedSoln && ($doShowAnswer || $doShowDetailedSoln) && ($quesData['solutionopts']&4)==4 && $quesData['solution'] != '') {
           if (($quesData['solutionopts']&1)==0) {
             $evaledsoln = "<div class=\"qscope$thisq\">".'<i>'._('This solution is for a similar problem, not your specific version').'</i><br/>'.$evaledsoln.'</div>';
           }

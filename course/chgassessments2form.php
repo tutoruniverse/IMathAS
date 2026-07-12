@@ -45,6 +45,7 @@ $vueData = array(
 	'samever' => 'DNC',
 	'noprint' => 'DNC',
     'lockforassess' => 'DNC',
+    'nodetailedsoln' => 'DNC',
     'showwork' => 'DNC',
     'showworktype' => 0,
 	'showworkonebox' => 0,
@@ -498,6 +499,16 @@ $vueData = array(
 				<label class=form for="noprint"><?php echo _('Make hard to print'); ?></label>
 				<span class=formright>
 					<select name="noprint" id="noprint" v-model="noprint">
+						<option value="DNC"><?php echo _('Do not change'); ?></option>
+						<option value="0"><?php echo _('No'); ?></option>
+						<option value="1"><?php echo _('Yes'); ?></option>
+					</select>
+				</span><br class=form />
+			</div>
+			<div :class="{highlight:nodetailedsoln != 'DNC'}">
+				<label class=form for="nodetailedsoln"><?php echo _('Don\'t show detailed solutions with answers during assessment'); ?></label>
+				<span class=formright>
+					<select name="nodetailedsoln" id="nodetailedsoln" v-model="nodetailedsoln">
 						<option value="DNC"><?php echo _('Do not change'); ?></option>
 						<option value="0"><?php echo _('No'); ?></option>
 						<option value="1"><?php echo _('Yes'); ?></option>

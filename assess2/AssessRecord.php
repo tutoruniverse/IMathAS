@@ -1946,6 +1946,7 @@ class AssessRecord
           && $include_scores
         ) ||
         $this->teacherInGb;
+        
       $out['info'] = $generate_html;
       $out += $this->getQuestionHtml($qn, $ver, false, $force_scores, $force_answers, $tryToShow, $generate_html === 2);
       if ($out['usedautosave']) {
@@ -2495,7 +2496,7 @@ class AssessRecord
         $useda11yalt = true;
       }
     }
-    
+
     $attemptn = (count($partattemptn) == 0) ? 0 : max($partattemptn);
     $questionParams = new QuestionParams();
     $questionParams
@@ -2509,6 +2510,7 @@ class AssessRecord
         ->setShowAnswer($showans)
         ->setShowAnswerParts($showansparts)
         ->setShowAnswerButton(true)
+        ->setNoDetailedSoln(((bool) $this->assess_info->getSetting('no_detailed_soln')) && !$force_answers)
         ->setStudentAttemptNumber($attemptn)
         ->setStudentPartAttemptCount($partattemptn)
         ->setAllQuestionAnswers($stuanswers)

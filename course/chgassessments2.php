@@ -294,6 +294,15 @@ if (!(isset($teacherid))) {
                 $metadata['noprint'] = $_POST['noprint'];
 			}
 
+			if ($_POST['nodetailedsoln'] !== 'DNC') {
+                if (!empty($_POST['nodetailedsoln'])) {
+                    $sets[] = "noprint=(noprint | 4)";
+                } else {
+                    $sets[] = "noprint=(noprint & ~4)";
+                }
+                $metadata['nodetailedsoln'] = $_POST['nodetailedsoln'];
+			}
+
 			if ($_POST['istutorial'] !== 'DNC') {
 				$sets[] = "istutorial=:istutorial";
 				$qarr[':istutorial'] = Sanitize::onlyInt($_POST['istutorial']);

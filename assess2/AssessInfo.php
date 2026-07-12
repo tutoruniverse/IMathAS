@@ -1309,6 +1309,7 @@ class AssessInfo
 
     //unpack noprint
     $settings['lock_for_assess'] = ($settings['noprint'] & 2);
+    $settings['no_detailed_soln'] = ($settings['noprint'] & 4);
     $settings['noprint'] = ($settings['noprint'] & 1);
 
     //unpack intro

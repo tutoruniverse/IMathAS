@@ -52,6 +52,7 @@ $vueData = array(
 	'shuffle' => ($line['shuffle']&(1+16+32)),
 	'noprint' => ($line['noprint']&1) > 0,
     'lockforassess' => ($line['noprint']&2) > 0,
+    'nodetailedsoln' => ($line['noprint']&4) > 0,
 	'sameseed' => ($line['shuffle']&2) > 0,
 	'samever' => ($line['shuffle']&4) > 0,
 	'istutorial' => $line['istutorial'] > 0,
@@ -509,6 +510,11 @@ $vueData = array(
 				<label>
 					<input type="checkbox" value="1" name="noprint" v-model="noprint" />
 					<?php echo _('Make hard to print');?>
+				</label>
+				<br/>
+				<label>
+					<input type="checkbox" value="4" name="nodetailedsoln" v-model="nodetailedsoln" />
+					<?php echo _('Don\'t show detailed solutions with answers during assessment');?>
 				</label>
 				<label v-show="subtype != 'by_question' || defregens==1">
 					<br/>

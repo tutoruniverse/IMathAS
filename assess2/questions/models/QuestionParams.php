@@ -35,6 +35,9 @@ class QuestionParams
     // Orig: $showhints - boolean, from displayq2.php
     private $showHints;
 
+    // Whether to suppress the detailed solution when showing answers.
+    private $noDetailedSoln = false;
+
     // These must made available to the question code to be eval'd.
     // Orig: $scorenonzero - hashmap, from macros.php:getscorenonzero() - Used in question eval.
     private $scoreNonZero;
@@ -468,6 +471,28 @@ class QuestionParams
     public function setShowHints(?int $showHints): QuestionParams
     {
         $this->showHints = $showHints;
+        return $this;
+    }
+
+    /**
+     * Whether the detailed solution should be suppressed when showing answers.
+     *
+     * @return bool
+     */
+    public function getNoDetailedSoln(): bool
+    {
+        return $this->noDetailedSoln;
+    }
+
+    /**
+     * Whether the detailed solution should be suppressed when showing answers.
+     *
+     * @param bool $noDetailedSoln
+     * @return QuestionParams
+     */
+    public function setNoDetailedSoln(bool $noDetailedSoln): QuestionParams
+    {
+        $this->noDetailedSoln = $noDetailedSoln;
         return $this;
     }
 

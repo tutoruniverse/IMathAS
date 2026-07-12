@@ -153,6 +153,8 @@ function gettwopointdata($str, $type, $xmin = null, $xmax = null, $ymin = null, 
         $code = 7;
     } else if ($type == 'ellipse' || $type == 'ellipserad') {
         $code = 7.2;
+    } else if ($type == 'rect' || $type == 'rectdim') {
+        $code = 5.9;
     } else if ($type == 'sin') {
         $code = 9.1;
     } else if ($type == 'cos') {
@@ -188,6 +190,8 @@ function gettwopointdata($str, $type, $xmin = null, $xmax = null, $ymin = null, 
             } else if ($type == 'circlerad') {
                 $pts[3] = sqrt(pow($pts[3] - $pts[1], 2) + pow($pts[4] - $pts[2], 2));
                 $outpt = array($pts[1], $pts[2], $pts[3]);
+            } else if ($type == 'rectdim') {
+                $outpt = array(abs($pts[3] - $pts[1]), abs($pts[4] - $pts[2]));
             } else if ($type == 'genexp' || $type == 'genlog') {
                 $pts[5] = ($pts[5] - $imgborder) / $pixelsperx + $xmin;
                 $pts[6] = ($h - $pts[6] - $imgborder) / $pixelspery + $ymin;

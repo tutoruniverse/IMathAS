@@ -470,6 +470,12 @@ class DrawingAnswerBox implements AnswerBox
                         $out .= "<img src=\"$staticroot/img/tpsvg/tphorizhyper.svg\" data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"7.5\" ";
                         $out .= ' alt="Horizontal hyperbola"/>';
                     }
+                    if (in_array('rect', $answerformat)) {
+                        $out .= "<img src=\"$staticroot/img/tpsvg/tprect.svg\" data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"5.9\" ";
+                        if (count($answerformat) > 1 && $answerformat[1] == 'rect') {$out .= 'class="sel" ';
+                            $def = 5.9;}
+                        $out .= ' alt="Rectangle"/>';
+                    }
                     if (in_array('trig', $answerformat)) {
                         $out .= "<img src=\"$staticroot/img/tpsvg/tpcos.svg\" data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"9\" ";
                         if (count($answerformat) > 1 && $answerformat[1] == 'trig') {$out .= 'class="sel" ';
@@ -606,6 +612,8 @@ class DrawingAnswerBox implements AnswerBox
         $tip = _('Enter your answer by drawing on the graph.');
         if (is_array($answers) && !$isConditional && (count($answers)>1 || $answers[0] !== '')) {
             $saarr = array();
+            $rectcmds = array();
+            $recttext = array();
             $ineqcolors = array("blue", "red", "green");
             $k = 0;
             foreach ($answers as $ans) {
@@ -665,25 +673,32 @@ class DrawingAnswerBox implements AnswerBox
                             $xs = 0;
                             $ys = 0;
                         }
-                        $saarr[$k] = "[$xs + ($dx)*t, $ys + ($dy)*t],$defcolor,0,1,,arrow";
+                        $saarr[$k] = "[$xs + ($dx)*t, $ys + ($dy)*t],$defcolor,0,1,,arrow,2";
                     } else if ($function[0] == 'circle') { //is circle
-                        $saarr[$k] = "[{$function[3]}*cos(t)+{$function[1]},{$function[3]}*sin(t)+{$function[2]}],$defcolor,0,6.31";
+                        $saarr[$k] = "[{$function[3]}*cos(t)+{$function[1]},{$function[3]}*sin(t)+{$function[2]}],$defcolor,0,6.31,,,2";
                     } else if ($function[0] == 'ellipse') {
-                        $saarr[$k] = "[{$function[3]}*cos(t)+{$function[1]},{$function[4]}*sin(t)+{$function[2]}],$defcolor,0,6.31";
+                        $saarr[$k] = "[{$function[3]}*cos(t)+{$function[1]},{$function[4]}*sin(t)+{$function[2]}],$defcolor,0,6.31,,,2";
+                    } else if ($function[0] == 'rect') { // form "rect,x1,y1,x2,y2"
+                        $rx1 = evalbasic($function[1], true);
+                        $ry1 = evalbasic($function[2], true);
+                        $rx2 = evalbasic($function[3], true);
+                        $ry2 = evalbasic($function[4], true);
+                        $rectcmds[] = 'stroke="' . $defcolor . '";strokewidth=2;fillopacity=0.2;fill="trans' . $defcolor .'";rect([' . $rx1 . ',' . $ry1 . '],[' . $rx2 . ',' . $ry2 . ']);fill="none";';
+                        $recttext[] = sprintf(_('Rectangle with opposite corners (%s,%s) and (%s,%s), color %s.'), $rx1, $ry1, $rx2, $ry2, $defcolor);
                     } else if ($function[0] == 'verthyperbola') {
                         //(y-yc)^2/a^2 -  (x-xc)^2/b^2 = 1
-                        $saarr[$k] = "sqrt($function[3]^2*(1+(x-$function[1])^2/($function[4])^2))+$function[2]";
+                        $saarr[$k] = "sqrt($function[3]^2*(1+(x-$function[1])^2/($function[4])^2))+$function[2],$defcolor,,,,,2";
                         $k++;
-                        $saarr[$k] = "-sqrt($function[3]^2*(1+(x-$function[1])^2/($function[4])^2))+$function[2]";
+                        $saarr[$k] = "-sqrt($function[3]^2*(1+(x-$function[1])^2/($function[4])^2))+$function[2],$defcolor,,,,,2";
                         $k++;
                         $saarr[$k] = "[$function[1]+$function[4]*t,$function[2]+$function[3]*t],#00C800,,,,,2,10";
                         $k++;
                         $saarr[$k] = "[$function[1]+$function[4]*t,$function[2]-$function[3]*t],#00C800,,,,,2,10";
                     } else if ($function[0] == 'horizhyperbola') {
                         //(x-xc)^2/a^2 - (y-yc)^2/b^2 = 1
-                        $saarr[$k] = "[sqrt($function[3]^2*(1+(t-$function[2])^2/($function[4])^2))+{$function[1]},t],$defcolor,$settings[2],$settings[3]";
+                        $saarr[$k] = "[sqrt($function[3]^2*(1+(t-$function[2])^2/($function[4])^2))+{$function[1]},t],$defcolor,$settings[2],$settings[3],,,2";
                         $k++;
-                        $saarr[$k] = "[-sqrt($function[3]^2*(1+(t-$function[2])^2/($function[4])^2))+{$function[1]},t],$defcolor,$settings[2],$settings[3]";
+                        $saarr[$k] = "[-sqrt($function[3]^2*(1+(t-$function[2])^2/($function[4])^2))+{$function[1]},t],$defcolor,$settings[2],$settings[3],,,2";
                         $k++;
                         $saarr[$k] = "[$function[1]+$function[3]*t,$function[2]+$function[4]*t],#00C800,,,,,2,10";
                         $k++;
@@ -692,11 +707,11 @@ class DrawingAnswerBox implements AnswerBox
                         if (count($function) == 3) {
                             if ($function[1] == '-oo') {$function[1] = $settings[2] - .1 * ($settings[3] - $settings[2]);}
                             if ($function[2] == 'oo') {$function[2] = $settings[3] + .1 * ($settings[3] - $settings[2]);}
-                            $saarr[$k] = '[' . substr(str_replace('y', 't', $function[0]), 2) . ',t],' . $defcolor . ',' . $function[1] . ',' . $function[2];
+                            $saarr[$k] = '[' . substr(str_replace('y', 't', $function[0]), 2) . ',t],' . $defcolor . ',' . $function[1] . ',' . $function[2] . ',,,2';
                         } else {
-                            $saarr[$k] = '[' . substr(str_replace('y', 't', $function[0]), 2) . ',t],' . $defcolor . ',' . ($settings[2] - 1) . ',' . ($settings[3] + 1);
+                            $saarr[$k] = '[' . substr(str_replace('y', 't', $function[0]), 2) . ',t],' . $defcolor . ',' . ($settings[2] - 1) . ',' . ($settings[3] + 1). ',,,2';
                             if ($dashedline) {
-                                $saarr[$k] .= ',,,2,10';
+                                $saarr[$k] .= ',10';
                             }
                         }
                     } else { //is function
@@ -731,6 +746,8 @@ class DrawingAnswerBox implements AnswerBox
                             }
                             if ($locky == 1) {
                                 $saarr[$k] .= ',3';
+                            } else {
+                                $saarr[$k] .= ',2';
                             }
                         } else {
                             $saarr[$k] .= ',,,,,';
@@ -940,6 +957,17 @@ class DrawingAnswerBox implements AnswerBox
                 }
                 if (!empty($ysclgridpts) && (strpos($ysclgridpts[0], '/') !== false || strpos($ysclgridpts[0], 'pi') !== false)) {
                     $sa = addfractionaxislabels($sa, $ysclgridpts[0], 'y');
+                }
+            }
+            if (!empty($rectcmds)) {
+                if ($_SESSION['graphdisp'] > 0) {
+                    foreach ($rectcmds as $rectcmd) {
+                        $sa = adddrawcommand($sa, $rectcmd);
+                    }
+                } else {
+                    foreach ($recttext as $recttxt) {
+                        $sa .= ' ' . $recttxt;
+                    }
                 }
             }
             if ($answerformat[0] == "polygon") {

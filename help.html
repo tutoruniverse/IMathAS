@@ -2666,10 +2666,11 @@ if (stuansready($stuanswers, $thisq, null, 'draw')) {
 <li><strong>gettwopointdata(stuans, type, [xmin, xmax, ymin, ymax, drawing width, drawing height]) or gettwopointdata(stuans, type, [grid, snaptogrid])</strong>: Extracts two-point control data from a Drawing question for a specific curve type. Returns an array of curves, each as array(x1,y1,x2,y2).
   <details class="example"><summary>Parameters</summary>
   <p>Type should be one of: 'line', 'lineseg', 'ray', 'parab', 'halfparab', 'horizparab', 'sqrt', 'cubic', 'cuberoot',
-  'rational', 'exp', 'genexp', 'log', 'genlog', 'sin', 'cos', 'abs', 'vector', 'circle', 'ellipse'.
-  Points are returned in click order — for 'parab', the first point is the vertex.
+  'rational', 'exp', 'genexp', 'log', 'genlog', 'sin', 'cos', 'abs', 'vector', 'circle', 'ellipse', 'rect'.
+  Points are returned in click order — for 'parab', the first point is the vertex; for 'rect', the two opposite corners.
   'genexp'/'genlog' return a 5th array entry for the asymptote value.
-  Use 'circlerad' to return array(x-center, y-center, radius) or 'ellipserad' for array(x-center, y-center, x-radius, y-radius).</p>
+  Use 'circlerad' to return array(x-center, y-center, radius), 'ellipserad' for array(x-center, y-center, x-radius, y-radius),
+  or 'rectdim' for array(width, height).</p>
   </details>
   <details class="example"><summary>Example</summary><pre>$answerformat="twopoint,parab"
 if (stuansready($stuanswers, $thisq, null, 'draw')) {
@@ -4679,6 +4680,7 @@ $answers = intervalstodraw("(-2,3]")
 	        	<li>rational (linear/linear rational)</li>
 	        	<li>ellipse (ellipses)</li>
 	        	<li>hyperbola (vertical or horizontal hyperbolas)</li>
+				<li>rect (rectangles)</li>
 	        	</ul></li>
 	        <li>For lines, vertical parabolas, absolute values, square roots, cubics, cuberoots, sines, cosines, exponentials, logs, and rationals (linear/linear only) give $answers as a function of x, like "2(x-1)^2+3"</li>
 	        <li>For line segments and rays, given $answers as a function with domain, like "2x+4,-oo,3", or for vertical line segments use x= and give the range, like "x=4,-2,3"</li>
@@ -4692,6 +4694,7 @@ $answers = intervalstodraw("(-2,3]")
             <li>For half parabolas give $answers as "equation,>xvertex", like "(x-1)^2-3,>1". Note only half parabolas are supported, not 
                 arbitrary segments.
             </li>
+			<li>For rectangles, give $answers as "rect,x1,y1,x2,y2", providing two diagonal corners.</li>
 	        <li>For vertical lines give $answers as "x=number", like "x=3".</li>
 	        <li>For vectors, give $answers as "vector, x_start, y_start, x_end, y_end" for position vectors, or "vector, dx, dy" for displacement vectors. 
                 Note you can use $scoremethod to change how vectors are scored.

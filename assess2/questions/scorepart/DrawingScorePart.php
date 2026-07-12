@@ -302,6 +302,7 @@ class DrawingScorePart implements ScorePart
             $ansrats = array();
             $ansellipses = array();
             $anshyperbolas = array();
+            $ansrects = array();
             $epsilon = ($settings[1]-$settings[0])/499;
             $x0 = $settings[0] - 3*$epsilon;
             $x1 = 1/4*$settings[1] + 3/4*$settings[0] - $epsilon;
@@ -370,6 +371,12 @@ class DrawingScorePart implements ScorePart
                     $ansellipses[$key] = array(($function[1] - $settings[0])*$pixelsperx + $imgborder,$settings[7] - ($function[2]-$settings[2])*$pixelspery - $imgborder,$function[3]*$pixelsperx,$function[3]*$pixelspery);
                 } else if ($function[0]=='ellipse') {  //form ellipse,x_center,y_center,x_radius,y_radius
                     $ansellipses[$key] = array(($function[1] - $settings[0])*$pixelsperx + $imgborder,$settings[7] - ($function[2]-$settings[2])*$pixelspery - $imgborder,abs($function[3]*$pixelsperx),abs($function[4]*$pixelspery));
+                } else if ($function[0]=='rect') {  //form rect,x1,y1,x2,y2 (opposite corners, any order)
+                    $rx1 = $xtopix(evalbasic($function[1],true));
+                    $ry1 = $ytopix(evalbasic($function[2],true));
+                    $rx2 = $xtopix(evalbasic($function[3],true));
+                    $ry2 = $ytopix(evalbasic($function[4],true));
+                    $ansrects[$key] = array(min($rx1,$rx2), min($ry1,$ry2), max($rx1,$rx2), max($ry1,$ry2));
                 } else if ($function[0]=='verthyperbola') {  //form verthyperbola,x_center,y_center,horiz "radius",vert "radius"
                     $anshyperbolas[$key] = array(($function[1] - $settings[0])*$pixelsperx + $imgborder,$settings[7] - ($function[2]-$settings[2])*$pixelspery - $imgborder,abs($function[4]*$pixelspery),abs($function[3]*$pixelsperx),'vert');
                 } else if ($function[0]=='horizhyperbola') {  //form verthyperbola,x_center,y_center,horiz "radius",vert "radius"
@@ -811,6 +818,7 @@ class DrawingScorePart implements ScorePart
             $rats = array();
             $ellipses = array();
             $hyperbolas = array();
+            $rects = array();
             $cubics = array();
             $cuberoots = array();
             if ($tplines=='') {
@@ -930,6 +938,9 @@ class DrawingScorePart implements ScorePart
                     } else if ($pts[0]==7.5) {
                         //horiz hyperbola
                         $hyperbolas[] = array($pts[1],$pts[2],abs($pts[3]-$pts[1]),abs($pts[4]-$pts[2]),'horiz');
+                    } else if ($pts[0]==5.9) {
+                        //rectangle - normalize corners so draw order doesn't matter
+                        $rects[] = array(min($pts[1],$pts[3]), min($pts[2],$pts[4]), max($pts[1],$pts[3]), max($pts[2],$pts[4]));
                     } else if ($pts[0]==8) {
                         //abs
                         if ($pts[1]==$pts[3]) {
@@ -1146,6 +1157,29 @@ class DrawingScorePart implements ScorePart
                     }
                     if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
                     $usedellipse[$i] = 1;
+                    $scores[$scoretype[$key]][$key] = 1;
+                }
+            }
+
+            $usedrect = [];
+            foreach ($ansrects as $key=>$ansrect) {
+                $scores[$scoretype[$key]][$key] = 0;
+                for ($i=0; $i<count($rects); $i++) {
+                    if (!empty($usedrect[$i])) { continue; }
+                    if (abs($ansrect[0]-$rects[$i][0])>$defpttol*$reltolerance) {
+                        continue;
+                    }
+                    if (abs($ansrect[1]-$rects[$i][1])>$defpttol*$reltolerance) {
+                        continue;
+                    }
+                    if (abs($ansrect[2]-$rects[$i][2])>$defpttol*$reltolerance) {
+                        continue;
+                    }
+                    if (abs($ansrect[3]-$rects[$i][3])>$defpttol*$reltolerance) {
+                        continue;
+                    }
+                    if ($scores[$scoretype[$key]][$key] == 1) { $dupstoignore++; }
+                    $usedrect[$i] = 1;
                     $scores[$scoretype[$key]][$key] = 1;
                 }
             }

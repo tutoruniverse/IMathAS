@@ -41,6 +41,13 @@
     .delete-btn { color: #b00; cursor: pointer; }
     #output { width: 100%; max-width: 900px; box-sizing: border-box; font-family: monospace; }
 </style>
+<script>
+    var mathjaxdisp = 9; // MathJax 4
+    var uselocaljs = false;
+    function sendLTIresizemsg() {}
+</script>
+<script src="../../javascript/mathjaxconfig.js?ver=061426"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/mathjax@4/startup.js" id="MathJax-script"></script>
 </head>
 <body>
 
@@ -305,6 +312,9 @@
         box.style.color = colorStr(item.color);
         box.style.fontSize = fontSizeStr(item.fontSize);
         box.textContent = (item.text && item.text.trim() !== '') ? item.text : '(text)';
+        if (item.text && item.text.indexOf('`') !== -1 && typeof rendermathnode === 'function') {
+            rendermathnode(box);
+        }
     }
 
     function updatePositionDisplay(item) {

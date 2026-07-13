@@ -981,7 +981,7 @@ function checkreqtimes($tocheck,$rtimes) {
 		for ($i=0;$i < count($list);$i+=2) {
 			if ($list[$i]=='') {continue;}
 			if (!isset($list[$i+1]) ||
-			   (strlen($list[$i+1])<2 && $list[$i]!='ignore_case' && $list[$i]!='ignore_commas' && $list[$i]!='ignore_symbol')) {
+			   (strlen($list[$i+1])<2 && $list[$i]!='ignore_case' && $list[$i]!='ignore_commas' && $list[$i]!='ignore_symbol' && $list[$i]!='ignore_spaces')) {
 				if ($myrights>10) {
 					echo "Invalid requiretimes - check format";
 				}

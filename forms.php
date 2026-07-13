@@ -272,12 +272,13 @@ switch($_GET['action']) {
                     if (mfaField) { reauth.mfatoken = mfaField.value; }
 
                     // Get registration challenge (requires re-entering password/MFA)
-                    const response = await fetch("actions.php?action=getPasskeyChallenge", {
+                    const options = await $.ajax({
+                        url: "actions.php?action=getPasskeyChallenge",
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(reauth)
+                        contentType: "application/json",
+                        data: JSON.stringify(reauth),
+                        dataType: "json"
                     });
-                    const options = await response.json();
                     pwField.value = "";
                     if (mfaField) { mfaField.value = ""; }
                     if (options.success === false) {
@@ -303,13 +304,13 @@ switch($_GET['action']) {
 					};
                     
                     // Send credential to server for registration
-                    const registerResponse = await fetch("actions.php?action=registerPasskey", {
+                    const registerResult = await $.ajax({
+                        url: "actions.php?action=registerPasskey",
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(registrationPayload)
+                        contentType: "application/json",
+                        data: JSON.stringify(registrationPayload),
+                        dataType: "json"
                     });
-                    
-                    const registerResult = await registerResponse.json();
 
                     if (registerResult.success) {
                         alert("'._('Passkey registered successfully!').'");
@@ -320,10 +321,12 @@ switch($_GET['action']) {
                     
                 } catch (error) {
                     console.error("Passkey registration error:", error);
-                    alert("'._('Passkey registration failed').':" + error.message);
+                    var errMsg = (error && error.responseJSON && error.responseJSON.error) ||
+                        (error && error.message) || (error && error.statusText) || error;
+                    alert("'._('Passkey registration failed').':" + errMsg);
                 }
             }
-            
+
             function deletePasskey(passkeyId) {
                 $.post("actions.php", {
                     action: "deletePasskey",

@@ -184,6 +184,17 @@
 
     <div class="tb-sep"></div>
 
+    <button class="tool-btn" id="btn-insert-image" title="Insert image" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+    </button>
+    <input type="file" id="image-file-input" accept="image/*" hidden>
+
+    <div class="tb-sep"></div>
+
     <button class="tool-btn" id="btn-undo" title="Undo (Ctrl+Z)" type="button" disabled>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 6a9 9 0 0 1 5 8"/>
@@ -347,6 +358,51 @@
   btnUndo.addEventListener('click', undo);
   btnRedo.addEventListener('click', redo);
 
+  // ── Insert image file ────────────────────────────────────────────────
+  const btnInsertImage = document.getElementById('btn-insert-image');
+  const imageFileInput = document.getElementById('image-file-input');
+
+  btnInsertImage.addEventListener('click', () => imageFileInput.click());
+
+  imageFileInput.addEventListener('change', () => {
+    const file = imageFileInput.files[0];
+    imageFileInput.value = ''; // reset so selecting the same file again still fires 'change'
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => drawImageOntoCanvas(reader.result);
+    reader.onerror = () => setStatus('⚠ Could not read file');
+    reader.readAsDataURL(file);
+  });
+
+  // Loads an image (data URL) at natural size — scaled down to fit if it's
+  // larger than the available space — and drops it in as a floating,
+  // resizable/movable image (see "Floating image" section below) rather
+  // than rasterizing it onto the canvas immediately.
+  function drawImageOntoCanvas(src) {
+    const img = new Image();
+    img.onload = () => {
+      if (activeTool === 'select' && selRect) finaliseSelection();
+      if (floatImg) commitFloatImage();
+
+      // Fit within the canvas minus a margin so the resize handles at the
+      // image's corners never land off-canvas and get clipped.
+      const availW = CW - FLOAT_MARGIN * 2;
+      const availH = CH - FLOAT_MARGIN * 2;
+      const scale = Math.min(1, availW / img.naturalWidth, availH / img.naturalHeight);
+      const w = Math.round(img.naturalWidth  * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const x = Math.round((CW - w) / 2);
+      const y = Math.round((CH - h) / 2);
+
+      floatImg = { img, x, y, w, h };
+      renderOverlay();
+      setStatus('Drag corners to resize, drag to move  •  click away or Enter to place  •  Delete to remove');
+    };
+    img.onerror = () => setStatus('⚠ Could not load image');
+    img.src = src;
+  }
+
   // Line tool
   let lineStart = null, lineSnapshot = null;
 
@@ -354,6 +410,14 @@
   let selStart = null, selRect = null;
   let selSnapshot = null, selContent = null;
   let selDragging = false, selDragStart = null, selDragOrigin = null;
+
+  // Floating (just-inserted) image — { img, x, y, w, h } in canvas px, or null
+  let floatImg  = null;
+  let floatDrag = null; // { mode: 'move'|'resize', handle, startPt, orig }
+  const FLOAT_HANDLE_SIZE = 8;   // drawn size of each corner handle
+  const FLOAT_HANDLE_HIT  = 10;  // hit-test tolerance around each handle
+  const FLOAT_MIN_SIZE    = 10;  // minimum width/height while resizing
+  const FLOAT_MARGIN      = 6;   // keeps the image (and its handles) off the canvas edge
 
   // Overlay render state
   let _selDrawRect = null, _brushPt = null, _brushVisible = false;
@@ -377,9 +441,31 @@
     return r && pt.x >= r.x && pt.x <= r.x+r.w && pt.y >= r.y && pt.y <= r.y+r.h;
   }
 
-  // ── Overlay (selection dashes + brush preview circle) ──────────────
+  // ── Overlay (selection dashes + brush preview circle + floating image) ──
   function renderOverlay() {
     octx.clearRect(0, 0, CW, CH);
+
+    if (floatImg) {
+      const { img, x, y, w, h } = floatImg;
+      octx.drawImage(img, x, y, w, h);
+
+      octx.save();
+      octx.strokeStyle = '#3b82f6';
+      octx.lineWidth   = 1.5;
+      octx.setLineDash([5, 3]);
+      octx.strokeRect(x + .5, y + .5, w, h);
+      octx.restore();
+
+      octx.save();
+      octx.fillStyle   = '#fff';
+      octx.strokeStyle = '#3b82f6';
+      octx.lineWidth   = 1.5;
+      Object.values(floatHandlePositions()).forEach(p => {
+        octx.fillRect(p.x - FLOAT_HANDLE_SIZE/2, p.y - FLOAT_HANDLE_SIZE/2, FLOAT_HANDLE_SIZE, FLOAT_HANDLE_SIZE);
+        octx.strokeRect(p.x - FLOAT_HANDLE_SIZE/2, p.y - FLOAT_HANDLE_SIZE/2, FLOAT_HANDLE_SIZE, FLOAT_HANDLE_SIZE);
+      });
+      octx.restore();
+    }
 
     if (_selDrawRect) {
       const r = _selDrawRect;
@@ -424,6 +510,7 @@
   // ── Tool switching ───────────────────────────────────────────────────
   function setTool(tool) {
     if (activeTool === 'select' && selRect) finaliseSelection();
+    if (floatImg) commitFloatImage();
     activeTool = tool;
     document.querySelectorAll('.tool-btn[data-tool]').forEach(b =>
       b.classList.toggle('active', b.dataset.tool === tool)
@@ -517,13 +604,111 @@
     setStatus('');
   }
 
+  // ── Floating image: move / resize, then rasterize onto the canvas ──────
+  function floatHandlePositions() {
+    const { x, y, w, h } = floatImg;
+    return {
+      nw: { x: x,     y: y     },
+      ne: { x: x + w, y: y     },
+      sw: { x: x,     y: y + h },
+      se: { x: x + w, y: y + h },
+    };
+  }
+
+  function hitFloatHandle(pt) {
+    if (!floatImg) return null;
+    for (const [name, p] of Object.entries(floatHandlePositions())) {
+      if (Math.abs(pt.x - p.x) <= FLOAT_HANDLE_HIT && Math.abs(pt.y - p.y) <= FLOAT_HANDLE_HIT) return name;
+    }
+    return null;
+  }
+
+  function ptInFloatImg(pt) {
+    return !!floatImg && pt.x >= floatImg.x && pt.x <= floatImg.x + floatImg.w &&
+                          pt.y >= floatImg.y && pt.y <= floatImg.y + floatImg.h;
+  }
+
+  // Corner drag, anchored at the opposite corner, aspect ratio preserved.
+  function applyFloatDrag(pt) {
+    const { mode, handle, startPt, orig } = floatDrag;
+    const dx = pt.x - startPt.x;
+    const dy = pt.y - startPt.y;
+
+    if (mode === 'move') {
+      // Clamp so the image (and its corner handles) can't be dragged past
+      // the margin and off the visible canvas.
+      const minX = Math.min(FLOAT_MARGIN, CW - FLOAT_MARGIN - orig.w);
+      const maxX = Math.max(FLOAT_MARGIN, CW - FLOAT_MARGIN - orig.w);
+      const minY = Math.min(FLOAT_MARGIN, CH - FLOAT_MARGIN - orig.h);
+      const maxY = Math.max(FLOAT_MARGIN, CH - FLOAT_MARGIN - orig.h);
+      floatImg.x = Math.min(maxX, Math.max(minX, orig.x + dx));
+      floatImg.y = Math.min(maxY, Math.max(minY, orig.y + dy));
+      return;
+    }
+
+    const aspect = orig.w / orig.h;
+    const growsRight  = handle === 'ne' || handle === 'se';
+    const growsDown   = handle === 'sw' || handle === 'se';
+    const diag = growsRight ? dx : -dx;
+    let newW = Math.max(FLOAT_MIN_SIZE, orig.w + diag);
+    let newH = newW / aspect;
+    if (newH < FLOAT_MIN_SIZE) { newH = FLOAT_MIN_SIZE; newW = newH * aspect; }
+
+    // Cap so the resized image never grows past the margin-inset bounds —
+    // otherwise its handles would be pushed off-canvas again.
+    const maxW = CW - FLOAT_MARGIN * 2;
+    const maxH = CH - FLOAT_MARGIN * 2;
+    if (newW > maxW) { newW = maxW; newH = newW / aspect; }
+    if (newH > maxH) { newH = maxH; newW = newH * aspect; }
+
+    floatImg.w = newW;
+    floatImg.h = newH;
+    const nx = growsRight ? orig.x : orig.x + orig.w - newW;
+    const ny = growsDown  ? orig.y : orig.y + orig.h - newH;
+    floatImg.x = Math.min(CW - FLOAT_MARGIN - newW, Math.max(FLOAT_MARGIN, nx));
+    floatImg.y = Math.min(CH - FLOAT_MARGIN - newH, Math.max(FLOAT_MARGIN, ny));
+  }
+
+  function commitFloatImage() {
+    if (!floatImg) return;
+    pushHistory();
+    ctx.drawImage(floatImg.img, floatImg.x, floatImg.y, floatImg.w, floatImg.h);
+    floatImg = null;
+    drawCanvas.style.cursor = '';
+    renderOverlay();
+    setStatus('');
+  }
+
+  function cancelFloatImage() {
+    floatImg = null;
+    drawCanvas.style.cursor = '';
+    renderOverlay();
+    setStatus('');
+  }
+
   // ── Pointer events ───────────────────────────────────────────────────
   function onPointerDown(e) {
     if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();
     if (drawCanvas.setPointerCapture) drawCanvas.setPointerCapture(e.pointerId);
-    pointerDown = true;
     const pt = canvasPoint(e);
+
+    if (floatImg) {
+      const handle = hitFloatHandle(pt);
+      if (handle || ptInFloatImg(pt)) {
+        pointerDown = true;
+        floatDrag = handle
+          ? { mode: 'resize', handle, startPt: pt, orig: { ...floatImg } }
+          : { mode: 'move', startPt: pt, orig: { ...floatImg } };
+        return;
+      }
+      // Clicking away places the image; this click doesn't also act as a
+      // tool stroke — it just deselects, matching common editor behavior.
+      commitFloatImage();
+      return;
+    }
+
+    pointerDown = true;
 
     if (activeTool === 'pen') {
       pushHistory();    // snapshot before the stroke begins
@@ -546,6 +731,22 @@
 
   function onPointerMove(e) {
     const pt = canvasPoint(e);
+
+    if (floatDrag) {
+      e.preventDefault();
+      applyFloatDrag(pt);
+      renderOverlay();
+      return;
+    }
+    if (floatImg) {
+      const handle = hitFloatHandle(pt);
+      drawCanvas.style.cursor =
+        (handle === 'nw' || handle === 'se') ? 'nwse-resize' :
+        (handle === 'ne' || handle === 'sw') ? 'nesw-resize' :
+        ptInFloatImg(pt) ? 'move' : '';
+      return;
+    }
+
     if (activeTool === 'pen' || activeTool === 'eraser') showBrush(pt);
     if (!pointerDown) return;
     e.preventDefault();
@@ -578,6 +779,12 @@
   }
 
   function onPointerUp(e) {
+    if (floatDrag) {
+      e.preventDefault();
+      floatDrag = null;
+      pointerDown = false;
+      return;
+    }
     if (!pointerDown) return;
     e.preventDefault();
     pointerDown = false;
@@ -607,6 +814,14 @@
   drawCanvas.addEventListener('touchend',   onPointerUp,   { passive: false });
 
   document.addEventListener('keydown', e => {
+    // Floating image takes priority over undo/redo and the select-tool block
+    if (floatImg) {
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); cancelFloatImage(); }
+      else if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); commitFloatImage(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); cancelFloatImage(); }
+      return;
+    }
+
     // Undo / redo — handle before the selection-only block below
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
       e.preventDefault(); undo(); return;
@@ -661,6 +876,7 @@
 
   function exportDrawing() {
     if (activeTool === 'select' && selRect) finaliseSelection();
+    if (floatImg) commitFloatImage();
     setStatus('Exporting…');
 
     // Composite draw-canvas onto a white background canvas

@@ -227,6 +227,122 @@ switch($_GET['action']) {
                 $.post("actions.php", {action:"cleartrustedmfa"})
                  .done(function(msg) { if (msg == "OK") { $(el).replaceWith("'._('Cleared').'");}});
             }
+			// Passkey management
+            $(function() {
+				setupToggler2(document.getElementById("addPasskeyBtn"));
+                
+                $("#cancelPasskeyBtn").click(function() {
+                    $("#passkeyRegistrationForm").hide();
+                });
+                
+                $("#registerPasskeyBtn").click(function() {
+                    registerNewPasskey();
+                });
+                
+                $(".deletePasskeyBtn").click(function() {
+                    if (confirm("'._('Are you sure you want to delete this passkey?').'")) {
+                        var passkeyId = $(this).data("passkey-id");
+                        deletePasskey(passkeyId);
+                    }
+                });
+            });
+
+			function bta (o) {
+				let pre = "=?BINARY?B?", suf = "?=";
+				for (let k in o) {
+					if (typeof o[k] == "string") {
+						let s = o[k];
+						if (s.startsWith(pre) && s.endsWith(suf)) {
+						let raw = window.atob(s.slice(pre.length, -suf.length)),
+							u = new Uint8Array(raw.length);
+						for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i);
+						o[k] = u.buffer;
+						}
+					} else {
+						bta(o[k]);
+					}
+				}
+			}
+            
+            async function registerNewPasskey() {
+                try {
+                    const pwField = document.getElementById("passkeyOldPw");
+                    const mfaField = document.getElementById("passkeyOldMfa");
+                    const reauth = { username: "register", password: pwField.value };
+                    if (mfaField) { reauth.mfatoken = mfaField.value; }
+
+                    // Get registration challenge (requires re-entering password/MFA)
+                    const response = await fetch("actions.php?action=getPasskeyChallenge", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(reauth)
+                    });
+                    const options = await response.json();
+                    pwField.value = "";
+                    if (mfaField) { mfaField.value = ""; }
+                    if (options.success === false) {
+                        alert("'._('Passkey registration failed').':" + (options.error || "Unknown error"));
+                        return;
+                    }
+
+                    // 2. Convert base64 fields back to ArrayBuffers (the native WebAuthn format)
+					bta(options);
+
+					// 3. Prompt device biometric/PIN prompt
+					const credential = await navigator.credentials.create({ publicKey: options.publicKey });
+
+					// 4. Extract data from credential to send back to server
+					const registrationPayload = {
+						id: credential.id,
+						rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+						type: credential.type,
+						response: {
+							clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+							attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject)))
+						}
+					};
+                    
+                    // Send credential to server for registration
+                    const registerResponse = await fetch("actions.php?action=registerPasskey", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(registrationPayload)
+                    });
+                    
+                    const registerResult = await registerResponse.json();
+
+                    if (registerResult.success) {
+                        alert("'._('Passkey registered successfully!').'");
+                        location.reload();
+                    } else {
+                        alert("'._('Passkey registration failed').':" + (registerResult.error || "Unknown error"));
+                    }
+                    
+                } catch (error) {
+                    console.error("Passkey registration error:", error);
+                    alert("'._('Passkey registration failed').':" + error.message);
+                }
+            }
+            
+            function deletePasskey(passkeyId) {
+                $.post("actions.php", {
+                    action: "deletePasskey",
+                    passkeyId: passkeyId
+                })
+                .done(function(response) {
+                    var data = (typeof response === "string") ? JSON.parse(response) : response;
+                    if (data.success) {
+                        alert("'._('Passkey deleted successfully').'");
+                        location.reload();
+                    } else {
+                        alert("'._('Error deleting passkey').':" + data.error);
+                    }
+                })
+                .fail(function() {
+                    alert("'._('Error deleting passkey').'");
+                });
+            }
+            
         </script>';
 		if ($gb == '') {
 			echo "<div class=breadcrumb><a href=\"index.php\">Home</a> &gt; ",_('Modify User Profile'),"</div>\n";
@@ -292,6 +408,46 @@ switch($_GET['action']) {
                 echo '<a href="#" onclick="cleartrustedmfa(this)">'._('Clear trusted devices').'</a></span><br class=form>';
             }
         }
+
+		// Passkey Management
+        require_once __DIR__ . '/includes/passkey.php';
+        $rpId = parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST);
+        $passkeyMgr = new PasskeyManager($rpId, isset($installname) ? $installname : 'IMathAS');
+        $userPasskeys = $passkeyMgr->getUserPasskeys($userid);
+        
+        echo '<span class=form><label for="passkeySection">'._('Passkeys').'</label></span>';
+        echo '<span class="formright">';
+        if (!empty($userPasskeys)) {
+            echo '<p>'._('You have registered ').' ' . count($userPasskeys) . ' passkey(s):</p>';
+            echo '<div style="margin-left: 20px;">';
+            foreach ($userPasskeys as $pk) {
+                $addedOn = tzdate('M j, Y', strtotime($pk['created_at']));
+                echo '<div style="margin-bottom: 10px;">';
+                echo '<span>' . _('Added') . ' ' . htmlspecialchars($addedOn) . '</span>';
+                echo ' <button type="button" class="deletePasskeyBtn" data-passkey-id="' . intval($pk['id']) . '" style="padding: 2px 8px;">Delete</button>';
+                echo '</div>';
+            }
+            echo '</div>';
+        } else {
+            echo '<p>'._('No passkeys registered yet.').'</p>';
+        }
+        echo '<button type="button" id="addPasskeyBtn" aria-controls="passkeyRegistrationForm" class="togglecontrol">Add Passkey</button>';
+        echo '</span>';
+        echo '<div id="passkeyRegistrationForm" style="display:none;">';
+        echo '<p>'._('A passkey lets you sign in securely without a password using your device. To add a passkey, follow these steps:').'</p>';
+        echo '<ol>';
+        echo '<li>'._('Confirm your identity below').'</li>';
+        echo '<li>'._('Click "Register Passkey"').'</li>';
+        echo '<li>'._('Your device will prompt you to set up a passkey').'</li>';
+        echo '<li>'._('Follow your device instructions (face/fingerprint scan, PIN, etc)').'</li>';
+        echo '</ol>';
+        echo '<label for="passkeyOldPw" class="form">'._('Enter current password:').'</label> <input type="password" id="passkeyOldPw" name="passkeyOldPw" size="20" autocomplete="current-password" /><br class=form>';
+        if (!empty($line['mfa'])) {
+            echo '<label for="passkeyOldMfa" class="form">'._('Enter 2-factor authentication code:').'</label> <input type="text" id="passkeyOldMfa" name="passkeyOldMfa" size="8" /><br class=form>';
+        }
+        echo '<span class=form></span><span class=formright><button type="button" id="registerPasskeyBtn">Register Passkey</button>';
+        echo ' <button type="button" id="cancelPasskeyBtn">Cancel</button></span><div class=clear></div>';
+        echo '</div><br class=form>';
 
 		echo "<span class=form><label for=\"email\">",_('Enter E-mail address:'),"</label></span>  <input class=\"form pii-email\" type=text size=60 id=email name=email autocomplete=\"email\" value=\"".Sanitize::emailAddress($line['email'])."\"><BR class=form>\n";
         

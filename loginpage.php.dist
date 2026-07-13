@@ -6,6 +6,7 @@ if (!isset($imasroot)) { //don't allow direct access to loginpage.php
 //any extra CSS, javascript, etc needed for login page
 	$placeinhead = "<link rel=\"stylesheet\" href=\"$imasroot/infopages.css\" type=\"text/css\" />\n";
 	$placeinhead .= "<script type=\"text/javascript\" src=\"$imasroot/javascript/jstz_min.js\" ></script>";
+	$placeinhead .= "<script type=\"text/javascript\" src=\"$imasroot/javascript/passkey-login.js\" ></script>";
 	$nologo = true;
 	require("header.php");
 	if (!empty($_SERVER['QUERY_STRING'])) {
@@ -54,6 +55,15 @@ if (!isset($imasroot)) { //don't allow direct access to loginpage.php
 <tr><td><label for="password">Password</label>:</td><td><input type="password" size="15" id="password" name="password" /></td></tr>
 </table>
 <div class=textright><input type="submit" value="Login"></div>
+
+<div id="passkeyentry" style="display:none">
+<div class="separator"><span>or</span></div>
+<p id="passkeyerror" class="noticetext" style="display:none"></p>
+<div class=textright><button type=button onclick="loginWithPasskey()">Login with Passkey</button></div>
+<input type="hidden" id="passkeyCredentialId" name="passkeyCredentialId" value="">
+<input type="hidden" id="passkeyClientDataJSON" name="passkeyClientDataJSON" value="">
+<input type="hidden" id="passkeySignature" name="passkeySignature" value="">
+<input type="hidden" id="passkeyAuthenticatorData" name="passkeyAuthenticatorData" value="">
 
 <div class="textright"><a href="<?php echo $imasroot; ?>/forms.php?action=newuser">Register as a new student</a></div>
 <div class="textright"><a href="<?php echo $imasroot; ?>/forms.php?action=resetpw">Forgot Password</a><br/>

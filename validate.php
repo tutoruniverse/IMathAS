@@ -68,7 +68,7 @@ if (!empty($_SESSION['userid'])) { // logged in
 }
 
 $hasusername = isset($userid);
-$haslogin = isset($_POST['password']) && isset($_POST['username']);
+$haslogin = (isset($_POST['password']) && isset($_POST['username'])) || !empty($_POST['passkeyCredentialId']);
 
 if (!$hasusername && !$haslogin && isset($_GET['guestaccess']) && isset($CFG['GEN']['guesttempaccts'])) {
     if (empty($_SERVER['HTTP_REFERER'])) {
@@ -187,6 +187,72 @@ if ($haslogin && !$hasusername) {
     }
     require_once "includes/password.php";
 
+    // Check for passkey login first
+    $passkeyApproved = false;
+
+    if (!empty($_POST['passkeyCredentialId'])) {
+        if (isset($_POST['mfatoken']) && !empty($_SESSION['passkey_login_verified'][$_POST['passkeyCredentialId']])) {
+            // MFA follow-up submission for a passkey login that was already verified below.
+            // A WebAuthn assertion is single-use (its challenge and signature counter are
+            // consumed on first verification), so it can't be verified again on resubmission -
+            // reuse the userid we already proved instead.
+            $userid = $_SESSION['passkey_login_verified'][$_POST['passkeyCredentialId']];
+            $stm = $DBH->prepare("SELECT id, password, rights, groupid, jsondata, mfa, SID FROM imas_users WHERE id=:id");
+            $stm->execute([':id' => $userid]);
+            $line = $stm->fetch(PDO::FETCH_ASSOC);
+            if ($line) {
+                $_POST['username'] = $line['SID'];
+                $passkeyApproved = true;
+            }
+        } else {
+            require_once __DIR__ . '/includes/passkey.php';
+            try {
+                $rpIdHash = parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST);
+                $passkeyMgr = new PasskeyManager($rpIdHash, isset($installname) ? $installname : 'IMathAS');
+
+                // Verify assertion (username can be null/empty for silent passkey detection)
+                $username = $_POST['username'] ?? '';
+                $userid = $passkeyMgr->verifyAssertion(
+                    $_POST['passkeyCredentialId'],
+                    $_POST['passkeyClientDataJSON'],
+                    $_POST['passkeySignature'],
+                    $_POST['passkeyAuthenticatorData'],
+                    $username
+                );
+
+                // Get user info (include mfa so the normal MFA check below still applies to passkey logins)
+                $stm = $DBH->prepare("SELECT id, password, rights, groupid, jsondata, mfa, SID FROM imas_users WHERE id=:id");
+                $stm->execute([':id' => $userid]);
+                $line = $stm->fetch(PDO::FETCH_ASSOC);
+
+                if (!$line) {
+                    throw new Exception('User not found');
+                }
+
+                // Set username from database in case it was empty
+                $_POST['username'] = $line['SID'];
+
+                // Continue with login process
+                $passkeyApproved = true;
+                // Remember this verified assertion so a follow-up MFA submission
+                // (which resends the same, now-spent, passkey fields) doesn't need
+                // to re-verify it.
+                $_SESSION['passkey_login_verified'] = [$_POST['passkeyCredentialId'] => $userid];
+            } catch (Exception $e) {
+                if ($e->getMessage() === 'Passkey not found') {
+                    $passkeyErrorMsg = _('This passkey is not registered on this account - it may have been removed, or you may be using a different device or browser than the one it was set up on. Please log in with your username and password, then you can add a new passkey from your user profile.');
+                } else {
+                    $passkeyErrorMsg = _('Passkey authentication failed: ') . htmlspecialchars($e->getMessage());
+                }
+                require_once __DIR__ . "/header.php";
+                echo '<p class="noticetext">' . $passkeyErrorMsg . '</p>';
+                echo '<p><a href="' . $GLOBALS['basesiteurl'] . '/index.php">' . _('Return to login') . '</a></p>';
+                require_once __DIR__ . '/footer.php';
+                exit;
+            }
+        }
+    }
+
     if (!empty($line['mfa'])) {
         require_once __DIR__.'/includes/mfa.php';
         $mfadata = json_decode($line['mfa'], true);
@@ -198,7 +264,7 @@ if ($haslogin && !$hasusername) {
         $formAction = $GLOBALS['basesiteurl'] . substr($_SERVER['SCRIPT_NAME'], strlen($imasroot)) . Sanitize::encodeStringForDisplay($querys);    
     }
 
-    if ($line != false && password_verify($_POST['password'], $line['password'])) {
+    if ($line != false && (password_verify($_POST['password'], $line['password']) || $passkeyApproved)) {
         if (empty($_POST['tzname']) && (!isset($_POST['tzoffset']) || $_POST['tzoffset'] == '') && strpos(basename($_SERVER['PHP_SELF']), 'upgrade.php') === false) {
             echo _('Uh oh, something went wrong.  Please go back and try again');
             exit;
@@ -278,6 +344,7 @@ if ($haslogin && !$hasusername) {
         $_SESSION['started'] = $now;
         unset($loginmfaverified);
         unset($_SESSION['challenge']); //challenge is used up - forget it.
+        unset($_SESSION['passkey_login_verified']);
 
         if (isset($CFG['cloudwatch_loginlog'])) {
             require_once __DIR__.'/includes/CloudWatchLogger.php';

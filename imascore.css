@@ -1191,6 +1191,12 @@ div.multiselitem {
 	color: #757575;
 	cursor: pointer;
 }
+#passkeyRegistrationForm {
+	clear:left; 
+	padding: 5px 15px; 
+	border: 1px solid #ccc; 
+	background: #f9f9f9;
+}
 .ind1 {
 	margin-left: .75em;
 }

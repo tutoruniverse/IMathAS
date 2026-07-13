@@ -29,6 +29,102 @@ function obfuscateEmail(string $email): string {
 
 require_once "includes/sanitize.php";
 
+	// Handle passkey challenges (used during login and registration)
+	if (isset($_GET['action']) && $_GET['action'] == 'getPasskeyChallenge') {
+		header('Content-Type: application/json');
+		
+		$input = json_decode(file_get_contents('php://input'), true);
+		$passkeyusername = $input['username'] ?? '';
+
+		if ($passkeyusername === 'register') {
+			// Handle registration challenge - user must be logged in
+			require_once "init.php";
+			
+			if (empty($userid)) {
+				throw new Exception('Must be logged in to register a passkey');
+			}
+		} else {
+			$init_session_start = true;
+			require_once "init_without_validate.php";
+		}
+		require_once __DIR__ . '/includes/passkey.php';
+		
+		if (empty($passkeyusername)) {
+			echo json_encode(['success' => false, 'error' => 'Username required']);
+			exit;
+		}
+
+		try {
+			$rpId = parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST);
+			$passkeyMgr = new PasskeyManager($rpId, isset($installname) ? $installname : 'IMathAS');
+			if ($passkeyusername === 'register') {
+				// Require fresh re-authentication (password + MFA if enabled) before
+				// issuing a registration challenge, so a briefly-unattended logged-in
+				// session can't be used to silently add persistent passkey access.
+				$stm = $DBH->prepare("SELECT id, SID, FirstName, LastName, password, mfa FROM imas_users WHERE id = :id");
+				$stm->execute([':id' => $userid]);
+				$user = $stm->fetch(PDO::FETCH_ASSOC);
+
+				if (!$user) {
+					throw new Exception('User not found');
+				}
+
+				if (empty($input['password']) || !password_verify($input['password'], $user['password'])) {
+					throw new Exception('Password verification failed');
+				}
+
+				if (!empty($user['mfa'])) {
+					$mfadata = json_decode($user['mfa'], true);
+					require_once __DIR__ . '/includes/GoogleAuthenticator.php';
+					$MFA = new GoogleAuthenticator();
+					if (empty($input['mfatoken']) || !$MFA->verifyCode($mfadata['secret'], $input['mfatoken'])) {
+						throw new Exception('2-factor authentication verification failed');
+					}
+				}
+
+				$options = $passkeyMgr->getRegistrationChallenge($userid, $username, $userfullname);
+				echo json_encode($options);
+			} else {
+				// Handle assertion challenge for login
+				$options = $passkeyMgr->getAssertionChallenge($passkeyusername);
+				echo json_encode($options);
+			}		
+		} catch (Exception $e) {
+			echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+		}
+		exit;
+	}
+	// Handle passkey registration
+	if (isset($_GET['action']) && $_GET['action'] == 'registerPasskey') {
+		require_once "init.php";
+		require_once __DIR__ . '/includes/passkey.php';
+		header('Content-Type: application/json');
+		
+		if (empty($userid)) {
+			echo json_encode(['success' => false, 'error' => 'Not logged in']);
+			exit;
+		}
+		
+		$input = json_decode(file_get_contents('php://input'), true);
+		$attestationObject = $input['response']['attestationObject'] ?? '';
+		$clientDataJSON = $input['response']['clientDataJSON'] ?? '';
+		
+		if (empty($attestationObject) || empty($clientDataJSON)) {
+			echo json_encode(['success' => false, 'error' => 'Missing attestation data']);
+			exit;
+		}
+		
+		try {
+			$rpId = parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST);
+			$passkeyMgr = new PasskeyManager($rpId, isset($installname) ? $installname : 'IMathAS');
+			$passkeyMgr->verifyRegistration($attestationObject, $clientDataJSON, $userid);
+			echo json_encode(['success' => true, 'message' => 'Passkey registered successfully']);
+		} catch (Exception $e) {
+			echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+		}
+		exit;
+	}
+
 	if (isset($_GET['greybox'])) {
 		$isgb = true;
 		$gb = '&greybox=true';
@@ -1007,6 +1103,27 @@ require_once "includes/sanitize.php";
             exit;
         }
         echo "FAIL";
+        exit;
+    } else if (isset($_POST['action']) && $_POST['action'] == 'deletePasskey') {
+        require_once __DIR__ . '/includes/passkey.php';
+        header('Content-Type: application/json');
+        
+        $passkeyId = intval($_POST['passkeyId'] ?? 0);
+        if ($passkeyId <= 0) {
+            echo json_encode(['success' => false, 'error' => 'Invalid passkey ID']);
+            exit;
+        }
+        
+        try {
+            $passkeyMgr = new PasskeyManager(parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST), isset($installname) ? $installname : 'IMathAS');
+            if ($passkeyMgr->deletePasskey($passkeyId, $userid)) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to delete passkey']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
         exit;
     } else if (isset($_GET['action']) && $_GET['action']=="forumwidgetsettings") {
 		if (empty($_POST['checked'])) {

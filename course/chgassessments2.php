@@ -56,9 +56,16 @@ if (!(isset($teacherid))) {
 		if ($_POST['copyopts'] != 'DNC') {
             $copyreqscore = !empty($_POST['copyreqscore']);
 			$tocopy = 'displaymethod,submitby,defregens,defregenpenalty,keepscore,retakewait,defattempts,defpenalty,showscores,showans,viewingb,scoresingb,ansingb,gbcategory,caltag,shuffle,showwork,noprint,istutorial,showcat,allowlate,timelimit,password,reqscoretype,reqscorejson,showhints,msgtoinstr,posttoforum,extrefs,showtips,cntingb,minscore,deffeedbacktext,tutoredit,exceptionpenalty,exceptionpenaltyinterval,earlybonus,defoutcome';
-			$stm = $DBH->prepare("SELECT $tocopy FROM imas_assessments WHERE id=:id AND courseid=:courseid");
+            // drilljson is fetched alongside $tocopy but kept out of
+            // $tocopyarr/$sets below - it can't be bulk-copied like the rest,
+            // since that would clobber each target assessment's own
+            // per-question dispnames. It's applied separately further down,
+            // in the same per-assessment loop the DNC/manual-entry path uses.
+			$stm = $DBH->prepare("SELECT $tocopy,drilljson FROM imas_assessments WHERE id=:id AND courseid=:courseid");
 			$stm->execute(array(':id'=>Sanitize::onlyInt($_POST['copyopts']), ':courseid'=>$cid));
 			$qarr = $stm->fetch(PDO::FETCH_ASSOC);
+            $copieddrilljson = $qarr['drilljson'];
+            unset($qarr['drilljson']);
 			$tocopyarr = explode(',',$tocopy);
 			foreach ($tocopyarr as $k=>$item) {
                 if ($item == 'reqscorejson' && !$copyreqscore) {
@@ -75,6 +82,12 @@ if (!(isset($teacherid))) {
                 }
             }
             $submitby = $qarr['submitby'];
+            $isDrillChg = ($qarr['displaymethod'] === 'drill');
+            if ($isDrillChg) {
+                $sourcedrilljson = ($copieddrilljson !== '') ? json_decode($copieddrilljson, true) : array();
+                $newdrillstyle = $sourcedrilljson['style'] ?? 'time_maxcorrect';
+                $newdrilln = $sourcedrilljson['n'] ?? 10;
+            }
 		} else {
 			$turnonshuffle = 0;
 			$turnoffshuffle = 0;

@@ -6,6 +6,7 @@
 require_once "../init.php";
 require_once "../includes/htmlutil.php";
 require_once "../includes/TeacherAuditLog.php";
+require_once "../includes/viddatautil.php";
 
 //set some page specific variables and counters
 $overwriteBody = 0;
@@ -42,13 +43,14 @@ if (!(isset($teacherid))) {
     $curBreadcrumb .= _("Modify Question Settings");
 
     if (!empty($_GET['process'])) {
-        $stm = $DBH->prepare("SELECT itemorder,defpoints,intro FROM imas_assessments WHERE id=:id AND courseid=:cid");
+        $stm = $DBH->prepare("SELECT itemorder,viddata,defpoints,intro FROM imas_assessments WHERE id=:id AND courseid=:cid");
         $stm->execute(array(':id' => $aid, ':cid'=>$cid));
-        list($itemorder, $defpoints, $intro) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null,null];
+        list($itemorder, $viddata, $defpoints, $intro) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null,null,null];
         if ($itemorder === null || $itemorder === false) {
             echo 'Invalid aid';
             exit;
         }
+        $olditemorder = $itemorder;
         if (isset($_GET['usedef'])) {
             $points = 9999;
             $attempts = 9999;
@@ -211,8 +213,11 @@ if (!(isset($teacherid))) {
                     $intro = json_encode($jsonintro);
                 }
             } 
-            $stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,intro=:intro WHERE id=:id");
-            $stm->execute(array(':itemorder' => $itemorder, ':intro' => $intro, ':id' => $aid));
+            if ($viddata != '') {
+                $viddata = remapVidData($olditemorder, $itemorder, $viddata);
+            }
+            $stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata,intro=:intro WHERE id=:id");
+            $stm->execute(array(':itemorder' => $itemorder, ':viddata' => $viddata, ':intro' => $intro, ':id' => $aid));
 
             updatePointsPossible($aid, $itemorder, $defpoints);
         } else {

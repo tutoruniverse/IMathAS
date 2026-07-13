@@ -6,6 +6,7 @@
 require_once "../init.php";
 require_once "../includes/htmlutil.php";
 require_once "../includes/TeacherAuditLog.php";
+require_once "../includes/viddatautil.php";
 
 /*** pre-html data manipulation, including function code *******/
 
@@ -110,34 +111,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			} else {
 				$itemorder  = $row[0] . "," . implode(",",$qids);
 			}
-			$viddata = $row[1];
-			if ($viddata != '') {
-				$nextnum = 0;
-				if ($row[0]!='') {
-					foreach (explode(',', $row[0]) as $iv) {
-						if (strpos($iv,'|')!==false) {
-							$choose = explode('|', $iv);
-							$nextnum += $choose[0];
-						} else {
-							$nextnum++;
-						}
-					}
-				}
-				$numnew= count($checked);
-				$viddata = unserialize($viddata);
-				if (!isset($viddata[count($viddata)-1][1])) {
-					$finalseg = array_pop($viddata);
-				} else {
-					$finalseg = '';
-				}
-				for ($i=$nextnum;$i<$nextnum+$numnew;$i++) {
-					$viddata[] = array('','',$i);
-				}
-				if ($finalseg != '') {
-					$viddata[] = $finalseg;
-				}
-				$viddata = serialize($viddata);
-			}
+			$viddata = appendBlankVidSegments($row[0], count($checked), $row[1]);
 			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata WHERE id=:id");
 			$stm->execute(array(':itemorder'=>$itemorder, ':viddata'=>$viddata, ':id'=>$aid));
 

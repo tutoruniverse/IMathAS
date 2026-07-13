@@ -24,6 +24,7 @@
 
 	if (isset($_POST['action'])) {
 		require_once "../includes/updateptsposs.php";
+		require_once "../includes/viddatautil.php";
 		if ($_POST['action'] == 'add') { //adding new questions
 			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints,ver,intro FROM imas_assessments WHERE id=:id");
 			$stm->execute(array(':id'=>$aid));
@@ -78,33 +79,8 @@
 				}
 			}
 
-			if ($viddata != '') {
-				$nextnum = 0;
-				if ($itemorder!='') {
-					foreach (explode(',', $itemorder) as $iv) {
-						if (strpos($iv,'|')!==false) {
-							$choose = explode('|', $iv);
-							$nextnum += $choose[0];
-						} else {
-							$nextnum++;
-						}
-					}
-				}
-				$numnew= substr_count($newitemorder,',')+1;
-				$viddata = unserialize($viddata);
-				if (!isset($viddata[count($viddata)-1][1])) {
-					$finalseg = array_pop($viddata);
-				} else {
-					$finalseg = '';
-				}
-				for ($i=$nextnum;$i<$nextnum+$numnew;$i++) {
-					$viddata[] = array('','',$i);
-				}
-				if ($finalseg != '') {
-					$viddata[] = $finalseg;
-				}
-				$viddata = serialize($viddata);
-			}
+			$numnew = substr_count($newitemorder,',')+1;
+			$viddata = appendBlankVidSegments($itemorder, $numnew, $viddata);
 
 			if ($itemorder == '') {
 				$itemorder = $newitemorder;
@@ -117,14 +93,15 @@
 			updatePointsPossible($aid, $itemorder, $defpoints);
 
 		} else if ($_POST['action'] == 'mod') { //modifying existing
-			$stm = $DBH->prepare("SELECT itemorder,defpoints,ver,intro FROM imas_assessments WHERE id=:id");
+			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints,ver,intro FROM imas_assessments WHERE id=:id");
 			$stm->execute(array(':id'=>$aid));
-			list($itemorder, $defpoints, $aver, $intro) = $stm->fetch(PDO::FETCH_NUM);
+			list($itemorder, $viddata, $defpoints, $aver, $intro) = $stm->fetch(PDO::FETCH_NUM);
             if (!isset($_POST['lastitemhash']) || $_POST['lastitemhash'] !== md5($itemorder . $intro)) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo '{"error": "Assessment content has changed since last loaded. Reload the page and try again"}';
                 exit;
             }
+			$olditemorder = $itemorder;
 			$jsonintro = json_decode($intro,true);
 
 			
@@ -183,8 +160,11 @@
 					$intro = json_encode($jsonintro);
 				}
 			}
-			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,intro=:intro WHERE id=:id");
-			$stm->execute(array(':itemorder'=>$itemorder, ':intro'=>$intro, ':id'=>$aid));
+			if ($viddata != '') {
+				$viddata = remapVidData($olditemorder, $itemorder, $viddata);
+			}
+			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata,intro=:intro WHERE id=:id");
+			$stm->execute(array(':itemorder'=>$itemorder, ':viddata'=>$viddata, ':intro'=>$intro, ':id'=>$aid));
 
 			updatePointsPossible($aid, $itemorder, $defpoints);
         }

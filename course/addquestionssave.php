@@ -2,6 +2,7 @@
 //IMathAS:  Save changes to addquestions submitted through AHAH
 //(c) 2007 IMathAS/WAMAP Project
 	require_once "../init.php";
+	require_once "../includes/viddatautil.php";
 	$cid = Sanitize::courseId($_GET['cid']);
 	$aid = Sanitize::onlyInt($_GET['aid']);
 	if (!isset($teacherid)) {
@@ -60,41 +61,17 @@
         //add to itemorder
         if ($_POST['asgroup'] == 1) {
             $newitems = '1|0~'.implode('~', $qids);
+            $numnew = 1;
         } else {
             $newitems = implode(',', $qids);
+            $numnew = count($qids);
         }
         if ($rawitemorder=='') {
             $itemorder = $newitems;
         } else {
             $itemorder  = $rawitemorder . "," . $newitems;
         }
-        if ($viddata != '') {
-            $nextnum = 0;
-            if ($rawitemorder!='') {
-                foreach (explode(',', $rawitemorder) as $iv) {
-                    if (strpos($iv,'|')!==false) {
-                        $choose = explode('|', $iv);
-                        $nextnum += $choose[0];
-                    } else {
-                        $nextnum++;
-                    }
-                }
-            }
-            $numnew= count($qids);
-            $viddata = unserialize($viddata);
-            if (!isset($viddata[count($viddata)-1][1])) {
-                $finalseg = array_pop($viddata);
-            } else {
-                $finalseg = '';
-            }
-            for ($i=$nextnum;$i<$nextnum+$numnew;$i++) {
-                $viddata[] = array('','',$i);
-            }
-            if ($finalseg != '') {
-                $viddata[] = $finalseg;
-            }
-            $viddata = serialize($viddata);
-        }
+        $viddata = appendBlankVidSegments($rawitemorder, $numnew, $viddata);
         $stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata WHERE id=:id");
         $stm->execute(array(':itemorder'=>$itemorder, ':viddata'=>$viddata, ':id'=>$aid));
 
@@ -185,89 +162,7 @@
 	}
 
 	if ($viddata != '') {
-		$viddata = unserialize($viddata);
-		$qorder = explode(',',$rawitemorder);
-		$qidbynum = array();
-		$k = 0;
-		for ($i=0;$i<count($qorder);$i++) {
-			if (strpos($qorder[$i],'~')!==false) {
-				$qids = explode('~',$qorder[$i]);
-				if (strpos($qids[0],'|')!==false) { //pop off nCr
-					$choose = explode('|', $qids[0]);
-					for ($j=0;$j<$choose[0];$j++) { // add the number from pool we're using
-						$qidbynum[$k] = $qids[1+$j];
-						$k++;
-					}
-				} else {
-					$qidbynum[$k] = $qids[0];
-					$k++;
-				}
-			} else {
-				$qidbynum[$k] = $qorder[$i];
-				$k++;
-			}
-		}
-
-		$qorder = explode(',',$_REQUEST['order']);
-		$newbynum = array();
-		if (trim($_REQUEST['order'])!='') {
-			$k=0;
-			for ($i=0;$i<count($qorder);$i++) {
-				if (strpos($qorder[$i],'~')!==false) {
-					$qids = explode('~',$qorder[$i]);
-					if (strpos($qids[0],'|')!==false) { //pop off nCr
-						$choose = explode('|', $qids[0]);
-						for ($j=0;$j<$choose[0];$j++) { // add the number from pool we're using
-							$newbynum[$k] = $qids[1+$j];
-							$k++;
-						}
-					} else {
-						$newbynum[$k] = $qids[0];
-						$k++;
-					}
-				} else {
-					$newbynum[$k] = $qorder[$i];
-					$k++;
-				}
-			}
-		}
-
-		$qidbynumflip = array_flip($qidbynum);
-
-		$newviddata = array();
-		$newviddata[0] = $viddata[0];
-		for ($i=0;$i<count($newbynum);$i++) {   //for each new item
-			if (!isset($qidbynumflip[$newbynum[$i]])) {
-				// could happen if n in group is increased
-				$newviddata[] =  array('','',$i);
-				continue;
-			}
-			$oldnum = $qidbynumflip[$newbynum[$i]];
-			$found = false; //look for old item in viddata
-			for ($j=1;$j<count($viddata);$j++) {
-				if (isset($viddata[$j][2]) && $viddata[$j][2]==$oldnum) {
-					//if found, copy data, and any non-question data following
-					$new = $viddata[$j];
-					$new[2] = $i;  //update question number;
-					$newviddata[] = $new;
-					$j++;
-					while (isset($viddata[$j]) && !isset($viddata[$j][2])) {
-						$newviddata[] = $viddata[$j];
-						$j++;
-					}
-					$found = true;
-					break;
-				}
-			}
-			if (!$found) {
-				//item was not found in viddata.  it should have been.
-				//count happen if the first item in a group was removed, perhaps
-				//Add a blank item
-				$newviddata[] =  array('','',$i);
-			}
-		}
-		//any old items will not get copied.
-		$viddata = serialize($newviddata);
+		$viddata = remapVidData($rawitemorder, $_REQUEST['order'], $viddata);
 	}
 
 	$DBH->beginTransaction();

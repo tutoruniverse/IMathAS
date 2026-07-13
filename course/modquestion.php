@@ -6,6 +6,7 @@
 require_once "../init.php";
 require_once "../includes/htmlutil.php";
 require_once "../includes/TeacherAuditLog.php";
+require_once "../includes/viddatautil.php";
 
  //set some page specific variables and counters
 $overwriteBody = 0;
@@ -116,13 +117,14 @@ if (!(isset($teacherid))) {
 		}
 		require_once "../includes/updateptsposs.php";
 		if (isset($_GET['qsetid'])) { //new - adding
-			$stm = $DBH->prepare("SELECT itemorder,defpoints FROM imas_assessments WHERE id=:id AND courseid=:cid");
+			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints FROM imas_assessments WHERE id=:id AND courseid=:cid");
 			$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
-			list($itemorder,$defpoints) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null];
+			list($itemorder,$viddata,$defpoints) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null,null];
 			if ($itemorder === null || $itemorder === false) {
 				echo 'Invalid aid';
 				exit;
 			}
+			$olditemorder = $itemorder;
 			for ($i=0;$i<$_POST['copies'];$i++) {
 				$query = "INSERT INTO imas_questions (assessmentid,points,attempts,penalty,regen,showans,questionsetid,rubric,showhints,fixedseeds) ";
 				$query .= "VALUES (:assessmentid, :points, :attempts, :penalty, :regen, :showans, :questionsetid, :rubric, :showhints, :fixedseeds)";
@@ -145,8 +147,11 @@ if (!(isset($teacherid))) {
 					}
 				}
 			}
-			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder WHERE id=:id");
-			$stm->execute(array(':itemorder'=>$itemorder, ':id'=>$aid));
+			if ($viddata != '') {
+				$viddata = remapVidData($olditemorder, $itemorder, $viddata);
+			}
+			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata WHERE id=:id");
+			$stm->execute(array(':itemorder'=>$itemorder, ':viddata'=>$viddata, ':id'=>$aid));
 
 			updatePointsPossible($aid, $itemorder, $defpoints);
 		} else {

@@ -167,7 +167,7 @@ if ($viddata != '') {
 		} else {
 			$endtime[$i] = sectotime(abs(intval($data[$i][1])));
 		}
-		$skipseg[$i] = ($data[$i][1]<0);
+		$skipseg[$i] = (isset($data[$i][1]) && $data[$i][1]<0);
 		if (count($data[$i])>2) {  //is a question segment
 			$qn[$i] = $data[$i][2];
 			if (count($data[$i])>3) { //has followup

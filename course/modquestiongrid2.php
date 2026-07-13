@@ -12,6 +12,7 @@
 	if (!empty($_GET['process'])) {
 		require_once "../includes/updateptsposs.php";
 		require_once "../includes/TeacherAuditLog.php";
+		require_once "../includes/viddatautil.php";
 		if (isset($_POST['add'])) { //adding new questions
 			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints FROM imas_assessments WHERE id=:id AND courseid=:cid");
 			$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
@@ -60,33 +61,8 @@
 				}
 			}
 
-			if ($viddata != '') {
-				$nextnum = 0;
-				if ($itemorder!='') {
-					foreach (explode(',', $itemorder) as $iv) {
-						if (strpos($iv,'|')!==false) {
-							$choose = explode('|', $iv);
-							$nextnum += $choose[0];
-						} else {
-							$nextnum++;
-						}
-					}
-				}
-				$numnew= substr_count($newitemorder,',')+1;
-				$viddata = unserialize($viddata);
-				if (!isset($viddata[count($viddata)-1][1])) {
-					$finalseg = array_pop($viddata);
-				} else {
-					$finalseg = '';
-				}
-				for ($i=$nextnum;$i<$nextnum+$numnew;$i++) {
-					$viddata[] = array('','',$i);
-				}
-				if ($finalseg != '') {
-					$viddata[] = $finalseg;
-				}
-				$viddata = serialize($viddata);
-			}
+			$numnew = substr_count($newitemorder,',')+1;
+			$viddata = appendBlankVidSegments($itemorder, $numnew, $viddata);
 
 			if ($itemorder == '') {
 				$itemorder = $newitemorder;
@@ -99,13 +75,14 @@
 			updatePointsPossible($aid, $itemorder, $defpoints);
 
 		} else if (isset($_POST['mod'])) { //modifying existing
-			$stm = $DBH->prepare("SELECT itemorder,defpoints FROM imas_assessments WHERE id=:id AND courseid=:cid");
+			$stm = $DBH->prepare("SELECT itemorder,viddata,defpoints FROM imas_assessments WHERE id=:id AND courseid=:cid");
 			$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
-			list($itemorder, $defpoints) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null];
+			list($itemorder, $viddata, $defpoints) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null,null];
 			if ($itemorder === null || $itemorder === false) {
 				echo 'Invalid aid';
 				exit;
 			}
+			$olditemorder = $itemorder;
 
 			// get old settings
 			$stm = $DBH->prepare("SELECT * FROM imas_questions WHERE assessmentid=?");
@@ -165,8 +142,11 @@
 					$changes
 				);
 			}
-			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder WHERE id=:id");
-			$stm->execute(array(':itemorder'=>$itemorder, ':id'=>$aid));
+			if ($viddata != '') {
+				$viddata = remapVidData($olditemorder, $itemorder, $viddata);
+			}
+			$stm = $DBH->prepare("UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata WHERE id=:id");
+			$stm->execute(array(':itemorder'=>$itemorder, ':viddata'=>$viddata, ':id'=>$aid));
 
 			updatePointsPossible($aid, $itemorder, $defpoints);
 		}

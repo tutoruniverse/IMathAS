@@ -1611,7 +1611,7 @@ function showitems($items, $parent, $inpublic = false, $greyitems = 0)
                 echo "<div class=title> ";
                 echo "<b><a href=\"../forums/thread.php?cid=$cid&forum={$line['id']}\">" . Sanitize::encodeStringForDisplay($line['name']) . "</a></b>\n";
                 if (isset($newpostcnts[$line['id']]) && $newpostcnts[$line['id']] > 0) {
-                    echo " <a href=\"../forums/thread.php?cid=$cid&forum={$line['id']}&page=-1\" class=noticetext>", sprintf(_('New Posts (%s)'), $newpostcnts[$line['id']]), "</a>";
+                    echo " <a href=\"../forums/thread.php?cid=$cid&forum={$line['id']}&type=new\" class=noticetext>", sprintf(_('New Posts (%s)'), $newpostcnts[$line['id']]), "</a>";
                 }
                 if ($viewall) {
                     echo '<span class="instrdates">';
@@ -1721,7 +1721,7 @@ function showitems($items, $parent, $inpublic = false, $greyitems = 0)
 
                 echo "<div class=title><i> <b><a href=\"../forums/thread.php?cid=$cid&forum={$line['id']}\">" . Sanitize::encodeStringForDisplay($line['name']) . "</a></b></i> ";
                 if (isset($newpostcnts[$line['id']]) && $newpostcnts[$line['id']] > 0) {
-                    echo " <a href=\"../forums/thread.php?cid=$cid&forum={$line['id']}&page=-1\" class=noticetext>", sprintf(_('New Posts (%s)'), $newpostcnts[$line['id']]), "</a>";
+                    echo " <a href=\"../forums/thread.php?cid=$cid&forum={$line['id']}&type=new\" class=noticetext>", sprintf(_('New Posts (%s)'), $newpostcnts[$line['id']]), "</a>";
                 }
                 echo '<span class="instrdates">';
                 echo "<br/><i>$show </i>";

@@ -38,11 +38,11 @@ function toggleitem(butn) {
 	let newopen = true;
 	if (blockitems.hasClass("hidden")) {
 		blockitems.removeClass("hidden");
-		butn.value = _('Hide');
+		butn.textContent = _('Hide');
 		newopen = true;
 	} else {
 		blockitems.addClass("hidden");
-		butn.value = _('Show');
+		butn.textContent = _('Show');
 		newopen = false;
 	}
 	butn.setAttribute("aria-expanded", newopen);

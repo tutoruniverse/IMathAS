@@ -2,11 +2,18 @@
 //IMathAS:  New threads list for a course
 //(c) 2006 David Lippman
 require_once "../init.php";
+require_once "threadlistfuncs.php";
 $cid = Sanitize::courseId($_GET['cid']);
 $from = $_GET['from'] ?? '';
 
 if (!isset($teacherid) && !isset($tutorid) && !isset($studentid)) {
 	exit;
+}
+
+$threadsperpage = $listperpage;
+$page = Sanitize::onlyInt($_GET['page'] ?? 1);
+if ($page < 1) {
+	$page = 1;
 }
 
 /*
@@ -16,27 +23,19 @@ $query .= "ON mfv.threadid=imas_forum_posts.threadid WHERE imas_forums.courseid=
 $query .= "GROUP BY imas_forum_posts.threadid HAVING ((max(imas_forum_posts.postdate)>mfv.lastview) OR (mfv.lastview IS NULL))";
 */
 $now = time();
-$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime,mfv.tagged FROM imas_forum_threads ";
-$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id AND imas_forum_threads.lastposttime<:now ";
-$array = array(':now'=>$now);
-if (!isset($teacherid)) {
-  $query .= "AND (imas_forums.avail=2 OR (imas_forums.avail=1 AND imas_forums.startdate<$now && imas_forums.enddate>$now)) ";
-}
-$query .= "LEFT JOIN imas_forum_views AS mfv ";
-$query .= "ON mfv.threadid=imas_forum_threads.id AND mfv.userid=:userid WHERE imas_forums.courseid=:courseid ";
-$array[':userid']=  $userid;
-$array[':courseid']=$cid;
-if (!isset($teacherid)) {
-  $query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=:userid2)) ";
-  $array[':userid2']=$userid;
-}
-$query .= "AND (imas_forum_threads.lastposttime>mfv.lastview OR (mfv.lastview IS NULL))";
-$query .= " ORDER BY imas_forum_threads.lastposttime DESC LIMIT 300";
+//$fromwhere comes from threadlistfuncs.php's courseThreadWhereClause(),
+//the single source of truth for "which threads match this view" (also
+//used by posts.php's edge-resolution for type=coursenew), so this can't
+//silently drift out of sync with that logic.
+list($fromwhere, $qarr) = courseThreadWhereClause($cid, 'new', isset($teacherid), $userid, $now);
+
+$offset = max(0, ($page-1)*$threadsperpage);
+$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime,mfv.tagged " . $fromwhere;
+$query .= " ORDER BY imas_forum_threads.lastposttime DESC LIMIT $offset,$threadsperpage";
 $stm = $DBH->prepare($query);
-$stm->execute($array);
+$stm->execute($qarr);
 $result = $stm->fetchALL(PDO::FETCH_ASSOC);
 
-// $result = mysql_query($query) or die("Query failed : $query " . mysql_error());
 $forumname = array();
 $forumids = array();
 $lastpost = array();
@@ -48,6 +47,13 @@ foreach ($result  as $line) {
   $tags[$line['threadid']] = $line['tagged'];
 }
 $lastforum = '';
+
+// count matching threads, for pagination - reuses $fromwhere so this can't
+// drift from the main query above
+$countquery = "SELECT COUNT(imas_forum_threads.id) " . $fromwhere;
+$stm = $DBH->prepare($countquery);
+$stm->execute($qarr);
+$numpages = max(1, ceil($stm->fetchColumn(0)/$threadsperpage));
 
 if (isset($_GET['markread']) && isset($_POST['checked']) && !empty($_POST['checked'])) {
 	$checked = array_map('Sanitize::onlyInt', $_POST['checked']);
@@ -86,22 +92,14 @@ if (isset($_GET['markread']) && isset($_POST['checked']) && !empty($_POST['check
 		  $stm = $DBH->prepare($query);
 		  $stm->execute($qarray);
 	}
-	if (count($forumids)==count($checked) && count($checked)<300) { //marking all read
-		if ($from=='home') {
-			header('Location: ' . $GLOBALS['basesiteurl'] . "/index.php");
-		} else {
-      $btf = isset($_GET['btf']) ? '&folder=' . Sanitize::encodeUrlParam($_GET['btf']) : '';
-  		header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=$cid$btf");
-		}
-	} else {
-		header('Location: ' . $GLOBALS['basesiteurl'] . "/forums/newthreads.php?cid=$cid&from=".Sanitize::simpleString($from));
-	}
+	header('Location: ' . $GLOBALS['basesiteurl'] . "/forums/newthreads.php?cid=$cid&from=".Sanitize::simpleString($from).($page>1?'&page='.$page:''));
        	exit;
 }
 
 $placeinhead = "<style type=\"text/css\">\n@import url(\"$staticroot/forums/forums.css\");\n</style>\n";
 $placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/tablesorter.js?v=011517"></script>';
 $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/thread.js?v=021326\"></script>";
+$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/forumthreadcache.js?v=071226\"></script>";
 $placeinhead .= "<script type=\"text/javascript\">var AHAHsaveurl = '" . $GLOBALS['basesiteurl'] . "/forums/savetagged.php?cid=$cid';";
 $placeinhead .= '$(function() {$("img[src*=\'flag\']").attr("title","Flag Message");});</script>';
 $pagetitle = _('New Forum Posts');
@@ -111,7 +109,11 @@ echo "<div class=breadcrumb>$breadcrumbbase <a href=\"../course/course.php?cid=$
 echo '<div id="headernewthreads" class="pagetitle"><h1>New Forum Posts</h1></div>';
 
 if (count($lastpost)>0) {
-  echo '<form id=qform method=post action="newthreads.php?from='.Sanitize::encodeUrlParam($from).'&cid='.$cid.'&markread=true">';
+  $pager = renderThreadListPager($page, $numpages, "newthreads.php?cid=$cid&from=".Sanitize::encodeUrlParam($from));
+  if ($pager != '') {
+    echo "<div>$pager</div>";
+  }
+  echo '<form id=qform method=post action="newthreads.php?from='.Sanitize::encodeUrlParam($from).'&cid='.$cid.'&markread=true'.($page>1?'&page='.$page:'').'">';
   echo '<p>Check: <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',true)">'._('All').'</a> <a href="#" onclick="return chkAllNone(\'qform\',\'checked[]\',false)">'._('None').'</a> ';
   echo '<button type=submit>'._('Mark Selected as Read').'</button></p>';
   echo '<table class="gb forum" id="newthreads"><thead><th></th><th>Topic</th><th>Started By</th><th>Forum</th><th>Last Post Date</th></thead><tbody>';
@@ -144,7 +146,7 @@ if (count($lastpost)>0) {
     echo "><td>";
     echo '<input type=checkbox name="checked[]" value="'.Sanitize::onlyInt($line['threadid']).'" id="cb'.$ln.'"/></td>';
     echo '<td><div class=flexgroup><label for="cb'.$ln.'" style="flex-grow:1">';
-    echo "<a href=\"posts.php?cid=$cid&forum=".Sanitize::onlyInt($forumids[$line['threadid']])."&thread=".Sanitize::onlyInt($line['threadid'])."&page=-3\">".Sanitize::encodeStringForDisplay($line['subject'])."</a></label>";
+    echo "<a class=\"threadlink\" href=\"posts.php?cid=$cid&forum=".Sanitize::onlyInt($forumids[$line['threadid']])."&thread=".Sanitize::onlyInt($line['threadid'])."&type=coursenew&page=$page\">".Sanitize::encodeStringForDisplay($line['subject'])."</a></label>";
 
     echo '<button type=button class="plain nopad" onclick="toggletagged('.Sanitize::onlyInt($line['threadid']).');" role="switch" aria-checked="'.(!empty($tags[$line['threadid']])?'true':'false').'" aria-label="'._('Tag post').'">';
 			if (!empty($tags[$line['threadid']])) {
@@ -160,9 +162,10 @@ if (count($lastpost)>0) {
   }
   echo '</tbody></table>';
   echo '<script type="text/javascript">	initSortTable("newthreads",Array(false,"S","S","S","D"),true);</script>';
+  echo '<script>ForumThreadCache.seedFromPage({type: "coursenew", tagfilter: "", numpages: '.intval($numpages).', threadsperpage: '.intval($threadsperpage).'});</script>';
   echo '</form>';
-  if (count($lastpost)==300) {
-    echo '<p><i>'._('Results cut off at the 300 most recent posts').'</i></p>';
+  if ($pager != '') {
+    echo "<div>$pager</div>";
   }
 } else {
   echo "No new posts";

@@ -51,6 +51,7 @@
 	$pagetitle = "Forums";
 	$placeinhead = "<style type=\"text/css\">\n@import url(\"$staticroot/forums/forums.css\");\n</style>\n";
 	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/thread.js?v=021326"></script>';
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071226"></script>';
 	$placeinhead .= "<script type=\"text/javascript\">var AHAHsaveurl = '" . $GLOBALS['basesiteurl'] . "/forums/savetagged.php?cid=$cid';</script>";
 
 	require_once "../header.php";
@@ -270,7 +271,7 @@ if ($searchtype == 'thread') {
 			if ($line['tagged']==1) {echo 'class="tagged"';}
 			echo "><td>";
 			echo '<div class=flexgroup><span style="flex-grow:1">';
-			echo "<b><a href=\"posts.php?cid=$cid&forum=" . Sanitize::encodeUrlParam($line['forumid']) . "&thread=" . Sanitize::encodeUrlParam($line['id']) . "&page=-4\">" . Sanitize::encodeStringForDisplay($line['subject']) . "</a></b></span>";
+			echo "<b><a class=\"threadlink\" href=\"posts.php?cid=$cid&forum=" . Sanitize::encodeUrlParam($line['forumid']) . "&thread=" . Sanitize::encodeUrlParam($line['id']) . "&type=threadsearch\">" . Sanitize::encodeStringForDisplay($line['subject']) . "</a></b></span>";
 
 			if ($line['tag']!='') { //category tags
 				echo '<span class="forumcattag">' . Sanitize::encodeStringForDisplay($line['tag']) . '</span> ';
@@ -309,6 +310,8 @@ if ($searchtype == 'thread') {
 			echo "<td class=c>$posts</td><td class=c>" . Sanitize::encodeStringForDisplay($line['views']) . " </td><td class=c>$lastpost ";
 			echo "</td></tr>\n";
 		}
+		echo '</tbody></table>';
+		echo '<script>ForumThreadCache.seedFromPage({type: "threadsearch", tagfilter: "", numpages: 1});</script>';
 	}
 
 
@@ -367,7 +370,7 @@ if ($searchtype == 'thread') {
 		$query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=?)) ";
 		$array[]= $userid;
 	}
-	$query .= " ORDER BY imas_forum_posts.postdate DESC";
+	$query .= " ORDER BY imas_forum_posts.postdate DESC LIMIT 200";
 
 	$stm = $DBH->prepare($query);
 	$stm->execute($array);
@@ -413,7 +416,7 @@ if ($searchtype == 'thread') {
 			echo '</p>';
 		}
 		echo Sanitize::outgoingHtml(filter($line['message']));
-		echo "<p><a href=\"posts.php?cid=" . Sanitize::courseId($cid) . "&forum=" . Sanitize::onlyInt($line['forumid']) . "&thread=" . Sanitize::onlyInt($line['threadid']) . "&page=-4\">Show full thread</a></p>";
+		echo "<p><a href=\"posts.php?cid=" . Sanitize::courseId($cid) . "&forum=" . Sanitize::onlyInt($line['forumid']) . "&thread=" . Sanitize::onlyInt($line['threadid']) . "&type=postsearch\">Show full thread</a></p>";
 		echo "</div>\n";
 	}
 
@@ -517,7 +520,7 @@ if ($searchtype == 'thread') {
             echo '</i> <i class="small info">'._('Hidden').'</i> ';
         }
 		if (!empty($newcnt[$line['id']])) {
-			 echo "<a href=\"thread.php?cid=$cid&forum=" . Sanitize::onlyInt($line['id']) . "&page=-1\" class=noticetext >New Posts (" . Sanitize::encodeStringForDisplay($newcnt[$line['id']]) . ")</a>";
+			 echo "<a href=\"thread.php?cid=$cid&forum=" . Sanitize::onlyInt($line['id']) . "&type=new\" class=noticetext >New Posts (" . Sanitize::encodeStringForDisplay($newcnt[$line['id']]) . ")</a>";
 		}
 		echo '</span>';
 		if ($isteacher) {

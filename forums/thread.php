@@ -4,6 +4,7 @@
 
 require_once "../init.php";
 require_once '../includes/checkdata.php';
+require_once "threadlistfuncs.php";
 
 if (!isset($teacherid) && !isset($tutorid) && !isset($studentid)) {
 	require_once "../header.php";
@@ -27,6 +28,17 @@ if (!isset($_GET['page']) || $_GET['page']=='') {
 } else {
 	$page = Sanitize::onlyInt($_GET['page']);
 }
+if ($page < 1) {
+	// backwards compatability; handle existing page<0 links by remapping
+	if ($page == -1) { $_GET['type'] = 'new';}
+	else if ($page == -2) { $_GET['type'] = 'flagged';}
+	$page = 1;
+}
+$type = $_GET['type'] ?? 'default';
+if (!in_array($type, ['default','new','flagged'], true)) {
+	$type = 'default';
+}
+$typeqs = ($type != 'default') ? '&type='.urlencode($type) : '';
 
 $query = "SELECT f.name,f.postby,f.replyby,f.settings,f.groupsetid,igs.name AS igsname,f.sortby,
     f.taglist,f.enddate,f.avail,f.description,f.postinstr,f.replyinstr,f.allowlate,f.autoscore,f.courseid 
@@ -102,6 +114,7 @@ if (($isteacher || isset($tutorid)) && isset($_POST['score'])) {
 					'thread' => Sanitize::encodeUrlParam($_GET['thread']),
 					'modify' => 'reply',
 					'replyto' => Sanitize::onlyInt($actionid),
+					'type' => $type,
 				    'r' => Sanitize::randomQueryStringParam(),
 				)));
 		} else if ($action=='modify') {
@@ -112,25 +125,28 @@ if (($isteacher || isset($tutorid)) && isset($_POST['score'])) {
 					'forum' => Sanitize::onlyInt($forumid),
 					'thread' => Sanitize::encodeUrlParam($_GET['thread']),
 					'modify' => Sanitize::onlyInt($actionid),
+					'type' => $type,
 				    'r' => Sanitize::randomQueryStringParam(),
 				)));
 		}
-	} else if (isset($_POST['save']) && $_POST['save']=='Save Grades and View Previous') {
+	} else if (isset($_POST['save']) && $_POST['save']=='saveprev') {
 		header('Location: ' . $GLOBALS['basesiteurl'] . "/forums/posts.php?"
 			. Sanitize::generateQueryStringFromMap(array(
 				'page' => Sanitize::onlyInt($page),
 				'cid' => Sanitize::courseId($cid),
 				'forum' => Sanitize::onlyInt($forumid),
 				'thread' => Sanitize::encodeUrlParam($_POST['prevth']),
+				'type' => $type,
 			    'r' => Sanitize::randomQueryStringParam(),
 			)));
-	} else if (isset($_POST['save']) && $_POST['save']=='Save Grades and View Next') {
+	} else if (isset($_POST['save']) && $_POST['save']=='savenext') {
 		header('Location: ' . $GLOBALS['basesiteurl'] . "/forums/posts.php?"
 			. Sanitize::generateQueryStringFromMap(array(
 				'page' => Sanitize::onlyInt($page),
 				'cid' => Sanitize::courseId($cid),
 				'forum' => Sanitize::onlyInt($forumid),
 				'thread' => Sanitize::encodeUrlParam($_POST['nextth']),
+				'type' => $type,
 			    'r' => Sanitize::randomQueryStringParam(),
 			)));
 	} else {
@@ -139,6 +155,7 @@ if (($isteacher || isset($tutorid)) && isset($_POST['score'])) {
 				'page' => Sanitize::onlyInt($page),
 				'cid' => Sanitize::courseId($cid),
 				'forum' => Sanitize::onlyInt($forumid),
+				'type' => $type,
 			    'r' => Sanitize::randomQueryStringParam(),
 			)));
 	}
@@ -203,6 +220,7 @@ $allowdel = ((($forumsettings&4)==4) || $isteacher);
 $postbeforeview = (($forumsettings&16)==16);
 $canviewall = (isset($teacherid) || isset($tutorid));
 $dofilter = false;
+$limthreads = array();
 $now = time();
 
 $grpqs = '';
@@ -234,7 +252,6 @@ if ($groupsetid>0) {
 		}
 	}
 	if ($dofilter) {
-		$limthreads = array();
 		if ($canviewall || $groupid==0) {
 			$stm = $DBH->prepare("SELECT id FROM imas_forum_threads WHERE stugroupid=:stugroupid AND forumid=:forumid AND lastposttime<:now");
 			$stm->execute(array(':stugroupid'=>$groupid, ':forumid'=>$forumid, ':now'=>$isteacher?2000000000:$now));
@@ -425,37 +442,25 @@ if (isset($_GET['markallread'])) {
 /* pull data */
 
 // pull main thread data
-$qarr = [':forumid'=>$forumid, ':now'=>$canviewall?2000000000:$now];
+//$joinfrag/$wherefrag come from threadlistfuncs.php's
+//forumThreadWhereClause(), the single source of truth for "which threads
+//match this view" (also used by posts.php's edge-resolution), so this
+//can't silently drift out of sync with that logic.
+list($joinfrag, $wherefrag, $qarr) = forumThreadWhereClause($forumid, $type, $dofilter, $limthreads, $canviewall, $now, $userid);
 $query = "SELECT ifp.id,ifp.threadid,ifp.posttype,ifp.tag,ifp.userid,ifp.forumid,ifp.isanon,ifp.subject,";
 $query .= "imas_forum_threads.views as tviews,imas_users.LastName,imas_users.FirstName,imas_forum_threads.stugroupid,imas_forum_threads.lastposttime ";
 $query .= "FROM imas_forum_threads JOIN imas_forum_posts AS ifp ON ifp.threadid=imas_forum_threads.id AND ifp.parent=0 ";
 $query .= "JOIN imas_users ON ifp.userid=imas_users.id ";
-if ($page < 0) {
-    $query .= 'LEFT JOIN imas_forum_views ON imas_forum_views.threadid=imas_forum_threads.id AND imas_forum_views.userid=:userid ';
-    $qarr[':userid'] = $userid;
-}
-$query .= "WHERE imas_forum_threads.forumid=:forumid ";
-$query .= "AND imas_forum_threads.lastposttime<:now ";
-if ($dofilter) {
-    $query .= "AND imas_forum_threads.id IN ($limthreads) ";
-}
-if ($page==-1) {
-    //$query .= "AND ifp.threadid IN ($newpostlist) ";
-    $query .= "AND (imas_forum_views.lastview IS NULL OR imas_forum_views.lastview < imas_forum_threads.lastposttime) ";
-} else if ($page==-2) {
-    //$query .= "AND ifp.threadid IN ($flaggedlist) ";
-    $query .= "AND imas_forum_views.tagged=1 "; 
-}
+$query .= $joinfrag;
+$query .= $wherefrag;
 if ($sortby==0) {
     $query .= "ORDER BY ifp.posttype DESC,ifp.postdate DESC ";
 } else if ($sortby==1) {
     $query .= "ORDER BY ifp.posttype DESC,imas_forum_threads.lastposttime DESC ";
 }
-$offset = intval(($page-1)*$threadsperpage);
-$threadsperpage =intval($threadsperpage);
-if ($page>0) {
-    $query .= "LIMIT $offset,$threadsperpage";
-}
+$threadsperpage = intval($threadsperpage);
+$offset = max(0, ($page-1)*$threadsperpage);
+$query .= "LIMIT $offset,$threadsperpage";
 $stm = $DBH->prepare($query);
 $stm->execute($qarr);
 $threaddata = [];
@@ -465,6 +470,15 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
     $shownthreadids[] = intval($row['threadid']);
 }
 $shownthreadlist = implode(',', $shownthreadids);
+
+// count matching threads (all types are paginated now); reuses the same
+// $joinfrag/$wherefrag as the main query above, so they can't drift
+$countquery = "SELECT COUNT(imas_forum_threads.id) FROM imas_forum_threads ";
+$countquery .= $joinfrag;
+$countquery .= $wherefrag;
+$stm = $DBH->prepare($countquery);
+$stm->execute($qarr);
+$numpages = max(1, ceil($stm->fetchColumn(0)/$threadsperpage));
 
 // pull unique views
 $uniqviews = [];
@@ -511,9 +525,10 @@ if (count($threaddata) > 0) {
 $pagetitle = "Threads";
 $placeinhead = "<style type=\"text/css\">\n@import url(\"$staticroot/forums/forums.css\"); td.pointer:hover {text-decoration: underline;}\n</style>\n";
 $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/thread.js?v=021326\"></script>";
+$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/forumthreadcache.js?v=071226\"></script>";
 $placeinhead .= "<script type=\"text/javascript\">var AHAHsaveurl = '" . $GLOBALS['basesiteurl'] . "/forums/savetagged.php?cid=$cid';";
 $placeinhead .= '$(function() {$("img[src*=\'flag\']").attr("title","Flag Message");});';
-$placeinhead .= "var tagfilterurl = '" . $GLOBALS['basesiteurl'] . "/forums/thread.php?page=$page&cid=$cid&forum=$forumid';</script>";
+$placeinhead .= "var tagfilterurl = '" . $GLOBALS['basesiteurl'] . "/forums/thread.php?page=$page&cid=$cid&forum=$forumid$typeqs';</script>";
 require_once "../header.php";
 
 
@@ -578,59 +593,9 @@ $newpostlist = implode(',', array_map('intval', $newpost));
 } else if ($page==-2 && count($tags)==0) {
 	$page = 1;
 }*/
-$prevnext = '';
-if ($page>0) {
-	$query = "SELECT COUNT(id) FROM imas_forum_posts WHERE parent=0 AND forumid=:forumid";
-	if ($dofilter) {
-		$query .= " AND threadid IN ($limthreads)";
-	}
-	$stm = $DBH->prepare($query);
-	$stm->execute(array(':forumid'=>$forumid));
-	$numpages = ceil($stm->fetchColumn(0)/$threadsperpage);
-
-	if ($numpages > 1) {
-		$prevnext .= "Page: ";
-		if ($page < $numpages/2) {
-			$min = max(2,$page-4);
-			$max = min($numpages-1,$page+8+$min-$page);
-		} else {
-			$max = min($numpages-1,$page+4);
-			$min = max(2,$page-8+$max-$page);
-		}
-		if ($page==1) {
-			$prevnext .= "<b>1</b> ";
-		} else {
-			$prevnext .= "<a href=\"thread.php?page=1&cid=".Sanitize::courseId($cid)."&forum=".Sanitize::onlyInt($forumid)."\">1</a> ";
-		}
-		if ($min!=2) { $prevnext .= " ... ";}
-		for ($i = $min; $i<=$max; $i++) {
-			if ($page == $i) {
-				$prevnext .= "<b>$i</b> ";
-			} else {
-				$prevnext .= "<a href=\"thread.php?page=$i&cid=$cid&forum=$forumid\">$i</a> ";
-			}
-		}
-		if ($max!=$numpages-1) { $prevnext .= " ... ";}
-		if ($page == $numpages) {
-			$prevnext .= "<b>$numpages</b> ";
-		} else {
-			$prevnext .= "<a href=\"thread.php?page=$numpages&cid=$cid&forum=$forumid\">$numpages</a> ";
-		}
-		$prevnext .= "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-
-		if ($page>1) {
-			$prevnext .= "<a href=\"thread.php?page=".($page-1)."&cid=$cid&forum=$forumid\">Previous</a> ";
-		} else {
-			$prevnext .= "Previous ";
-		}
-		if ($page < $numpages) {
-			$prevnext .= "| <a href=\"thread.php?page=".($page+1)."&cid=$cid&forum=$forumid\">Next</a> ";
-		} else {
-			$prevnext .= "| Next ";
-		}
-
-		echo "<div>$prevnext</div>";
-	}
+$prevnext = renderThreadListPager($page, $numpages, "thread.php?cid=$cid&forum=$forumid$typeqs");
+if ($prevnext != '') {
+	echo "<div>$prevnext</div>";
 }
 echo "<form method=get action=\"thread.php\">";
 echo "<input type=hidden name=page value=\"".Sanitize::onlyInt($page)."\"/>";
@@ -704,25 +669,25 @@ if ($canviewall && $groupsetid>0) {
 echo '<p>';
 $toshow = array();
 if (($myrights > 5 && time()<$postby) || $canviewall) {
-	$toshow[] =  "<button type=\"button\" onclick=\"window.location.href='thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid&modify=new'\">"._('Add New Thread')."</button>";
+	$toshow[] =  "<button type=\"button\" onclick=\"window.location.href='thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid$typeqs&modify=new'\">"._('Add New Thread')."</button>";
 }
 //if ($isteacher || isset($tutorid)) {
 $toshow[] =  "<a href=\"postsbyname.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid\">List Posts by Name</a>";
 //}
 
-if ($page<0) {
+if ($type != 'default') {
 	$currentshow = '';
-	if ($page == -1) {
+	if ($type == 'new') {
 		$currentshow = _('Showing New Posts.');
-	} else if ($page == -2) {
+	} else if ($type == 'flagged') {
 		$currentshow = _('Showing Flagged Posts.');
 	}
-	$toshow[] =  "$currentshow <a href=\"thread.php?cid=$cid&forum=$forumid&page=1\">Show All</a>";
+	$toshow[] =  "$currentshow <a href=\"thread.php?cid=$cid&forum=$forumid\">Show All</a>";
 } else {
 	if (count($newpost)>0) {
-		$toshow[] =  "<a href=\"thread.php?cid=$cid&forum=$forumid&page=-1\">Limit to New</a>";
+		$toshow[] =  "<a href=\"thread.php?cid=$cid&forum=$forumid&type=new\">Limit to New</a>";
 	}
-	$toshow[] =  "<a href=\"thread.php?cid=$cid&forum=$forumid&page=-2\">Limit to Flagged</a>";
+	$toshow[] =  "<a href=\"thread.php?cid=$cid&forum=$forumid&type=flagged\">Limit to Flagged</a>";
 
 	if ($taglist!='') {
 		$p = strpos($taglist,':');
@@ -748,7 +713,7 @@ if ($page<0) {
 
 }
 if (count($newpost)>0) {
-	$toshow[] =  "<button type=\"button\" onclick=\"window.location.href='thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid&markallread=true'\">"._('Mark all Read')."</button>";
+	$toshow[] =  "<button type=\"button\" onclick=\"window.location.href='thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid$typeqs&markallread=true'\">"._('Mark all Read')."</button>";
 }
 
 echo implode(' | ',$toshow);
@@ -805,7 +770,7 @@ echo "</p>";
 				if ($line['lastposttime']>$now) {
 					echo '<i class="grey">';
 				}
-				echo "<a href=\"posts.php?cid=$cid&forum=$forumid&thread=" .Sanitize::onlyInt($line['id']). "&page=". Sanitize::onlyInt($page) . $grpqs .'">'. Sanitize::encodeStringForDisplay($line['subject']) ."</a>";
+				echo "<a class=\"threadlink\" href=\"posts.php?cid=$cid&forum=$forumid&thread=" .Sanitize::onlyInt($line['id']). "&page=". Sanitize::onlyInt($page) . $grpqs . $typeqs .'">'. Sanitize::encodeStringForDisplay($line['subject']) ."</a>";
 				if ($line['lastposttime']>$now) {
 					echo '</i>';
 				}
@@ -840,13 +805,13 @@ echo "</p>";
 					echo '<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu'.Sanitize::onlyInt($line['id']).'">';
 
 					if ($isteacher) {
-						echo "<li><a href=\"thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=". Sanitize::onlyInt($line['forumid'])."&move=". Sanitize::onlyInt($line['id']) ."\">Move</a></li> ";
+						echo "<li><a href=\"thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=". Sanitize::onlyInt($line['forumid'])."$typeqs&move=". Sanitize::onlyInt($line['id']) ."\">Move</a></li> ";
 					}
 					if ($isteacher || ($line['userid']==$userid && $allowmod && time()<$postby)) {
-						echo "<li><a href=\"thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=". Sanitize::onlyInt($line['forumid'])."&modify=" .Sanitize::onlyInt($line['id'])."\">Modify</a></li> ";
+						echo "<li><a href=\"thread.php?page=". Sanitize::onlyInt($page)."&cid=$cid&forum=". Sanitize::onlyInt($line['forumid'])."$typeqs&modify=" .Sanitize::onlyInt($line['id'])."\">Modify</a></li> ";
 					}
 					if ($isteacher || ($allowdel && $line['userid']==$userid && $posts==0)) {
-						echo "<li><a href=\"thread.php?page=". Sanitize::onlyInt($page) ."&cid=$cid&forum=". Sanitize::onlyInt($line['forumid'])."&remove=".Sanitize::onlyInt($line['id'])."\">Remove</a></li>";
+						echo "<li><a href=\"thread.php?page=". Sanitize::onlyInt($page) ."&cid=$cid&forum=". Sanitize::onlyInt($line['forumid'])."$typeqs&remove=".Sanitize::onlyInt($line['id'])."\">Remove</a></li>";
 					}
 					echo '</ul></span>';
 				}
@@ -877,8 +842,19 @@ echo "</p>";
 		</tbody>
 	</table>
 	<?php
+	//ids/page/grp are recovered client-side by scraping the a.threadlink
+	//hrefs just rendered above; only pass what isn't in those links. Must
+	//come after the table (the links need to already be in the DOM for
+	//the scrape to find them).
+	$threadcachectx = [
+		'type' => $type,
+		'tagfilter' => $tagfilter,
+		'threadsperpage' => intval($threadsperpage),
+		'numpages' => intval($numpages),
+	];
+	echo '<script>ForumThreadCache.seedFromPage(' . json_encode($threadcachectx) . ');</script>';
 	if (($myrights > 5 && time()<$postby) || $canviewall) {
-		echo "<p><button type=\"button\" onclick=\"window.location.href='thread.php?page=".Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid&modify=new'\">"._('Add New Thread')."</button></p>\n";
+		echo "<p><button type=\"button\" onclick=\"window.location.href='thread.php?page=".Sanitize::onlyInt($page)."&cid=$cid&forum=$forumid$typeqs&modify=new'\">"._('Add New Thread')."</button></p>\n";
 	}
 	if ($prevnext!='') {
 		echo "<p>$prevnext</p>";

@@ -14,14 +14,14 @@ if (!isset($caller)) {
 	exit;
 }
 if ($caller=="posts") {
-	$returnurl = "posts.php?view=$view&cid=$cid&page=$page&forum=$forumid&thread=$threadid";
+	$returnurl = "posts.php?view=$view&cid=$cid&page=$page&forum=$forumid&thread=$threadid$typeqs";
 	$returnname = "Posts";
 } else if ($caller=="byname") {
 	$returnurl = "postsbyname.php?cid=$cid&forum=$forumid";
 	$returnname = "Posts by Name";
 
 } else if ($caller=='thread') {
-	$returnurl = "thread.php?page=$page&cid=$cid&forum=$forumid";
+	$returnurl = "thread.php?page=$page&cid=$cid&forum=$forumid$typeqs";
 	$returnname = "Forum Topics";
 }
 if (!empty($_GET['embed'])) {
@@ -151,11 +151,6 @@ if (isset($_GET['modify'])) { //adding or modifying post
 				$stm = $DBH->prepare($query);
 				$stm->execute(array(':forumid'=>$forumid, ':threadid'=>$threadid, ':subject'=>$_POST['subject'], ':message'=>$_POST['message'], ':userid'=>$userid, ':postdate'=>$now, ':parent'=>$_GET['replyto'], ':posttype'=>0, ':isanon'=>$isanon));
 				$_GET['modify'] = $DBH->lastInsertId();
-				if ($page==-3) {
-					$stm = $DBH->prepare("SELECT lastposttime FROM imas_forum_threads WHERE id=:id");
-					$stm->execute(array(':id'=>$threadid));
-					$returnurl .= '&olpt='.Sanitize::onlyInt($stm->fetchColumn(0));
-				}
 				$stm = $DBH->prepare("UPDATE imas_forum_threads SET lastposttime=:lastposttime,lastpostuser=:lastpostuser WHERE id=:id");
 				$stm->execute(array(':lastposttime'=>$now, ':lastpostuser'=>$userid, ':id'=>$threadid));
 
@@ -346,7 +341,7 @@ if (isset($_GET['modify'])) { //adding or modifying post
                 echo "$breadcrumbbase <a href=\"../course/course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> &gt; ";
             }   
             if ($caller != 'thread') {
-				echo "<a href=\"thread.php?page=$page&cid=$cid&forum=$forumid\">Forum Topics</a> &gt; ";
+				echo "<a href=\"thread.php?page=$page&cid=$cid&forum=$forumid" . ($typeqs ?? '') . "\">Forum Topics</a> &gt; ";
 			}
 			echo "<a href=\"$returnurl\">$returnname</a> &gt; ";
 			if ($_GET['modify']!="reply" && $_GET['modify']!='new') {
@@ -846,7 +841,7 @@ if (isset($_GET['modify'])) { //adding or modifying post
             if (!isset($_SESSION['ltiitemtype']) || $_SESSION['ltiitemtype']!=0) {
                 echo "$breadcrumbbase <a href=\"../course/course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> &gt; ";
             }   
-            if ($caller!='thread') {echo "<a href=\"thread.php?page=$page&cid=$cid&forum=$forumid\">Forum Topics</a> &gt; ";}
+            if ($caller!='thread') {echo "<a href=\"thread.php?page=$page&cid=$cid&forum=$forumid" . ($typeqs ?? '') . "\">Forum Topics</a> &gt; ";}
 			echo "<a href=\"$returnurl\">$returnname</a> &gt; Remove Post</div>";
 		}
 
@@ -971,7 +966,7 @@ if (isset($_GET['modify'])) { //adding or modifying post
             if (!isset($_SESSION['ltiitemtype']) || $_SESSION['ltiitemtype']!=0) {
                 echo "$breadcrumbbase <a href=\"../course/course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> &gt; ";
             }   
-            if ($caller != 'thread') {echo "<a href=\"thread.php?page=$page&cid=$cid&forum=$forumid\">Forum Topics</a> &gt; ";}
+            if ($caller != 'thread') {echo "<a href=\"thread.php?page=$page&cid=$cid&forum=$forumid" . ($typeqs ?? '') . "\">Forum Topics</a> &gt; ";}
 			echo "<a href=\"$returnurl\">$returnname</a> &gt; Move Thread</div>";
 		}
 

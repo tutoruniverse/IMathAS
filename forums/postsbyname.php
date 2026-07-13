@@ -103,22 +103,22 @@
 	   var butn = document.getElementById('butn'+bnum);
 	   if (node.className == 'blockitems') {
 	       node.className = 'hidden';
-	       butn.value = '+';
+	       butn.textContent = '+';
 	   } else {
 	       node.className = 'blockitems';
-	       butn.value = '-';
+	       butn.textContent = '-';
 	   }
-	   butn.setAttribute("aria-expanded", butn.value == '-');
+	   butn.setAttribute("aria-expanded", butn.textContent == '-');
 	}
 	function toggleshowall() {
 	  for (var i=0; i<bcnt; i++) {
 	    var node = document.getElementById('m'+i);
 	    var butn = document.getElementById('butn'+i);
 	    node.className = 'blockitems';
-	    butn.value = '-';
+	    butn.textContent = '-';
 		butn.setAttribute("aria-expanded", true);
 	  }
-	  document.getElementById("toggleall").value = 'Collapse All';
+	  document.getElementById("toggleall").textContent = _('Collapse All');
 	  document.getElementById("toggleall").onclick = togglecollapseall;
 	}
 	function onsubmittoggle() {
@@ -132,10 +132,10 @@
 	    var node = document.getElementById('m'+i);
 	    var butn = document.getElementById('butn'+i);
 	    node.className = 'hidden';
-	    butn.value = '+';
+	    butn.textContent = '+';
 		butn.setAttribute("aria-expanded", false);
 	  }
-	  document.getElementById("toggleall").value = 'Expand All';
+	  document.getElementById("toggleall").textContent = _('Expand All');
 	  document.getElementById("toggleall").onclick = toggleshowall;
 	}
 	function toggleposts(el) {
@@ -253,7 +253,7 @@
 
 	$laststu = -1;
 	$cnt = 0;
-	echo "<input type=\"button\" value=\"Expand All\" onclick=\"toggleshowall()\" id=\"toggleall\"/> ";
+	echo "<button type=\"button\" onclick=\"toggleshowall()\" id=\"toggleall\">"._('Expand All')."</button> ";
 	echo '<button type="button" onclick="toggleposts(this)">'._("Hide Posts").'</button> ';
 	echo '<button type="button" onclick="togglereplies(this)">'._("Hide Replies").'</button> ';
 	echo "<button type=\"button\" onclick=\"window.location.href='postsbyname.php?cid=$cid&forum=$forumid&markallread=true'\">"._('Mark all Read')."</button><br/>";
@@ -298,7 +298,7 @@
 			$postcnt++;
 		}
 
-		$content .= "<input type=\"button\" value=\"+\" onclick=\"toggleshow($cnt)\" id=\"butn$cnt\" aria-controls=\"m$cnt\" aria-expanded=\"false\" />";
+		$content .= "<button type=\"button\" onclick=\"toggleshow($cnt)\" id=\"butn$cnt\" aria-controls=\"m$cnt\" aria-expanded=\"false\">+</button>";
 		$content .= '<span style="flex-grow:1">';
 		if ($line['parent']!=0) {
 			$content .= '<span style="color:#060">';
@@ -391,7 +391,7 @@
 	printuserposts($lastname, $laststu, $content, $postcnt, $replycnt, $lasthasuserimg);
 	echo "<script>var bcnt = $cnt;</script>";
 	if ($caneditscore && $haspoints) {
-		echo "<div><input type=submit value=\"Save Grades\" /></div>";
+		echo "<div><button type=\"submit\">"._('Save Grades')."</button></div>";
 		echo "</form>";
 	}
 

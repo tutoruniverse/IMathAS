@@ -2,32 +2,31 @@
 //IMathAS:  Flagged threads list for a course
 //(c) 2017 David Lippman
 require_once "../init.php";
-
+require_once "threadlistfuncs.php";
 
 $cid = Sanitize::courseId($_GET['cid']);
 $from = $_GET['from'] ?? '';
 
+$threadsperpage = $listperpage;
+$page = Sanitize::onlyInt($_GET['page'] ?? 1);
+if ($page < 1) {
+	$page = 1;
+}
+
 $now = time();
-$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime FROM imas_forum_threads ";
-$query .= "JOIN imas_forums ON imas_forum_threads.forumid=imas_forums.id AND imas_forum_threads.lastposttime<:now ";
-$array = array(':now'=>$now);
-if (!isset($teacherid)) {
-  $query .= "AND (imas_forums.avail=2 OR (imas_forums.avail=1 AND imas_forums.startdate<$now && imas_forums.enddate>$now)) ";
-}
-$query .= "LEFT JOIN imas_forum_views AS mfv ";
-$query .= "ON mfv.threadid=imas_forum_threads.id AND mfv.userid=:userid WHERE imas_forums.courseid=:courseid ";
-$array[':userid']=  $userid;
-$array[':courseid']=$cid;
-if (!isset($teacherid)) {
-  $query .= "AND (imas_forum_threads.stugroupid=0 OR imas_forum_threads.stugroupid IN (SELECT stugroupid FROM imas_stugroupmembers WHERE userid=:userid2)) ";
-  $array[':userid2']=$userid;
-}
-$query .= "AND (mfv.tagged=1)";
+//$fromwhere comes from threadlistfuncs.php's courseThreadWhereClause(),
+//the single source of truth for "which threads match this view" (also
+//used by posts.php's edge-resolution for type=courseflagged), so this
+//can't silently drift out of sync with that logic.
+list($fromwhere, $qarr) = courseThreadWhereClause($cid, 'flagged', isset($teacherid), $userid, $now);
+
+$offset = max(0, ($page-1)*$threadsperpage);
+$query = "SELECT imas_forums.name,imas_forums.id,imas_forum_threads.id as threadid,imas_forum_threads.lastposttime " . $fromwhere;
+$query .= " ORDER BY imas_forum_threads.lastposttime DESC LIMIT $offset,$threadsperpage";
 $stm = $DBH->prepare($query);
-$stm->execute($array);
+$stm->execute($qarr);
 $result = $stm->fetchALL(PDO::FETCH_ASSOC);
 
-// $result = mysql_query($query) or die("Query failed : $query " . mysql_error());
 $forumname = array();
 $forumids = array();
 $lastpost = array();
@@ -38,9 +37,22 @@ foreach ($result  as $line) {
 }
 $lastforum = '';
 
+// count matching threads, for pagination - reuses $fromwhere so this can't
+// drift from the main query above
+$countquery = "SELECT COUNT(imas_forum_threads.id) " . $fromwhere;
+$stm = $DBH->prepare($countquery);
+$stm->execute($qarr);
+$numpages = max(1, ceil($stm->fetchColumn(0)/$threadsperpage));
+
 if (isset($_GET['unflagall'])) {
-  if (count($forumids)>0) {
-    $threadids = implode(',', array_map('intval', array_keys($lastpost)));
+  //Unflag All is a bulk action independent of the current page - pull the
+  //full matching id list (no LIMIT), not just what's currently displayed.
+  $allquery = "SELECT imas_forum_threads.id " . $fromwhere;
+  $stm = $DBH->prepare($allquery);
+  $stm->execute($qarr);
+  $allids = array_map('intval', $stm->fetchAll(PDO::FETCH_COLUMN, 0));
+  if (count($allids)>0) {
+    $threadids = implode(',', $allids);
     $DBH->query("UPDATE imas_forum_views SET tagged=0 WHERE threadid IN ($threadids)");
   }
   if ($from=='home') {
@@ -57,6 +69,7 @@ $placeinhead = "<style type=\"text/css\">\n@import url(\"$staticroot/forums/foru
 $placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/tablesorter.js?v=011517"></script>';
 $placeinhead .= "<script type=\"text/javascript\">var AHAHsaveurl = '" . $GLOBALS['basesiteurl'] . "/forums/savetagged.php?cid=$cid';</script>";
 $placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/thread.js?v=021326"></script>';
+$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071226"></script>';
 $pagetitle = _('Flagged Forum Posts');
 require_once "../header.php";
 echo "<div class=breadcrumb>$breadcrumbbase <a href=\"../course/course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> &gt; <a href=\"forums.php?cid=$cid\">Forums</a> &gt; "._('Flagged Forum Posts')."</div>\n";
@@ -64,6 +77,10 @@ echo '<div id="headerflaggedthreads" class="pagetitle"><h1>'._('Flagged Forum Po
 echo "<p><button type=\"button\" onclick=\"window.location.href='flaggedthreads.php?from=" . Sanitize::encodeUrlParam($from) . "&cid=$cid&unflagall=true'\">" . _('Unflag All') . "</button></p>";
 
 if (count($lastpost)>0) {
+  $pager = renderThreadListPager($page, $numpages, "flaggedthreads.php?cid=$cid&from=".Sanitize::encodeUrlParam($from));
+  if ($pager != '') {
+    echo "<div>$pager</div>";
+  }
   echo '<table class="gb forum" id="newthreads"><thead><th>Topic</th><th>Started By</th><th>Forum</th><th>Last Post Date</th></thead><tbody>';
   $threadids = implode(',', array_map('intval', array_keys($lastpost)));
   $query = "SELECT imas_forum_posts.*,imas_users.LastName,imas_users.FirstName,imas_forum_threads.lastposttime FROM imas_forum_posts,imas_users,imas_forum_threads ";
@@ -79,7 +96,7 @@ if (count($lastpost)>0) {
     }
     echo '<tr id="tr'.$line['threadid'].'" class="tagged">';
     echo '<td><div class=flexgroup><span style="flex-grow:1">';
-    echo "<a href=\"posts.php?cid=$cid&forum=" . Sanitize::encodeUrlParam($forumids[$line['threadid']]) . "&thread=" . Sanitize::encodeUrlParam($line['threadid']) . "&page=-5\">" . Sanitize::encodeStringForDisplay($line['subject']) . "</a>";
+    echo "<a class=\"threadlink\" href=\"posts.php?cid=$cid&forum=" . Sanitize::encodeUrlParam($forumids[$line['threadid']]) . "&thread=" . Sanitize::encodeUrlParam($line['threadid']) . "&type=courseflagged&page=$page\">" . Sanitize::encodeStringForDisplay($line['subject']) . "</a>";
     echo '</span><button type=button class="plain nopad" onclick="toggletagged('.Sanitize::onlyInt($line['threadid']).');" role="switch" aria-checked="'.(!empty($tags[$line['threadid']])?'true':'false').'" aria-label="'._('Tag post').'">';
 		echo "<img class=\"pointer\" id=\"tag".Sanitize::onlyInt($line['threadid'])."\" src=\"$staticroot/img/flagfilled.svg\" alt=\"\"/>";
 		echo '</button>';
@@ -89,6 +106,10 @@ if (count($lastpost)>0) {
   }
   echo '</tbody></table>';
   echo '<script type="text/javascript">	initSortTable("newthreads",Array("S","S","S","D"),true);</script>';
+  echo '<script>ForumThreadCache.seedFromPage({type: "courseflagged", tagfilter: "", numpages: '.intval($numpages).', threadsperpage: '.intval($threadsperpage).'});</script>';
+  if ($pager != '') {
+    echo "<div>$pager</div>";
+  }
 } else {
   echo "No flagged posts";
 }

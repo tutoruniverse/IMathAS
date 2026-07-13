@@ -707,7 +707,7 @@ function printPostsGadget() {
 		} else if ($n>1) {
 			$subject = "Re<sup>$n</sup>: ".Sanitize::encodeStringForDisplay($subject);
 		}
-		echo "<td><a href=\"forums/posts.php?page=-3&cid={$line['courseid']}&forum={$line['id']}&thread={$line['threadid']}\">";
+		echo "<td><a href=\"forums/posts.php?type=coursenew&cid={$line['courseid']}&forum={$line['id']}&thread={$line['threadid']}\">";
 		echo $subject;
 		echo '</a></td>';
 		if ($threaddata[$line['threadid']]['isanon']==1) {

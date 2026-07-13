@@ -362,7 +362,7 @@ if ($haslogin && !$hasusername) {
         }
 
         $needToForcePasswordReset = false;
-        if ($_POST['username'] != 'guest') {
+        if (!$passkeyApproved && $_POST['username'] != 'guest') {
             if (isset($CFG['acct']['passwordMinlength']) && strlen($_POST['password']) < $CFG['acct']['passwordMinlength']) {
                 $needToForcePasswordReset = true;
             } else if (isset($CFG['acct']['passwordFormat'])) {

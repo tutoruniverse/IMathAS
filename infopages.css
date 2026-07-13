@@ -89,6 +89,11 @@ div#header {
 	width: 230px;
 	border: 1px solid #000000;
 }
+.logingrid {
+	display: grid;
+  	grid-template-columns: auto auto;
+	gap: 10px;
+}
 
 .separator {
 	display: flex;
@@ -156,6 +161,7 @@ color: #fff;
 
 .textright {
 	text-align: right;
+	margin-right: 0px;
 }
 .ind {
 	margin-left: 20px;

@@ -265,6 +265,8 @@ $assessInfoOut['session_life'] = $CFG['GEN']['sessionmaxlife'] ?? 432000;
 
 $assessInfoOut['summary'] = filter($assessInfoOut['summary']);
 
+$assessInfoOut['srready'] = ($_SESSION['userprefs']['graphdisp'] == 0 && $_SESSION['userprefs']['drawentry'] == 0);
+
 //prep date display
 prepDateDisp($assessInfoOut);
 

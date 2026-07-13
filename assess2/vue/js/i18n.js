@@ -50,6 +50,7 @@ launch-view_as_stu = Acting as student: {$name}\r
 launch-scorelist = Score List\r
 launch-itemanalysis = Item Analysis\r
 launch-gblinks = Gradebook Links\r
+launch-a11ywarn = If you are using a screenreader, you should turn on the graph and drawing accessibility options.\r
 \r
 # Closed section\r
 closed-hidden = This assessment is not currently available.\r

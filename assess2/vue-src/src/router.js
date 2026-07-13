@@ -6,12 +6,12 @@ import Closed from './views/Closed.vue';
 import Summary from './views/Summary.vue';
 import ShowWork from './views/ShowWork.vue';
 import Skip from './views/Skip.vue';
-import Drill from './views/Drill.vue';
 import Full from './views/Full.vue';
 import Print from './views/Print.vue';
 import FullPaged from './views/FullPaged.vue';
 const Videocued = () => import('./views/Videocued.vue');
 const Livepoll = () => import('./views/Livepoll.vue');
+const Drill = () => import('./views/Drill.vue');
 
 const router = createRouter({
   history: createWebHashHistory(

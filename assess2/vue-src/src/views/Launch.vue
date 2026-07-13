@@ -3,6 +3,13 @@
     <div style="flex-grow: 1">
       <h1>{{ aInfo.name }}</h1>
 
+      <div v-if="!aInfo.srready" class="sr-only">
+        {{ $t('launch-a11ywarn') }}
+        <button @click="showUserPrefs">
+          {{ $t('lti-userprefs') }}
+        </button>
+      </div>
+
       <div class="med-below" v-html="aInfo.summary" ref="summary"></div>
 
       <settings-list />
@@ -297,6 +304,14 @@ export default {
     },
     exitAssess () {
       window.location = window.exiturl;
+    },
+    showUserPrefs () {
+      window.GB_show(
+        this.$t('lti-userprefs'),
+        store.APIbase + '../admin/ltiuserprefs.php?cid=' + store.cid + '&greybox=true',
+        800, 'auto', true, 0, 0,
+        { label: 'Update Info', func: 'doSubmit' }
+      );
     }
   },
   mounted () {

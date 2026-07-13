@@ -14,13 +14,20 @@
 //own full-column query and forumThreadIdsForPage() below build on it, so
 //a filter/visibility change only needs to happen once.
 function forumThreadWhereClause($forumid, $filterMode, $dofilter, $limthreads, $canviewall, $now, $userid) {
-	$qarr = [':forumid'=>$forumid, ':now'=>$canviewall?2000000000:$now];
+	$qarr = [':forumid'=>$forumid];
 	$joinfrag = '';
 	if ($filterMode == 'new' || $filterMode == 'flagged') {
 		$joinfrag = 'LEFT JOIN imas_forum_views ON imas_forum_views.threadid=imas_forum_threads.id AND imas_forum_views.userid=:userid ';
 		$qarr[':userid'] = $userid;
 	}
-	$wherefrag = "WHERE imas_forum_threads.forumid=:forumid AND imas_forum_threads.lastposttime<:now ";
+	$wherefrag = "WHERE imas_forum_threads.forumid=:forumid ";
+	if (!$canviewall) {
+		//$canviewall (teacher/tutor) sees everything, including
+		//not-yet-visible scheduled threads - omit the filter entirely
+		//rather than binding a "year 2033" sentinel for it.
+		$wherefrag .= "AND imas_forum_threads.lastposttime<:now ";
+		$qarr[':now'] = $now;
+	}
 	if ($dofilter) {
 		$wherefrag .= "AND imas_forum_threads.id IN ($limthreads) ";
 	}

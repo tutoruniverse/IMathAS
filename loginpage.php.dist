@@ -64,6 +64,7 @@ if (!isset($imasroot)) { //don't allow direct access to loginpage.php
 <input type="hidden" id="passkeyClientDataJSON" name="passkeyClientDataJSON" value="">
 <input type="hidden" id="passkeySignature" name="passkeySignature" value="">
 <input type="hidden" id="passkeyAuthenticatorData" name="passkeyAuthenticatorData" value="">
+</div>
 
 <div class="textright"><a href="<?php echo $imasroot; ?>/forms.php?action=newuser">Register as a new student</a></div>
 <div class="textright"><a href="<?php echo $imasroot; ?>/forms.php?action=resetpw">Forgot Password</a><br/>

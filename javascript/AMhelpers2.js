@@ -93,7 +93,10 @@ function toMQwVars(str, elid) {
         str = AMnumfuncPrepVar(qn, str)[1];
     }
     var nomatrices = !(qtype.match(/matrix/) || qtype === 'string');
-    return AMtoMQ(str, elid, nomatrices);
+    var conv = AMtoMQ(str, elid, nomatrices);
+    // strip out paired invis brackets, introduced to fix n! display and separate variable f
+    conv = conv.replace(/{\\left\\linvis(\s*)\\right\\rinvis}/g,'').replace(/\\left\\linvis(.*?)\\right\\rinvis/g,'{$1}');
+    return conv;
 }
 function fromMQwText(str, elid) {
     str = MQtoAM(str);
@@ -1435,12 +1438,12 @@ function AMnumfuncPrepVar(qn,str) {
 
   //Correct rendering when f or g is a variable not a function
   if (vl.match(/\bf\b/) && !fvarslist.match(/\bf\b/)) {
-  	  dispstr = dispstr.replace(/([^a-zA-Z])f\^([\d\.]+)([^\d\.])/g, "$1f^$2{::}$3");
-  	  dispstr = dispstr.replace(/([^a-zA-Z])f\(/g, "$1f{::}(");
+  	  dispstr = dispstr.replace(/([^a-zA-Z]|^)f\^([\d\.]+)([^\d\.])/g, "$1f^$2{: :}$3");
+  	  dispstr = dispstr.replace(/([^a-zA-Z]|^)f\s*\(/g, "$1f{: :}(");
   }
   if (vl.match(/\bg\b/) && !fvarslist.match(/\bg\b/)) {
-  	  dispstr = dispstr.replace(/([^a-zA-Z])g\^([\d\.]+)([^\d\.])/g, "$1g^$2{::}$3");
-  	  dispstr = dispstr.replace(/([^a-zA-Z])g\(/g, "$1g{::}(");
+  	  dispstr = dispstr.replace(/([^a-zA-Z])g\^([\d\.]+)([^\d\.])/g, "$1g^$2{: :}$3");
+  	  dispstr = dispstr.replace(/([^a-zA-Z])g\s*\(/g, "$1g{: :}(");
   }
   return [str,dispstr,vars.join("|"),submitstr];
 }

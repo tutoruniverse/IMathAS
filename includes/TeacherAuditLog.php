@@ -50,7 +50,7 @@ class TeacherAuditLog
             . "(:userid, :courseid, :action, :itemid, :metadata)";
         $stm = $GLOBALS['DBH']->prepare($query);
         return $stm->execute(array(
-            ':userid'=>$GLOBALS['userid'],
+            ':userid'=> ($GLOBALS['userid'] ?? 0),
             ':courseid'=>$courseid,
             ':action'=>$action,
             ':itemid'=>$itemid,

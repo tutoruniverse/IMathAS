@@ -146,6 +146,18 @@
     border-top: 1px solid #d0d0d0;
     height: 20px; flex-shrink: 0;
   }
+
+  /* Invisible contenteditable that stays focused so the browser treats
+     Ctrl+V as a paste command — a plain document/canvas never fires
+     'paste' since there's no editable target for the OS to paste into. */
+  #paste-target {
+    position: fixed;
+    top: 0; left: 0;
+    width: 1px; height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -231,6 +243,8 @@
 
   <div id="status-bar"></div>
 
+  <div id="paste-target" contenteditable="true" tabindex="-1" aria-hidden="true"></div>
+
 </div>
 <script>
 (function () {
@@ -238,7 +252,7 @@
 
   const drawCanvas    = document.getElementById('draw-canvas');
   const overlayCanvas = document.getElementById('overlay-canvas');
-  const ctx  = drawCanvas.getContext('2d');
+  const ctx  = drawCanvas.getContext('2d', { willReadFrequently: true });
   const octx = overlayCanvas.getContext('2d');
 
   // Size the canvas to fill the available space inside the iframe.
@@ -373,6 +387,63 @@
     reader.onload = () => drawImageOntoCanvas(reader.result);
     reader.onerror = () => setStatus('⚠ Could not read file');
     reader.readAsDataURL(file);
+    focusPasteTarget();
+  });
+
+  // Ctrl+V / Cmd+V with an image on the clipboard inserts it the same way.
+  //
+  // A plain document has no editable target, so the browser never issues a
+  // 'paste' command for it — only inputs/textareas/contenteditable regions
+  // receive one. #paste-target is an invisible contenteditable kept focused
+  // for exactly this reason; the 'paste' event it receives bubbles up to
+  // document like any other DOM event.
+  const pasteTarget = document.getElementById('paste-target');
+
+  function focusPasteTarget() {
+    // Deferred so it runs after whatever click/tap triggered it has
+    // finished changing focus on its own.
+    setTimeout(() => pasteTarget.focus(), 0);
+  }
+
+  focusPasteTarget();
+
+  // Alt-tabbing to another app to copy something and back doesn't fire any
+  // mousedown inside this iframe, and neither 'visibilitychange' (only
+  // fires for tab-level hide/show) nor a nested iframe's window 'focus'
+  // event reliably fires for OS-level app switching. So instead, poll: if
+  // nothing meaningful is focused (focus fell back to <body>, which is
+  // what typically happens after switching apps and back), reclaim it.
+  setInterval(() => {
+    const ae = document.activeElement;
+    if (ae === document.body || ae === document.documentElement || !ae) {
+      pasteTarget.focus();
+    }
+  }, 400);
+
+  document.addEventListener('mousedown', e => {
+    // Native controls (file picker, size slider, color swatch) need to
+    // keep real focus for their own interaction; everything else should
+    // hand focus back to the paste target.
+    if (e.target.tagName === 'INPUT') return;
+    focusPasteTarget();
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.indexOf('image/') !== 0) continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      e.preventDefault();
+
+      const reader = new FileReader();
+      reader.onload = () => drawImageOntoCanvas(reader.result);
+      reader.onerror = () => setStatus('⚠ Could not read pasted image');
+      reader.readAsDataURL(file);
+      break;
+    }
+    pasteTarget.textContent = ''; // discard anything the browser inserted
   });
 
   // Loads an image (data URL) at natural size — scaled down to fit if it's

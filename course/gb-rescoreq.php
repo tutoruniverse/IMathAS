@@ -2,6 +2,7 @@
 //IMathAS: Re-score a question
 //(c) 2018 David Lippman
 
+$init_csrfp_scope = 'question';
 require_once "../init.php";
 require_once "../assessment/displayq2.php";
 require_once "../includes/ltioutcomes.php";

@@ -29,6 +29,20 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		 */
 		private static $isValidHTML = false;
 
+		/*
+		 * Variable: $scope
+		 * Which token pool this page's requests are validated against and
+		 * given a token from. Pages that render untrusted (instructor-authored)
+		 * question content must use a scope other than 'default' so that the
+		 * token exposed to that page can never validate a request against a
+		 * page of a different scope - eg 'default' scope endpoints reject a
+		 * 'question' scoped token, and vice versa. This keeps script embedded
+		 * in a question from ever having access to a token usable to forge
+		 * requests to privileged, non-question-related endpoints.
+		 * @var string
+		 */
+		private static $scope = 'default';
+
 		public static $config = array(
 			'failedAuthAction' => 'block',
 			'tokenLength' => 10,
@@ -36,12 +50,26 @@ if (!defined('__CSRF_PROTECTOR__')) {
 			'jsUrl' => ''  //set in init, after basesiteurl is defined
 		);
 
-		public static function init($length = null, $action = null)
+		/*
+		 * Function: sessionKey
+		 * Returns the $_SESSION key holding the token for the given (or
+		 * current) scope. Scopes other than 'default' get their own key so
+		 * that tokens from different scopes are never interchangeable.
+		 */
+		private static function sessionKey($scope = null)
+		{
+			$scope = $scope ?? self::$scope;
+			return $scope === 'default' ? CSRFP_TOKEN : CSRFP_TOKEN . '-' . $scope;
+		}
+
+		public static function init($length = null, $action = null, $scope = 'default')
 		{
 			global $userid;
 			if (empty($userid)) { //only run if $userid is set
 				return;
 			}
+
+			self::$scope = $scope ?: 'default';
 
 			if ($GLOBALS['CFG']['use_csrfp']==='log') {
 				self::$config['failedAuthAction'] = 'log';
@@ -50,11 +78,11 @@ if (!defined('__CSRF_PROTECTOR__')) {
 			self::$config['jsUrl'] = $GLOBALS['basesiteurl'] . "/csrfp/js/simplecsrfprotector.js?v=101525";
 
 			// Authorise the incoming request
-			if (isset($_SESSION[CSRFP_TOKEN])) {
+			if (isset($_SESSION[self::sessionKey()])) {
 				self::authorizePost();
 			}
 
-			if (!isset($_SESSION[CSRFP_TOKEN])) {
+			if (!isset($_SESSION[self::sessionKey()])) {
 				self::refreshToken();
 			}
 
@@ -117,8 +145,9 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		 * bool - true if its valid else false
 		 */
 		private static function isValidToken($token) {
-			if (!isset($_SESSION[CSRFP_TOKEN])) return false;
-			return ($_SESSION[CSRFP_TOKEN] == $token);
+			$sessKey = self::sessionKey();
+			if (!isset($_SESSION[$sessKey])) return false;
+			return ($_SESSION[$sessKey] == $token);
 		}
 
 		/*
@@ -171,7 +200,7 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		{
 			$token = self::generateAuthToken();
 
-			$_SESSION[CSRFP_TOKEN] = $token;
+			$_SESSION[self::sessionKey()] = $token;
 		}
 		/*
 		 * Function: generateAuthToken
@@ -221,7 +250,7 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		private static function get_csrf_input_tag()
 		{
 			$out = '<input type="hidden" name="'.CSRFP_TOKEN.'" ';
-			$out .= 'class="'.CSRFP_TOKEN.'" value="'.$_SESSION[CSRFP_TOKEN].'" />';
+			$out .= 'class="'.CSRFP_TOKEN.'" value="'.$_SESSION[self::sessionKey()].'" />';
 			return $out;
 		}
 
@@ -237,7 +266,7 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		{
 			$out = '<script type="text/javascript" src="' . self::$config['jsUrl'] . '"></script>';
 			$out .= '<script type="text/javascript">';
-			$out .= 'CSRFP.setToken("'.$_SESSION[CSRFP_TOKEN].'");</script>';
+			$out .= 'CSRFP.setToken("'.$_SESSION[self::sessionKey()].'");</script>';
 
 			return $out;
 		}
@@ -297,11 +326,13 @@ if (!defined('__CSRF_PROTECTOR__')) {
 			$log['APACHE_HEADERS'] = apache_request_headers();
 			$log['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
 			$log['query'] = $_POST;
+			$log['csrfp_scope'] = self::$scope;
 
-			if (!isset($_SESSION[CSRFP_TOKEN])) {
+			$sessKey = self::sessionKey();
+			if (!isset($_SESSION[$sessKey])) {
 				$log['csrfp_token'] = "not set";
 			} else {
-				$log['csrfp_token'] = $_SESSION[CSRFP_TOKEN];
+				$log['csrfp_token'] = $_SESSION[$sessKey];
 			}
 
 			$log['session_time'] = $_SESSION['time'];

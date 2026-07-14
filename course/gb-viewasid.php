@@ -1,6 +1,7 @@
 <?php
 //IMathAS:  View/Edit and Question breakdown views
 //(c) 2007 David Lippman
+	$init_csrfp_scope = 'question';
 	require_once "../init.php";
 	require_once "../includes/filehandler.php";
   require_once "../includes/TeacherAuditLog.php";

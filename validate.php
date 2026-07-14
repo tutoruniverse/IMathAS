@@ -446,7 +446,7 @@ if ($hasusername) {
     // load OWASP CSRF Protector
     if (!empty($CFG['use_csrfp']) && (!isset($init_skip_csrfp) || (isset($init_skip_csrfp) && false == $init_skip_csrfp))) {
         require_once __DIR__ . "/csrfp/simplecsrfp.php";
-        csrfProtector::init();
+        csrfProtector::init(null, null, $init_csrfp_scope ?? 'default');
     }
 
     $query = "SELECT SID,rights,groupid,LastName,FirstName,deflib";

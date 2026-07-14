@@ -7,6 +7,7 @@
 
 // does NOT work for randomized questions or matching.
 
+$init_csrfp_scope = 'question';
 require_once "../init.php";
 
 if (!isset($teacherid) && !isset($tutorid)) {

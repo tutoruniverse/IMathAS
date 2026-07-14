@@ -3,6 +3,7 @@
 //(c) 2006 David Lippman
 
 /*** master php includes *******/
+$init_csrfp_scope = 'question';
 require_once "../init.php";
 require_once '../assess2/AssessStandalone.php';
 

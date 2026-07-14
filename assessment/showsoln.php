@@ -15,6 +15,7 @@ if (!isset($_GET['cid']) || $_GET['cid']==="embedq") {
 	}
     $myrights = 5;
 } else {
+	$init_csrfp_scope = 'question';
 	require_once "../init.php";
 }
 

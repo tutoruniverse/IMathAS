@@ -1,4 +1,5 @@
 <?php
+	$init_csrfp_scope = 'question';
 	require_once "../init.php";
 	$isteacher = (isset($teacherid) || !empty($_SESSION['isteacher']));
 	if (!isset($_SESSION['sessiontestid']) && !$isteacher) {

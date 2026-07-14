@@ -35,6 +35,7 @@ if (isset($_GET['public'])) {
 	$_SESSION['graphdisp'] = 1;
 	$_SESSION['mathdisp'] = 2;
 } else {
+	$init_csrfp_scope = 'question';
 	require_once "../init.php";
 	$public = '';
 	$publica = '';

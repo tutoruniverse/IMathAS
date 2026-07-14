@@ -2,6 +2,7 @@
 //IMathAS:  Frontend of testing engine - manages administration of assessments
 //(c) 2006 David Lippman
 
+	$init_csrfp_scope = 'question';
 	require_once "../init.php";
 
 	//Look to see if a hook file is defined, and include if it is

@@ -7,6 +7,7 @@
 
 // TODO: rework one-stu-at-a-time to use userid as selector
 
+	$init_csrfp_scope = 'question';
 	require_once "../init.php";
 	require_once "../assess2/AssessInfo.php";
 	require_once "../assess2/AssessRecord.php";

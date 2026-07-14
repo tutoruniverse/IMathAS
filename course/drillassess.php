@@ -2,6 +2,7 @@
 //IMathAS:  Drill Assess player (updated quickdrill)
 //(c) 2011 David Lippman
 
+$init_csrfp_scope = 'question';
 require_once "../init.php";
 if ($courseUIver > 1) {
     require_once '../assess2/AssessStandalone.php';

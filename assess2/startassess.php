@@ -354,8 +354,10 @@ $assessInfoOut['has_active_attempt'] = ($assess_record->hasActiveAttempt() ||
 if ($assessInfoOut['has_active_attempt'] && $assessInfoOut['timelimit'] > 0) {
   // These values are adjusted for timelimit multiplier, but are not limited
   // by the due date
-  $assessInfoOut['timelimit_expiresin'] = $assess_record->getTimeLimitExpires() - $now;
-  $assessInfoOut['timelimit_gracein'] = max($assess_record->getTimeLimitGrace() - $now, 0);
+  $assessInfoOut['timelimit_expires'] = $assess_record->getTimeLimitExpires();
+  $assessInfoOut['timelimit_expiresin'] = $assessInfoOut['timelimit_expires'] - $now;
+  $assessInfoOut['timelimit_grace'] = $assess_record->getTimeLimitGrace();
+  $assessInfoOut['timelimit_gracein'] = max($assessInfoOut['timelimit_grace'] - $now, 0);
 }
 
 // grab video cues if needed

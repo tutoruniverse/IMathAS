@@ -95,10 +95,21 @@ if ((!$isltilimited || $_SESSION['ltirole']!='learner') && !$inTreeReader && !$i
 </noscript>
 <div id="app"></div>
 
+<?php
+$isOldChrome = false;
+
+if (preg_match('/Chrome\/(\d+)/', $_SERVER['HTTP_USER_AGENT'] ?? '', $matches)) {
+    $chromeVersion = (int)$matches[1];
+    $isOldChrome = $chromeVersion < 105;
+}
+if ($isOldChrome) {
+  echo '<script defer="defer" src="'.$staticroot.'/assess2/vue/js/gbviewassess-legacy.js?v=D83SX2RZ"></script>';
+} else {
+?>
 <script defer="defer" type="module" src="<?php echo $staticroot;?>/assess2/vue/js/gbviewassess.js?v=DRUXi8g0"></script>
 <script defer="defer" nomodule src="<?php echo $staticroot;?>/assess2/vue/js/gbviewassess-legacy.js?v=D83SX2RZ"></script>
-
 <?php
+}
 $placeinfooter = '<div id="ehdd" class="ehdd" style="display:none;">
   <span id="ehddtext"></span>
   <span onclick="showeh(curehdd);" style="cursor:pointer;">'._('[more..]').'</span>

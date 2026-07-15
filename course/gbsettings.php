@@ -404,8 +404,8 @@
 		<input type="checkbox" name="gbmode100000" value="1" id="secshow" <?php writeHtmlChecked($hidesection,false);?>/><label for="secshow">Section column (if used)</label><br/>
 		<input type="checkbox" name="gbmode200000" value="2" id="codeshow" <?php writeHtmlChecked($hidecode,false);?>/><label for="codeshow">Code column (if used)</label><br/>
 		<input type="checkbox" name="gbmode4000" value="4" id="llcol" <?php writeHtmlChecked($lastlogin,true);?>/><label for="llcol">Last Login column</label><br/>
-		<input type="checkbox" name="gbmode400" value="4" id="duedate" <?php writeHtmlChecked($includeduedate,true);?>/><label for="duedate">Due Date in column headers, and column in single-student view</label><br/>
-		<input type="checkbox" name="gbmode40" value="4" id="lastchg" <?php writeHtmlChecked($includelastchange,true);?>/><label for="lastchg">Last Change column in single-student view</label><br/>
+			<span style="display:none;"><input type="checkbox" name="gbmode400" value="4" id="duedate" <?php writeHtmlChecked($includeduedate,true);?>/><label for="duedate">Due Date in column headers, and column in single-student view</label><br/>
+			<input type="checkbox" name="gbmode40" value="4" id="lastchg" <?php writeHtmlChecked($includelastchange,true);?>/><label for="lastchg">Last Change column in single-student view</label><br/></span>
 		<input type="checkbox" name="gbmode1000000" value="1" id="shortenhdr" <?php writeHtmlChecked($shortenheaders,true);?>/><label for="shortenhdr">Try to shorten header names</label>
 	
 	</span><br class=form />

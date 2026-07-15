@@ -87,7 +87,7 @@
 	$hidesection = (((floor($gbmode/100000)%10)&1)==1);
 	$hidecode = (((floor($gbmode/100000)%10)&2)==2);
 	$hidelocked = ((floor($gbmode/100)%10&2)); //0: show locked, 1: hide locked
-	$includeduedate = (((floor($gbmode/100)%10)&4)==4); //0: hide due date, 4: show due date
+	$includeduedate = true; //(((floor($gbmode/100)%10)&4)==4); //0: hide due date, 4: show due date
 
 	if (isset($tutorsection) && $tutorsection!='') {
 		$secfilter = $tutorsection;

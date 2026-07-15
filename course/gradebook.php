@@ -101,9 +101,9 @@ if ($canviewall) {
 		D & 4 is  Last login column: hide (0), show (4)
 		C & 1 is  Links show: full (0), summary (1)
 		C & 2 is  Locked: show (0), hide (2)
-		C & 4 is  Due date column: hide (0), show (4)
+		*C & 4 is  Due date column: hide (0), show (4)  * changed to default
 		B % 3 is  NC assignments: show (0), student visible (cntingb not 0) (1), hide all (2)
-		B & 4 is  Last change column: hide (0), show (4)
+		*B & 4 is  Last change column: hide (0), show (4) * changed to default
 		A     is  Show by availability: Past due (0), Past & Available (1), All (2), Past & Attempted (3), Available only (4)
 	*/
 	$shortenheaders = (((floor($gbmode/1000000)%10)&1)==1);
@@ -117,9 +117,9 @@ if ($canviewall) {
 	$lastlogin = (((floor($gbmode/1000)%10)&4)==4) ; //0 hide, 2 show last login column
 	$links = ((floor($gbmode/100)%10)&1); //0: view/edit, 1 q breakdown
 	$hidelocked = ((floor($gbmode/100)%10&2)); //0: show locked, 1: hide locked
-	$includeduedate = (((floor($gbmode/100)%10)&4)==4); //0: hide due date, 4: show due date
+	$includeduedate = true; // (((floor($gbmode/100)%10)&4)==4); //0: hide due date, 4: show due date
 	$hidenc = (floor($gbmode/10)%10)%4; //0: show all, 1 stu visisble (cntingb not 0), 2 hide all (cntingb 1 or 2)
-	$includelastchange = (((floor($gbmode/10)%10)&4)==4);  //: hide last change, 4: show last change
+	$includelastchange = true; //(((floor($gbmode/10)%10)&4)==4);  //: hide last change, 4: show last change
 	$availshow = $gbmode%10; //0: past, 1 past&cur, 2 all, 3 past and attempted, 4=current only
 
 	$usefullwidth = false;
@@ -145,8 +145,8 @@ if ($canviewall) {
 	$hidelocked = 0;
 	$showpercents = 0;
 	$lastlogin = false;
-	$includeduedate = false;
-    $includelastchange = false;
+	$includeduedate = true;
+    $includelastchange = true;
     $gbmode = '';
 	$headerlockdef = true;
 	$usefullwidth = false;
@@ -903,10 +903,6 @@ function gbstudisp($stu) {
 	if ($stu>0 && $isteacher) {
 		echo '<th>', _('Time Spent (In Questions)'), '</th>';
 		$sarr = "false,'S','N','N','N','N'";
-		if ($includelastchange) {
-			echo '<th>'._('Last Changed').'</th>';
-			$sarr .= ",'D'";
-		}
 	} else if ($stu==-1) {
 		echo '<th>', _('Time Spent (In Questions)'), '</th>';
 		$sarr = "'S','N','N','N','N'";
@@ -914,6 +910,10 @@ function gbstudisp($stu) {
 		$sarr = "'S','N','N','N'";
 	}
 	if ($stu>0) {
+		if ($includelastchange) {
+			echo '<th>'._('Last Changed').'</th>';
+			$sarr .= ",'D'";
+		}
 		if ($includeduedate) {
 			echo '<th>'._('Due Date').'</th>';
 			$sarr .= ",'D'";
@@ -1234,13 +1234,7 @@ function gbstudisp($stu) {
 				} else {
 					echo '<td></td>';
 				}
-				if ($includelastchange) {
-					if (!empty($gbt[1][1][$i][9]) && $gbt[1][1][$i][9]>0) {
-						echo '<td>'.tzdate('n/j/y g:ia', $gbt[1][1][$i][9]);
-					} else {
-						echo '<td></td>';
-					}
-				}
+				
 			} else if ($stu==-1) {
 				if (isset($gbt[1][1][$i][7]) && $gbt[1][1][$i][7]>-1) {
 					echo '<td>'.$gbt[1][1][$i][7].' min ('.$gbt[1][1][$i][8].' min)</td>';
@@ -1249,6 +1243,13 @@ function gbstudisp($stu) {
 				}
 			}
 			if ($stu>0) {
+				if ($includelastchange) {
+					if (!empty($gbt[1][1][$i][9]) && $gbt[1][1][$i][9]>0) {
+						echo '<td>'.tzdate('n/j/y g:ia', $gbt[1][1][$i][9]);
+					} else {
+						echo '<td></td>';
+					}
+				}
 				if ($includeduedate) {
 					if ($gbt[0][1][$i][6]!=1 &&  //skip offline
 						$gbt[0][1][$i][11]<2000000000 && $gbt[0][1][$i][11]>0) {

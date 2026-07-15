@@ -228,9 +228,11 @@
 				$adjustedFeedbacks = $assess_record->convertGbFeedbacks($feedbackToSet);
 				$changes = $assess_record->setGbScoreOverrides($adjustedScores);
 				$assess_record->setGbFeedbacks($adjustedFeedbacks);
+				$manuallastchange = null;
 				if (!empty($_POST['domanualrelease'])) {
 					if ($assess_record->setManuallyReleased(true)) {
 						$changes['manually_released'] = 1;
+						$manuallastchange = $assess_record->getLastChange();
 					}
 				}
 
@@ -252,7 +254,7 @@
 					//update LTI score
 					require_once "../includes/ltioutcomes.php";
 					$gbscore = $assess_record->getGbScore();
-					calcandupdateLTIgrade($line['lti_sourcedid'],$aid,$line['userid'],$gbscore['gbscore'],true, -1, false);
+					calcandupdateLTIgrade($line['lti_sourcedid'],$aid,$line['userid'],$gbscore['gbscore'],true, -1, !empty($changes['manually_released']), $manuallastchange);
 				}
 			}
 		}

@@ -116,17 +116,18 @@ class LTI_Grade_Update {
    * @param  string $activityProgress default 'Submitted'
    * @param  string $gradingProgress  default 'FullyGraded'
    * @param  int    $isstu            default 1
+   * @param  ?int    $addedon         default null
    * @param  string $comment          default ''
    * @return false|array  false on failure, or array with body and headers
    */
   public function send_update(string $token, string $score_url, float $score, int $ptsposs,
     string $ltiuserid, string $hash, string $activityProgress='Submitted',
-    string $gradingProgress='FullyGraded', $isstu = 1, string $comment = ''
+    string $gradingProgress='FullyGraded', $isstu = 1, ?int $addedon = null, string $comment = ''
   ) {
     $pos = strpos($score_url, '?');
     $score_url = $pos === false ? $score_url . '/scores' : substr_replace($score_url, '/scores', $pos, 0);
 
-    $content = $this->get_update_body($token, $score, $ptsposs, $ltiuserid, $hash, $isstu, null,
+    $content = $this->get_update_body($token, $score, $ptsposs, $ltiuserid, $hash, $isstu, $addedon,
       $activityProgress, $gradingProgress, $comment);
     $this->debuglog('Sending update: '.$content['body']);
     // try to spawn a curl and don't wait for response
@@ -195,7 +196,7 @@ class LTI_Grade_Update {
    * @param  string $ltiuserid        the LMS provided userid; imas_ltiusers.ltiuserid
    * @param  string  $hash            the imathas aid-userid
    * @param  boolean    $isstu            default true
-   * @param  int?   $addedon          the time the submission was added (null for default)
+   * @param  ?int    $addedon          the time the submission was added (null for default)
    * @param  string $activityProgress default 'Submitted'
    * @param  string $gradingProgress  default 'FullyGraded'
    * @param  string $comment          default ''

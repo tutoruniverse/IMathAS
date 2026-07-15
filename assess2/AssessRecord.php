@@ -259,14 +259,15 @@ class AssessRecord
         require_once __DIR__ . '/../includes/ltioutcomes.php';
         $gbscore = $this->getGbScore();
         $aidposs = $this->assess_info->getSetting('points_possible');
-        calcandupdateLTIgrade($lti_sourcedid, $this->curAid, $this->curUid, $gbscore['gbscore'], $sendnow, $aidposs, $isstu);
+        $lastchange = $this->getLastChange();
+        calcandupdateLTIgrade($lti_sourcedid, $this->curAid, $this->curUid, $gbscore['gbscore'], $sendnow, $aidposs, $isstu, $lastchange);
         if ($this->assessRecord['agroupid'] > 0) {
             // has group; update their scores too
             $stm = $this->DBH->prepare('SELECT userid,lti_sourcedid FROM imas_assessment_records WHERE agroupid=? AND userid<>?');
             $stm->execute(array($this->assessRecord['agroupid'], $this->curUid));
             while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
                 if (strlen($row['lti_sourcedid']) > 1) {
-                    calcandupdateLTIgrade($row['lti_sourcedid'], $this->curAid, $row['userid'], $gbscore['gbscore'], $sendnow, $aidposs, $isstu);
+                    calcandupdateLTIgrade($row['lti_sourcedid'], $this->curAid, $row['userid'], $gbscore['gbscore'], $sendnow, $aidposs, $isstu, $lastchange);
                 }
             }
         }
@@ -823,6 +824,16 @@ class AssessRecord
       'scored_version' => $this->data['scored_version']
     );
   }
+
+  /**
+   * Get last change time
+   * @return int
+   */
+  public function getLastChange() {
+    $this->parseData();
+    return $this->assessRecord['lastchange'];
+  }
+
 
   /**
    * Gets an array for each assessment version of the current score

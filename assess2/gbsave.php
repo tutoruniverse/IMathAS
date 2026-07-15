@@ -100,7 +100,7 @@ if (!empty($changes)) {
   );
 }
 
-// update LTI grade
-$assess_record->updateLTIscore(true, false);
+// update LTI grade. Treat isstu if manually released
+$assess_record->updateLTIscore(true, !empty($changes['manually_released']));
 
 echo json_encode($out, JSON_INVALID_UTF8_IGNORE);

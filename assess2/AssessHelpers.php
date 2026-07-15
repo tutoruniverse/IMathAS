@@ -195,7 +195,8 @@ class AssessHelpers
         if (strlen($lti_sourcedid) > 1) {
           $gbscore = $assess_record->getGbScore();
           $aidposs = $assess_info->getSetting('points_possible');
-          calcandupdateLTIgrade($lti_sourcedid, $aid, $line['userid'], $gbscore['gbscore'], true, $aidposs, false);
+          $lastchgtime = $assess_record->getLastChange();
+          calcandupdateLTIgrade($lti_sourcedid, $aid, $line['userid'], $gbscore['gbscore'], true, $aidposs, true, $lastchgtime);
         }
         $cnt++;
       }
@@ -250,8 +251,8 @@ class AssessHelpers
         $assess_record->setManuallyReleased($release);
         $assess_record->saveRecord();
         $changes[] = $line['userid'];
-        // update LTI grade
-        $assess_record->updateLTIscore(true, false);
+        // update LTI grade; send as student if releasing
+        $assess_record->updateLTIscore(true, $release == true);
         $cnt++;
       }
     }

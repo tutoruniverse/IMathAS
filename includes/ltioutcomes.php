@@ -16,7 +16,7 @@ require_once __DIR__.'/../lti/LTI_Grade_Update.php';
  *                          to send after the $CFG-set queuedelay.
  * @param boolean $isstu    whether it was a student initiated grade change
  */
-function addToLTIQueue($sourcedid, $key, $grade, $ptsposs = 1, $sendnow=false, $isstu=true) {
+function addToLTIQueue($sourcedid, $key, $grade, $ptsposs = 1, $sendnow=false, $isstu=true, $addtime=null) {
 	global $DBH, $CFG;
 
 	$LTIdelay = 60*(isset($CFG['LTI']['queuedelay'])?$CFG['LTI']['queuedelay']:5);
@@ -33,7 +33,7 @@ function addToLTIQueue($sourcedid, $key, $grade, $ptsposs = 1, $sendnow=false, $
 		':ptsposs' => $ptsposs,
 		':sendon' => (time() + ($sendnow?0:$LTIdelay)),
         ':isstu' => $isstu ? 1 : 0,
-        ':addedon' => time()
+        ':addedon' => $addtime ?? time()
 	));
 
 	return ($stm->rowCount()>0);
@@ -41,7 +41,7 @@ function addToLTIQueue($sourcedid, $key, $grade, $ptsposs = 1, $sendnow=false, $
 
 $aidtotalpossible = array();
 //use this if we don't know the total possible
-function calcandupdateLTIgrade($sourcedid,$aid,$uid,$scores,$sendnow=false,$aidposs=-1,$isstu=true) {
+function calcandupdateLTIgrade($sourcedid,$aid,$uid,$scores,$sendnow=false,$aidposs=-1,$isstu=true,$addtime=null) {
 	global $DBH, $aidtotalpossible;
   if ($aidposs == -1) {
     if (isset($aidtotalpossible[$aid])) {
@@ -72,11 +72,11 @@ function calcandupdateLTIgrade($sourcedid,$aid,$uid,$scores,$sendnow=false,$aidp
   }
 
 	$grade = max(0,$total);
-	return updateLTIgrade('update',$sourcedid,$aid,$uid,$grade,$aidposs,$allans||$sendnow,$isstu);
+	return updateLTIgrade('update',$sourcedid,$aid,$uid,$grade,$aidposs,$allans||$sendnow,$isstu,$addtime);
 }
 
 //use this if we know the grade, or want to delete
-function updateLTIgrade($action,$sourcedid,$aid,$uid,$grade=0,$aidposs=1,$sendnow=false,$isstu=true) {
+function updateLTIgrade($action,$sourcedid,$aid,$uid,$grade=0,$aidposs=1,$sendnow=false,$isstu=true,$addtime=null) {
 	global $CFG;
 
     if (empty($uid) || empty($sourcedid) || is_array($sourcedid)) {
@@ -94,7 +94,7 @@ function updateLTIgrade($action,$sourcedid,$aid,$uid,$grade=0,$aidposs=1,$sendno
 	}
 	//if we're using the LTI message queue, and it's an update, queue it
 	if (!empty($CFG['LTI']['usequeue']) && $action=='update') {
-		return addToLTIQueue($sourcedid, $aid.'-'.$uid, $grade, $aidposs, $sendnow, $isstu);
+		return addToLTIQueue($sourcedid, $aid.'-'.$uid, $grade, $aidposs, $sendnow, $isstu, $addtime);
 	}
 
   $sourcedidparts = explode(':|:',$sourcedid);
@@ -112,7 +112,8 @@ function updateLTIgrade($action,$sourcedid,$aid,$uid,$grade=0,$aidposs=1,$sendno
 	  $aid.'-'.$uid, // local aid-userid
       $action == 'delete' ? 'Initialized' : 'Submitted', // activityProgress
       $action == 'delete' ? 'NotReady' : 'FullyGraded', // gradingProgress
-      $isstu
+      $isstu,
+	  $addtime
     );
   } else {
 	if ($aidposs > 0) {

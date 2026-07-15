@@ -48,6 +48,13 @@
           {{ timeLimitExt }}
         </span>
         <span v-else>
+          <span v-if = "hasRetakes">
+            {{  $t('setlist-submitretake') }}
+          </span>
+          <span v-else>
+            {{  $t('setlist-submitnote') }}
+          </span>
+          <br/>
           <button
             type="button"
             class="primary"
@@ -248,6 +255,11 @@ export default {
     },
     showTutorLinks () {
       return this.aInfo.hasOwnProperty('tutor_gblinks');
+    },
+    hasRetakes () {
+      return (this.aInfo.submitby === 'by_assessment' &&
+        this.aInfo.prev_attempts.length + (this.aInfo.has_active_attempt ? 1 : 0) < this.aInfo.allowed_attempts
+      );
     },
     showGbLink () {
       return (this.aInfo.is_lti &&

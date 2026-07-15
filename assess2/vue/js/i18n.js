@@ -145,6 +145,8 @@ setlist-timelimit_wgrace_restricted_penalty = Time limit: {$time}, with a grace 
 setlist-timelimit_ext = You have been given a {$n} minute extension on the time limit\r
 setlist-timelimit_ext_used = You have used a {$n} minute timelimit extension\r
 setlist-excused = You have been excused from this assignment. It will not be counted in your grade.\r
+setlist-submitnote = Submit your unsubmitted attempt for scoring.\r
+setlist-submitretake = Submit your unsubmitted attempt for scoring and to be able to retake the assessment.\r
 setlist-latepass_needed = \r
     { $n ->\r
         [one] You can redeem one LatePass to extend the due date to {$date}\r

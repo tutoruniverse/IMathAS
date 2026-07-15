@@ -1,10 +1,12 @@
 //IMathAS (c) forums thread-list order cache
 //Caches, in sessionStorage, the ordered list of threads shown by
-//thread.php/newthreads.php/flaggedthreads.php/forums.php for a given
-//context, so posts.php can populate its Prev/Next links without a DB
-//query. Each cached page is an array of [threadid, forumid] pairs
-//(forumid is needed per-entry since course-wide lists like "new posts"
-//and "flagged posts" span multiple forums).
+//thread.php/newthreads.php/flaggedthreads.php/forums.php/index.php for a
+//given context, so posts.php can populate its Prev/Next links without a
+//DB query. Each cached page is an array of [threadid, forumid] pairs, or
+//[threadid, forumid, cid] triples when the entry's course isn't the same
+//as the current context's (only index.php's cross-course "allnew" widget
+//needs this - every other list lives in a single course, so entries can
+//just omit the 3rd element and fall back to ctx.cid).
 //The listing pages seed this by scraping their own rendered
 //"a.threadlink" links (see seedFromPage) rather than the server sending
 //a redundant copy of the same ids as JSON.
@@ -88,7 +90,8 @@ var ForumThreadCache = (function() {
 			var tid = parseInt(params.thread, 10);
 			var fid = parseInt(params.forum, 10);
 			if (isNaN(tid) || isNaN(fid)) { continue; }
-			ids.push([tid, fid]);
+			var linkCid = parseInt(params.cid, 10);
+			ids.push(isNaN(linkCid) ? [tid, fid] : [tid, fid, linkCid]);
 			if (page === null && params.page !== undefined) { page = parseInt(params.page, 10); }
 			if (grp === null && params.grp !== undefined) { grp = parseInt(params.grp, 10); }
 		}
@@ -154,7 +157,8 @@ var ForumThreadCache = (function() {
 		var data = found.data, ids = found.ids, idx = found.idx;
 		var typeqs = ctx.type !== 'default' ? '&type=' + ctx.type : '';
 		function linkFor(page, pair) {
-			var l = 'cid=' + ctx.cid + '&forum=' + pair[1] + '&page=' + page + typeqs;
+			var pairCid = pair.length > 2 ? pair[2] : ctx.cid;
+			var l = 'cid=' + pairCid + '&forum=' + pair[1] + '&page=' + page + typeqs;
 			if (ctx.grp != null) { l += '&grp=' + ctx.grp; }
 			return l + '&thread=' + pair[0];
 		}

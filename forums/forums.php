@@ -51,7 +51,7 @@
 	$pagetitle = "Forums";
 	$placeinhead = "<style type=\"text/css\">\n@import url(\"$staticroot/forums/forums.css\");\n</style>\n";
 	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/thread.js?v=021326"></script>';
-	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071226"></script>';
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071526"></script>';
 	$placeinhead .= "<script type=\"text/javascript\">var AHAHsaveurl = '" . $GLOBALS['basesiteurl'] . "/forums/savetagged.php?cid=$cid';</script>";
 
 	require_once "../header.php";
@@ -271,7 +271,7 @@ if ($searchtype == 'thread') {
 			if ($line['tagged']==1) {echo 'class="tagged"';}
 			echo "><td>";
 			echo '<div class=flexgroup><span style="flex-grow:1">';
-			echo "<b><a class=\"threadlink\" href=\"posts.php?cid=$cid&forum=" . Sanitize::encodeUrlParam($line['forumid']) . "&thread=" . Sanitize::encodeUrlParam($line['id']) . "&type=threadsearch\">" . Sanitize::encodeStringForDisplay($line['subject']) . "</a></b></span>";
+			echo "<b><a class=\"threadlink\" href=\"posts.php?cid=$cid&forum=" . Sanitize::encodeUrlParam($line['forumid']) . "&thread=" . Sanitize::encodeUrlParam($line['id']) . "&type=threadsearch&page=1\">" . Sanitize::encodeStringForDisplay($line['subject']) . "</a></b></span>";
 
 			if ($line['tag']!='') { //category tags
 				echo '<span class="forumcattag">' . Sanitize::encodeStringForDisplay($line['tag']) . '</span> ';

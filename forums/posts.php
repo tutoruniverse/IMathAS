@@ -43,9 +43,12 @@ $canviewall = (isset($teacherid) || isset($tutorid));
 //default/new/flagged are per-forum (thread.php); coursenew/courseflagged
 //are course-wide (newthreads.php/flaggedthreads.php); threadsearch/
 //postsearch are forums.php's search results (postsearch is not
-//cache-eligible - see comment near the cache-context block below).
+//cache-eligible - see comment near the cache-context block below); allnew
+//is index.php's cross-course "new forum posts" dashboard widget - unlike
+//every other type it isn't scoped to a single course, so its threads
+//carry their own cid rather than relying on the current one.
 $type = $_GET['type'] ?? 'default';
-if (!in_array($type, ['default','new','flagged','coursenew','courseflagged','threadsearch','postsearch'], true)) {
+if (!in_array($type, ['default','new','flagged','coursenew','courseflagged','threadsearch','postsearch','allnew'], true)) {
 	$type = 'default';
 }
 $forumscoped = in_array($type, ['default','new','flagged'], true);
@@ -118,12 +121,14 @@ if ($page >= 1 && isset($_GET['edge']) && ($_GET['edge']==='first' || $_GET['edg
 			exit;
 		}
 	}
-	//threadsearch/postsearch never reach here: they always report
+	//threadsearch/postsearch/allnew never reach here: they always report
 	//numpages:1 to the cache, so the JS never emits an edge= link.
 }
 
 if ($type=='threadsearch' || $type=='postsearch') {
 	$redirecturl = $GLOBALS['basesiteurl'] . "/forums/forums.php?cid=$cid";
+} else if ($type=='allnew') {
+	$redirecturl = $GLOBALS['basesiteurl'] . "/index.php";
 } else if ($type=='coursenew') {
 	$redirecturl = $GLOBALS['basesiteurl'] . "/forums/newthreads.php?cid=$cid";
 } else if ($type=='courseflagged') {
@@ -259,7 +264,7 @@ require_once "posthandler.php";
 $pagetitle = "Posts";
 $placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/forums/forums.css?ver=011825" type="text/css" />';
 $placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/posts.js?v=021326"></script>';
-$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071226"></script>';
+$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071526"></script>';
 //$placeinhead = "<style type=\"text/css\">\n@import url(\"$imasroot/forums/forums.css\");\n</style>\n";
 if ($caneditscore && $_SESSION['useed']!=0) {
 	$useeditor = "noinit";
@@ -458,6 +463,8 @@ if (empty($_GET['embed'])) {
     }
     if ($type=='threadsearch' || $type=='postsearch') {
 		echo "<a href=\"forums.php?cid=$cid\">Forum Search</a> ";
+	} else if ($type=='allnew') {
+		echo "<a href=\"$imasroot/index.php\">"._('Home')."</a> ";
 	} else if ($type=='coursenew') {
 		echo "<a href=\"newthreads.php?cid=$cid\">New Threads</a> ";
 	} else if ($type=='courseflagged') {
@@ -507,10 +514,13 @@ if (!$oktoshow) {
 			'tagfilter' => $_SESSION['tagfilter'.$forumid] ?? '',
 		];
 	} else {
+		//allnew spans multiple courses, so it uses a constant scopeid (0)
+		//instead of the current cid - matching index.php's JS `cid` global,
+		//which is always 0 there since that page never sets $cid.
 		$navctx = [
 			'cid' => $cid,
 			'type' => $type,
-			'scopeid' => intval($cid),
+			'scopeid' => ($type=='allnew') ? 0 : intval($cid),
 			'page' => intval($page),
 			'threadid' => intval($threadid),
 			'grp' => null,
@@ -834,6 +844,8 @@ if (empty($_GET['embed'])) {
 	//course-wide/search types (they aren't reached via a per-forum list).
 	if ($type=='threadsearch' || $type=='postsearch') {
 		echo "<div class=right><a href=\"forums.php?cid=$cid\">"._('Back to Forum Search')."</a></div>\n";
+	} else if ($type=='allnew') {
+		echo "<div class=right><a href=\"$imasroot/index.php\">"._('Back to Home')."</a></div>\n";
 	} else if ($type=='coursenew') {
 		echo "<div class=right><a href=\"newthreads.php?cid=$cid\">"._('Back to New Threads')."</a></div>\n";
 	} else if ($type=='courseflagged') {

@@ -60,6 +60,9 @@ $placeinhead = '
    #homefullwidth { clear: both;}
   </style>';
 $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablesorter.js\"></script>\n";
+if ($showpostsgadget) {
+	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/forumthreadcache.js?v=071526\"></script>\n";
+}
 if ($myrights>15) {
 	$placeinhead .= '<script type="text/javascript">$(function() {
   var html = \'<div class="coursedd dropdown"><a role="button" tabindex=0 class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="'.$staticroot.'/img/gears.svg" alt="Options"/></a>\';
@@ -707,7 +710,7 @@ function printPostsGadget() {
 		} else if ($n>1) {
 			$subject = "Re<sup>$n</sup>: ".Sanitize::encodeStringForDisplay($subject);
 		}
-		echo "<td><a href=\"forums/posts.php?type=coursenew&cid={$line['courseid']}&forum={$line['id']}&thread={$line['threadid']}\">";
+		echo "<td><a class=\"threadlink\" href=\"forums/posts.php?type=allnew&cid={$line['courseid']}&forum={$line['id']}&thread={$line['threadid']}&page=1\">";
 		echo $subject;
 		echo '</a></td>';
 		if ($threaddata[$line['threadid']]['isanon']==1) {
@@ -721,6 +724,7 @@ function printPostsGadget() {
 	}
 	echo '</tbody></table>';
 	echo '<script type="text/javascript">initSortTable("newpostlist",Array("S","S","S","D"),false);</script>';
+	echo '<script>ForumThreadCache.seedFromPage({type: "allnew", tagfilter: "", numpages: 1});</script>';
 
 	echo '</div>';
 	echo '</div>';

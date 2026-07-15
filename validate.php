@@ -172,7 +172,7 @@ if ($haslogin && !$hasusername) {
         $line['password'] = password_hash('temp', PASSWORD_DEFAULT);
 
         $_POST['usedetected'] = true;
-    } else {
+    } else if (empty($_POST['passkeyCredentialId'])) {
         $query = "SELECT id,password,rights,groupid,jsondata,mfa FROM imas_users WHERE SID=:SID";
         $stm = $DBH->prepare($query);
         $stm->execute(array(':SID' => $_POST['username']));
@@ -202,6 +202,7 @@ if ($haslogin && !$hasusername) {
             $line = $stm->fetch(PDO::FETCH_ASSOC);
             if ($line) {
                 $_POST['username'] = $line['SID'];
+                $json_data = json_decode($line['jsondata'], true);
                 $passkeyApproved = true;
             }
         } else {
@@ -231,6 +232,7 @@ if ($haslogin && !$hasusername) {
 
                 // Set username from database in case it was empty
                 $_POST['username'] = $line['SID'];
+                $json_data = json_decode($line['jsondata'], true);
 
                 // Continue with login process
                 $passkeyApproved = true;

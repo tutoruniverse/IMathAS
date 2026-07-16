@@ -1,6 +1,7 @@
 <?php
 
   //check credentials
+  $init_skip_csrfp = true; // temp fix for cross-scope requests
   require_once "../init.php";
   require_once "../includes/filehandler.php";
 

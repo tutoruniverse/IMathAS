@@ -147,4 +147,117 @@ final class AddlabelTest extends TestCase
             'initPicture should not be duplicated after merge'
         );
     }
+
+    /**
+     * Modern showplot() emits embeds whose script attribute starts with
+     * `axes(...)` directly — no `setBorder(...);` or `initPicture(...);`
+     * prefix. mergeplots must still extract the additional draw commands
+     * and inject them into plota's script, without leaking the second
+     * embed tag as text.
+     */
+    public function testMergeplotsModernFormatInjectsCommands()
+    {
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[\"x^2\"]'" .
+            " plot-func='abc'" .
+            " script='axes(1,1,1,1,1);plot(\"x^2\");'" .
+            " />\n";
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[\"x^3\"]'" .
+            " plot-func='def'" .
+            " script='axes(1,1,1,1,1);plot(\"x^3\");'" .
+            " />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        $this->assertRegExp(
+            "/script='[^']*plot\(\"x\^3\"\)/",
+            $result,
+            'plotB draw command should be inside plotA\'s script attribute'
+        );
+        $this->assertEquals(
+            1,
+            substr_count($result, '<embed'),
+            'merged result must be a single embed tag — no nested embed leaked into the script'
+        );
+    }
+
+    /**
+     * ineqbetweenplot() injects fill/path commands into a modern showplot()
+     * embed via str_replace("' />"). mergeplots() must merge such an embed
+     * with another modern embed without spilling the second embed's script
+     * payload as visible text below the graph.
+     */
+    public function testMergeplotsModernFormatWithIneqbetweenplotPayload()
+    {
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[]'" .
+            " plot-func='abc'" .
+            " script='axes(1,1,1,1,1);fill=\"transgreen\";strokewidth=0;path([[0,0],[1,0],[1,-3],[0,-3]]);'" .
+            " />\n";
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='500' height='500'" .
+            " function_list='[\"line\"]'" .
+            " plot-func='def'" .
+            " script='axes(1,1,1,1,1);plot(\"x\");'" .
+            " />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        $this->assertEquals(
+            1,
+            substr_count($result, '<embed'),
+            'merged result must be a single embed tag'
+        );
+        $this->assertRegExp(
+            "/script='[^']*path\(\[\[0,0\]/",
+            $result,
+            'fill/path payload from ineqbetweenplot must remain in script'
+        );
+        $this->assertRegExp(
+            "/script='[^']*plot\(\"x\"\)/",
+            $result,
+            'plotB plot() must be appended into plotA\'s script'
+        );
+    }
+
+    /**
+     * showplot() can emit a script whose payload begins with a stray empty
+     * statement, e.g. `;  initPicture(...); axes(...);; stroke = "red";; plot(...)`.
+     * The leading `;` must not block the setBorder/initPicture/axes strip;
+     * otherwise the duplicate initPicture re-runs and clears the canvas.
+     */
+    public function testMergeplotsStripsBoilerplateWithLeadingSemicolon()
+    {
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='400' height='400'" .
+            " script=';  initPicture(-2.5,2.5,-2.5,2.5); axes(1, 1, \"labels\", );;  stroke = \"blue\";;  plot(\"x\",0,1)' />\n";
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='400' height='400'" .
+            " script=';  initPicture(-2.5,2.5,-2.5,2.5); axes(1, 1, \"labels\", );;  stroke = \"red\";;  plot(\"x\",1,2)' />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        $this->assertEquals(
+            1,
+            substr_count($result, 'initPicture'),
+            'initPicture must not be duplicated when plotb starts with a stray semicolon'
+        );
+        $this->assertRegExp(
+            "/stroke = \"red\";;\s*plot\(\"x\",1,2\)/",
+            $result,
+            'plotB draw commands must still be injected into plotA'
+        );
+        // plotA's script ends with `...plot("x",0,1)` (no trailing `;`). The
+        // injected commands must be separated by `;` so they parse as a new
+        // statement — otherwise we'd get `...plot("x",0,1)stroke = "red"...`.
+        $this->assertNotRegExp(
+            "/plot\(\"x\",0,1\)stroke/",
+            $result,
+            'separator semicolon between plotA tail and injected plotB commands must be preserved'
+        );
+    }
 }

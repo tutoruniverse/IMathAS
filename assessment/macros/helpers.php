@@ -976,6 +976,7 @@ function checkreqtimes($tocheck,$rtimes) {
 		$cleanans = ltrim($cleanans,'0');
 	}
 	$ignore_case = true;
+    $skip_space_minimizing = false;
 	if ($rtimes != '') {
 		$list = array_map('trim',explode(",",$rtimes));
 		for ($i=0;$i < count($list);$i+=2) {
@@ -987,8 +988,7 @@ function checkreqtimes($tocheck,$rtimes) {
 				}
 				continue;
 			}
-			$list[$i+1] = trim($list[$i+1]);
-			if ($list[$i]=='ignore_case') {
+            if ($list[$i]=='ignore_case') {
 				$ignore_case = ($list[$i+1]==='1' || $list[$i+1]==='true' || $list[$i+1]==='=1');
 				continue;
 			} else if ($list[$i]=='ignore_commas') {
@@ -1002,9 +1002,27 @@ function checkreqtimes($tocheck,$rtimes) {
 			} else if ($list[$i]=='ignore_spaces') {
 				if ($list[$i+1]==='1' || $list[$i+1]==='true' || $list[$i+1]==='=1') {
 					$cleanans = str_replace(' ','',$cleanans);
-				}
+				} else if ($list[$i+1]==='0' || $list[$i+1]==='false' || $list[$i+1]==='=0') {
+                    $skip_space_minimizing = true;
+                }
 				continue;
             }
+        }
+        if (!$skip_space_minimizing) {
+            // remove spaces except between numbers
+            $cleanans = preg_replace('/(?<!\d)\s|\s(?!\d)/', '', $cleanans);
+            $cleanans = preg_replace('/\s+/', ' ', $cleanans);
+        }
+        for ($i=0;$i < count($list);$i+=2) {
+			if ($list[$i]=='') {continue;}
+			if (!isset($list[$i+1]) ||
+			   (strlen($list[$i+1])<2 && $list[$i]!='ignore_case' && $list[$i]!='ignore_commas' && $list[$i]!='ignore_symbol' && $list[$i]!='ignore_spaces')) {
+				continue;
+			}
+			$list[$i+1] = trim($list[$i+1]);
+			if ($list[$i]=='ignore_case' || $list[$i]=='ignore_commas' || $list[$i]=='ignore_symbol' || $list[$i]=='ignore_spaces') {
+				continue; // handled above
+			} 
 			$comp = substr($list[$i+1],0,1);
 			if (substr($list[$i+1],1,1)==='=') { //<=, >=, ==, !=
 				if ($comp=='<' || $comp=='>') {
@@ -1035,6 +1053,11 @@ function checkreqtimes($tocheck,$rtimes) {
 					$regex = str_replace('/','\\/',substr($lookfor,6));
 					$nummatch = preg_match_all('/'.$regex.'/'.($ignore_case?'i':''),$cleanans,$m);
 				} else {
+                    if (!$skip_space_minimizing) {
+                        // remove spaces except between numbers
+                        $lookfor = preg_replace('/(?<!\d)\s|\s(?!\d)/', '', $lookfor);
+                        $lookfor = preg_replace('/\s+/', ' ', $lookfor);
+                    }
 					if ($ignore_case || in_array($lookfor, $mathfuncs)) {
 						$nummatch = substr_count(strtolower($cleanans),strtolower($lookfor));
 					} else {

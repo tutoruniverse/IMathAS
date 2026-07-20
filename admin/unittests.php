@@ -15,6 +15,10 @@ $reqtimestests = [
 	['3x^2+4x', 'x,=2,3,>0', 1],
 	['3x+30x^2+4', '3,=2', 1],
 	['3x+30x^2+4', '#3,=1', 1],
+	['3 x', '3x,=1', 1], // ignore spaces except between numbers by default
+	['3 5', '35,=1', 0], // don't treat these as equal
+	['3 x', 'ignore_spaces,0,3x,=1', 0], // don't ignore the spaces
+	['3 5', 'ignore_spaces,1,35,=1', 1], // ignore all spaces here
 ];
 
 //each test is [string to test, answerformat, expected result]

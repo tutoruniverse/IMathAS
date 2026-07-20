@@ -128,7 +128,7 @@ if ($page >= 1 && isset($_GET['edge']) && ($_GET['edge']==='first' || $_GET['edg
 if ($type=='threadsearch' || $type=='postsearch') {
 	$redirecturl = $GLOBALS['basesiteurl'] . "/forums/forums.php?cid=$cid";
 } else if ($type=='allnew') {
-	$redirecturl = $GLOBALS['basesiteurl'] . "/index.php";
+	$redirecturl = $GLOBALS['basesiteurl'] . "/index.php?";
 } else if ($type=='coursenew') {
 	$redirecturl = $GLOBALS['basesiteurl'] . "/forums/newthreads.php?cid=$cid";
 } else if ($type=='courseflagged') {
@@ -464,7 +464,7 @@ if (empty($_GET['embed'])) {
     if ($type=='threadsearch' || $type=='postsearch') {
 		echo "<a href=\"forums.php?cid=$cid\">Forum Search</a> ";
 	} else if ($type=='allnew') {
-		echo "<a href=\"$imasroot/index.php\">"._('Home')."</a> ";
+		echo "<a href=\"thread.php?cid=$cid&forum=$forumid&page=1\">".Sanitize::encodeStringForDisplay($forumname)."</a> ";
 	} else if ($type=='coursenew') {
 		echo "<a href=\"newthreads.php?cid=$cid\">New Threads</a> ";
 	} else if ($type=='courseflagged') {

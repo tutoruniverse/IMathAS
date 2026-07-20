@@ -53,7 +53,10 @@ array_push(
     'intval',
     'floatval',
     'uniqid',
-    'levenshtein'
+    'levenshtein',
+    'trim',
+    'rtrim',
+    'ltrim'
 );
 
 require_once __DIR__ . '/macros/randomizers.php';

@@ -2909,6 +2909,14 @@ stringlen("")       // 0</pre></details></li>
   <details class="example"><summary>Example</summary><pre>stringclean("  hello  ")     // "hello"
 stringclean("h e l l o ", 1) // "hello"
 stringclean("hi there! 2", 2) // "hithere2"</pre></details></li>
+<li><strong>trim(string,[chars]), ltrim(string,[chars]), rtrim(string,[chars])</strong>: 
+  Without a second argument, strips whitespace from the start and end (or start for ltrim, or end for rtrim)
+  of a string. You can optionally supply a list of characters to strip from start and/or end.
+<details class="example"><summary>Example</summary><pre>trim("  hello  ")     // "hello"
+rtrim("  hello  ") // "  hello"
+rtrim("1,2,3,", ',') // "1,2,3". Trims , off the end 
+rtrim("abc/?/?", "?/") // "abc". Trims ? and / characters off end</pre></details>
+</li>
 <li><strong>substr(string,start,[length])</strong>: Extracts a portion of the string. Negative start counts from the end. Negative length omits that many characters from the end.
   <details class="example"><summary>Example</summary><pre>substr("hello abc", 6)      // "abc"
 substr("hello abc", 0, 5)   // "hello"

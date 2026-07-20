@@ -2325,7 +2325,7 @@ $c = rrand(2,8,2)      // $c might be 2, 4, 6, or 8</pre></details></li>
 	<pre>$a = nonzerorand(-5,5) // $a might be -3 or 4, but never 0</pre></details></li>
 <li><strong>nonzerorrand(min,max,p)</strong>:  Returns a nonzero real number between min and max in steps of p
   <details class="example"><summary>Example</summary>
-	<pre>$a = nonzerorrand(-2,2,.5) // $a might be -1.5 or 3, but never 0</pre></details></li>
+	<pre>$a = nonzerorrand(-2,2,.5) // $a might be -1.5 or 2, but never 0</pre></details></li>
 <li><strong>randfrom(list or array)</strong>: Return an element of the list/array
   <details class="example"><summary>Example</summary><pre>$color = randfrom("red,green,blue");  // might return "green"
 $n = randfrom("2,4,6,8")             // might return 4
@@ -3096,7 +3096,7 @@ $a = arrayfindindex(4, [3,4,5,4]) // 1, since that is the index of the first 4
 <li><strong>arrayfindindices(needle,haystack)</strong>: Returns an array of all indices where needle appears in haystack.
   <details class="example"><summary>Example</summary>
 <pre>arrayfindindices("x", array("x","y","x","z","x"))  // array(0,2,4)
-$a = arrayfindindex(4, [3,4,5,4]) // array(1,3)
+$a = arrayfindindices(4, [3,4,5,4]) // array(1,3)
 </pre></details></li>
 <li><strong>array_flip(array)</strong>: Swaps keys and values in a one-to-one array.
   <details class="example"><summary>Example</summary><pre>array_flip(array("a"=>1, "b"=>2, "c"=>3))  // array(1=>"a", 2=>"b", 3=>"c")</pre></details></li>
@@ -3997,7 +3997,7 @@ A student is asked to enter a number or a calculation, like 2/3, 5^2, or sin(2).
 <details class="example"><summary>Examples</summary>
 <pre>
 // an answer expecting a reduced fraction answer to a/b+c/d
-$answer = makereducedfraction($a*d+$c*$b, $b*$d)
+$answer = makereducedfraction($a*$d+$c*$b, $b*$d)
 $answerformat = "reducedfraction"  // check the stu answer is reduced
 
 // require two answers to x^2=$a

@@ -76,6 +76,14 @@ the same as the 5.x default after upgrade.  If on a new install, it's better to 
     - To get accessibility reports to process queued caption lookups, the `/util/queuecaptiondata.php` script needs to be called regularly, probably once a day right before midnight Pacific time.  If running on a single server, you can set this up as a cron job.  Alternatively, you could define `$CFG['video']['authcode']` and make a scheduled web call to  `/util/queuecaptiondata.php?authcode=####` using the code you define. 
     - You can define `$CFG['video']['maxpull']` to control the max number of API calls made by queue.
 
+### Security Config
+- `$CFG['GEN']['ratelimit']`: Set to a number of seconds (like 0.2) to limit the rate at
+ which pages can be accessed/refreshed.
+-  `$CFG['use_csrfp']`: Set this to true to enable cross-site request forgery protection.
+- `$CFG['reqadminmfa']`: Require admins to enable two-factor authentication.
+- `$CFG['allow_passkeys']`: Set to true to enable passkey registration. You'll also need to modify your login page to include a passkey option.
+- `$CFG['GEN']['embedsecret']`: A hashing salt used on public embed pages for signatures.
+
 ### System Defaults
 
 Many system defaults can be adjusted using config changes.
@@ -95,7 +103,6 @@ Many system defaults can be adjusted using config changes.
 - `$CFG['GEN']['enrollonnewinstructor']`:  Set to an array of course IDs that new instructors should automatically be enrolled in upon requesting an account (like a support course or training course).
 - `$CFG['GEN']['enrolloninstructorapproval']`:  Set to an array of course IDs that instructors should automatically be enrolled in when their account is approved.
 - `$CFG['GEN']['guesttempaccts']`: Set to true to allow logging on as `guest` with no password.  Also enables the "guest access" option in course settings, which defines which courses a guest will get auto-enrolled in.
--  `$CFG['use_csrfp']`: Set this to true to enable cross-site request forgery protection.
 - File Storage:  By default, all user-uploaded files are stored on the webserver.  The system supports using Amazon S3 for file storage instead.  To use S3:
     - Set `$AWSkey`, `$AWSsecret`, `$AWSbucket` to your AWS key, secret, and bucket name respectively.  
     - Set `$CFG['S3']['endpoint']` and `$CFG['S3']['region']`, and optionally `$CFG['S3']['useSSL']`
@@ -113,14 +120,9 @@ where days is the number of days since last login to consider old, and userid is
 - `$CFG['UP']`:  An associative array overriding the default User Preference values.  See the `$prefdefaults` definition in `/includes/userprefs.php` for the appropriate format.
 - `$CFG['GEN']['extrefsize']`: Set to an array of (width,height) to set the popup size for Text and Written Solution question help buttons
 - `$CFG['GEN']['vidextrefsize']`: Set to an array of (width,height) to set the popup size for Video question help buttons
-- `$CFG['GEN']['ratelimit']`: Set to a number of seconds (like 0.2) to limit the rate at
- which pages can be accessed/refreshed.
 - `$CFG['GEN']['COPPA']`: Set to enable an "I am 13 years old or older" checkbox on new student account creation. If not checked, requires a course ID and key to create an account.
 - `$CFG['assess_upgrade_optout']`: Set to true to allow users to opt out of an upgrade
 to the new assessment interface.
-- `$CFG['reqadminmfa']`: Require admins to enable two-factor authentication.
-- `$CFG['allow_passkeys']`: Set to true to enable passkey registration. You'll also need to modify your
-    login page to include a passkey option.
 - `$CFG['logquestionerrors']`: Enable logging of question errors in database
 - `$CFG['skip_errorlog_question_errors']`: Enable to skip logging question errors to system error_log
 - `$CFG['newrelic_log_question_errors']`: Enable to log question errors to newrelic, if extension is installed

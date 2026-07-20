@@ -35,6 +35,12 @@ if ($dadata === false) {
 	echo _("Invalid drill assessment id");
 	exit;
 }
+if (isset($studentid) && ($dadata['avail'] == 0 || ($dadata['avail'] == 1 && ($now<$dadata['startdate'] || $now>$dadata['enddate'])))) {
+	require_once '../header.php';
+	echo _('This drill is not available right now');
+	require_once '../footer.php';
+	exit;
+}
 $n = $dadata['n'];
 $sa = $dadata['showtype'];
 $showscore = ($sa==0 || $sa==1 || $sa==4);

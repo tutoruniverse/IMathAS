@@ -126,12 +126,17 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 
 	if (isset($_GET['blockid']) && $_GET['blockid']!=='') {
 		require_once "../includes/courselinkinc.php";
-		$resolvedpath = findBlockPath($items, intval($_GET['blockid']));
+		$resolvedpath = findBlockPath($items, intval($_GET['blockid']), isset($studentid));
 		if ($resolvedpath !== false) {
 			// redirect so last-location-tracking sessionstorage can log last block
 			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=".Sanitize::courseId($_GET['cid']).'&folder='.$resolvedpath);
 			exit;
 			//$_GET['folder'] = $resolvedpath;
+		} else {
+			require_once '../header.php';
+			echo _('This item is not available right now');
+			require_once '../footer.php';
+			exit;
 		}
 	} else if (isset($_GET['showinline']) && $_GET['showinline']!=='') {
 		require_once "../includes/courselinkinc.php";
@@ -139,12 +144,17 @@ if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($inst
 		$stm->execute(array(':courseid' => $cid, ':typeid' => intval($_GET['showinline'])));
 		$leafitemid = $stm->fetchColumn();
 		if ($leafitemid !== false) {
-			$resolvedpath = findLeafParentPath($items, $leafitemid);
+			$resolvedpath = findLeafParentPath($items, $leafitemid, isset($studentid));
 			if ($resolvedpath !== false) {
 				header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=".Sanitize::courseId($_GET['cid']).'&folder='.$resolvedpath.'#inline'.intval($_GET['showinline']));
 				exit;
 				//$_GET['folder'] = $resolvedpath;
 			}
+		} else {
+			require_once '../header.php';
+			echo _('This item is not available right now');
+			require_once '../footer.php';
+			exit;
 		}
 	}
 

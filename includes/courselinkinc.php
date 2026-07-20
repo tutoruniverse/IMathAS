@@ -50,18 +50,32 @@ function getCourseItemUrl($itemtype, $cid, $id) {
 // $blockid, returning the reconstructed 'folder' path string (e.g. "0-1-2"),
 // or false if not found. Mirrors finditeminblock() in showlinkedtextpublic.php,
 // but matches on block id rather than leaf item id.
-function findBlockPath($items, $blockid, $parent = '0') {
+function findBlockPath($items, $blockid, $isstu, $parent = '0') {
     if (!is_array($items)) {
         return false;
     }
+    $now = time();
     foreach ($items as $k => $item) {
         if (is_array($item)) {
+            if (!isset($item['avail'])) { //backwards compat
+                $item['avail'] = 1;
+            }
+            if ($isstu && (
+                $item['avail'] == 0 || 
+                (
+                    $item['avail'] == 1 && 
+                    ($now<$item['startdate'] || $now>$item['enddate']) && 
+                    ($item['SH'][0] ?? 'H') == 'H'
+                )
+            )) {
+                continue; // block is not avail and hidden
+            }
             $path = $parent . '-' . ($k + 1);
             if (isset($item['id']) && intval($item['id']) === intval($blockid)) {
                 return $path;
             }
             if (!empty($item['items'])) {
-                $found = findBlockPath($item['items'], $blockid, $path);
+                $found = findBlockPath($item['items'], $blockid, $isstu, $path);
                 if ($found !== false) {
                     return $found;
                 }
@@ -77,13 +91,26 @@ function findBlockPath($items, $blockid, $parent = '0') {
 // if the leaf isn't found anywhere in the tree. Used to resolve
 // course.php's showinline= to a folder= at request time, so InlineText
 // course links keep working no matter how often the item gets moved.
-function findLeafParentPath($items, $leafItemId, $parent = '0') {
+function findLeafParentPath($items, $leafItemId, $isstu, $parent = '0') {
     if (!is_array($items)) {
         return false;
     }
     foreach ($items as $k => $item) {
         if (is_array($item)) {
-            $found = findLeafParentPath($item['items'], $leafItemId, $parent . '-' . ($k + 1));
+            if (!isset($item['avail'])) { //backwards compat
+                $item['avail'] = 1;
+            }
+            if ($isstu && (
+                $item['avail'] == 0 || 
+                (
+                    $item['avail'] == 1 && 
+                    ($now<$item['startdate'] || $now>$item['enddate']) && 
+                    ($item['SH'][0] ?? 'H') == 'H'
+                )
+            )) {
+                continue; // block is not avail and hidden
+            }
+            $found = findLeafParentPath($item['items'], $leafItemId, $isstu, $parent . '-' . ($k + 1));
             if ($found !== false) {
                 return $found;
             }

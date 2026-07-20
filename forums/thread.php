@@ -41,7 +41,7 @@ if (!in_array($type, ['default','new','flagged'], true)) {
 $typeqs = ($type != 'default') ? '&type='.urlencode($type) : '';
 
 $query = "SELECT f.name,f.postby,f.replyby,f.settings,f.groupsetid,igs.name AS igsname,f.sortby,
-    f.taglist,f.enddate,f.avail,f.description,f.postinstr,f.replyinstr,f.allowlate,f.autoscore,f.courseid 
+    f.taglist,f.startdate,f.enddate,f.avail,f.description,f.postinstr,f.replyinstr,f.allowlate,f.autoscore,f.courseid 
     FROM imas_forums AS f LEFT JOIN imas_stugroupset AS igs ON igs.id=f.groupsetid WHERE f.id=:id";
 $stm = $DBH->prepare($query);
 $stm->execute(array(':id'=>$forumid));
@@ -50,7 +50,7 @@ if ($row === false) {
 	echo "Invalid forum ID";
 	exit;
 }
-list($forumname, $postby, $replyby, $forumsettings, $groupsetid, $groupsetname, $sortby, $taglist, $enddate, $avail, $description, $postinstr,$replyinstr, $allowlate, $autoscore, $forumcourseid) = $row;
+list($forumname, $postby, $replyby, $forumsettings, $groupsetid, $groupsetname, $sortby, $taglist, $startdate, $enddate, $avail, $description, $postinstr,$replyinstr, $allowlate, $autoscore, $forumcourseid) = $row;
 
 if ($forumcourseid != $cid) {
 	echo "Invalid forum ID";
@@ -207,8 +207,8 @@ if (($postby>0 && $postby<2000000000) || ($replyby>0 && $replyby<2000000000)) {
 		$duedates .= " <a href=\"$imasroot/course/redeemlatepassforum.php?cid=$cid&fid=$forumid&undo=true&from=forum\">". _('Un-use LatePass'). "</a>";
 	}
 }
-
-if (isset($studentid) && ($avail==0 || ($avail==1 && time()>$enddate))) {
+$now = time();
+if (isset($studentid) && ($avail==0 || ($avail==1 && ($now>$enddate || $now<$startdate)))) {
 	require_once "../header.php";
 		echo '<p>This forum is closed.  <a href="../course/course.php?cid='.$cid.'">Return to the course page</a></p>';
 	require_once "../footer.php";
@@ -221,7 +221,7 @@ $postbeforeview = (($forumsettings&16)==16);
 $canviewall = (isset($teacherid) || isset($tutorid));
 $dofilter = false;
 $limthreads = array();
-$now = time();
+
 
 $grpqs = '';
 if ($groupsetid>0) {

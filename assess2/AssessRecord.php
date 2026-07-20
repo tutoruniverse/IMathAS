@@ -1040,6 +1040,11 @@ class AssessRecord
         if ($submitby == 'by_assessment') {
           // only mark as submitted if by_assessment
           $this->data['assess_versions'][$lastver]['status'] = $active ? 0 : 1;
+          if (!$active) {
+            // record time submit/finalize was done
+            // lastchange may be earlier if submitted after-the-fact
+            $this->data['assess_versions'][$lastver]['subat'] = time();
+          }
         } else {
           // if by_question and not started, mark started
           if ($this->data['assess_versions'][$lastver]['status'] === -1 && $active) {

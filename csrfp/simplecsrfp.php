@@ -31,17 +31,30 @@ if (!defined('__CSRF_PROTECTOR__')) {
 
 		/*
 		 * Variable: $scope
-		 * Which token pool this page's requests are validated against and
-		 * given a token from. Pages that render untrusted (instructor-authored)
-		 * question content must use a scope other than 'default' so that the
-		 * token exposed to that page can never validate a request against a
-		 * page of a different scope - eg 'default' scope endpoints reject a
-		 * 'question' scoped token, and vice versa. This keeps script embedded
-		 * in a question from ever having access to a token usable to forge
-		 * requests to privileged, non-question-related endpoints.
+		 * Which token pool this page's requests are given a token from, and
+		 * the primary pool rendered into the page. Pages that render untrusted
+		 * (instructor-authored) question content must use a scope other than
+		 * 'default' so that the token exposed to that page can never validate
+		 * a request against a page of a different scope - eg 'default' scope
+		 * endpoints reject a 'question' scoped token, and vice versa. This
+		 * keeps script embedded in a question from ever having access to a
+		 * token usable to forge requests to privileged, non-question-related
+		 * endpoints.
 		 * @var string
 		 */
 		private static $scope = 'default';
+
+		/*
+		 * Variable: $acceptScopes
+		 * The full list of scopes accepted when validating an incoming
+		 * request's token, as passed to init(). The first entry is always
+		 * $scope, the primary scope used for the token issued to the page.
+		 * Additional scopes let a single endpoint accept posts originating
+		 * from pages rendered under a different scope, without widening
+		 * what's exposed to any one page.
+		 * @var array
+		 */
+		private static $acceptScopes = array('default');
 
 		public static $config = array(
 			'failedAuthAction' => 'block',
@@ -69,7 +82,12 @@ if (!defined('__CSRF_PROTECTOR__')) {
 				return;
 			}
 
-			self::$scope = $scope ?: 'default';
+			$scopeList = array_values(array_filter(array_map('trim', explode(',', $scope ?: 'default')), 'strlen'));
+			if (empty($scopeList)) {
+				$scopeList = array('default');
+			}
+			self::$scope = $scopeList[0];
+			self::$acceptScopes = $scopeList;
 
 			if ($GLOBALS['CFG']['use_csrfp']==='log') {
 				self::$config['failedAuthAction'] = 'log';
@@ -77,8 +95,11 @@ if (!defined('__CSRF_PROTECTOR__')) {
 
 			self::$config['jsUrl'] = $GLOBALS['basesiteurl'] . "/csrfp/js/simplecsrfprotector.js?v=101525";
 
-			// Authorise the incoming request
-			if (isset($_SESSION[self::sessionKey()])) {
+			// Authorise the incoming request. Gate on any accepted scope
+			// having a session token, not just the primary one, so a request
+			// carrying a valid secondary-scope token isn't skipped just
+			// because the primary scope hasn't been issued one yet.
+			if (self::anyAcceptedSessionTokenSet()) {
 				self::authorizePost();
 			}
 
@@ -136,7 +157,9 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		/*
 		 * Function: isValidToken
 		 * function to check the validity of token in session array
-		 * Function also clears all tokens older than latest one
+		 * Checks the token against every scope passed to init(), not just
+		 * the primary scope, so an endpoint can accept posts originating
+		 * from pages rendered under a different (but explicitly listed) scope.
 		 *
 		 * Parameters:
 		 * $token - the token sent with GET or POST payload
@@ -145,9 +168,31 @@ if (!defined('__CSRF_PROTECTOR__')) {
 		 * bool - true if its valid else false
 		 */
 		private static function isValidToken($token) {
-			$sessKey = self::sessionKey();
-			if (!isset($_SESSION[$sessKey])) return false;
-			return ($_SESSION[$sessKey] == $token);
+			foreach (self::$acceptScopes as $scope) {
+				$sessKey = self::sessionKey($scope);
+				if (isset($_SESSION[$sessKey]) && $_SESSION[$sessKey] == $token) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/*
+		 * Function: anyAcceptedSessionTokenSet
+		 * Whether any of the accepted scopes (self::$acceptScopes) currently
+		 * has a token in the session, ie there's something for an incoming
+		 * request to be validated against.
+		 *
+		 * Returns:
+		 * bool
+		 */
+		private static function anyAcceptedSessionTokenSet() {
+			foreach (self::$acceptScopes as $scope) {
+				if (isset($_SESSION[self::sessionKey($scope)])) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		/*

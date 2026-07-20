@@ -413,44 +413,46 @@ switch($_GET['action']) {
         }
 
 		// Passkey Management
-        require_once __DIR__ . '/includes/passkey.php';
-        $rpId = parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST);
-        $passkeyMgr = new PasskeyManager($rpId, isset($installname) ? $installname : 'IMathAS');
-        $userPasskeys = $passkeyMgr->getUserPasskeys($userid);
-        
-        echo '<span class=form><label for="passkeySection">'._('Passkeys').'</label></span>';
-        echo '<span class="formright">';
-        if (!empty($userPasskeys)) {
-            echo '<p>'._('You have registered ').' ' . count($userPasskeys) . ' passkey(s):</p>';
-            echo '<div style="margin-left: 20px;">';
-            foreach ($userPasskeys as $pk) {
-                $addedOn = tzdate('M j, Y', strtotime($pk['created_at']));
-                echo '<div style="margin-bottom: 10px;">';
-                echo '<span>' . _('Added') . ' ' . htmlspecialchars($addedOn) . '</span>';
-                echo ' <button type="button" class="deletePasskeyBtn" data-passkey-id="' . intval($pk['id']) . '" style="padding: 2px 8px;">Delete</button>';
-                echo '</div>';
-            }
-            echo '</div>';
-        } else {
-            echo '<p>'._('No passkeys registered yet.').'</p>';
-        }
-        echo '<button type="button" id="addPasskeyBtn" aria-controls="passkeyRegistrationForm" class="togglecontrol">Add Passkey</button>';
-        echo '</span>';
-        echo '<div id="passkeyRegistrationForm" style="display:none;">';
-        echo '<p>'._('A passkey lets you sign in securely without a password using your device. To add a passkey, follow these steps:').'</p>';
-        echo '<ol>';
-        echo '<li>'._('Confirm your identity below').'</li>';
-        echo '<li>'._('Click "Register Passkey"').'</li>';
-        echo '<li>'._('Your device will prompt you to set up a passkey').'</li>';
-        echo '<li>'._('Follow your device instructions (face/fingerprint scan, PIN, etc)').'</li>';
-        echo '</ol>';
-        echo '<label for="passkeyOldPw" class="form">'._('Enter current password:').'</label> <input type="password" id="passkeyOldPw" name="passkeyOldPw" size="20" autocomplete="current-password" /><br class=form>';
-        if (!empty($line['mfa'])) {
-            echo '<label for="passkeyOldMfa" class="form">'._('Enter 2-factor authentication code:').'</label> <input type="text" id="passkeyOldMfa" name="passkeyOldMfa" size="8" /><br class=form>';
-        }
-        echo '<span class=form></span><span class=formright><button type="button" id="registerPasskeyBtn">Register Passkey</button>';
-        echo ' <button type="button" id="cancelPasskeyBtn">Cancel</button></span><div class=clear></div>';
-        echo '</div><br class=form>';
+		if (!empty($CFG['allow_passkeys'])) {
+			require_once __DIR__ . '/includes/passkey.php';
+			$rpId = parse_url($GLOBALS['basesiteurl'], PHP_URL_HOST);
+			$passkeyMgr = new PasskeyManager($rpId, isset($installname) ? $installname : 'IMathAS');
+			$userPasskeys = $passkeyMgr->getUserPasskeys($userid);
+			
+			echo '<span class=form><label for="passkeySection">'._('Passkeys').'</label></span>';
+			echo '<span class="formright">';
+			if (!empty($userPasskeys)) {
+				echo '<p>'._('You have registered ').' ' . count($userPasskeys) . ' passkey(s):</p>';
+				echo '<div style="margin-left: 20px;">';
+				foreach ($userPasskeys as $pk) {
+					$addedOn = tzdate('M j, Y', strtotime($pk['created_at']));
+					echo '<div style="margin-bottom: 10px;">';
+					echo '<span>' . _('Added') . ' ' . htmlspecialchars($addedOn) . '</span>';
+					echo ' <button type="button" class="deletePasskeyBtn" data-passkey-id="' . intval($pk['id']) . '" style="padding: 2px 8px;">Delete</button>';
+					echo '</div>';
+				}
+				echo '</div>';
+			} else {
+				echo '<p>'._('No passkeys registered yet.').'</p>';
+			}
+			echo '<button type="button" id="addPasskeyBtn" aria-controls="passkeyRegistrationForm" class="togglecontrol">Add Passkey</button>';
+			echo '</span>';
+			echo '<div id="passkeyRegistrationForm" style="display:none;">';
+			echo '<p>'._('A passkey lets you sign in securely without a password using your device. To add a passkey, follow these steps:').'</p>';
+			echo '<ol>';
+			echo '<li>'._('Confirm your identity below').'</li>';
+			echo '<li>'._('Click "Register Passkey"').'</li>';
+			echo '<li>'._('Your device will prompt you to set up a passkey').'</li>';
+			echo '<li>'._('Follow your device instructions (face/fingerprint scan, PIN, etc)').'</li>';
+			echo '</ol>';
+			echo '<label for="passkeyOldPw" class="form">'._('Enter current password:').'</label> <input type="password" id="passkeyOldPw" name="passkeyOldPw" size="20" autocomplete="current-password" /><br class=form>';
+			if (!empty($line['mfa'])) {
+				echo '<label for="passkeyOldMfa" class="form">'._('Enter 2-factor authentication code:').'</label> <input type="text" id="passkeyOldMfa" name="passkeyOldMfa" size="8" /><br class=form>';
+			}
+			echo '<span class=form></span><span class=formright><button type="button" id="registerPasskeyBtn">Register Passkey</button>';
+			echo ' <button type="button" id="cancelPasskeyBtn">Cancel</button></span><div class=clear></div>';
+			echo '</div><br class=form>';
+		}
 
 		echo "<span class=form><label for=\"email\">",_('Enter E-mail address:'),"</label></span>  <input class=\"form pii-email\" type=text size=60 id=email name=email autocomplete=\"email\" value=\"".Sanitize::emailAddress($line['email'])."\"><BR class=form>\n";
         

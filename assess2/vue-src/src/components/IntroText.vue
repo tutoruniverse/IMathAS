@@ -1,5 +1,5 @@
 <template>
-  <div v-show="active && html !== ''" class="questionpane introtext">
+  <div v-show="active && (html !== '' || hasResources)" class="questionpane introtext">
     <div v-if="html !== ''" v-html="html" ref="introtext"/>
     <resource-pane :showicon="true" style="display:inline-block"/>
   </div>
@@ -8,6 +8,7 @@
 <script>
 import { pauseVideos } from '@/components/pauseVideos';
 import ResourcePane from '@/components/ResourcePane.vue';
+import { store } from '@/basicstore';
 
 export default {
   name: 'IntroText',
@@ -15,6 +16,11 @@ export default {
     ResourcePane
   },
   props: ['html', 'active'],
+  computed: {
+    hasResources () {
+      return store.assessInfo.resources.length > 0;
+    }
+  },
   mounted () {
     if (this.html !== '') {
       setTimeout(window.drawPics, 100);

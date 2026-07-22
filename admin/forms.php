@@ -785,15 +785,21 @@ switch($_GET['action']) {
 			echo ' <a class=small href="addcourse.php?for='.Sanitize::onlyInt($for).'">'._('Change').'</a>';
 			echo '</span><br class=form>';
 		} else {
-			echo "<span class=form>"._("Course ID").":</span><span class=formright>".Sanitize::encodeStringForDisplay($courseid)."</span><br class=form>\n";
+			echo "<span class=form>"._("Course ID").":</span><span class=formright>".Sanitize::encodeStringForDisplay($courseid);
+			if ($isadminview) {
+				echo ' <a href="teacherauditlog.php?cid='.$cid.'" target="_blank" class="small">'._('Audit log').'</a>';
+			}
+			echo "</span><br class=form>\n";
 		}
 		if ($isadminview) {
 			echo '<span class="form">Owner:</span><span class="formright">';
-			printf('<span class="pii-full-name">%s, %s</span> (<span class="pii-username">%s</span>)</span><br class="form"/>',
+			echo '<a href="userdetails.php?id='.Sanitize::onlyInt($line['ownerid']).'">';
+			printf('<span class="pii-full-name">%s, %s</span> (<span class="pii-username">%s</span>)',
                 Sanitize::encodeStringForDisplay($udat['LastName']),
 				Sanitize::encodeStringForDisplay($udat['FirstName']),
                 Sanitize::encodeStringForDisplay($udat['name'])
             );
+			echo '</a></span><br class="form"/>';
 		}
 		echo "<label for=coursename class=form>",_("Course name"),":</label>";
 		echo '<input class=form type=text size=80 name="coursename" id="coursename" value="'.Sanitize::encodeStringForDisplay($name).'"><br class=form>';

@@ -32,8 +32,8 @@ if (isset($_GET['libtree']) && $_GET['libtree']=="popup") {
     } else if ($myrights<20) {
         exit;
     }
-    $placeinhead = '<script src="'.$staticroot.'/javascript/accessibletree.js?v=041726"></script>';
-    $placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=071126" type="text/css" />';
+    $placeinhead = '<script src="'.$staticroot.'/javascript/accessibletree.js?v=072126"></script>';
+    $placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=072126" type="text/css" />';
     $noskipnavlink = true;
     $hideAllHeaderNav = true;
     $flexwidth = true;

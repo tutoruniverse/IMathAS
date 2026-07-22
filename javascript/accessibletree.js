@@ -127,10 +127,10 @@ class AccessibleTreeWidget {
 
         // Optional icon (caller-provided trusted HTML, e.g. a type badge/img)
         let iconEl = null;
-        if (item.icon) {
-            iconEl = document.createElement('span');
+        if (item.icon && item.icon !== '') {
+            iconEl = document.createElement('img');
             iconEl.className = 'tree-icon';
-            iconEl.innerHTML = item.icon;
+            iconEl.src = item.icon;
         }
 
         // Label

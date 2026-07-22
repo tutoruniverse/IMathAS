@@ -71,23 +71,22 @@ function courseLinkTypeIcon($type)
 {
     global $CFG, $staticroot;
     static $map = array(
-        'Block' => array('key' => 'folder', 'letter' => 'B', 'color' => '#e8a33d', 'alt' => 'folder'),
-        'Assessment' => array('key' => 'assess', 'letter' => '?', 'color' => '#4a90d9', 'alt' => 'assessment'),
-        'InlineText' => array('key' => 'inline', 'letter' => '!', 'color' => '#5fa85f', 'alt' => 'text'),
-        'LinkedText' => array('key' => 'linked', 'letter' => '!', 'color' => '#d98a3d', 'alt' => 'link'),
-        'Forum' => array('key' => 'forum', 'letter' => 'F', 'color' => '#c0564d', 'alt' => 'forum'),
-        'Wiki' => array('key' => 'wiki', 'letter' => 'W', 'color' => '#9b59b6', 'alt' => 'wiki'),
-        'Drill' => array('key' => 'drill', 'letter' => 'D', 'color' => '#3d9ba1', 'alt' => 'drill'),
+        'Block' => 'folder',
+        'Assessment' => 'assess',
+        'InlineText' => 'inline',
+        'LinkedText' => 'linked',
+        'Forum' => 'forum',
+        'Wiki' => 'wiki',
+        'Drill' => 'drill',
     );
     if (!isset($map[$type])) {
         return '';
     }
-    $info = $map[$type];
-    if (!empty($CFG['CPS']['miniicons'][$info['key']])) {
-        $src = htmlspecialchars($staticroot . '/img/' . $CFG['CPS']['miniicons'][$info['key']], ENT_QUOTES);
-        return '<img width="16" height="16" alt="' . $info['alt'] . '" src="' . $src . '" class="mida">';
+    $key = $map[$type];
+    if (!empty($CFG['CPS']['miniicons'][$key])) {
+        return htmlspecialchars($staticroot . '/img/' . $CFG['CPS']['miniicons'][$key], ENT_QUOTES);
     }
-    return '<span class="clTypeIcon" style="background-color:' . $info['color'] . '">' . $info['letter'] . '</span>';
+    return '';
 }
 
 // Builds a nested array in the shape AccessibleTreeWidget expects
@@ -153,8 +152,8 @@ $treedata = buildCourseLinkTree($items, $cid);
 <head>
 <meta charset="utf-8">
 <title><?php echo _('Insert Course Link'); ?></title>
-<script src="<?php echo $staticroot; ?>/javascript/accessibletree.js"></script>
-<link rel="stylesheet" href="<?php echo $staticroot; ?>/javascript/accessibletree.css" type="text/css" />
+<script src="<?php echo $staticroot; ?>/javascript/accessibletree.js?v=072126"></script>
+<link rel="stylesheet" href="<?php echo $staticroot; ?>/javascript/accessibletree.css?v=072126" type="text/css" />
 <style>
     /* body fills the dialog's iframe exactly (no outer scrollbar); only
        #clRoot scrolls internally, so there's a single scrollbar, not two. */

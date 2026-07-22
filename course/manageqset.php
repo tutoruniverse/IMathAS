@@ -660,8 +660,8 @@ $placeinhead .= "<script type=\"text/javascript\">
         }
 		</script>";
 if (!empty($_POST['chglib'])) {
-	$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css" type="text/css" />';
-	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/accessibletree.js?v=031111"></script>';
+	$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=072126" type="text/css" />';
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/accessibletree.js?v=072126"></script>';
 }
 $placeinhead .= '<style>
   .qisprivate {

@@ -24,11 +24,8 @@
 }
 
 .tree-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     margin-right: 4px;
-    flex: 0 0 auto;
+    width: 16px;
 }
 
 .tree-item-content:focus {

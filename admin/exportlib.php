@@ -291,8 +291,8 @@ if (!(isset($teacherid)) && $myrights<20) {
 }
 
 /******* begin html output ********/
-$placeinhead = '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css" type="text/css" />';
-$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/accessibletree.js?v=031111"></script>';
+$placeinhead = '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=072126" type="text/css" />';
+$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/accessibletree.js?v=072126"></script>';
 
 require_once "../header.php";
 

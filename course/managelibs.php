@@ -572,8 +572,8 @@ if ($myrights<20) {
 	}
 }
 
-$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/accessibletree.js\"></script>\n";
-$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css" type="text/css" />';
+$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/accessibletree.js?v=072126\"></script>\n";
+$placeinhead .= '<link rel="stylesheet" href="'.$staticroot.'/javascript/accessibletree.css?v=072126" type="text/css" />';
 
 /******* begin html output ********/
 require_once "../header.php";

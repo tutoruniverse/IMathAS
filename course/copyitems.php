@@ -325,14 +325,14 @@ if (!(isset($teacherid))) {
 				$stm->execute(array(':id'=>$cid));
 				$items = unserialize($stm->fetchColumn(0));
 				if ($_POST['addto']=="none") {
-					array_splice($items,count($items),0,$newitems);
+					array_splice($items,$_POST['addwhere']=='top' ? 0 : count($items),0,$newitems);
 				} else {
 					$blocktree = explode('-',$_POST['addto']);
 					$sub =& $items;
 					for ($i=1;$i<count($blocktree);$i++) {
 						$sub =& $sub[$blocktree[$i]-1]['items']; //-1 to adjust for 1-indexing
 					}
-					array_splice($sub,count($sub),0,$newitems);
+					array_splice($sub,$_POST['addwhere']=='top' ? 0 : count($sub),0,$newitems);
 				}
 				$itemorder = serialize($items);
 				if ($itemorder!='') {
@@ -677,6 +677,15 @@ $excludeAssess = ($sourceUIver > $destUIver);
 			<?php
 writeHtmlSelect ("addto",$page_blockSelect['val'],$page_blockSelect['label'],$selectedVal=null,$defaultLabel=_("Main Course Page"),$defaultVal="none",$actions=null);
 ?>
+		</li>
+		<li class="selectonly">
+			<label for=addwhere>
+				<?php echo _('Add where in block:'); ?>
+			</label>
+			<select id=addwhere name=addwhere>
+				<option value="top"><?php echo _('Top of block');?></option>
+				<option value="end" selected><?php echo _('End of block');?></option>
+			</select>
 		</li>
 
 <?php

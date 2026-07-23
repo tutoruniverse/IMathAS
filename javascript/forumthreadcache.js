@@ -155,12 +155,16 @@ var ForumThreadCache = (function() {
 		var found = currentPageIds(ctx);
 		if (!found) { return; }
 		var data = found.data, ids = found.ids, idx = found.idx;
-		var typeqs = ctx.type !== 'default' ? '&type=' + ctx.type : '';
+		var typeqs = ctx.type !== 'default' ? '&type=' + encodeURIComponent(ctx.type) : '';
 		function linkFor(page, pair) {
 			var pairCid = pair.length > 2 ? pair[2] : ctx.cid;
-			var l = 'cid=' + pairCid + '&forum=' + pair[1] + '&page=' + page + typeqs;
-			if (ctx.grp != null) { l += '&grp=' + ctx.grp; }
-			return l + '&thread=' + pair[0];
+			var l = 'cid=' + encodeURIComponent(pairCid) +
+				'&forum=' + encodeURIComponent(pair[1]) +
+				'&page=' + encodeURIComponent(page) + typeqs;
+			if (ctx.grp != null) {
+				l += '&grp=' + encodeURIComponent(ctx.grp);
+			}
+			return l + '&thread=' + encodeURIComponent(pair[0]);
 		}
 		//edge= fetch target forum: for course-scoped types posts.php
 		//resolves the real forumid server-side, so this is a placeholder.
@@ -174,8 +178,10 @@ var ForumThreadCache = (function() {
 					text: prevEl.textContent
 				}));
 			} else if (ctx.page > 1 && !ctx.tagfilter) {
-				var pqs = 'cid=' + ctx.cid + '&forum=' + edgeForum + '&page=' + (ctx.page - 1) + typeqs +
-					(ctx.grp != null ? '&grp=' + ctx.grp : '');
+				var pqs = 'cid=' + encodeURIComponent(ctx.cid) +
+					'&forum=' + encodeURIComponent(edgeForum) +
+					'&page=' + encodeURIComponent(ctx.page - 1) + typeqs +
+					(ctx.grp != null ? '&grp=' + encodeURIComponent(ctx.grp) : '');
 				$(prevEl).replaceWith($("<a>", {
 					id: 'prevth',
 					href: 'posts.php?' + pqs + '&edge=last',
@@ -192,8 +198,10 @@ var ForumThreadCache = (function() {
 					text: nextEl.textContent
 				}));
 			} else if (!ctx.tagfilter && (!data.numpages || ctx.page < data.numpages)) {
-				var nqs = 'cid=' + ctx.cid + '&forum=' + edgeForum + '&page=' + (ctx.page + 1) + typeqs +
-					(ctx.grp != null ? '&grp=' + ctx.grp : '');
+				var nqs = 'cid=' + encodeURIComponent(ctx.cid) +
+					'&forum=' + encodeURIComponent(edgeForum) +
+					'&page=' + encodeURIComponent(ctx.page + 1) + typeqs +
+					(ctx.grp != null ? '&grp=' + encodeURIComponent(ctx.grp) : '');
 				$(nextEl).replaceWith($("<a>", {
 					id: 'nextth',
 					href: 'posts.php?' + nqs + '&edge=first',

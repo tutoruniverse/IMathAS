@@ -168,21 +168,37 @@ var ForumThreadCache = (function() {
 		if (prevEl) {
 			var prevNeighbor = findNeighbor(data, ctx, idx, ids, -1);
 			if (prevNeighbor) {
-				prevEl.innerHTML = '<a href="posts.php?' + linkFor(prevNeighbor.page, prevNeighbor.pair) + '">' + prevEl.textContent + '</a>';
+				$(prevEl).replaceWith($("<a>", {
+					id: 'prevth',
+					href: 'posts.php?' + linkFor(prevNeighbor.page, prevNeighbor.pair),
+					text: prevEl.textContent
+				}));
 			} else if (ctx.page > 1 && !ctx.tagfilter) {
 				var pqs = 'cid=' + ctx.cid + '&forum=' + edgeForum + '&page=' + (ctx.page - 1) + typeqs +
 					(ctx.grp != null ? '&grp=' + ctx.grp : '');
-				prevEl.innerHTML = '<a href="posts.php?' + pqs + '&edge=last">' + prevEl.textContent + '</a>';
+				$(prevEl).replaceWith($("<a>", {
+					id: 'prevth',
+					href: 'posts.php?' + pqs + '&edge=last',
+					text: prevEl.textContent
+				}));
 			}
 		}
 		if (nextEl) {
 			var nextNeighbor = findNeighbor(data, ctx, idx, ids, 1);
 			if (nextNeighbor) {
-				nextEl.innerHTML = '<a href="posts.php?' + linkFor(nextNeighbor.page, nextNeighbor.pair) + '">' + nextEl.textContent + '</a>';
+				$(nextEl).replaceWith($("<a>", {
+					id: 'nextth',
+					href: 'posts.php?' + linkFor(nextNeighbor.page, nextNeighbor.pair),
+					text: nextEl.textContent
+				}));
 			} else if (!ctx.tagfilter && (!data.numpages || ctx.page < data.numpages)) {
 				var nqs = 'cid=' + ctx.cid + '&forum=' + edgeForum + '&page=' + (ctx.page + 1) + typeqs +
 					(ctx.grp != null ? '&grp=' + ctx.grp : '');
-				nextEl.innerHTML = '<a href="posts.php?' + nqs + '&edge=first">' + nextEl.textContent + '</a>';
+				$(nextEl).replaceWith($("<a>", {
+					id: 'nextth',
+					href: 'posts.php?' + nqs + '&edge=first',
+					text: nextEl.textContent
+				}));
 			}
 		}
 	}

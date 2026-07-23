@@ -555,7 +555,7 @@ switch($_GET['action']) {
 
 			function bta (o) {
 				let pre = "=?BINARY?B?", suf = "?=";
-				for (let k in o) {
+				for (let k of Object.keys(o)) {
 					if (typeof o[k] == "string") {
 						let s = o[k];
 						if (s.startsWith(pre) && s.endsWith(suf)) {

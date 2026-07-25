@@ -792,7 +792,7 @@ function showitems($items, $parent, $inpublic = false, $greyitems = 0)
             $nothidden = true;
             $showgreyedout = false;
             $preReqNote = '';
-            if ($line['reqscorejson'] !== '' && $line['enddate'] > $now
+            if ($line['reqscorejson'] !== '' && ($line['enddate'] > $now || $viewall)
                 && (!isset($exceptions[$items[$i]]) || ($exceptions[$items[$i]]['waivereqscore']&1) == 0)
             ) {
                 [$meetsPrereq, $prereqstr] = meetsReqScore(json_decode($line['reqscorejson'],true), true);

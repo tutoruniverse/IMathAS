@@ -611,7 +611,7 @@ if ($hasusername) {
         if ($_SESSION['ltiitemtype'] == 1) {
             if (strpos(basename($_SERVER['PHP_SELF']), 'showtest.php') === false && isset($_GET['cid']) && $_SESSION['ltiitemid'] != $_GET['cid']) {
                 echo "You do not have access to this page";
-                echo "<a href=\"$imasroot/course/course.php?cid={$_SESSION['ltiitemid']}\">Return to course page</a>";
+                echo '<a href="'.$imasroot.'/course/course.php?cid='.Sanitize::onlyInt($_SESSION['ltiitemid']).'">'._('Return to course page').'</a>';
                 exit;
             }
             $breadcrumbbase = '';

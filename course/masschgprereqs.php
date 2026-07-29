@@ -162,7 +162,7 @@ echo '</tr></thead><tbody>';
                         <option value="0"><?php echo _('points');?></option>
                         <option value="1"><?php echo _('percent');?></option>
                     </select>
-                    <button class="slim" type="button" @click="reqscorearr[aid].splice(index, 1)"><?php echo _('Remove');?></button>
+                    <button class="slim" type="button" @click="reqscorearr[aid].splice(rindex, 1)"><?php echo _('Remove');?></button>
                 </li>
                 <li>
                     <select v-model="newAssessId[aid]">

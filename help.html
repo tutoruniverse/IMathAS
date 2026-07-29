@@ -2786,10 +2786,10 @@ simplifyexpr("1/2x+1/4x+1+1/2^2","x",2)  // "3/4x+5/4"
 simplifyexpr("(6xy)/(8y^3)","x,y",3)     // "(3x)/(4y^2)"
 </pre></details>
 </li></o>
-<li><strong>makepretynegative(string)</strong>: Wraps negative terms in parentheses — e.g. "3+-4" → "3+(-4)" and "3--4" → "3-(-4)". Note: "3-+4" becomes "3-4".
+<li><strong>makeprettynegative(string)</strong>: Wraps negative terms in parentheses — e.g. "3+-4" → "3+(-4)" and "3--4" → "3-(-4)". Note: "3-+4" becomes "3-4".
   <details class="example"><summary>Example</summary><pre>$b = rand(-5,-1)  // a negative number
 $expr = "3+$b"      // like "3+-4"
-$nice = makepretynegative($expr) // "3+(-4)"</pre></details></li>
+$nice = makeprettynegative($expr) // "3+(-4)"</pre></details></li>
 <li><strong>numtowords(number,[addth, numwithTh, addcommas])</strong>: Converts a number to its word representation.
   <details class="example"><summary>Example</summary><pre>numtowords(1203)              // "one thousand two hundred three"
 numtowords(1203, true)        // "one thousand two hundred third"  (ordinal)

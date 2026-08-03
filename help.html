@@ -2832,15 +2832,19 @@ prettysmallnumber(0.0000002, true) // "0.000 000 2"</pre></details></li>
   <details class="example"><summary>Parameters</summary>
   <ul>
 	<li>comma: By default adds comma thousands separators; set comma to "" to suppress.</li>
-	<li>choptrailingzeros: set true to remove trailing decimal zeros even if significant.</li>
+	<li>choptrailingzeros: set true or to remove trailing decimal zeros even if significant if the
+		number is exact. Set to 2 to remove trailing decimal zeros even when rounding.</li>
 	<li>scinot: set true to display in scientific notation.</li>
 	<li>sigfigbar: set true to put an overline on the last significant zero (e.g. 420<span style="text-decoration:overline">0</span> for 3 sig figs) — use in math display only.</li>
   </ul>
   </details>
   <details class="example"><summary>Example</summary><pre>prettysigfig(12345.6, 3)              // "12,300"
-prettysigfig(0.00456, 2)             // "0.0046"
-prettysigfig(123, 4)                 // "123.0"
-prettysigfig(123, 4, ",", true)      // "123"
+prettysigfig(0.00456, 2)            // "0.0046"
+prettysigfig(12345, 6)              // "12,345.0"
+prettysigfig(12345, 6, "")          // "12345.0"
+prettysigfig(1.5, 4, "", true)      // "1.5" without trailing zeros
+prettysigfig(1.2103, 4, "", true)   // "1.210" shows zero because rounded
+prettysigfig(1.2103, 4, "", 2)      // "1.21" chops zero anyway
 prettysigfig(12345.6, 3, "", false, true) // "1.23*10^4"  (sci notation)</pre></details></li>
 <li><strong>prettysigfig_instring(string,sigfigs,[comma,choptrailingzeros,scinot,sigfigbar])</strong>: Applies prettysigfig rounding to every number found within a string.
   <details class="example"><summary>Example</summary><pre>prettysigfig_instring("The mass is 1234.56 kg", 3) // "The mass is 1,230 kg"</pre></details></li>

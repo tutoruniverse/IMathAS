@@ -107,7 +107,7 @@ var AMQsymbols = [
 {input:"geq", tag:"mo", ttype:CONST},
 {input:"-<",  tag:"mo", tex:"prec", ttype:CONST},
 //{input:"-lt", tag:"mo", ttype:CONST},
-{input:">-",  tag:"mo", tex:"succ", ttype:CONST},
+//{input:">-",  tag:"mo", tex:"succ", ttype:CONST},
 {input:"-<=", tag:"mo", tex:"preceq", ttype:CONST},
 {input:">-=", tag:"mo", tex:"succeq", ttype:CONST},
 {input:"in",  tag:"mo", ttype:CONST},

@@ -235,6 +235,17 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$query .= " WHERE id IN ($qidlist)";
 			$stm = $DBH->query($query);
 
+			// log
+			TeacherAuditLog::addTracking(
+				$cid,
+				"Assessment Settings Change",
+				$aid,
+				array(
+					'withdrawquestions'=>$qids,
+					'withdrawtype'=>$_POST['withdrawtype']
+				)
+			);
+
 			//get possible points if needed
 			if ($_POST['withdrawtype']=='full' || $_POST['withdrawtype']=='groupfull') {
 				$poss = array();

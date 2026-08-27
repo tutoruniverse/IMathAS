@@ -33,7 +33,7 @@ class CalculatedScorePart implements ScorePart
         $defaultreltol = .0015;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqsigfigs', 
-            'requiretimeslistpart', 'ansprompt', 'formatfeedbackon'];
+            'requiretimeslistpart', 'ansprompt', 'formatfeedbackon', 'scoremethod'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
@@ -513,6 +513,9 @@ class CalculatedScorePart implements ScorePart
             }
         }
         if ($score<0) { $scorePartResult->setRawScore(0); }
+        else if ($score < .99 && $scoremethod == 'allornothing' && $isListAnswer) {
+            $scorePartResult->setRawScore(0);
+        } 
         if ($formatok != "all" && $correctanyformat>0) {
             if (!empty($formatfeedbackon)) {
                 $scorePartResult->setCorrectAnswerWrongFormat(true);

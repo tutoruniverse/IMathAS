@@ -33,7 +33,7 @@ class ComplexScorePart implements ScorePart
 
         $defaultreltol = .0015;
 
-        $optionkeys = ['answer', 'reltolerance', 'abstolerance',
+        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'scoremethod', 
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
@@ -295,6 +295,8 @@ class ComplexScorePart implements ScorePart
             $score = $correct / count($annumarr) - count($ganumarr) / $extrapennum; //take off points for extranous stu answers
         }
         if ($score < 0) {
+            $scorePartResult->setRawScore(0);
+        } else if ($score < .99 && $scoremethod == 'allornothing' && count($annumarr)>1) {
             $scorePartResult->setRawScore(0);
         } else {
             $scorePartResult->setRawScore($score);

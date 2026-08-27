@@ -543,9 +543,6 @@ class DrawingAnswerBox implements AnswerBox
                             $out .= "data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"0.5\">" . _('Line Segment') . "</span>";
                         } else if ($answerformat[$i] == 'freehand') {
                             $out .= "data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"0.7\">" . _('Freehand Draw') . "</span>";
-                            if ($answerformat[0] == 'freehand' && count($answerformat) == 1) {
-                                $out .= "<span data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"-1\">" . _('Eraser') . "</span>";
-                            }
                         } else if ($answerformat[$i] == 'dot') {
                             $out .= "data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"1\">" . _('Dot') . "</span>";
                         } else if ($answerformat[$i] == 'opendot') {
@@ -574,6 +571,11 @@ class DrawingAnswerBox implements AnswerBox
                     } else {
                         $def = 0;
                     }
+                }
+                if (in_array($answerformat[0], ['inequality', 'twopoint', 'numberline'])) {
+                    $out .= "<img src=\"$staticroot/img/tpsvg/tperaser.svg\" data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"-1\" alt=\"Eraser\" title=\""._('Eraser')."\"/>";
+                } else {
+                    $out .= "<span data-drawaction=\"settool\" data-qn=\"$qn\" data-val=\"-1\">" . _('Eraser') . "</span>";
                 }
                 $out .= '</span></div>';
             }

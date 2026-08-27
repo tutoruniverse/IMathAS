@@ -701,6 +701,7 @@ function settool(curel,tarnum,mode) {
 }
 function setDrawMode(tarnum,mode) {
 	targets[tarnum].mode = mode;
+	setCursor('pen', tarnum);
 }
 function setDotLine(tarnum,onoff) {
 	targets[tarnum].dotline = onoff;
@@ -917,7 +918,7 @@ function drawTarget(x,y,skipencode) {
                 }
             }
 		}
-        if (ineqtypes[curTarget][i] == targets[curTarget].mode) {
+        if (ineqtypes[curTarget][i] == targets[curTarget].mode || targets[curTarget].mode==-1) {
             ctx.beginPath();
             for (var j=0; j<ineqlines[curTarget][i].length; j++) {
                 if (j==2) {
@@ -1927,6 +1928,13 @@ function drawTarget(x,y,skipencode) {
 			ctx.lineTo(linefirstx+arrowsize,linefirsty-arrowsize);
 		}
 		ctx.stroke();
+		if (targets[curTarget].mode==-1) {
+			ctx.fillStyle = "rgb(255,0,0)";
+			for (var j=0;j<lines[curTarget][i].length; j++) {
+				ctx.fillRect(lines[curTarget][i][j][0]-3,lines[curTarget][i][j][1]-3,6,6);
+			}
+			ctx.fillStyle = 'rgba(0,0,255,.5)';
+		}
 		if (targets[curTarget].dotline>1) {
 			var ml = lines[curTarget][i].length-1;
 			if (ml<1) {continue;}
@@ -1982,7 +1990,7 @@ function drawTarget(x,y,skipencode) {
 
 	for (var i=0;i<tplines[curTarget].length; i++) {
 		//draw control points
-		if (tptypes[curTarget][i]==targets[curTarget].mode) {
+		if (tptypes[curTarget][i]==targets[curTarget].mode || targets[curTarget].mode==-1) {
 			ctx.fillStyle = "rgb(255,0,0)";
 			for (var j=0; j<tplines[curTarget][i].length; j++) {
 				ctx.fillRect(tplines[curTarget][i][j][0]-3,tplines[curTarget][i][j][1]-3,6,6);
@@ -2466,7 +2474,7 @@ function drawMouseUp(ev) {
 				drawTarget();
 			}
 		}
-		if (curLine==null && curTPcurve == null) {
+		if (curLine==null && curTPcurve == null && targets[curTarget].mode != -1) {
 			setCursor('move');
 			//targets[curTarget].el.style.cursor = 'move';
 		} else {
@@ -2628,10 +2636,16 @@ function drawMouseMove(ev) {
 		//are we inside target region?
 		if (mouseOff.x>-1 && mouseOff.x<targets[curTarget].width && mouseOff.y>-1 && mouseOff.y<targets[curTarget].height) {
 			if (dragObj==null) { //notdragging{
-				if (mouseisdown && targets[curTarget].mode==-1) { //erasing
+				if (targets[curTarget].mode==-1) { //erasing
 					var foundpt = findnearpoint(curTarget,mouseOff);
 					if (foundpt!=null) {
-						deleteCurve(foundpt[0], foundpt[1]);
+						if (mouseisdown) {
+							deleteCurve(foundpt[0], foundpt[1]);
+						} else {
+							setCursor('not-allowed');
+						}
+					} else {
+						setCursor('default');
 					}
 					return;
 				}
@@ -2728,10 +2742,14 @@ function drawMouseMove(ev) {
 }
 function setCursor(cursor, target) {
 	target = target || curTarget;
-
+	if (targets[target].mode == -1) {
+		if (cursor != 'not-allowed') {
+			cursor = 'default';
+		}
+	}
 	if (targets[target].cursor != cursor) {
 		var fmt = isSafari ? 'png' : 'svg';
-		if (cursor=='move') {
+		if (cursor=='move' || cursor=='default' || cursor=='not-allowed') {
 			targets[target].el.style.cursor = cursor;
 		} else if (cursor=='pen') {
 			targets[target].el.style.cursor = 'url('+staticroot+'/img/penup.'+fmt+') 0 0, auto';

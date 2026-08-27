@@ -1329,7 +1329,17 @@ function generateTable() {
                         } else if (itemarray[i][1] == 1) {
                             html += _(" with");
                         }
-                        html += _(" replacement") + "</td>";
+                        html += _(" replacement");
+                        if (itemarray[i][4]) {
+                            html += '. ';
+                            if (displaymethod == 'drill') {
+                                html += '<br/>' + _("Display name") + ': ';
+                            } else {
+                                html +=  _("Label") + ': ';
+                            }
+                            html += itemarray[i][4] ?? '';
+                        }
+                        html += "</td>";
                         //html += "<td class=\"c nowrap\"><input size=2 class=c id=\"grppts-"+i+"\" value=\""+curgrppoints+"\" data-lastval=\""+curgrppoints+"\"/>";
                         html += '<td class="c nowrap">' + curgrppoints;
                         if (itemarray[i][0] > 1) {

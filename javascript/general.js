@@ -677,7 +677,7 @@ function initeditor(edmode,edids,css,inline,setupfunction,extendsetup){
 	// on smaller start, move bold to bottom for longer retention while resizing
 	if (document.documentElement.clientWidth<465) {
 		edsetup.toolbar1 = "myEdit myInsert styles forecolor backcolor";
-		edsetup.toolbar2 = "bullist numlist outdent indent bold italic asciimath asciisvg saveclose";
+		edsetup.toolbar2 = "bullist numlist outdent indent bold italic asciimath mathquill asciisvg saveclose";
 	}
 	// handle these in CSS for better responsiveness
 	/*

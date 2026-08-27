@@ -286,6 +286,11 @@
 		global $imasroot;
 		$str = preg_replace('/<canvas.*?\'(\w+\.png)\'.*?\/script>/','<div><img src="'.$imasroot.'/filter/graph/imgs/$1" alt="Graph"/></div>',$str);
 		$str = preg_replace('/<script.*?\/script>/','',$str);  //strip scripts
+		$str = preg_replace(
+			'/\s+on[a-z]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i',
+			'',
+			$str
+		); // strip inline javascript
         $str = preg_replace('/<input[^>]*Preview[^>]*>/','',$str); //strip preview buttons
         $str = preg_replace('/<button[^>]*>Preview.*?<\/button>/','',$str); //strip preview buttons
 		if ($stripbuttons) {

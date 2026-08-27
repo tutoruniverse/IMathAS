@@ -37,7 +37,7 @@ class Sanitize
 		'.nb',  '.nbp',  '.mw',   '.mws',  '.m',    '.mat',  '.mlx',   '.omv',
 		'.sas', '.sav',  '.r',    '.rda',  '.rds',  '.dta',  '.rdata', '.rmd', '.spv',
 		'.sps', '.qmd',  '.mpx',  '.mpj',  '.mwx',  '.mtw',  '.jmp',   '.jrn', '.jrp', 
-		'.dat',  '.json', '.jasp',
+		'.dat',  '.json', '.jasp', '.cap', '.cmbl', '.gambl',
 		'.imas', '.imscc', '.ggb',
 		'.ipynb', '.pages', '.numbers'
 	];

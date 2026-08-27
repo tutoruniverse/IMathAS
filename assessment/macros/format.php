@@ -367,7 +367,9 @@ function prettysigfig($aarr, $sigfig, $comma = ',', $choptrailing = false, $orsc
         } else {
             $nv = round($a, $v + $sigfig);
             $n = number_format($a, $v + $sigfig, '.', $comma);
-            if ($choptrailing && ($v + $sigfig > 0) && abs($a - round($a, $v + $sigfig)) < 1e-12) {
+            if ($choptrailing && ($v + $sigfig > 0) && 
+                (abs($a - round($a, $v + $sigfig)) < 1e-12 || $choptrailing===2)
+            ) {
                 $n = rtrim($n, '0');
                 $n = rtrim($n, '.');
             } else {

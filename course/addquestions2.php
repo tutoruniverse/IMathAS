@@ -235,6 +235,17 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 			$query .= " WHERE id IN ($qidlist)";
 			$stm = $DBH->query($query);
 
+			// log
+			TeacherAuditLog::addTracking(
+				$cid,
+				"Assessment Settings Change",
+				$aid,
+				array(
+					'withdrawquestions'=>$qids,
+					'withdrawtype'=>$_POST['withdrawtype']
+				)
+			);
+
 			//get possible points if needed
 			if ($_POST['withdrawtype']=='full' || $_POST['withdrawtype']=='groupfull') {
 				$poss = array();
@@ -375,13 +386,13 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 		var addqaddr = '$address';
         var assessver = '$aver';
 		</script>";
-    $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addqsort2.js?v=071026\"></script>";
+    $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/addqsort2.js?v=081626\"></script>";
     $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablesorter.js\"></script>";
 	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/qsearch.js?v=062526\"></script>";
     $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/junkflag.js?v=021326\"></script>";
     $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/DatePicker.js?v=080818\"></script>";
 	$placeinhead .= "<script type=\"text/javascript\">var JunkFlagsaveurl = '". $GLOBALS['basesiteurl'] . "/course/savelibassignflag.php';</script>";
-    $placeinhead .= "<link rel=\"stylesheet\" href=\"$staticroot/course/addquestions2.css?v=062426\" type=\"text/css\" />";
+    $placeinhead .= "<link rel=\"stylesheet\" href=\"$staticroot/course/addquestions2.css?v=081326\" type=\"text/css\" />";
     $placeinhead .= '<script>
         $(function() {
             if (window.top != window.self) {

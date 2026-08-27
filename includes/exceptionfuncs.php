@@ -316,7 +316,7 @@ class ExceptionFuncs {
         // determine reason for blocking
         if ($adata['allowlate'] == 0) {
             $canuselatepass = 0; //not enabled
-        } else if ($adata['enddate'] >= $this->courseenddate) {
+        } else if ($adata['enddate'] >= $this->courseenddate && $adata['enddate'] < 2000000000) {
             $canuselatepass = 3; // past course enddate
         } else if ($now>$adata['enddate'] && $adata['allowlate']<10) {
             $canuselatepass = 4; // past due date, and LP only allowed before

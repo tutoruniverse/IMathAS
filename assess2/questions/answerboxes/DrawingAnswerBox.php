@@ -683,7 +683,7 @@ class DrawingAnswerBox implements AnswerBox
                         $ry1 = evalbasic($function[2], true);
                         $rx2 = evalbasic($function[3], true);
                         $ry2 = evalbasic($function[4], true);
-                        $rectcmds[] = 'stroke="' . $defcolor . '";strokewidth=2;fillopacity=0.2;fill="trans' . $defcolor .'";rect([' . $rx1 . ',' . $ry1 . '],[' . $rx2 . ',' . $ry2 . ']);fill="none";';
+                        $rectcmds[] = 'stroke="' . $defcolor . '";strokewidth=2;fillopacity=0.2;fill="trans' . $defcolor .'";rect([' . $rx1 . ',' . $ry1 . '],[' . $rx2 . ',' . ($ry2 + ($ry1==$ry2 ? (($settings[3] - $settings[2])/1000) : 0)) . ']);fill="none";';
                         $recttext[] = sprintf(_('Rectangle with opposite corners (%s,%s) and (%s,%s), color %s.'), $rx1, $ry1, $rx2, $ry2, $defcolor);
                     } else if ($function[0] == 'verthyperbola') {
                         //(y-yc)^2/a^2 -  (x-xc)^2/b^2 = 1

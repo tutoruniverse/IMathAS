@@ -308,14 +308,14 @@ tr.textsegmentrow td {
 		display: none !important;
 	}
 }
-@media (max-width: 410px) {
+@media (max-width: 435px) {
 	.tox-tbtn[data-mce-name="link"],
     .tox-tbtn[data-mce-name="numlist"],
     .tox-tbtn[data-mce-name="numlist-chevron"] {
 		display: none !important;
 	}
 }
-@media (max-width: 370px) {
+@media (max-width: 395px) {
 	.tox-tbtn[data-mce-name="indent"],
     .tox-tbtn[data-mce-name="outdent"] {
 		display: none !important;

@@ -850,6 +850,12 @@ function chkgbcat(cat) {
 }
 
 function valform() {
+	if (document.getElementById("reqscorechg").value == 1 && document.getElementById("newAssessId").value !== "") {
+		alert(_('You selected a prerequisite assessment but did not finish adding it.  Click the Add button to add the prerequisite.'));
+		$("#newAssessId").closest(".blockitems:not(:visible)").show().prev().trigger("click");
+		$("#newAssessId").focus();
+		return false;
+	}
 	if ($("#qform input:checkbox[name='checked[]']:checked").length == 0) {
 		if (!confirm("No assessments are selected to be changed. Cancel to go back and select some assessments, or click OK to make no changes")) {
 			return false;

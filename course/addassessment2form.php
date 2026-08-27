@@ -633,7 +633,7 @@ $vueData = array(
 							<button class="slim" type="button" @click="reqscorearr.splice(index, 1)"><?php echo _('Remove');?></button>
 						</li>
 						<li>
-							<select v-model="newAssessId">
+							<select v-model="newAssessId" id="newAssessId">
 								<option value=""><?php echo _('Add prerequisite');?>…</option>
 								<option v-for="a in availableAssessmentsForPrereqs" :key="a.value" :value="a.value">
 									{{ a.text }}

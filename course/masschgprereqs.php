@@ -108,6 +108,20 @@ if (!empty($CFG['GEN']['uselocaljs'])) {
 } else {
     $placeinhead = '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.31/vue.global.prod.min.js" integrity="sha512-Dg9zup8nHc50WBBvFpkEyU0H8QRVZTkiJa/U1a5Pdwf9XdbJj+hZjshorMtLKIg642bh/kb0+EvznGUwq9lQqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
 }
+$placeinhead .= '<script>
+function valform() {
+    var isValid = true;
+    $(".newAssessId").each(function(i,el) {
+        if (el.value !== "" && $(el).closest("tr").find("select[id^=reqscoreshowtype]").val() != "none") {
+            alert(_("You selected a prerequisite assessment but did not finish adding it.  Click the Add button to add the prerequisite."));
+            isValid = false;
+            el.focus();
+            return false;
+        }
+    });
+    return isValid;
+}
+</script>';
 require_once '../header.php';
 
 echo '<div class=breadcrumb>';
@@ -125,7 +139,7 @@ echo '</div>';
 echo '<h1>' . _('Mass Change Prereqs') . '</h1>';
 
 echo '<p class="small">' . _('Note: To set the same prereq for multiple assessments at once, or to clear prereqs, it may be faster to use the Mass Change Assessments page.') . '</p>';
-echo '<form method=post action="masschgprereqs.php?cid='.$cid.'">';
+echo '<form method=post action="masschgprereqs.php?cid='.$cid.'" onsubmit="return valform()">';
 echo '<div id="app" class="skipmathrender" v-cloak>';
 echo '<table id="myTable" class="gb"><thead><tr>';
 echo '<th>' . _('Assessment') . '</th>';
@@ -165,7 +179,7 @@ echo '</tr></thead><tbody>';
                     <button class="slim" type="button" @click="reqscorearr[aid].splice(rindex, 1)"><?php echo _('Remove');?></button>
                 </li>
                 <li>
-                    <select v-model="newAssessId[aid]">
+                    <select v-model="newAssessId[aid]" class="newAssessId">
                         <option value=""><?php echo _('Add prerequisite');?>…</option>
                         <option v-for="a in availableAssessmentsForPrereqs[aid]" :key="a.id" :value="a.id">
                             {{ a.name }}

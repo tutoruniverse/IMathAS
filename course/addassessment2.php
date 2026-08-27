@@ -1019,7 +1019,14 @@ if (!empty($CFG['GEN']['uselocaljs'])) {
     $placeinhead .= '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.31/vue.global.prod.min.js" integrity="sha512-Dg9zup8nHc50WBBvFpkEyU0H8QRVZTkiJa/U1a5Pdwf9XdbJj+hZjshorMtLKIg642bh/kb0+EvznGUwq9lQqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
 }
 $placeinhead .= '<script>
-function showinvalid() {
+function showinvalid(e) {
+	if (document.getElementById("reqscoreshowtype").value > -1 && document.getElementById("newAssessId").value !== "") {
+		alert("'._('You selected a prerequisite assessment but did not finish adding it.  Click the Add button to add the prerequisite.').'");
+		$("#newAssessId").closest(".blockitems:not(:visible)").show().prev().trigger("click");
+		$("#newAssessId").focus();
+		e.preventDefault();
+		return false;
+	}
 	document.getElementById("addform").reportValidity();
 	$("form :invalid").each(function(index,el) {
 		$(el).closest(".blockitems:not(:visible)").show().prev().trigger("click");
@@ -1065,7 +1072,7 @@ if ($overwriteBody==1) {
 		require_once "addassessment2form.php";
 	?>
 
-	<div class=submit><input type=submit onclick="showinvalid()" value="<?php echo $savetitle;?>"></div>
+	<div class=submit><input type=submit onclick="showinvalid(event)" value="<?php echo $savetitle;?>"></div>
 	</form>
 	<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>
 <?php

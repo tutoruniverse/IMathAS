@@ -604,7 +604,7 @@ function initeditor(edmode,edids,css,inline,setupfunction,extendsetup){
 		branding: false,
 		promotion: false,
 		sandbox_iframes: false,
-		resize: "both",
+		resize: !inline ? "both" : false,
 		width: '100%',
 		height: 150,
 		content_style: "body.mce-content-body {background-color: " + (coursetheme.match(/_dark/) ? "#000" : "#fff") + " !important;}",
@@ -616,7 +616,7 @@ function initeditor(edmode,edids,css,inline,setupfunction,extendsetup){
         autolink_pattern: /^(https?:\/\/|www\.)(.+)$/i,
 		text_patterns: false,
 		mobile: {
-			toolbar_mode: 'sliding'
+			toolbar_mode: 'wrap'
 		},
 		init_instance_callback: function(editor) {
 			if (inIframe()) {

@@ -810,17 +810,20 @@ const image_upload_handler = (blobInfo, progress, isattach) => new Promise((reso
 
 // fix for tinymce inline menubuttons not working in android chrome
 var tiny_blockResize = false;
-window.addEventListener('resize', function(e) {
-	if (tiny_blockResize) {
-		e.stopImmediatePropagation();
-		tiny_blockResize = false;
+$(function() {
+	window.addEventListener('resize', function(e) {
+		if (tiny_blockResize) {
+			e.stopImmediatePropagation();
+			tiny_blockResize = false;
+		}
+	}, true);
+
+	document.addEventListener('pointerdown', function(e) {
+	if (e.target.closest(".tox-tbtn--select")) {
+		tiny_blockResize = true;
 	}
-}, true);
-document.addEventListener('pointerdown', function(e) {
-  if (e.target.closest(".tox-tbtn–select")) {
-    tiny_blockResize = true;
-  }
-},true);
+	},true);
+});
 
 function imascleanup(type, value) {
 	if (type=="get_from_editor") {

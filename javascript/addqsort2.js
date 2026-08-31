@@ -836,7 +836,7 @@ function groupSelected() {
             el.value != "ignore" &&
             !el.value.match(":text") &&
             el.id.match("qc")
-        ) {
+        ) { 
             val = el.value.split(":")[0];
             if (val.indexOf("-") > -1) {
                 //is group
@@ -853,7 +853,7 @@ function groupSelected() {
                 }
             }
             if (isnew) {
-                grplist.push(val);
+                grplist.push(parseInt(val));
             }
         }
     }
@@ -863,7 +863,6 @@ function groupSelected() {
     }
     // use existing group if found; otherwise use last
     var to = (hasgroup>-1) ? hasgroup : grplist[grplist.length - 1];
-
     var existingcnt = 0;
     if (itemarray[to].length < 6) {
         //moving to existing group

@@ -50,7 +50,8 @@ if ($from=='admin') {
 // extra safety check
 $referer = $_SERVER['HTTP_REFERER'] ?? '';
 if (strpos($referer, $GLOBALS['basesiteurl'].'/admin/forms.php') !== 0 &&
-	strpos($referer, $GLOBALS['basesiteurl'].'/admin/actions.php') !== 0) {
+	strpos($referer, $GLOBALS['basesiteurl'].'/admin/actions.php') !== 0 &&
+	strpos($referer, $GLOBALS['basesiteurl'].'/index.php') !== 0) {
 	echo _('Invalid request');
 	exit;
 }

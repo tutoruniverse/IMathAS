@@ -131,14 +131,14 @@ class StringScorePart implements ScorePart
             foreach($gaarr as $j=>$givenans) {
                 $givenans = trim($givenans);
                 
-                if ($answerformat == "logic") {
+                if ($answerformat == "logic" && $scoremethod !== "default") {
                     if (comparelogic($givenans, $answer, $variables)) {
                         $correct += 1;
                         $foundloc = $j;
                     } 
                     continue; // skip normal processing
                 }
-                if ($answerformat == "setexp") {
+                if ($answerformat == "setexp" && $scoremethod !== "default") {
                     if (comparesetexp($givenans, $answer, $variables)) {
                         $correct += 1;
                         $foundloc = $j;

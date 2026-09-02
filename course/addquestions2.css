@@ -278,6 +278,9 @@ tr.textsegmentrow td {
     background-color: #fff;
     width: 100%;
 }
+div.tox-tinymce {
+    z-index: 101 !important; /* to put over stickyonscroll */
+}
 @media (max-width: 740px) {
 	.tox-tbtn[data-mce-name="alignright"] {
 		display: none !important;

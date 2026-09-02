@@ -1,5 +1,5 @@
 //IMathAS (c) forums thread-list order cache
-//Caches, in sessionStorage, the ordered list of threads shown by
+//Caches, in localStorage, the ordered list of threads shown by
 //thread.php/newthreads.php/flaggedthreads.php/forums.php/index.php for a
 //given context, so posts.php can populate its Prev/Next links without a
 //DB query. Each cached page is an array of [threadid, forumid] pairs, or
@@ -25,7 +25,7 @@ var ForumThreadCache = (function() {
 
 	function load() {
 		try {
-			var raw = sessionStorage.getItem(KEY);
+			var raw = localStorage.getItem(KEY);
 			return raw ? JSON.parse(raw) : null;
 		} catch (e) {
 			return null;
@@ -33,9 +33,10 @@ var ForumThreadCache = (function() {
 	}
 	function save(data) {
 		try {
-			sessionStorage.setItem(KEY, JSON.stringify(data));
+			localStorage.setItem(KEY, JSON.stringify(data));
 		} catch (e) {}
 	}
+
 	//scopeid is the forumid for forum-scoped types, or cid for
 	//course-scoped types. type is part of the bucket key (not just
 	//scopeid) so switching between e.g. a forum's default/new/flagged
@@ -50,6 +51,33 @@ var ForumThreadCache = (function() {
 	//pairs (explicitly - there's no rendered list to scrape there).
 	function seed(ctx) {
 		var data = load();
+		// clear outdated records
+		if (!data) {
+			data = [];
+		}
+
+		let found = false;
+		const now = Date.now();
+     	const maxAge = 24 * 60 * 60 * 1000;
+		for (let i=data.length - 1; i >= 0; i--) {
+			if (data[i].timestamp && now - data[i].timestamp > maxAge) {
+				data.splice(i,1);
+				continue;
+			}
+			if (sameContext(data[i], ctx)) {
+				found = true;
+				data[i].pages[ctx.page] = ctx.ids;
+				data[i].numpages = ctx.numpages;
+				data[i].timestamp = now;
+			}
+		}
+		if (!found) {
+			data.push({type: ctx.type, scopeid: ctx.scopeid, grp: ctx.grp, tagfilter: ctx.tagfilter,
+				threadsperpage: ctx.threadsperpage || null, numpages: ctx.numpages || null, pages: {},
+				timestamp: now});
+			data[data.length-1].pages[ctx.page] = ctx.ids;
+		}
+		/*
 		if (!sameContext(data, ctx)) {
 			data = {type: ctx.type, scopeid: ctx.scopeid, grp: ctx.grp, tagfilter: ctx.tagfilter,
 				threadsperpage: ctx.threadsperpage || null, numpages: ctx.numpages || null, pages: {}};
@@ -57,6 +85,7 @@ var ForumThreadCache = (function() {
 			data.numpages = ctx.numpages;
 		}
 		data.pages[ctx.page] = ctx.ids;
+		*/
 		save(data);
 	}
 
@@ -139,11 +168,15 @@ var ForumThreadCache = (function() {
 	//if the cache doesn't cover this context/page/thread.
 	function currentPageIds(ctx) {
 		var data = load();
-		if (!sameContext(data, ctx) || !data.pages[ctx.page]) { return null; }
-		var ids = data.pages[ctx.page];
-		var idx = findIndex(ids, ctx.threadid);
-		if (idx === -1) { return null; }
-		return {data: data, ids: ids, idx: idx};
+		//if (!sameContext(data, ctx) || !data.pages[ctx.page]) { return null; }
+		for (let i=0; i < data.length; i++) {
+			if (sameContext(data[i],ctx) && data[i].pages[ctx.page]) {
+				var ids = data[i].pages[ctx.page];
+				var idx = findIndex(ids, ctx.threadid);
+				if (idx === -1) { return null; }
+				return {data: data[i], ids: ids, idx: idx};
+			}
+		}
 	}
 
 	//Called by posts.php on load to populate the #prevth/#nextth links

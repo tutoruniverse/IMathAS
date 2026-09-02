@@ -51,7 +51,7 @@
 	$pagetitle = "Forums";
 	$placeinhead = "<style type=\"text/css\">\n@import url(\"$staticroot/forums/forums.css\");\n</style>\n";
 	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/thread.js?v=021326"></script>';
-	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=071526"></script>';
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/forumthreadcache.js?v=090226"></script>';
 	$placeinhead .= "<script type=\"text/javascript\">var AHAHsaveurl = '" . $GLOBALS['basesiteurl'] . "/forums/savetagged.php?cid=$cid';</script>";
 
 	require_once "../header.php";

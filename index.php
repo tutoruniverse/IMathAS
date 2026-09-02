@@ -61,7 +61,7 @@ $placeinhead = '
   </style>';
 $placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablesorter.js\"></script>\n";
 if ($showpostsgadget) {
-	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/forumthreadcache.js?v=071526\"></script>\n";
+	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/forumthreadcache.js?v=090226\"></script>\n";
 }
 if ($myrights>15) {
 	$placeinhead .= '<script type="text/javascript">$(function() {

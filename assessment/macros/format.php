@@ -1436,7 +1436,7 @@ function simplifyexpr($str,$vars="x",$simplevel=0,$implicit=true,$complex=false)
             $outstr .= ',';
         }
     }
-    if ($segmentstart < strlen($str)-1) {
+    if ($segmentstart < strlen($str)) {
         if ($nestlevel > 0 && !empty($lastcomma[$nestlevel])) {
             $thislevel = $lastcomma[$nestlevel];
         } else {

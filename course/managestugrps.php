@@ -467,7 +467,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 				FROM imas_stugroups AS grp 
 				JOIN imas_stugroupset AS gset ON grp.groupsetid=gset.id
 				WHERE grp.id=:id");
-			$stm->execute(array(':id'=>$remove));
+			$stm->execute(array(':id'=>$removegrpid));
 			list($page_grpname,$page_grpsetname) = $stm->fetch(PDO::FETCH_NUM) ?: [null,null];
 			if ($page_grpname === null) {
 				echo 'Invalid group';

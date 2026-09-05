@@ -566,15 +566,30 @@ class AssessRecord
     $style = $drillsettings['style'];
     $n = $drillsettings['n'];
 
-    $qobj = $this->getQuestionObject($qn, true, false, false);
-    $isCorrect = ($qobj['status'] === 'correct');
-    $triesExhausted = ($qobj['try'] >= $qobj['tries_max']);
+    $qobj = $this->getQuestionObject($qn, true, true, false);
+
+    if (empty($qobj['parts'])) {
+      // not tried yet
+      return;
+    }
+    $isCorrect = true;
+    $triesExhausted = true;
     $timedOut = ($style === 'time_maxcorrect' && !empty($qdata['drillend']) && $this->now >= $qdata['drillend']);
+
+    foreach ($qobj['parts'] as $qpart) {
+      if ($qpart['rawscore'] < 1) {
+        $isCorrect = false;
+        if ($qpart['try'] < $qobj['tries_max']) {
+          $triesExhausted = false;
+        }
+      }
+    }
 
     if (!$isCorrect && !$triesExhausted && !$timedOut) {
       // still eligible for another try on this version; nothing to do
       return;
     }
+    
 
     // this version is done (correct, out of tries, or time expired) -
     // update running progress per the style's rule

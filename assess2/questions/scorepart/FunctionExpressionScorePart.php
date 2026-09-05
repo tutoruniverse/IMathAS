@@ -32,7 +32,7 @@ class FunctionExpressionScorePart implements ScorePart
         $defaultreltol = .0015;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
-            'variables', 'domain', 'ansprompt', 'formatfeedbackon'];
+            'variables', 'domain', 'ansprompt', 'formatfeedbackon', 'scoremethod'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
@@ -527,6 +527,9 @@ class FunctionExpressionScorePart implements ScorePart
                 $score -= (count($givenanslist) - count($answerlist))/(count($givenanslist) + count($answerlist));
             }
             $scorePartResult->setRawScore($score);
+            if ($score < .99 && $scoremethod == 'allornothing') {
+                $scorePartResult->setRawScore(0);
+            }
             return $scorePartResult;
         } else if (count($correctscores) > 0) {
             $scorePartResult->setRawScore($correctscores[0]);

@@ -827,6 +827,7 @@ function groupSelected() {
     var form = document.getElementById("curqform");
     var grppoints = 0;
     var grpextracredit = 0;
+    var hasgroup = -1;
     for (var e = form.elements.length - 1; e > -1; e--) {
         var el = form.elements[e];
         if (
@@ -835,13 +836,14 @@ function groupSelected() {
             el.value != "ignore" &&
             !el.value.match(":text") &&
             el.id.match("qc")
-        ) {
+        ) { 
             val = el.value.split(":")[0];
             if (val.indexOf("-") > -1) {
                 //is group
                 val = val.split("-")[0];
                 grppoints = itemarray[val][2][0][4]; //point values from first in group
                 grpextracredit = itemarray[val][2][0][9];
+                hasgroup = val;  // first group will be used
             } else {
             }
             isnew = true;
@@ -851,7 +853,7 @@ function groupSelected() {
                 }
             }
             if (isnew) {
-                grplist.push(val);
+                grplist.push(parseInt(val));
             }
         }
     }
@@ -859,7 +861,8 @@ function groupSelected() {
         $("#curqtbl input[type=checkbox]").prop("checked", false);
         return;
     }
-    var to = grplist[grplist.length - 1];
+    // use existing group if found; otherwise use last
+    var to = (hasgroup>-1) ? hasgroup : grplist[grplist.length - 1];
     var existingcnt = 0;
     if (itemarray[to].length < 6) {
         //moving to existing group
@@ -877,9 +880,15 @@ function groupSelected() {
         itemarray[to] = [1, 0, [existing], 1, ''];
         existingcnt = 1;
     }
-    for (i = 0; i < grplist.length - 1; i++) {
+    for (i = 0; i < grplist.length; i++) {
+        // don't move dest item
+        if (grplist[i] == to) { continue; }
         //going from last in current to first in current
         tomove = itemarray.splice(grplist[i], 1);
+        // adjust indexing if items is before dest
+        if (grplist[i] < to) {
+            to--;
+        }
         if (tomove[0].length < 6) {
             //if grouping a group
             for (var j = 0; j < tomove[0][2].length; j++) {

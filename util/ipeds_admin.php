@@ -99,6 +99,23 @@ if (isset($_POST['action'])) {
 }
 
 // ── Search ─────────────────────────────────────────────────────────────────────
+function buildBooleanSearch(string $q): string
+{
+    // Strip characters that have special meaning in MySQL boolean mode
+    // so user input can't break the query or inject unintended operators
+    $clean = preg_replace('/[+\-<>()~*"@]+/', ' ', $q);
+
+    $words = preg_split('/\s+/', trim($clean), -1, PREG_SPLIT_NO_EMPTY);
+
+    if (empty($words)) {
+        return '';
+    }
+
+    // '+' makes each word required (AND); '*' makes it a prefix match
+    $terms = array_map(fn($w) => '+' . $w . '*', $words);
+
+    return implode(' ', $terms);
+}
 $searchResults = [];
 $searched = false;
 if (isset($_GET['q']) && trim($_GET['q']) !== '') {
@@ -127,13 +144,14 @@ if (isset($_GET['q']) && trim($_GET['q']) !== '') {
         $stm->execute($bindType([intval($q)]));
     } else {
         // Full-text search on school + agency, fallback to LIKE
+        $qb = buildBooleanSearch($q);
         $stm = $DBH->prepare(
             "SELECT * FROM imas_ipeds
              WHERE (MATCH(school) AGAINST(? IN BOOLEAN MODE)
                 OR MATCH(agency) AGAINST(? IN BOOLEAN MODE))$typeClause
              ORDER BY type, school, agency LIMIT 200"
         );
-        $ran = $stm->execute($bindType([$q . '*', $q . '*']));
+        $ran = $stm->execute($bindType([$qb, $qb]));
         // If full-text returns nothing try a LIKE fallback
         if ($ran && $stm->rowCount() === 0) {
             $stm = $DBH->prepare(

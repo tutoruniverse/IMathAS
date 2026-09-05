@@ -35,7 +35,7 @@ class AlgebraicNTupleScorePart implements ScorePart
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt', 
-            'scoremethod', 'partweights', 'domain', 'variables'];
+            'scoremethod', 'partweights', 'domain', 'variables', 'scoremethod'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
@@ -328,8 +328,12 @@ class AlgebraicNTupleScorePart implements ScorePart
 
         //$score = $correct/count($anarr) - count($gaarr)/$extrapennum;
         if ($score<0) { $score = 0; }
+        if ($score < .99 && $scoremethod == 'allornothing' && count($anarr)>1) {
+            $score = 0;
+        }
 
         $scorePartResult->setRawScore($score);
+        
         return $scorePartResult;
     }
 }

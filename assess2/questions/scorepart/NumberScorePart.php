@@ -34,7 +34,7 @@ class NumberScorePart implements ScorePart
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'reqdecimals',
             'reqsigfigs', 'answerformat', 'requiretimeslistpart', 
-            'ansprompt'];
+            'ansprompt', 'scoremethod'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
@@ -448,6 +448,9 @@ class NumberScorePart implements ScorePart
         if ($score<0) { $score = 0; }
         
         $scorePartResult->setRawScore($score);
+        if ($score < .99 && $scoremethod == 'allornothing' && $isListAnswer) {
+            $scorePartResult->setRawScore(0);
+        }
         return $scorePartResult;
     }
 }

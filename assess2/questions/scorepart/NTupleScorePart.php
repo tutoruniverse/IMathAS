@@ -33,7 +33,7 @@ class NTupleScorePart implements ScorePart
 
         $defaultreltol = .0015;
 
-        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 
+        $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'scoremethod', 
             'answerformat', 'requiretimes', 'requiretimeslistpart', 'ansprompt', 'scoremethod', 'partweights'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
@@ -397,6 +397,9 @@ class NTupleScorePart implements ScorePart
 
         //$score = $correct/count($anarr) - count($gaarr)/$extrapennum;
         if ($score<0) { $score = 0; }
+        if ($score < .99 && $scoremethod == 'allornothing' && count($anarr)>1) {
+            $score = 0;
+        }
         $scorePartResult->setRawScore($score);
         return $scorePartResult;
     }

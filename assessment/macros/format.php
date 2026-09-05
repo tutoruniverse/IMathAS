@@ -881,6 +881,13 @@ function convertTri($num, $tri, $doth = false, $addcommas = false) {
 }
 
 
+function cleanNeedsSeparatorSpace($t1, $t2) {
+    // number-number, or var/func adjacency needs a separating space
+    // so tokens don't visually merge (e.g. "5 6" not "56", "x sin(...)" not "xsin(...)")
+    return ($t1 == 3 && $t2 == 3) ||
+           ($t1 == 4 && ($t2 == 4 || $t2 == 2));
+}
+
 function cleanbytoken($str, $funcs = array()) {
     if (is_array($str)) {
         return $str;
@@ -905,6 +912,8 @@ function cleanbytoken($str, $funcs = array()) {
     }
     $tokens = cleantokenize(trim($str), $funcs);
 
+    // $out is now a list of [value, type] pairs -- same shape as $tokens entries --
+    // so we never have to re-derive a type from the string later.
     $out = array();
     $lasti = count($tokens) - 1;
     $grplasti = -2;
@@ -925,7 +934,7 @@ function cleanbytoken($str, $funcs = array()) {
         }
 
         if ($token[1] == 12) { // separator
-            if (count($out) > 0 && $out[0] == '+') {
+            if (count($out) > 0 && $out[0][0] == '+') {
                 array_shift($out);
             }
             if (count($out) == 0 && $i > 0) {
@@ -943,36 +952,36 @@ function cleanbytoken($str, $funcs = array()) {
                     }
                 }
                 */
-                $finalout[] = implode('', $out);
+                $finalout[] = implode('', array_column($out, 0));
             }
             $finalout[] = $token[0];
             $out = []; //reset
             if ($i == $grplasti) { // if nothing is following last separator, prevent 0 being added
-                $out[] = ' ';
+                $out[] = [' ', 0];
             }
         } else if ($token[1] == 3 && $token[0] === '0') { //is the number 0 by itself
             $isone = 0;
             if ($lastout > -1) { //if not first character
-                if ($out[$lastout] == '^') {
+                if ($out[$lastout][0] == '^') {
                     $isone = 2;
-                    if ($lastout >= 2 && ($out[$lastout - 2] == '+' || $out[$lastout - 2] == '-' || $out[$lastout - 2] == 'pm')) {
+                    if ($lastout >= 2 && ($out[$lastout - 2][0] == '+' || $out[$lastout - 2][0] == '-' || $out[$lastout - 2][0] == 'pm')) {
                         //4x+x^0 -> 4x+1
                         array_splice($out, -2);
-                        $out[] = 1;
+                        $out[] = [1, 3];
                     } else if ($lastout >= 2) {
                         $isone = 1;
                         //4x^0->4, 5(x+3)^0 -> 5
                         array_splice($out, -2);
                     } else if ($lastout == 1) {
                         //x^0 -> 1
-                        $out = array(1);
+                        $out = array([1, 3]);
                     }
-                } else if ($out[$lastout] == '_') {
-                    $out[] = 0;
+                } else if ($out[$lastout][0] == '_') {
+                    $out[] = [0, 3];
                     continue;
                 } else {
                     //( )0, + 0, x0
-                    while ($lastout > -1 && $out[$lastout] != '+' && $out[$lastout] != '-' && $out[$lastout] != 'pm') {
+                    while ($lastout > -1 && $out[$lastout][0] != '+' && $out[$lastout][0] != '-' && $out[$lastout][0] != 'pm') {
                         array_pop($out);
                         $lastout--;
                     }
@@ -1007,27 +1016,37 @@ function cleanbytoken($str, $funcs = array()) {
         } else if ($token[1] == 3 && $token[0] === '1') {
             $dontuse = false;
             if ($lastout > -1) { //if not first character
-                if ($out[$lastout] != '^' && $out[$lastout] != '/' && $out[$lastout] != '+' && $out[$lastout] != '-' && $out[$lastout] != 'pm' && $out[$lastout] != ' ' && $out[$lastout] != '_') {
+                if ($out[$lastout][0] != '^' && $out[$lastout][0] != '/' && $out[$lastout][0] != '+' && $out[$lastout][0] != '-' && $out[$lastout][0] != 'pm' && $out[$lastout][0] != ' ' && $out[$lastout][0] != '_') {
                     //( )1, x1,*1
-                    if ($out[$lastout] == '*') { //elim *
+                    if ($out[$lastout][0] == '*') { //elim *
                         array_pop($out);
                     }
                     $dontuse = true;
-                } else if ($out[$lastout] == '^' || $out[$lastout] == '/') {
+                } else if ($out[$lastout][0] == '^' || $out[$lastout][0] == '/') {
                     if ($lastout >= 1) {
                         //4+x^1 -> 4+x, 4x^1 -> 4x,   x/1 -> x
                         array_pop($out);
                         $dontuse = true;
+
+                        // The token that used to separate the base from what follows
+                        // (e.g. "^1") is now gone -- check if a space is still needed
+                        // between the surviving base and the next token, using the
+                        // type that's now exposed at the top of $out.
+                        $newlast = count($out) - 1;
+                        if ($i < $grplasti && $newlast >= 0 &&
+                            cleanNeedsSeparatorSpace($out[$newlast][1], $tokens[$i + 1][1])) {
+                            $out[] = [' ', 0];
+                        }
                         continue;
                     }
-                } else if ($out[$lastout] == '_') {
-                    $out[] = 1;
+                } else if ($out[$lastout][0] == '_') {
+                    $out[] = [1, 3];
                     continue;
-                } else if ($out[$lastout] == '-' && $lastout > 0 && (
-                    $out[$lastout - 1] == '^' || $out[$lastout - 1] == '/' || $out[$lastout - 1] == '_'
+                } else if ($out[$lastout][0] == '-' && $lastout > 0 && (
+                    $out[$lastout - 1][0] == '^' || $out[$lastout - 1][0] == '/' || $out[$lastout - 1][0] == '_'
                 )) {
                     // x^-1*5, 5/-1*6, a_-1*6, leave alone
-                    $out[] = 1;
+                    $out[] = [1, 3];
                     continue;
                 }
             }
@@ -1041,25 +1060,27 @@ function cleanbytoken($str, $funcs = array()) {
                     $dontuse = true;
                 } else if ($tokens[$i + 1][0] != '+' && $tokens[$i + 1][0] != '-' && $tokens[$i + 1][0] != 'pm' && $tokens[$i + 1][0] != '/' && !is_numeric($tokens[$i + 1][0])) {
                     // 1x, 1(), 1sin
-                    if ($lastout < 2 || (($out[$lastout - 1] != '^' && $out[$lastout - 1] != '/') || $out[$lastout] != '-')) { //exclude ^-1 case and /-1 case
+                    if ($lastout < 2 || (($out[$lastout - 1][0] != '^' && $out[$lastout - 1][0] != '/') || $out[$lastout][0] != '-')) { //exclude ^-1 case and /-1 case
                         $dontuse = true;
                     }
                 }
             }
 
             if (!$dontuse) {
-                $out[] = 1;
+                $out[] = [1, 3];
             } else {
                 continue;
             }
         } else {
-            $out[] = $token[0];
+            $out[] = $token; // keep the original [value, type] pair as-is
         }
-        if ($i < $grplasti && (($token[1] == 3 && $tokens[$i + 1][1] == 3) || ($token[1] == 4 && ($tokens[$i + 1][1] == 4 || $tokens[$i + 1][1] == 2)))) {
-            $out[] = ' ';
+
+        if ($i < $grplasti && count($out) > 0 &&
+            cleanNeedsSeparatorSpace(end($out)[1], $tokens[$i + 1][1])) {
+            $out[] = [' ', 0];
         }
     }
-    if (count($out) > 0 && $out[0] == '+') {
+    if (count($out) > 0 && $out[0][0] == '+') {
         array_shift($out);
     }
 
@@ -1078,7 +1099,7 @@ function cleanbytoken($str, $funcs = array()) {
             }
         }
         */
-        $finalout[] = implode('', $out);
+        $finalout[] = implode('', array_column($out, 0));
     }
 
     return str_replace('`', "'", implode(' ', $finalout));

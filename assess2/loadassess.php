@@ -96,6 +96,7 @@ if ($istutor && $assess_info->getSetting('tutoredit') != 2) {
 }
 if ($canViewAll && $userid !== $uid) {
   $assessInfoOut['view_as_stu'] = 1;
+  $assessInfoOut['available'] = 'yes';
   $query = "SELECT iu.FirstName,iu.LastName FROM imas_users AS iu JOIN ";
   $query .= "imas_students AS istu ON istu.userid=iu.id WHERE ";
   $query .= "iu.id=? AND istu.courseid=?";

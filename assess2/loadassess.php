@@ -189,7 +189,7 @@ if ($assessInfoOut['available'] === 'yes' &&
   count($assessInfoOut['prev_attempts']) > 0
 ) {
   $retaketime = $assess_record->getNextRetaketime();
-  if ($retaketime > 0) {
+  if ($retaketime > $now) {
     $assessInfoOut['can_retake'] = false;
     $assessInfoOut['retake_time'] = $retaketime;
     $assessInfoOut['available'] = 'retakewait';

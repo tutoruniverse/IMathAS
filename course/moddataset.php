@@ -1006,9 +1006,6 @@ if ($viewonly) {
 </p>
 <?php
 if (!isset($line['ownerid']) || isset($_GET['template']) || $line['ownerid']==$userid || ($line['userights']==3 && $line['groupid']==$groupid) || $isadmin || ($isgrpadmin && $line['groupid']==$groupid)) {
-    if (isset($qrightsdef) && $qrightsdef > 0) {
-        echo '<p class=noticetext>'._('Note: The "make questions public by default" setting has been removed. To make a question public you must now explicitly set the use rights.').'</p>';
-    }
     echo '<p>';
 	echo '<label for=userights>'._('Use Rights:').'</label> <select name="userights" id="userights">';
 	echo "<option value=\"0\" ";

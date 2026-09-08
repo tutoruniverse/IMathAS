@@ -96,6 +96,7 @@ if ($istutor && $assess_info->getSetting('tutoredit') != 2) {
 }
 if ($canViewAll && $userid !== $uid) {
   $assessInfoOut['view_as_stu'] = 1;
+  $assessInfoOut['available'] = 'yes';
   $query = "SELECT iu.FirstName,iu.LastName FROM imas_users AS iu JOIN ";
   $query .= "imas_students AS istu ON istu.userid=iu.id WHERE ";
   $query .= "iu.id=? AND istu.courseid=?";
@@ -188,7 +189,7 @@ if ($assessInfoOut['available'] === 'yes' &&
   count($assessInfoOut['prev_attempts']) > 0
 ) {
   $retaketime = $assess_record->getNextRetaketime();
-  if ($retaketime > 0) {
+  if ($retaketime > $now) {
     $assessInfoOut['can_retake'] = false;
     $assessInfoOut['retake_time'] = $retaketime;
     $assessInfoOut['available'] = 'retakewait';

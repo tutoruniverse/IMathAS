@@ -383,7 +383,6 @@ class QuestionHtmlGenerator
                     unset($displayformat);
                 }
             }
-            unset($answersize);
         }
 
         /*

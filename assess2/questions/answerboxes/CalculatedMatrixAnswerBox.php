@@ -48,7 +48,6 @@ class CalculatedMatrixAnswerBox implements AnswerBox
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
-        $answersize = "";
         $ansformats = array_map('trim', explode(',', $answerformat));
         $dispformats = array_map('trim', explode(',', $displayformat));
 
@@ -76,18 +75,25 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             } else {
                 $style = '';
             }
-            if ($colorbox == '') {
-                $out .= '<div id="qnwrap' . $qn . '"' . $style . '>';
-            } else {
-                $out .= '<div class="' . $colorbox . '" id="qnwrap' . $qn . '"' . $style . '>';
+            $augcolumn = in_array('augmented', $dispformats) ? $answersize[1] - 1 : -1;
+            $classes = 'matrix-input';
+            if ($colorbox != '') {
+                $classes .= ' ' . $colorbox;
             }
+            if ($augcolumn != -1) {
+                $classes .= ' matrix-augmented';
+            }
+            if (in_array('det', $dispformats)) {
+                $classes .= ' matrix-det';
+            }
+            $out .= '<div class="' . $classes . '" matrix-rows="' . $answersize[0] . '" matrix-cols="' . $answersize[1] . '" id="qnwrap' . $qn . '"' . $style . '>';
             $out .= '<table>';
             if (in_array('det', $dispformats)) {
                 $out .= '<tr><td class="matrixdetleft">&nbsp;</td><td style="padding:0px">';
             } else {
                 $out .= '<tr><td class="matrixleft">&nbsp;</td><td style="padding:0px">';
             }
-            
+
             $arialabel = $this->answerBoxParams->getQuestionIdentifierString() .
                 ' ' . sprintf(_('matrix entry with %d rows and %d columns'), $answersize[0], $answersize[1]) .
                 (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
@@ -95,10 +101,6 @@ class CalculatedMatrixAnswerBox implements AnswerBox
             $count = 0;
             $las = explode("|", $la);
             $cellcnt = $answersize[0] * $answersize[1];
-            $augcolumn = -1;
-            if (in_array('augmented', $dispformats)) {
-                $augcolumn = $answersize[1] - 1;
-            }
             for ($row = 0; $row < $answersize[0]; $row++) {
                 $out .= "<tr>";
                 for ($col = 0; $col < $answersize[1]; $col++) {
@@ -121,7 +123,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
 
                     $out .= '<input ' .
                         Sanitize::generateAttributeString($attributes) .
-                        '" />';
+                        ' />';
 
                     $out .= "</td>\n";
                     $count++;
@@ -181,7 +183,7 @@ class CalculatedMatrixAnswerBox implements AnswerBox
         }
         $preview .= "<span id=p$qn></span> ";
         if ($anstype === 'algmatrix' && in_array('generalcomplex', $ansformats)) {
-            $tip .= '<br>'._('Your answer can contain complex numbers.');
+            $tip .= '<br/>'._('Your answer can contain complex numbers.');
         }
         $params['tip'] = $shorttip;
         $params['longtip'] = $tip;

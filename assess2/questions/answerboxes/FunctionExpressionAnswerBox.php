@@ -106,7 +106,7 @@ class FunctionExpressionAnswerBox implements AnswerBox
             }
         }
         if (in_array('generalcomplex', $ansformats)) {
-            $tip .= "\n"._('Your answer can contain complex numbers.');
+            $tip .= '<br/>'._('Your answer can contain complex numbers.');
         }
 
         if (empty($variables)) {$variables = "x";}

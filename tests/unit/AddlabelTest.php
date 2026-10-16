@@ -210,4 +210,33 @@ final class AddlabelTest extends TestCase
         $this->assertCount(1, $merged, 'plot-func should keep only plot A functions when B has none');
         $this->assertEquals('x^2', $merged[0]['expr']);
     }
+
+    public function testMergePlotsTakesPlotBFuncsWhenPlotAIsEmpty()
+    {
+        $funcB = [['expr' => 'sin(x)', 'color' => 'red']];
+        $jsonA = json_encode(['functions' => []]);
+        $jsonB = json_encode(['functions' => [['definition' => 'sin(x)']]]);
+
+        // showplot() with no elements (axes only) still emits plot-func, holding []
+        $plotA =
+            "<embed type='image/svg+xml' align='middle' width='200' height='200'" .
+            " function_list='[]'" .
+            " plot-func='" . base64_encode(json_encode([])) . "'" .
+            " script='drawPicture(" . $jsonA . ")' />\n";
+
+        $plotB =
+            "<embed type='image/svg+xml' align='middle' width='200' height='200'" .
+            " function_list='[\"sin(x)\"]'" .
+            " plot-func='" . base64_encode(json_encode($funcB)) . "'" .
+            " script='drawPicture(" . $jsonB . ")' />\n";
+
+        $result = mergeplots($plotA, $plotB);
+
+        preg_match("/plot-func='([^']*)'/", $result, $m);
+        $this->assertNotEmpty($m, 'result should contain plot-func attribute');
+
+        $merged = json_decode(base64_decode($m[1]), true);
+        $this->assertCount(1, $merged, 'plot-func should take plot B functions when A has none');
+        $this->assertEquals('sin(x)', $merged[0]['expr']);
+    }
 }

@@ -1188,7 +1188,7 @@ function mergeplots($plota) {
             // Merge plot-func attributes (independent of script format)
             $pfA = _mergeplots_extract_plot_func($plota);
             $pfB = _mergeplots_extract_plot_func($plotb);
-            if (!empty($pfA) && !empty($pfB)) {
+            if (!empty($pfB)) {
                 $merged = array_merge($pfA, $pfB);
                 $newVal = base64_encode(json_encode($merged));
                 $plota = preg_replace("/plot-func='[^']*'/", "plot-func='" . $newVal . "'", $plota);

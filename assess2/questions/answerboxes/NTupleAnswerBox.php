@@ -86,7 +86,8 @@ class NTupleAnswerBox implements AnswerBox
         if ($anstype === 'calcntuple') {
             $tip .= formathint('each value', $ansformats, ($reqdecimals !== '') ? $reqdecimals : null, 'calcntuple');
         }
-        if (!in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
+        if ($anstype === 'ntuple'
+            && !in_array('nosoln', $ansformats) && !in_array('nosolninf', $ansformats)) {
             $tip .= _('Enter DNE for Does Not Exist');
         }
 

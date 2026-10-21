@@ -10,7 +10,7 @@ ul {
 <body>
 <?php
 	require_once "../init.php";
-	if ($myrights<100 && ($myspecialrights&(32+64))==0) {
+	if ($myrights<100 && ($myspecialrights&32)==0) {
 		exit;
 	}
 	$now = time();
@@ -34,7 +34,7 @@ ul {
 		}
 	}
 
-	echo '<h1>Enrollments from '.date('M j, Y',$start).' to '.date('M j, Y',$end).'</h1>';
+	echo '<h1>Enrollments from '.Sanitize::encodeStringForDisplay(date('M j, Y',$start)).' to '.Sanitize::encodeStringForDisplay(date('M j, Y',$end)).'</h1>';
 	echo '<p>This will list all students who last accessed the course between those dates.</p>';
 
 	echo '<p>Courses marked with <sup>*</sup> have more than one instructor, and the enrollments have already been counted earlier so will be omitted</p>';
@@ -50,15 +50,18 @@ ul {
 	}
 	$skipcids = implode(',',$skipcid);
 	*/
+	$qarr = [$start];
     $query = "SELECT g.name,u.LastName,u.FirstName,c.id,c.name AS cname,COUNT(DISTINCT s.id),u.email FROM imas_students AS s JOIN imas_teachers AS t ";
-    $query .= "ON s.courseid=t.courseid AND s.lastaccess>$start ";
+    $query .= "ON s.courseid=t.courseid AND s.lastaccess>? ";
 	if ($end != $now) {
-		$query .= "AND s.lastaccess<$end ";
+		$query .= "AND s.lastaccess<? ";
+		$qarr[] = $end;
 	}
 	$query .= "JOIN imas_courses AS c ON t.courseid=c.id ";
 	$query .= "JOIN imas_users as u ";
 	$query .= "ON u.id=t.userid JOIN imas_groups AS g ON g.id=u.groupid GROUP BY u.id,c.id ORDER BY g.name,u.LastName,u.FirstName,c.name";
-	$stm = $DBH->query($query);
+	$stm = $DBH->prepare($query);
+	$stm->execute($qarr);
     $lastgroup = '';  $grpcnt = 0; $grpdata = '';  $lastuser = ''; $userdata = '';
     $grpinstrcnt = 0; $lastemail = '';
 	$seencid = array();

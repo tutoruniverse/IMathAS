@@ -131,7 +131,7 @@ class ExceptionFuncs {
 	}
 
 	//$exception should be from imas_exceptions, and be null, or
-	//   array(startdate,enddate,islatepass,is_lti)
+	//   assoc array including startdate,enddate,islatepass,is_lti
 	//$adata should be associative array from imas_assessments including
 	//   startdate, enddate, allowlate, id, LPcutoff
 	//returns normally array(useexception, canundolatepass, canuselatepass)
@@ -148,34 +148,53 @@ class ExceptionFuncs {
         }
 
 		$useexception = ($exception!==null && $exception!==false); //use by default
-		if ($useexception && !empty($exception[3])) {
+		if ($useexception && !empty($exception['is_lti'])) {
 			//is LTI-set - use the exception
 
-		} else if ($useexception && $exception[2]>0 && $exception[0]>=$adata['startdate'] && ($adata['enddate']>$exception[1] || $exception[1]>$this->courseenddate)) {
+		} else if ($useexception && 
+			$exception['islatepass']>0 && 
+			$exception['startdate']>=$adata['startdate'] && 
+			($adata['enddate']>$exception['enddate'] || $exception['enddate']>$this->courseenddate)
+		) {
 			//if latepass and assessment enddate is later than exception enddate, skip exception
 			//or, if latepass and exception would put it past the course end date, skip exception
 			$useexception = false;
-		} else if ($useexception && $exception[2]==0 && $exception[0]>=$adata['startdate'] && $adata['enddate']>$exception[1]) {
+		} else if ($useexception && 
+			$exception['islatepass']==0 && 
+			$exception['startdate']>=$adata['startdate'] && 
+			$adata['enddate']>$exception['enddate']
+		) {
 			//if manual exception and start of exception is equal or after original startdate and asessment enddate is later than exception enddate, skip exception
 			//presumption: exception was made to extend due date, not start assignment early
 			$useexception = false;
+		} else if ($useexception && 
+			$exception['islatepass']==0 && 
+			$exception['startdate']==$exception['enddate']
+		) {
+			//if manual exception and start of exception is equal to the exception enddate
+			//then teacher didn't intend for this to really extend the due date
+			//and they just wanted to use other exception features
+			$useexception = false;
 		}
 		if (!$limit) {
-			if ($useexception && $exception[2]>0 && ($now < $adata['enddate'] || $exception[1] > strtotime("+".$this->latepasshrs." hours", $now))) {
+			if ($useexception && 
+				$exception['islatepass']>0 && 
+				($now < $adata['enddate'] || $exception['enddate'] > strtotime("+".$this->latepasshrs." hours", $now))
+			) {
 				$canundolatepass = true;
 			}
 			if ($useexception) {
 				//this logic counts "latepasses used" based on date of exception past original enddate
 				//regardless of whether exception is manual or latepass
 				//prevents using latepasses on top of a manual extension
-				if (!empty($exception[3])) {
+				if (!empty($exception['is_lti'])) {
 					//with LTI one, base latepasscnt only on the value in the exception
-					$latepasscnt = $exception[2];
+					$latepasscnt = $exception['islatepass'];
 				} else {
-					$latepasscnt = max(0,round(($exception[1] - $adata['enddate'])/($this->latepasshrs*3600)));
+					$latepasscnt = max(0,round(($exception['enddate'] - $adata['enddate'])/($this->latepasshrs*3600)));
                 }
 				//use exception due date for determining canuselatepass
-				$adata['enddate'] = $exception[1];
+				$adata['enddate'] = $exception['enddate'];
 			} else {
 				//if not using exception, use latepasscnt as actual number of latepasses used, or 0
 				$latepasscnt = 0;
@@ -217,7 +236,7 @@ class ExceptionFuncs {
 	// Also called internally from getCanUseAssessException using second param
 	// latepasscnt is number of latepasses already used
 	public function getCanUseAssessLatePass($adata, $latepasscnt = 0, $getreason=false) {
-		if ($this->latepasses == 0) { // no latepasses to use; no need to check further
+		if ($this->latepasses == 0 && !$getreason) { // no latepasses to use; no need to check further
 			return false;
 		}
 		$now = time();
@@ -269,7 +288,7 @@ class ExceptionFuncs {
         // determine reason for blocking
         if ($adata['allowlate'] == 0) {
             $canuselatepass = 0; //not enabled
-        } else if ($adata['enddate'] > $this->courseenddate) {
+        } else if ($adata['enddate'] >= $this->courseenddate) {
             $canuselatepass = 3; // past course enddate
         } else if ($now>$adata['enddate'] && $adata['allowlate']<10) {
             $canuselatepass = 4; // past due date, and LP only allowed before
@@ -310,7 +329,7 @@ class ExceptionFuncs {
 
 
 	//$exception should be from imas_exceptions, and be null, or
-	//   array(startdate,enddate,islatepass,waivereqscore,itemtype)
+	//   assoc array including startdate,enddate,islatepass,waivereqscore,itemtype
 	//$line should be from imas_forums, and be assoc array including keys
 	//   replyby, postby, enddate, allowlate
 	//returns array($canundolatepassP, $canundolatepassR, $canundolatepass,
@@ -324,38 +343,40 @@ class ExceptionFuncs {
 		$latepasscntP = 0;
 		$latepasscntR = 0;
 		if ($exception !== null) {
-		   //for forums, exceptions[$items[$i]][0] is used for postby and [1] is used for replyby
-		   if (($exception[4]=='P' || $exception[4]=='F') && $exception[0]>0) {
+		   // for forums, exceptions['startdate'] is used for postby and ['enddate'] is used for replyby
+		   // rename here for clarity
+			$exception['postby'] = $exception['startdate'];
+			$exception['replyby'] = $exception['enddate'];
+		   if (($exception['itemtype']=='P' || $exception['itemtype']=='F') && $exception['postby']>0) {
 			   //if latepass and it's before original due date or exception is for more than a latepass past now
-			   if ($exception[2]>0 && ($now < $line['postby'] || $exception[0] > strtotime("+".$this->latepasshrs." hours", $now))) {
+			   if ($exception['islatepass']>0 && ($now < $line['postby'] || $exception['postby'] > strtotime("+".$this->latepasshrs." hours", $now))) {
 				   $canundolatepassP = true;
 			   }
-			   if ($exception[2]>0) {
-				   $latepasscntP = max(0,round(($exception[0] - $line['postby'])/($this->latepasshrs*3600)));
+			   if ($exception['islatepass']>0) {
+				   $latepasscntP = max(0,round(($exception['postby'] - $line['postby'])/($this->latepasshrs*3600)));
 			   }
-			   $line['postby'] = $exception[0];
+			   $line['postby'] = $exception['postby'];
 			   if ($line['postby']>$line['enddate']) { //extend enddate if needed to accomodate postby exception
 				   $line['enddate'] = $line['postby'];
 			   }
 		   }
-		   if (($exception[4]=='R' || $exception[4]=='F') && $exception[1]>0) {
+		   if (($exception['itemtype']=='R' || $exception['itemtype']=='F') && $exception['replyby']>0) {
 			   //if latepass and it's before original due date or exception is for more than a latepass past now
-			   if ($exception[2]>0 && ($now < $line['replyby'] || $exception[1] > strtotime("+".$this->latepasshrs." hours", $now))) {
+			   if ($exception['islatepass']>0 && ($now < $line['replyby'] || $exception['replyby'] > strtotime("+".$this->latepasshrs." hours", $now))) {
 				   $canundolatepassR = true;
 			   }
-			   if ($exception[2]>0) {
-				   $latepasscntR = max(0,round(($exception[1] - $line['replyby'])/($this->latepasshrs*3600)));
+			   if ($exception['islatepass']>0) {
+				   $latepasscntR = max(0,round(($exception['replyby'] - $line['replyby'])/($this->latepasshrs*3600)));
 			   }
-			   $line['replyby'] = $exception[1];
+			   $line['replyby'] = $exception['replyby'];
 			   if ($line['replyby']>$line['enddate']) { //extend enddate if needed to accomodate postby exception
 				   $line['enddate'] = $line['replyby'];
 			   }
 		   }
-		   if ($exception[4]=='F' && $exception[0]>0 && $exception[1]>0) {
+		   if ($exception['itemtype']=='F' && $exception['postby']>0 && $exception['replyby']>0) {
 			  $canundolatepass = $canundolatepassP && $canundolatepassR;
 		   } else {
 			  $canundolatepass = $canundolatepassP || $canundolatepassR;
-
 		   }
 		}
 		$canuselatepassP = false;

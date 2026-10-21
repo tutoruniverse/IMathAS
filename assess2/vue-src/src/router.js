@@ -1,6 +1,6 @@
-import Vue from 'vue';
-import Router from 'vue-router';
-import { store, actions } from './basicstore';
+import { nextTick } from 'vue';
+import { createRouter, createWebHashHistory } from 'vue-router';
+import { store, actions } from '@/basicstore';
 import Launch from './views/Launch.vue';
 import Closed from './views/Closed.vue';
 import Summary from './views/Summary.vue';
@@ -9,20 +9,13 @@ import Skip from './views/Skip.vue';
 import Full from './views/Full.vue';
 import Print from './views/Print.vue';
 import FullPaged from './views/FullPaged.vue';
-// import Videocued from './views/Videocued.vue';
-// import Livepoll from './views/Livepoll.vue';
-// const Skip = () => import(/* webpackChunkName: "skip" */ './views/Skip.vue');
-// const Full = () => import(/* webpackChunkName: "full" */ './views/Full.vue');
-// const Print = () => import(/* webpackChunkName: "print" */ './views/Print.vue');
-// const FullPaged = () => import(/* webpackChunkName: "fullpaged" */ './views/FullPaged.vue');
-const Videocued = () => import(/* webpackChunkName: "special" */ './views/Videocued.vue');
-const Livepoll = () => import(/* webpackChunkName: "special" */ './views/Livepoll.vue');
+const Videocued = () => import('./views/Videocued.vue');
+const Livepoll = () => import('./views/Livepoll.vue');
 
-Vue.use(Router);
-
-const router = new Router({
-  base: process.env.NODE_ENV === 'production' ? window.imasroot + '/assess2/' : '/',
-  // mode: 'history',
+const router = createRouter({
+  history: createWebHashHistory(
+    process.env.NODE_ENV === 'production' ? window.imasroot + '/assess2/' : '/' // base
+  ),
   routes: [
     {
       path: '/',
@@ -144,7 +137,8 @@ const router = new Router({
         if (!store.assessInfo.in_practice &&
           (!store.assessInfo.has_active_attempt ||
             store.assessInfo.submitby === 'by_question'
-          )
+          ) &&
+          !store.showwork_expired
         ) {
           next();
         } else {
@@ -179,7 +173,12 @@ const router = new Router({
     if (savedPosition) {
       return savedPosition;
     } else {
-      return { x: 0, y: 0 };
+      // return { x: 0, y: 0 };
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve({ left: 0, top: 0 });
+        }, 50);
+      });
     }
   }
 });
@@ -213,11 +212,13 @@ router.beforeEach((to, from, next) => {
       store.queryString += '&uid=' + store.uid;
     }
     actions.loadAssessData(() => next());
+  } else if (store.inPrintView && to.name !== '/print') {
+    next({ path: '/print', replace: true });
   } else {
     next();
   }
 });
 router.afterEach((to, from) => {
-  Vue.nextTick(window.sendLTIresizemsg);
+  nextTick(window.sendLTIresizemsg);
 });
 export default router;

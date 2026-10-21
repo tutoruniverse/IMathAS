@@ -4,7 +4,9 @@
 //  The isset($teacherid) check blocks access if accessed directly
 //(c) 2013 David Lippman
 
-
+if (!isset($userid)) {
+	exit;
+}
 ini_set("max_execution_time", "600");
 
 	if (!(isset($teacherid))) {
@@ -41,6 +43,20 @@ ini_set("max_execution_time", "600");
 			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/gradebook.php?cid=$cid&gbmode=" . Sanitize::encodeUrlParam($_GET['gbmode'] ?? '') . "&r=" . Sanitize::randomQueryStringParam());
 			exit;
 		}
+	} else if (isset($_POST['posted']) && $_POST['posted']=="Unlock") { // handle unlock
+		if (!empty($_POST['checked'])) {
+			$uids = array_map('intval', $_POST['checked']);
+			$ph = Sanitize::generateQueryPlaceholders($uids);
+			$stm = $DBH->prepare("UPDATE imas_students SET locked=0 WHERE courseid=? AND userid IN ($ph)");
+			$stm->execute([$cid, ...$uids]);
+		}
+		if ($calledfrom=='lu') {
+			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/listusers.php?cid=$cid&r=" . Sanitize::randomQueryStringParam());
+			exit;
+		} else if ($calledfrom == 'gb') {
+			header('Location: ' . $GLOBALS['basesiteurl'] . "/course/gradebook.php?cid=$cid&gbmode=" . Sanitize::encodeUrlParam($_GET['gbmode'] ?? '') . "&r=" . Sanitize::randomQueryStringParam());
+			exit;
+		}
 	} else { //get confirm
 		if ((isset($_POST['submit']) && $_POST['submit']=="Lock") || (isset($_POST['posted']) && $_POST['posted']=="Lock")) {
 			$get_uid = 'selected';
@@ -49,20 +65,33 @@ ini_set("max_execution_time", "600");
 		if ($get_uid=="selected") {
 			if (!empty($_POST['checked'])) {
 				$ulist = implode(',', array_map('intval', $_POST['checked']));
-				$resultUserList = $DBH->query("SELECT LastName,FirstName,SID FROM imas_users WHERE id IN ($ulist)");
+				$query = "SELECT u.LastName,u.FirstName,u.SID FROM imas_users AS u JOIN
+						  imas_students AS stu ON u.id=stu.userid AND stu.courseid=?
+						  WHERE u.id IN ($ulist)";
+				$resultUserList = $DBH->prepare($query);
+				$resultUserList->execute([$cid]);
 				$stm = $DBH->prepare("SELECT COUNT(id) FROM imas_students WHERE courseid=:courseid");
 				$stm->execute(array(':courseid'=>$cid));
 			}
 		} else {
-			$stm = $DBH->prepare("SELECT FirstName,LastName,SID FROM imas_users WHERE id=:id");
-			$stm->execute(array(':id'=>$get_uid));
+			$query = "SELECT u.LastName,u.FirstName,u.SID FROM imas_users AS u JOIN
+						  imas_students AS stu ON u.id=stu.userid AND stu.courseid=?
+						  WHERE u.id=?";
+			$stm = $DBH->prepare($query);
+			$stm->execute([$cid,$get_uid]);
 			$row = $stm->fetch(PDO::FETCH_NUM);
-			$lockConfirm =  "Are you SURE you want to lock <span class='pii-full-name'>{$row[0]} {$row[1]}</span> (<span class='pii-username'>$row[2]</span>) out of the course?";
+			if ($row === false) {
+				echo "Invalid";
+				exit;
+			}
+			$lockConfirm =  "Are you SURE you want to lock <span class='pii-full-name'>" . Sanitize::encodeStringForDisplay($row[0] . ' '. $row[1]). "</span> (<span class='pii-username'>" . Sanitize::encodeStringForDisplay($row[2]) . "</span>) out of the course?";
 		}
 
 		/**** confirmation page body *****/
+		$pagetitle = _('Lock Student Confirmation');
 		require_once "../header.php";
 		echo  "<div class=breadcrumb>$curBreadcrumb</div>";
+		echo "<h1>$pagetitle</h1>";
 		if ($calledfrom=='lu') {
 			echo "<form method=post action=\"listusers.php?cid=$cid&action=lock&uid=" . Sanitize::simpleString($get_uid) . "&confirmed=true\">";
 		} else if ($calledfrom=='gb') {
@@ -92,7 +121,7 @@ ini_set("max_execution_time", "600");
 <?php
 				}
 			} else {
-				echo Sanitize::encodeStringForDisplay($lockConfirm);
+				echo $lockConfirm;
 			}
 ?>
 

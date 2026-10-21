@@ -13,6 +13,10 @@ require_once "outcometable.php";
 $canviewall = true;
 $catfilter = -1;
 $secfilter = -1;
+$headerslocked = false;
+if (!empty($_COOKIE['ocrhdr-'.$cid])) {
+	$headerslocked = true;
+}
 
 //load outcomes
 $stm = $DBH->prepare("SELECT outcomes FROM imas_courses WHERE id=:id");
@@ -36,6 +40,7 @@ while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 
 if (isset($_GET['gbmode']) && $_GET['gbmode']!='') {
 	$gbmode = $_GET['gbmode'];
+	$_SESSION[$cid.'gbmode'] = $gbmode;
 } else if (isset($_SESSION[$cid.'gbmode'])) {
 	$gbmode =  $_SESSION[$cid.'gbmode'];
 } else {
@@ -61,6 +66,7 @@ function flattenout($arr,$level) {
 }
 flattenout($outcomes,'0');
 
+$qs = '';
 if (isset($studentid)) {
 	$stu = intval($userid);
 	$report = 'onestu';
@@ -77,46 +83,37 @@ if (isset($studentid)) {
 	$report = 'export';
 } else {
 	$report = 'overview';
-	$qs = '';
 }
 if (isset($_GET['type'])) {
 	$type = intval($_GET['type']);
 } else {
 	$type = 1;  //0 past, 1 attempted
 }
-$typesel = _('Show for scores: ').'<select id="typesel" onchange="chgtype()">';
+$typesel = '<label>'. _('Show for scores: ').'<select id="typesel" onchange="chgtype()">';
 $typesel .= '<option value="0" '.($type==0?'selected="selected"':'').'>'._('Past Due scores').'</option>';
 $typesel .= '<option value="1" '.($type==1?'selected="selected"':'').'>'._('Past Due and Attempted scores').'</option>';
-$typesel .= '</select>';
+$typesel .= '</select></label> ';
+$typesel .= '<label>'._('Locked students:').' <select id="lockedtoggle" onchange="chglockedtoggle()">';
+$typesel .= "<option value=0 ".($hidelocked==0?'selected':'').">". _('Show Locked'). "</option>";
+$typesel .= "<option value=2 ".($hidelocked==2?'selected':'').">". _('Hide Locked'). "</option>";
+$typesel .= "</select></label>";
 
 $placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablesorter.js\"></script>\n";
+
 if ($report == 'overview') {
-	$placeinhead .= "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablescroller2.js?v=012514\"></script>\n";
-	$placeinhead .= "<script type=\"text/javascript\">\n";
-	$placeinhead .= 'var ts = new tablescroller("myTable",';
-	if (isset($_COOKIE["ocrhdr-$cid"]) && $_COOKIE["ocrhdr-$cid"]==1) {
-		$placeinhead .= 'true,false);';
-		$headerslocked = true;
-	} else {
-		if (!isset($_COOKIE["ocrhdr-$cid"]) && isset($CFG['GBS']['lockheader']) && $CFG['GBS']['lockheader']==true) {
-			$placeinhead .= 'true,false);';
-			$headerslocked = true;
+	$placeinhead .= '<script>
+	function lockcol() {
+		if ($("#tblcontmyTable").hasClass("sticky-table")) {
+			$("#tblcontmyTable").removeClass("sticky-table");
+			setCookie("ocrhdr-'.$cid.'", 0);
+			document.getElementById("lockbtn").value = "'. _('Lock headers') . '";
 		} else {
-			$placeinhead .= 'false,false);';
-			$headerslocked = false;
-			$usefullwidth = true;
+			$("#tblcontmyTable").addClass("sticky-table");
+			setCookie("ocrhdr-'.$cid.'", 1);
+			document.getElementById("lockbtn").value = "'. _('Unlock headers') . '";
 		}
 	}
-	$placeinhead .= '$(function() {ts.init();});';
-	$placeinhead .= "\nfunction lockcol() { \n";
-	$placeinhead .= "var tog = ts.toggle(); ";
-	$placeinhead .= "document.cookie = 'ocrhdr-$cid=1';\n document.getElementById(\"lockbtn\").value = \"" . _('Unlock headers') . "\"; ";
-	$placeinhead .= "if (tog==1) { "; //going to locked
-	$placeinhead .= "} else {";
-	$placeinhead .= "document.cookie = 'ocrhdr-$cid=0';\n document.getElementById(\"lockbtn\").value = \"" . _('Lock headers') . "\"; ";
-	$placeinhead .= "}}\n ";
-	$placeinhead .= "function cancellockcol() {document.cookie = 'ocrhdr-$cid=0';\n document.getElementById(\"lockbtn\").value = \"" . _('Lock headers') . "\";}\n";
-	$placeinhead .= '</script>';
+	</script>';
 }
 
 $address = $GLOBALS['basesiteurl'] . "/course/outcomereport.php?cid=$cid".$qs;
@@ -125,6 +122,13 @@ $placeinhead .= '<script type="text/javascript"> var selfaddr = "'.$address.'";
 	function chgtype() {
 		var type = document.getElementById("typesel").value;
 		window.location = selfaddr+"&type="+type;
+	}
+	function chglockedtoggle() {
+		var newval = document.getElementById("lockedtoggle").value;
+		if (newval != '.$hidelocked.') {
+			var newgbmode = '.Sanitize::onlyInt($gbmode).' - 100*'.$hidelocked.' + 100*newval;
+			window.location = selfaddr+"&gbmode="+newgbmode;
+		}
 	}
 	</script>';
 
@@ -167,7 +171,7 @@ if ($report=='overview') {
 					}
 					$html .= $subhtml;
 				}
-			} else { //is outcome
+			} else if (isset($outcomeinfo[$oi])) { //is outcome
 				if ($isheader) {
 					$html .= '<th class="cat'.Sanitize::onlyInt($gcnt).'"><div>'.Sanitize::encodeStringForDisplay($outcomeinfo[$oi]).'<br/><a class="small" href="outcomereport.php?cid='.Sanitize::courseId($cid).'&amp;outcome='.Sanitize::encodeUrlParam($oi).'&amp;type='.Sanitize::encodeUrlParam($type).'">[Details]</a></div></th>';
 					$sarr .= ',"N"';
@@ -204,10 +208,17 @@ if ($report=='overview') {
 		echo ' <a href="outcomereport.php?cid='.$cid.'&amp;export=true&amp;type='.$type.'">Export to CSV</a> ';
 		echo '</div>';
 		echo "<div id=\"tbl-container\">";
-		echo '<div id="bigcontmyTable"><div id="tblcontmyTable">';
+		echo '<div id="bigcontmyTable">';
+		if ($headerslocked) {
+			echo '<div id="tblcontmyTable" class="sticky-table">';
+		} else {
+			echo '<div id="tblcontmyTable">';
+		}
 
-		echo '<table id="myTable" class="gb"><thead><tr><th><div>'._('Name').'</div></th><th class="cat0"><div></div></th>';
-		$sarr = '"S",false';
+		echo '<table id="myTable" class="gb"><thead><tr><th><div>'._('Name').'</div></th>';
+		$sarr = '"S"';
+		//echo '<th class="cat0"><div></div></th>';
+		//$sarr = '"S",false';
 		list($html,$tots) = printOutcomeRow($outcomes,true,'0');
 		echo $html;
 		/*foreach ($outc as $oc) {
@@ -220,8 +231,9 @@ if ($report=='overview') {
 
 		for ($i=1;$i<count($ot);$i++) {
 			echo '<tr class="'.($i%2==0?'even':'odd').'">';
-			echo '<td><div class="trld"><a href="outcomereport.php?cid='.Sanitize::encodeUrlParam($cid).'&amp;stu='.Sanitize::encodeUrlParam($ot[$i][0][1]).'&amp;type='.Sanitize::encodeUrlParam($type).'">'.Sanitize::encodeStringForDisplay($ot[$i][0][0]).'</a></div></td>';
-			echo '<td><div></div></td>';
+			$addclass = ($ot[$i][0][2])?' greystrike':'';
+			echo '<th scope=row><div class="trld"><a href="outcomereport.php?cid='.Sanitize::encodeUrlParam($cid).'&amp;stu='.Sanitize::encodeUrlParam($ot[$i][0][1]).'&amp;type='.Sanitize::encodeUrlParam($type).'"><span class="pii-full-name'.$addclass.'">'.Sanitize::encodeStringForDisplay($ot[$i][0][0]).'</span></a></div></th>';
+			//echo '<td><div></div></td>';
 			/*foreach ($outc as $oc) {
 				if (isset($ot[$i][3][$type]) && isset($ot[$i][3][$type][$oc])) {
 					echo '<td>'.round(100*$ot[$i][3][$type][$oc],1).'%</td>';
@@ -286,7 +298,8 @@ if ($report=='overview') {
 	echo '</tr></thead><tbody>';
 	for ($i=1;$i<count($ot);$i++) {
 		echo '<tr class="'.($i%2==0?'even':'odd').'">';
-		echo '<td>'.Sanitize::encodeStringForDisplay($ot[$i][0][0]).'</td>';
+		$addclass = ($ot[$i][0][2])?' greystrike':'';
+		echo '<th scope=row><span class="pii-full-name'.$addclass.'">'.Sanitize::encodeStringForDisplay($ot[$i][0][0]).'</span></th>';
 		if (isset($ot[$i][3][$type]) && isset($ot[$i][3][$type][$outcome])) {
 			echo '<td>'.round(100*$ot[$i][3][$type][$outcome],1).'%</td>';
 		} else {
@@ -351,7 +364,7 @@ if ($report=='overview') {
 			if (is_array($oi)) { //is outcome group
 				list($subhtml,$subtots) = printoutcomestu($oi['outcomes'],$ind+1);
 				//$html .= '<tr class="'.$class.'"><td colspan="'.$n.'"><span class="ind'.$ind.'"><b>'.$oi['name'].'</b></span></td></tr>';
-				$html .= '<tr class="'.$class.'"><td><span class="ind'.Sanitize::onlyInt($ind).'"><b>'.Sanitize::encodeStringForDisplay($oi['name']).'</b></span></td>';
+				$html .= '<tr class="'.$class.'"><th scope=row><span class="ind'.Sanitize::onlyInt($ind).'"><b>'.Sanitize::encodeStringForDisplay($oi['name']).'</b></span></th>';
 				for ($i=0;$i<count($ot[0][2])+1;$i++) {
                     if (!empty($ot[0][2][$i][2])) { continue; } // hidden
 					if (count($subtots[$i])>0) {
@@ -364,8 +377,9 @@ if ($report=='overview') {
 				$html .= $subhtml;
 				$tots = $tots + $subtots;
 			} else {
+				if (!is_numeric($oi)) { continue; }
 				$html .= '<tr class="'.$class.'">';
-				$html .= '<td><span class="ind'.Sanitize::onlyInt($ind).'">'.Sanitize::encodeStringForDisplay($outcomeinfo[$oi]).'</span></td>';
+				$html .= '<th><span class="ind'.Sanitize::onlyInt($ind).'">'.Sanitize::encodeStringForDisplay($outcomeinfo[$oi]).'</span></th>';
 				if (isset($ot[1][3][$type]) && isset($ot[1][3][$type][$oi])) {
 					$html .= '<td>'.round(100*$ot[1][3][$type][$oi],1).'%</td>';
 					$tots[0][] = round(100*$ot[1][3][$type][$oi],1);

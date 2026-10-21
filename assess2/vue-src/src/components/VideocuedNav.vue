@@ -1,5 +1,5 @@
 <template>
-  <div class="subheader" role="navigation" :aria-label="$t('regions.qvidnav')">
+  <div class="subheader" role="navigation" :aria-label="$t('regions-qvidnav')">
     <menu-button id="qnav"
       :options = "navOptions"
       :selected = "curOption"
@@ -16,11 +16,11 @@
 <script>
 import MenuButton from '@/components/widgets/MenuButton.vue';
 import VideocuedNavListItem from '@/components/VideocuedNavListItem.vue';
-import { store } from '../basicstore';
+import { store } from '@/basicstore';
 
 export default {
   name: 'VideocuedNav',
-  props: ['cue', 'toshow'],
+  props: ['cue', 'toshow', 'showfollowup'],
   components: {
     MenuButton,
     VideocuedNavListItem
@@ -49,13 +49,16 @@ export default {
       */
       for (let i = 0; i < store.assessInfo.videocues.length; i++) {
         const cuedata = store.assessInfo.videocues[i];
-        out.push({
-          // internallink: '/videocued/' + cuen + '/v',
-          onclick: () => this.$emit('jumpto', i, 'v'),
-          type: 'v',
-          title: cuedata.title,
-          cue: i
-        });
+
+        if (!cuedata.skipseg) {
+          out.push({
+            // internallink: '/videocued/' + cuen + '/v',
+            onclick: () => this.$emit('jumpto', i, 'v'),
+            type: 'v',
+            title: cuedata.title,
+            cue: i
+          });
+        }
         if (cuedata.hasOwnProperty('qn')) {
           out.push({
             // internallink: '/videocued/' + cuen + '/q',
@@ -67,7 +70,8 @@ export default {
             subitem: true
           });
         }
-        if (cuedata.hasOwnProperty('followuptime')) {
+        if (cuedata.hasOwnProperty('followuptime') &&
+          (cuedata.followuplink || this.showfollowup.includes(i))) {
           out.push({
             // internallink: '/videocued/' + cuen + '/f',
             onclick: () => this.$emit('jumpto', i, 'f'),
@@ -111,31 +115,6 @@ export default {
     }
   }
 };
-/* Next/Prev buttons, removed since they don't make much sense in this view
-
-<router-link
-  :to="prevLink"
-  tag="button"
-  :disabled="curOption <= 0"
-  class="secondarybtn"
-  id="qprev"
-  :aria-label="$t('previous')"
-  v-if = "showNextPrev"
->
-  <icons name="left"/>
-</router-link>
-<router-link
-  :to="nextLink"
-  tag="button"
-  :disabled="curOption>=navOptions.length-1"
-  class="secondarybtn"
-  id="qnext"
-  :aria-label="$t('next')"
-  v-if = "showNextPrev"
->
-  <icons name="right" />
-</router-link>
- */
 </script>
 
 <style>

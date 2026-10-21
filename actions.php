@@ -67,7 +67,7 @@ require_once "includes/sanitize.php";
                 $stm->execute(array(':cid'=>$_POST['courseid']));
                 $line = $stm->fetch(PDO::FETCH_ASSOC);
 
-                if ($line==null) {
+                if ($line==false) {
                     $error = _('Course not found');
                 } else if (($line['allowunenroll']&2)==2) {
                     $error = _('Course is closed for self enrollment');
@@ -99,11 +99,8 @@ require_once "includes/sanitize.php";
 			exit;
 		}
 
-		if (isset($CFG['GEN']['newpasswords'])) {
-			$md5pw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-		} else {
-			$md5pw = md5($_POST['pw1']);
-		}
+		$pwhash = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+
 		if ($emailconfirmation) {$initialrights = 0;} else {$initialrights = 10;}
 		if (isset($_POST['msgnot'])) {
 			$msgnot = 1;
@@ -162,7 +159,7 @@ require_once "includes/sanitize.php";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(
 			':SID'=>$_POST['SID'],
-			':password'=>$md5pw,
+			':password'=>$pwhash,
 			':rights'=>$initialrights,
 			':FirstName'=>Sanitize::stripHtmlTags($_POST['firstname']),
 			':LastName'=>Sanitize::stripHtmlTags($_POST['lastname']),
@@ -290,8 +287,8 @@ require_once "includes/sanitize.php";
 			$query = "SELECT id,email,rights,jsondata FROM imas_users WHERE SID=:sid";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':sid'=>$_POST['username']));
-			if ($stm->rowCount()>0) {
-				list($id,$email,$rights,$jsondata) = $stm->fetch(PDO::FETCH_NUM);
+			list($id,$email,$rights,$jsondata) = $stm->fetch(PDO::FETCH_NUM);
+			if ($id !== null) {
                 $jsondata = json_decode($jsondata,true);
 				if (isset($jsondata['lastemail']) && time() - $jsondata['lastemail'] < 60) {
 					echo 'Please wait and try again';
@@ -342,6 +339,7 @@ require_once "includes/sanitize.php";
 				if (function_exists('getInstructorSupport')) {
 					getInstructorSupport($rights);
 				}
+
 				require_once "footer.php";
 				exit;
 			} else {
@@ -360,15 +358,39 @@ require_once "includes/sanitize.php";
             $linkdata = verify_pwreset_link($_POST['code']);
 
 			if (isset($linkdata['uid'])) {
-                if (isset($CFG['GEN']['newpasswords'])) {
-                    $newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-                } else {
-                    $newpw = md5($_POST['pw1']);
-                }
+                $newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+                
+				$stm = $DBH->prepare("SELECT jsondata,email FROM imas_users WHERE id=:id");
+				$stm->execute(array(':id'=>$linkdata['uid']));
+				list($jsondata,$oldemail) = $stm->fetch(PDO::FETCH_NUM);
+				json_decode($jsondata, true);
+				if (!is_array($jsondata)) {
+					$jsondata = [];
+				}
 
-                $query = "UPDATE imas_users SET password=:newpw WHERE id=:id LIMIT 1";
-                $stm = $DBH->prepare($query);
-                $stm->execute(array(':id'=>$linkdata['uid'], ':newpw'=>$newpw));
+				if (!isset($jsondata['chglog'])) {
+					$jsondata['chglog'] = [];
+				}
+				$now = time();
+				$jsondata['chglog'][$now] = ['chgpw' => 1];
+
+				$qarr = array(':id'=>$linkdata['uid'], ':jsondata'=>json_encode($jsondata), 
+					':now'=>time(), ':newpw'=>$newpw);
+				$query = "UPDATE imas_users SET password=:newpw,jsondata=:jsondata,lastemail=:now WHERE id=:id LIMIT 1";
+                
+				if ($linkdata['recoverylink'] && !empty($_POST['email'])) {
+					$newemail = Sanitize::emailAddress(trim($_POST['email']));
+					if ($newemail !== '' && $newemail != $oldemail) {
+						$query = "UPDATE imas_users SET password=:newpw,jsondata=:jsondata,lastemail=:now,email=:email WHERE id=:id LIMIT 1";
+						$qarr[':email'] = $newemail;
+						$jsondata['chglog'][$now]['oldemail'] = $oldemail;
+						$jsondata['chglog'][$now]['newemail'] = $newemail;
+					}
+				} 
+
+	          	$stm = $DBH->prepare($query);
+                $stm->execute($qarr);
+
                 echo _("Password Reset"),".  ";
                 echo "<a href=\"index.php\">",_("Login with your new password"),"</a>";
             } else {
@@ -398,13 +420,14 @@ require_once "includes/sanitize.php";
 		$query = "SELECT id,SID,lastaccess,jsondata FROM imas_users WHERE email=:email AND SID NOT LIKE 'lti-%'";
 		$stm = $DBH->prepare($query);
 		$stm->execute(array(':email'=>$_POST['email']));
-		if ($stm->rowCount() > 0) {
-			$cnt = $stm->rowCount();
+		$allrows = $stm->fetchAll(PDO::FETCH_ASSOC);
+		if (count($allrows)>0) {
+			$cnt = count($allrows);
 			$message  = "<h3>".sprintf(_("This is an automated message from %s. Do not respond to this email"),$installname)."</h3>\r\n";
 			$message .= "<p>".sprintf(_("Your email was entered in the Username Lookup page on %s.  If you did not do this, you may ignore and delete this message."),$installname)."  ";
 			$message .= _("All usernames using this email address are listed below")."</p><p>";
 			$ids = array();
-			while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+			foreach ($allrows as $row) {
                 $jsondata = json_decode($row['jsondata'],true);
 				if (isset($jsondata['lastemail']) && time() - $jsondata['lastemail'] < 60) {
 					echo 'Please wait and try again';
@@ -416,7 +439,7 @@ require_once "includes/sanitize.php";
 				} else {
 					$lastlogin = date("n/j/y g:ia",$row['lastaccess']);
 				}
-				$message .= _("Username").": <b>{$row['SID']}</b>.  "._("Last logged in").": $lastlogin<br/>";
+				$message .= _("Username").": <b>".Sanitize::encodeStringForDisplay($row['SID'])."</b>.  "._("Last logged in").": " . Sanitize::encodeStringForDisplay($lastlogin). "<br/>";
 
                 if (is_array($jsondata)) {
                     $jsondata['lastemail'] = time();
@@ -438,7 +461,7 @@ require_once "includes/sanitize.php";
 			$query = "SELECT SID,lastaccess FROM imas_users WHERE email=:email AND SID LIKE 'lti-%'";
 			$stm = $DBH->prepare($query);
 			$stm->execute(array(':email'=>$_POST['email']));
-			if ($stm->rowCount() > 0) {
+			if ($stm->fetchColumn(0) !== false) {
 				echo _("Your account can only be accessed through your school's learning management system.")," <a href=\"index.php\">",_("Return to login page"),"</a>";
 			} else {
 				echo _("No usernames match this email address, or the email address provided is invalid.")," <a href=\"index.php\">",_("Return to login page"),"</a>";
@@ -450,22 +473,37 @@ require_once "includes/sanitize.php";
 		if (isset($_GET['originalSID']) && $_GET['originalSID']==$_GET['SID']) {
 			echo "true";
 			exit;
+		} else if (!isset($_GET['SID'])) {
+			echo "false";
+			exit;
 		}
 		$stm = $DBH->prepare("SELECT id FROM imas_users WHERE SID=:SID");
 		$stm->execute(array(':SID'=>$_GET['SID']));
-		if ($stm->rowCount()>0) {
+		if ($stm->fetchColumn(0) !== false) {
 			echo "false";
 		} else {
 			echo "true";
 		}
 		exit;
-	}
+	} else if (isset($_GET['action']) && $_GET['action']=='unsubscribe') {
+        require_once "init_without_validate.php";
+        if (!empty($_GET['email']) && !empty($_GET['ver']) && 
+			hash_equals(hash_hmac('sha256', $_GET['email'], $GLOBALS['CFG']['email']['secsalt'] ?? '123'), $_GET['ver'])
+		) {
+            $stm = $DBH->prepare("UPDATE imas_users SET msgnotify=0 WHERE email=?");
+            $stm->execute([$_GET['email']]);
+            echo _('The account(s) using this email have been updated to not send email notifications of new messages.  You can re-enable email notifications by editing your user profile.');
+        } else {
+            echo 'Invalid link';
+        }
+        exit;
+    }
 
 	require_once "init.php";
 	if (isset($_GET['action']) && $_GET['action']=="logout") {
 		$_SESSION = array();
 		if (isset($_COOKIE[session_name()])) {
-			setcookie(session_name(), '', time()-42000, '/', '', false, true);
+			setsecurecookie(session_name(), '', time()-42000, true);
 		}
 		session_destroy();
 	} else if (isset($_GET['action']) && ($_GET['action']=="chgpwd" || $_GET['action']=="forcechgpwd")) {
@@ -485,16 +523,13 @@ require_once "includes/sanitize.php";
                 exit;
             }
         }
-		if ((md5($_POST['oldpw'])==$line['password'] || (isset($CFG['GEN']['newpasswords']) && password_verify($_POST['oldpw'],$line['password']))) && ($_POST['pw1'] == $_POST['pw2']) && $myrights>5) {
-			if (isset($CFG['GEN']['newpasswords'])) {
-				$newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-			} else {
-				$newpw =md5($_POST['pw1']);
-			}
+		if (password_verify($_POST['oldpw'],$line['password']) && ($_POST['pw1'] == $_POST['pw2']) && $myrights>5) {
+			$newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+			
 			$stm = $DBH->prepare("UPDATE imas_users SET password=:newpw,forcepwreset=0 WHERE id=:uid LIMIT 1");
 			$stm->execute(array(':uid'=>$userid, ':newpw'=>$newpw));
 
-            $jsondata = json_decode($jsondata,true);
+            $jsondata = json_decode($line['jsondata'],true);
 			if ($_GET['action']=="chgpwd") {
 				require_once "./includes/email.php";
 				$message = '<p><b>'._('This is an automated message. Do not reply to this email.').'</b></p>';
@@ -520,6 +555,11 @@ require_once "includes/sanitize.php";
                 } else {
                     $jsondata = ['lastemail' => time()];
                 }
+				if (!isset($jsondata['chglog'])) {
+					$jsondata['chglog'] = [];
+				}
+				$jsondata['chglog'][time()] = ['chgpw' => 1];
+
                 $query = "UPDATE imas_users SET jsondata=:jsondata WHERE id=:id";
                 $stm = $DBH->prepare($query);
                 $stm->execute(array(':jsondata'=>json_encode($jsondata), ':id'=>$userid));
@@ -582,7 +622,7 @@ require_once "includes/sanitize.php";
 		}  else {
 			$stm = $DBH->prepare("SELECT id FROM imas_teachers WHERE userid=:uid AND courseid=:cid");
 			$stm->execute(array(':uid'=>$userid, ':cid'=>$_POST['cid']));
-			if ($stm->rowCount() > 0) {
+			if ($stm->fetchColumn(0) !== false) {
 				require_once "header.php";
 				echo $pagetopper;
 				echo _("You are a teacher for this course, and can't enroll as a student.  Use Student View to see the class from a student's perspective, or create a dummy student account.  ");
@@ -592,7 +632,7 @@ require_once "includes/sanitize.php";
 			}
 			$stm = $DBH->prepare("SELECT id FROM imas_tutors WHERE userid=:uid AND courseid=:cid");
 			$stm->execute(array(':uid'=>$userid, ':cid'=>$_POST['cid']));
-			if ($stm->rowCount() > 0) {
+			if ($stm->fetchColumn(0) !== false) {
 				require_once "header.php";
 				echo $pagetopper;
 				echo _("You are a tutor for this course, and can't enroll as a student. ");
@@ -602,7 +642,7 @@ require_once "includes/sanitize.php";
 			}
 			$stm = $DBH->prepare("SELECT id FROM imas_students WHERE userid=:uid AND courseid=:cid");
 			$stm->execute(array(':uid'=>$userid, ':cid'=>$_POST['cid']));
-			if ($stm->rowCount() > 0) {
+			if ($stm->fetchColumn(0) !== false) {
 				require_once "header.php";
 				echo $pagetopper;
 				echo _("You are already enrolled in the course.  Click on the course name on the <a href=\"index.php\">main page</a> to access the course"),"\n";
@@ -665,7 +705,7 @@ require_once "includes/sanitize.php";
 		$cid = Sanitize::courseId($_GET['cid']);
 		$stm = $DBH->prepare("SELECT allowunenroll FROM imas_courses WHERE id=:cid");
 		$stm->execute(array(':cid'=>$cid));
-		if ($stm->fetchColumn()==1) {
+		if (($stm->fetchColumn()&1)==1) {
 			$stm = $DBH->prepare("DELETE FROM imas_students WHERE userid=:uid AND courseid=:cid");
 			$stm->execute(array(':uid'=>$userid,':cid'=>$cid));
 			/*
@@ -761,19 +801,18 @@ require_once "includes/sanitize.php";
 		}
 
 		$layoutstr = implode('|',$homelayout);
+		$chguserimg = '';
 		if (is_uploaded_file($_FILES['stupic']['tmp_name'])) {
-			processImage($_FILES['stupic'],$userid,200,200);
-			processImage($_FILES['stupic'],'sm'.$userid,40,40);
-			$chguserimg = ",hasuserimg=1";
+			$savedimg = processImage($_FILES['stupic'],$userid,200,200);
+			if ($savedimg) {
+				processImage($_FILES['stupic'],'sm'.$userid,40,40);
+				$chguserimg = ",hasuserimg=1";
+			}
 		} else if (isset($_POST['removepic'])) {
 			deletecoursefile('userimg_'.$userid.'.jpg');
 			deletecoursefile('userimg_sm'.$userid.'.jpg');
 			$chguserimg = ",hasuserimg=0";
-		} else {
-			$chguserimg = '';
-		}
-
-		//DEB $query = "UPDATE imas_users SET FirstName='{$_POST['firstname']}',LastName='{$_POST['lastname']}',email='{$_POST['email']}',msgnotify=$msgnot,qrightsdef=$qrightsdef,deflib='$deflib',usedeflib='$usedeflib',homelayout='$layoutstr',theme='{$_POST['theme']}',listperpage='$perpage'$chguserimg ";
+		} 
 
 		$stm = $DBH->prepare("SELECT email,jsondata,mfa,password FROM imas_users WHERE id=?");
 		$stm->execute(array($userid));
@@ -795,7 +834,7 @@ require_once "includes/sanitize.php";
             trim($old_email) != trim($_POST['email'])
         ) {
             // these changes require security check
-            if ((md5($_POST['oldpw'])==$oldpw || (isset($CFG['GEN']['newpasswords']) && password_verify($_POST['oldpw'],$oldpw))) && $myrights>5) {
+            if (password_verify($_POST['oldpw'],$oldpw) && $myrights>5) {
                 // pw ok
             } else {
                 require_once "header.php";
@@ -829,16 +868,15 @@ require_once "includes/sanitize.php";
 			':deflib'=>$deflib, ':usedeflib'=>$usedeflib, ':theme'=>'', ':listperpage'=>$perpage, ':uid'=>$userid));
 
 		$pwchanged = false;
+		$acctchangelog = [];
 		if (isset($_POST['dochgpw'])) {
 			if ($_POST['pw1'] == $_POST['pw2'] && $myrights>5) {
-				if (isset($CFG['GEN']['newpasswords'])) {
-					$newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
-				} else {
-					$newpw =md5($_POST['pw1']);
-				}
+				$newpw = password_hash($_POST['pw1'], PASSWORD_DEFAULT);
+				
 				$stm = $DBH->prepare("UPDATE imas_users SET password = :newpw WHERE id = :uid");
 				$stm->execute(array(':uid'=>$userid, ':newpw'=>$newpw));
 				$pwchanged = true;
+				$acctchangelog['chgpw'] = 1;
 			} else {
 				require_once "header.php";
 				echo $pagetopper;
@@ -878,6 +916,9 @@ require_once "includes/sanitize.php";
 			$stm = $DBH->prepare("UPDATE imas_users SET mfa = '' WHERE id = :uid");
 			$stm->execute(array(':uid'=>$userid));
 		}
+		if ($_POST['dochgmfa'] != $lastmfatype) {
+			$acctchangelog['oldmfa'] = $lastmfatype;
+		}
 
 		require_once "includes/userprefs.php";
 		storeUserPrefs();
@@ -890,6 +931,7 @@ require_once "includes/sanitize.php";
 			$message .= '<p>'.sprintf(_('Hi, your account details on %s were recently changed.'), $installname).' ';
 			if ($old_email != $_POST['email']) {
 				$message .= sprintf(_('Your email address was changed to %s.'), Sanitize::encodeStringForDisplay($_POST['email'])).' ';
+				$acctchangelog['oldemail'] = $old_email;
 			}
 			if ($pwchanged) {
 				$message .= _('Your password was changed.');
@@ -915,9 +957,6 @@ require_once "includes/sanitize.php";
             } else {
                 $jsondata = ['lastemail' => time()];
             }
-            $query = "UPDATE imas_users SET jsondata=:jsondata WHERE id=:id";
-            $stm = $DBH->prepare($query);
-            $stm->execute(array(':jsondata'=>json_encode($jsondata), ':id'=>$userid));
 
             if ($pwchanged) {
                 // record last password update time
@@ -926,6 +965,16 @@ require_once "includes/sanitize.php";
                 $stm->execute(array(':now'=>time(), ':id'=>$userid));
                 $_SESSION['started'] = time()+1;
             }
+		}
+		if (!empty($acctchangelog)) {
+			if (!isset($jsondata['chglog'])) {
+				$jsondata['chglog'] = [];
+			}
+			$jsondata['chglog'][time()] = $acctchangelog;
+
+			$query = "UPDATE imas_users SET jsondata=:jsondata WHERE id=:id";
+            $stm = $DBH->prepare($query);
+            $stm->execute(array(':jsondata'=>json_encode($jsondata), ':id'=>$userid));
 		}
 
 	} else if (isset($_POST['action']) && $_POST['action'] == 'cleartrustedmfa') {
@@ -958,7 +1007,13 @@ require_once "includes/sanitize.php";
 		$stm->execute(array(':uid'=>$userid, ':hidelist'=>$hidelist));
 	} 
 	if ($isgb) {
-		echo '<html><body>',_('Changes Recorded.'),'  <input type="button" onclick="parent.GB_hide()" value="',_('Done'),'" /></body></html>';
+		echo '<html><body>',_('Changes Recorded.');
+		if ($_GET['action']=="chguserinfo") {
+			echo ' ' . _('You may need to refresh the page to have new accessiblity settings applied.');
+		}
+		echo '<br/><input type="button" onclick="parent.GB_hide()" value="',_('Done'),'" />';
+		echo '<script>window.parent.$("#GB_footer button.primary").hide();</script>';
+		echo '</body></html>';
 	} else if (isset($_SESSION['ltiitemtype']) && $_SESSION['ltiitemtype']==0) {
 		$stm = $DBH->prepare("SELECT courseid FROM imas_assessments WHERE id=:id");
 		$stm->execute(array(':id'=>$_SESSION['ltiitemid']));

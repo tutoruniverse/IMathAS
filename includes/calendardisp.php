@@ -1,24 +1,29 @@
 <?php
-$cid = Sanitize::courseId($_GET['cid']);
 
+if (!isset($userid)) { // prevent direct calls
+	exit;
+}
+// Function to show calendar, used by showcalendar and courseshowitems
 
-if (isset($_GET['calstart'])) {
-	setcookie("calstart".$cid, Sanitize::onlyInt($_GET['calstart']),0,'','',false,true);
+if (isset($_GET['calstart']) && isset($_GET['cid'])) {
+	$cid = Sanitize::courseId($_GET['cid']);
+	setsecurecookie("calstart".$cid, Sanitize::onlyInt($_GET['calstart']), 0, false);
 	$_COOKIE["calstart".$cid] = Sanitize::onlyInt($_GET['calstart']);
 }
-if (isset($_GET['callength'])) {
-	setcookie("callength".$cid, Sanitize::onlyInt($_GET['callength']),0,'','',false,true);
+if (isset($_GET['callength']) && isset($_GET['cid'])) {
+	$cid = Sanitize::courseId($_GET['cid']);
+	setsecurecookie("callength".$cid, Sanitize::onlyInt($_GET['callength']), 0, false);
 	$_COOKIE["callength".$cid] = Sanitize::onlyInt($_GET['callength']);
 }
 
 require_once "filehandler.php";
 
-function showcalendar($refpage) {
+function showcalendar($refpage, $toprightheader = '') {
 global $DBH;
 global $imasroot,$cid,$userid,$teacherid,$latepasses,$urlmode, $latepasshrs, $myrights;
-global $tzoffset, $tzname, $editingon, $exceptionfuncs, $courseUIver, $excused;
+global $tzoffset, $tzname, $editingon, $exceptionfuncs, $courseUIver, $excused, $courseenddate;
 
-$now= time();
+$now= intval(time());
 
 if (!isset($_COOKIE['calstart'.$cid]) || $_COOKIE['calstart'.$cid] == 0) {
 	$today = $now;
@@ -36,6 +41,11 @@ if (!isset($_COOKIE['callength'.$cid])) {
 } else {
 	$callength = Sanitize::onlyInt($_COOKIE['callength'.$cid]);
 }
+if (isset($_COOKIE['calview-'.$cid])) {
+	$calview = Sanitize::onlyInt($_COOKIE['calview-'.$cid]);
+} else {
+	$calview = 0;
+}
 if (!isset($editingon)) {
 	$editingon = false;
 }
@@ -48,7 +58,7 @@ $curmonum = tzdate('n',$today);
 $dayofmo = tzdate('j',$today);
 $curyr = tzdate('Y',$today);
 if ($tzname=='') {
-	$serveroffset = date('Z') + $tzoffset*60;
+	$serveroffset = date('Z') + floor($tzoffset*60);
 } else {
 	$serveroffset = 0; //don't need this if user's timezone has been set
 }
@@ -79,46 +89,51 @@ for ($i=0;$i<7*$callength;$i++) {
 
 
 <?php
-//echo '<div class="floatleft">Jump to <a href="'.$refpage.'.php?calpageshift=0&cid='.$cid.'">Now</a></div>';
-$address = $GLOBALS['basesiteurl'] . "/course/$refpage.php?cid=$cid";
-
+$address = $GLOBALS['basesiteurl'] . "/course/showcalendar.php?cid=$cid";
+if (empty($_GET['ajax'])) {
 echo '<script type="text/javascript">var calcallback = "'.$address.'";</script>';
-echo '<div class="floatright"><span class="calupdatenotice red"></span> Show <select id="callength" onchange="changecallength(this)" aria-label="'._('Number of weeks to display').'">';
+echo '<div class=flexgroup><div class="center" style="flex-grow:1;">';
+echo '<button type=button class="plain nopad" onclick="updatecal(-1,null,null)" aria-label="'.sprintf(_('Back %d weeks'),$callength).'">&lt; &lt;</button> ';
+echo '<button type=button class="plain nopad" onclick="updatecal(0,0,null)">Now</button> ';
+echo '<button type=button class="plain nopad" onclick="updatecal(1,null,null)" aria-label="'.sprintf(_('Forward %d weeks'),$callength).'">&gt; &gt;</button> ';
+
+echo '</div>';
+
+echo '<span class="calupdatenotice red"></span>';
+echo '<label>Show <select id="callength" onchange="changecallength(this)" aria-label="'._('Number of weeks to display').'">';
 for ($i=2;$i<26;$i++) {
 	echo '<option value="'.$i.'" ';
 	if ($i==$callength) {echo 'selected="selected"';}
 	echo '>'.$i.'</option>';
 }
-echo '</select> weeks. ';
-echo '<a href="#" onclick="hidevisualcal();return false;" title="'._('Hide visual calendar and display events list').'" aria-controls="caleventslist">';
-echo _('Events List').'</a>';
+echo '</select> weeks.</label> ';
+echo '<button type=button onclick="setcalview(1);" class="sr-only showonfocus cala11y">'._('For improved accessibility, please use the Agenda view').'</button>';
+echo '<div role=group aria-label="Calendar view">';
+echo '<button type=button onclick="setcalview(0);" aria-selected="true" class="calview0">Calendar</button>';
+echo '<button type=button onclick="setcalview(1);" aria-selected="false" class="calview1">Agenda</button>';
 echo '</div>';
-echo '<div class=center><a href="'.$refpage.'.php?calpageshift='.($pageshift-1).'&cid='.$cid.'" aria-label="'.sprintf(_('Back %d weeks'),$callength).'">&lt; &lt;</a> ';
-//echo $longcurmo.' ';
-
-if ($pageshift==0 && (!isset($_COOKIE['calstart'.$cid]) || $_COOKIE['calstart'.$cid]==0)) {
-	echo "Now ";
-} else {
-	echo '<a href="'.$refpage.'.php?calpageshift=0&calstart=0&cid='.$cid.'">Now</a> ';
-}
-echo '<a href="'.$refpage.'.php?calpageshift='.($pageshift+1).'&cid='.$cid.'" aria-label="'.sprintf(_('Forward %d weeks'),$callength).'">&gt; &gt;</a> ';
+echo $toprightheader;
 echo '</div> ';
+}
 
 
-$exlowertime = mktime(0,0,0,$curmonum,$dayofmo - $dayofweek,$curyr)+$serveroffset;
-$lowertime = max($now,$exlowertime);
-$uppertime = mktime(0,0,0,$curmonum,$dayofmo - $dayofweek + 7*$callength,$curyr)+$serveroffset;
+$exlowertime = intval(mktime(0,0,0,$curmonum,$dayofmo - $dayofweek,$curyr)+$serveroffset);
+$lowertime = intval(max($now,$exlowertime));
+$uppertime = intval(mktime(0,0,0,$curmonum,$dayofmo - $dayofweek + 7*$callength,$curyr)+$serveroffset);
 
 $exceptions = array();
 $forumexceptions = array();
 if (!isset($teacherid)) {
-	$stm = $DBH->prepare("SELECT assessmentid,startdate,enddate,islatepass,waivereqscore,itemtype FROM imas_exceptions WHERE userid=:userid");
+	$stm = $DBH->prepare("SELECT assessmentid,startdate,enddate,islatepass,is_lti,waivereqscore,itemtype FROM imas_exceptions WHERE userid=:userid");
 	$stm->execute(array(':userid'=>$userid));
-	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-		if ($row[5]=='A') {
-			$exceptions[$row[0]] = array($row[1],$row[2],$row[3],$row[4]);
-		} else if ($row[5]=='F' || $row[5]=='P' || $row[5]=='R') {
-			$forumexceptions[$row[0]] = array($row[1],$row[2],$row[3],$row[4],Sanitize::simpleString($row[5]));
+	while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+		if ($row['enddate'] > $courseenddate && $row['islatepass'] > 0) {
+			$row['enddate'] = $courseenddate;
+		}
+		if ($row['itemtype']=='A') {
+			$exceptions[$row['assessmentid']] = $row;
+		} else if ($row['itemtype']=='F' || $row['itemtype']=='P' || $row['itemtype']=='R') {
+			$forumexceptions[$row['assessmentid']] = $row;
 		}
 	}
 }
@@ -161,8 +176,8 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 	if (isset($exceptions[$row['id']])) {
 		list($useexception, $canundolatepass, $canuselatepass) = $exceptionfuncs->getCanUseAssessException($exceptions[$row['id']], $row);
 		if ($useexception) {
-			$row['startdate'] = $exceptions[$row['id']][0];
-			$row['enddate'] = $exceptions[$row['id']][1];
+			$row['startdate'] = $exceptions[$row['id']]['startdate'];
+			$row['enddate'] = $exceptions[$row['id']]['enddate'];
 		}
 	} else {
 		$canuselatepass = $exceptionfuncs->getCanUseAssessLatePass($row);
@@ -198,7 +213,7 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 
 	$showgrayedout = false;
     if (!isset($teacherid) && $status < 2 && abs($row['reqscore'])>0 && $row['reqscoreaid']>0 && 
-        (!isset($exceptions[$row['id']]) || $exceptions[$row['id']][3]==0) &&
+        (!isset($exceptions[$row['id']]) || ($exceptions[$row['id']]['waivereqscore']&1)==0) &&
         empty($excused['A'.$row['reqscoreaid']])
     ) {
 		if ($bestscores_stm===null) { //only prepare once
@@ -233,7 +248,7 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 					 require_once "../includes/updateptsposs.php";
 					 $reqscoreptsposs = updatePointsPossible($row['reqscoreaid']);
 				 }
-				 if (round(100*$reqascore/$reqscoreptsposs,1)+.02<abs($row['reqscore'])) {
+				 if ($reqscoreptsposs > 0 && round(100*$reqascore/$reqscoreptsposs,1)+.02<abs($row['reqscore'])) {
 					 if ($row['reqscore']<0 || $row['reqscoretype']&1) {
 						 $showgrayedout = true;
 					 } else {
@@ -573,9 +588,11 @@ while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 }
 
 if ($editingon) {
-    $query = "SELECT id,name,postby,replyby,startdate,enddate,caltag,allowlate FROM imas_forums WHERE enddate>$exlowertime AND avail>0 AND courseid=:courseid ORDER BY name";
+    $query = "SELECT id,name,postby,replyby,startdate,enddate,caltag,allowlate FROM imas_forums WHERE (enddate>$exlowertime OR avail=2) AND avail>0 AND courseid=:courseid ORDER BY name";
 } else {
-    $query = "SELECT id,name,postby,replyby,startdate,enddate,caltag,allowlate FROM imas_forums WHERE enddate>$exlowertime AND ((postby>$exlowertime AND postby<$uppertime) OR (replyby>$exlowertime AND replyby<$uppertime)) AND avail>0 AND courseid=:courseid ORDER BY name";
+    $query = "SELECT id,name,postby,replyby,startdate,enddate,caltag,allowlate FROM imas_forums WHERE avail>0 AND courseid=:courseid ORDER BY name";
+	// removed to allow for exceptions:
+	// (enddate>$exlowertime OR avail=2) AND ((postby>$exlowertime AND postby<$uppertime) OR (replyby>$exlowertime AND replyby<$uppertime)) AND 
 }
 $stm = $DBH->prepare($query); //times were calcualated in flow - safe
 $stm->execute(array(':courseid'=>$cid));
@@ -597,7 +614,8 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 	$posttag = htmlentities($posttag, ENT_COMPAT | ENT_HTML401, "UTF-8", false);
 	$replytag = htmlentities($replytag, ENT_COMPAT | ENT_HTML401, "UTF-8", false);
 	$row['name'] = htmlentities($row['name'], ENT_COMPAT | ENT_HTML401, "UTF-8", false);
-	if ($row['postby']!=2000000000) { //($row['postby']>$now || isset($teacherid))
+	if (($editingon && $row['postby']!=2000000000) ||
+		($row['postby']>$exlowertime && $row['postby']<$uppertime)) { //($row['postby']>$now || isset($teacherid))
 
 		list($moday,$time) = explode('~',tzdate('Y-n-j~g:i a',$row['postby']));
 		$colors = makecolor2($row['startdate'],$row['postby'],$now);
@@ -622,7 +640,8 @@ while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
 		}
 		$byid['FP'.$row['id']] = array($moday,$posttag,$colors,$json,$row['name'],$status);
 	}
-	if ($row['replyby']!=2000000000) { //($row['replyby']>$now || isset($teacherid))
+	if (($editingon && $row['replyby']!=2000000000) ||
+		($row['replyby']>$exlowertime && $row['replyby']<$uppertime)) { //($row['replyby']>$now || isset($teacherid))
 		list($moday,$time) = explode('~',tzdate('Y-n-j~g:i a',$row['replyby']));
 		$colors = makecolor2($row['startdate'],$row['replyby'],$now);
 		if ($editingon) {$colors='';}
@@ -712,7 +731,7 @@ foreach ($itemsimporder as $item) {
 				$assess[$moday][$k] = $byid['A'.$datetype.$itemsassoc[$item][1]][3];
 				$names[$k] = $byid['A'.$datetype.$itemsassoc[$item][1]][4];
 				//if (($greyitems[$item]&$byid['A'.$datetype.$itemsassoc[$item][1]][5])>0 && !isset($teacherid)) {
-				if ($byid['A'.$datetype.$itemsassoc[$item][1]][5]>0 && !isset($teacherid)) {  //hide link and grey if not current
+				if (($byid['A'.$datetype.$itemsassoc[$item][1]][5]>0 && !isset($teacherid)) || isset($hiddenitems[$item])) {  //hide link and grey if not current
 					$colors[$k] = '#ccc';
 					$assess[$moday][$k]['color'] = '#ccc';
 				}
@@ -735,7 +754,7 @@ foreach ($itemsimporder as $item) {
 				$colors[$k] = $byid['F'.$datetype.$itemsassoc[$item][1]][2];
 				$assess[$moday][$k] = $byid['F'.$datetype.$itemsassoc[$item][1]][3];
 				$names[$k] = $byid['F'.$datetype.$itemsassoc[$item][1]][4];
-				if ($byid['F'.$datetype.$itemsassoc[$item][1]][5]>0 && !isset($teacherid)) {
+				if (($byid['F'.$datetype.$itemsassoc[$item][1]][5]>0 && !isset($teacherid)) || isset($hiddenitems[$item])) {
 					$colors[$k] = '#ccc';
                     $assess[$moday][$k]['color'] = '#ccc';
 				}
@@ -761,7 +780,10 @@ foreach ($itemsimporder as $item) {
 					$colors[$k] = '#ccc';
 					$assess[$moday][$k]['color'] = '#ccc';
 					unset($assess[$moday][$k]['id']);
-				}
+				} else if (isset($hiddenitems[$item])) {
+                    $colors[$k] = '#ccc';
+					$assess[$moday][$k]['color'] = '#ccc';
+                }
 				$k++;
 			}
 		}
@@ -781,7 +803,10 @@ foreach ($itemsimporder as $item) {
 					$colors[$k] = '#ccc';
 					$assess[$moday][$k]['color'] = '#ccc';
 					unset($assess[$moday][$k]['id']);
-				}
+				} else if (isset($hiddenitems[$item])) {
+                    $colors[$k] = '#ccc';
+					$assess[$moday][$k]['color'] = '#ccc';
+                }
 				$k++;
 			}
 		}
@@ -801,7 +826,10 @@ foreach ($itemsimporder as $item) {
 					$colors[$k] = '#ccc';
 					$assess[$moday][$k]['color'] = '#ccc';
 					unset($assess[$moday][$k]['id']);
-				}
+				} else if (isset($hiddenitems[$item])) {
+                    $colors[$k] = '#ccc';
+					$assess[$moday][$k]['color'] = '#ccc';
+                }
 				$k++;
 			}
 		}
@@ -841,9 +869,13 @@ foreach ($dates as $moday=>$val) {
 		$jsarr[$moday] = array("date"=>$dates[$moday]);
 	}
 }
+$firstdate = reset($dates);
+$lastdate = end($dates);
 
+echo '<div id="calwrap">';
 echo '<script type="text/javascript">';
 echo "cid = $cid;";
+echo "var curcalstart = $today;";
 echo "caleventsarr = ".json_encode($jsarr, JSON_HEX_TAG|JSON_INVALID_UTF8_IGNORE).";";
 echo '$(function() {
 	$(".cal td").off("click.cal").on("click.cal", function() { showcalcontents(this); })
@@ -851,7 +883,7 @@ echo '$(function() {
 	 .attr("aria-controls","caleventslist");
 	 });';
 echo '</script>';
-echo "<table class=\"cal\" >";  //onmouseout=\"makenorm()\"
+echo "<table class=\"cal\" >";
 echo "<thead><tr><th>Sunday</th> <th>Monday</th> <th>Tuesday</th> <th>Wednesday</th> <th>Thursday</th> <th>Friday</th> <th>Saturday</th></tr></thead>";
 echo "<tbody>";
 for ($i=0;$i<count($hdrs);$i++) {
@@ -860,8 +892,8 @@ for ($i=0;$i<count($hdrs);$i++) {
 		if ($i==0 && $j==$dayofweek && $pageshift==0) { //onmouseover="makebig(this)"
 			echo '<td tabindex=0 id="'.$ids[$i][$j].'" class="today"><div class="td"><span class=day>'.$hdrs[$i][$j]."</span><div class=center>";
 		} else {
-			$addr = $refpage.".php?cid=$cid&calstart=". ($midtoday + $i*7*24*60*60 + ($j - $dayofweek)*24*60*60);
-			echo '<td tabindex=0 id="'.$ids[$i][$j].'"><div class="td"><span class=day><a href="'.$addr.'" class="caldl">'.$hdrs[$i][$j]."</a></span><div class=center>";
+			$daystart = $midtoday + $i*7*24*60*60 + ($j - $dayofweek)*24*60*60;
+			echo '<td tabindex=0 id="'.$ids[$i][$j].'"><div class="td"><span class=day><a href="#" onclick="updatecal(0,'.$daystart.',null);return false;" class="caldl">'.$hdrs[$i][$j]."</a></span><div class=center>";
 		}
 		if (isset($assess[$ids[$i][$j]])) {
 			foreach ($assess[$ids[$i][$j]] as $k=>$info) {
@@ -906,11 +938,14 @@ for ($i=0;$i<count($hdrs);$i++) {
 echo "</tbody></table>";
 
 echo "<div style=\"margin-top: 10px; padding:10px; border:1px solid #000;\">";
-echo '<span class=right id=calshowall><a href="#" onclick="showcalcontents('.(1000*($midtoday - $dayofweek*24*60*60)).'); return false;"/>'._('Show all').'</a></span>';
-echo "<div id=\"caleventslist\" aria-live=\"polite\"></div><div class=\"clear\"></div></div>";
-if ($pageshift==0) {
+echo '<p id=agendaheader style="display:none" aria-live="polite"><b>' . _("Agenda for ") . $firstdate . ' - ' . $lastdate.'</b></p>';
+echo "<div id=\"caleventslist\"></div><div class=\"clear\"></div></div>";
+if ($calview == 1) {
+	echo "<script>setcalview(1, true);</script>";
+} else if ($pageshift==0) {
 	echo "<script>showcalcontents(document.getElementById('{$ids[0][$dayofweek]}'));</script>";
 }
+echo '</div>';
 
 }
 function flattenitems($items,&$addto,&$folderholder,&$hiddenholder,&$greyitems,$folder,$avail=true,$ishidden=false,$curblockgrey=0) {
@@ -923,6 +958,9 @@ function flattenitems($items,&$addto,&$folderholder,&$hiddenholder,&$greyitems,$
 			}
 			$thisavail = ($avail && ($item['avail']==2 || ($item['avail']==1 && ($item['SH'][0]=='S' || ($item['startdate']<$now && $item['enddate']>$now)))));
 			$thisblockgrey = 0;
+			if (!isset($item['SH'])) { // should be; catch errors
+				$item['SH'] = 'HO';
+			}
 			if (strlen($item['SH'])>2) {
 				$thisblockgrey = intval($item['SH'][2]);
 			} else {
@@ -934,7 +972,7 @@ function flattenitems($items,&$addto,&$folderholder,&$hiddenholder,&$greyitems,$
                 $item['avail']==0 || 
                 ($item['avail']==1 && $item['SH'][0]=='H' && $item['startdate']>$now) ||
                 (!empty($item['grouplimit']) && isset($studentinfo['section']) &&
-                    substr($item['grouplimit'][0],2) != $studentinfo['section'])
+				    !in_array(strtolower('s-' . $studentinfo['section']), array_map('strtolower', $item['grouplimit'])))
             );
             if (!empty($item['items'])) {
 			    flattenitems($item['items'],$addto,$folderholder,$hiddenholder,$greyitems,$folder.'-'.($k+1),$thisavail,$thisishidden,$thisblockgrey);

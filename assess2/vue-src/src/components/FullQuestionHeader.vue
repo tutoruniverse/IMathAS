@@ -24,7 +24,7 @@
 import QuestionHeaderIcons from '@/components/QuestionHeaderIcons.vue';
 import Icons from '@/components/widgets/Icons.vue';
 import { attemptedMixin } from '@/mixins/attemptedMixin';
-import { store } from '../basicstore';
+import { store } from '@/basicstore';
 
 export default {
   name: 'SkipQuestionHeader',
@@ -65,7 +65,7 @@ export default {
     },
     nameHover () {
       if (this.curQData.withdrawn !== 0) {
-        return this.$t('header.withdrawn');
+        return this.$t('header-withdrawn');
       } else {
         return '';
       }

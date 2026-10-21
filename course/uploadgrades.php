@@ -29,10 +29,17 @@ if (!(isset($teacherid))) {
 	$cid = Sanitize::courseId($_GET['cid']);
 
 	if (isset($_FILES['userfile']['name']) && $_FILES['userfile']['name']!='') {
+		$gbitemid = Sanitize::onlyInt($_GET['gbitem']);
+		$stm = $DBH->prepare('SELECT courseid FROM imas_gbitems WHERE id=?');
+		$stm->execute([$gbitemid]);
+		if ($stm->fetchColumn(0) !== $cid) {
+			echo 'Invalid gbitem';
+			exit;
+		}
 		if (is_uploaded_file($_FILES['userfile']['tmp_name'])) {
 			$curscores = array();
 			$stm = $DBH->prepare("SELECT userid,score FROM imas_grades WHERE gradetype='offline' AND gradetypeid=:gradetypeid");
-			$stm->execute(array(':gradetypeid'=>$_GET['gbitem']));
+			$stm->execute(array(':gradetypeid'=>$gbitemid));
 			while ($row = $stm->fetch(PDO::FETCH_NUM)) {
 				$curscores[$row[0]] = $row[1];
 			}
@@ -51,21 +58,21 @@ if (!(isset($teacherid))) {
 			// $_FILES[]['tmp_name'] is not user provided. This is safe.
 			$handle = fopen_utf8(realpath($_FILES['userfile']['tmp_name']),'r');
 			if ($_POST['hashdr']==1) {
-				$data = fgetcsv($handle,4096,',');
+				$data = fgetcsv($handle,4096, ',', '"', '');
 			} else if ($_POST['hashdr']==2) {
-				$data = fgetcsv($handle,4096,',');
-				$data = fgetcsv($handle,4096,',');
+				$data = fgetcsv($handle,4096, ',', '"', '');
+				$data = fgetcsv($handle,4096, ',', '"', '');
 			}
-			while (($data = fgetcsv($handle, 4096, ",")) !== FALSE) {
+			while (($data = fgetcsv($handle, 4096, ',', '"', '')) !== FALSE) {
 				$data = array_map('trim', $data);
 				$query = "SELECT imas_users.id FROM imas_users,imas_students WHERE imas_users.id=imas_students.userid AND imas_students.courseid=:courseid AND ";
 				$qarr = array(':courseid'=>$cid);
 				if ($_POST['useridtype']==0) {
-					if ($data[$usercol]=='') {continue;}
+					if (!isset($data[$usercol]) || $data[$usercol]=='') {continue;}
 					$query .= "imas_users.SID=:SID";
 					$qarr[':SID'] = Sanitize::stripHtmlTags($data[$usercol]);
 				} else if ($_POST['useridtype']==1) {
-					if (strpos($data[$usercol],',')===false) { continue;}
+					if (!isset($data[$usercol]) || strpos($data[$usercol],',')===false) { continue;}
 					list($last,$first) = explode(',',$data[$usercol]);
 					$first = trim($first);
 					$last = trim($last);
@@ -81,20 +88,20 @@ if (!(isset($teacherid))) {
 				if ($feedbackcol==-1) {
 					$feedback = '';
 				} else {
-					$feedback = Sanitize::incomingHtml($data[$feedbackcol]);
+					$feedback = Sanitize::incomingHtml($data[$feedbackcol] ?? '');
 				}
-				$score = Sanitize::onlyFloat($data[$scorecol]);
+				$score = Sanitize::onlyFloat($data[$scorecol] ?? 0);
 				if ($stm->rowCount()>0) {
 					$cuserid=$stm->fetchColumn(0);
 					if (isset($curscores[$cuserid])) {
 						$stm = $DBH->prepare("UPDATE imas_grades SET score=:score,feedback=:feedback WHERE userid=:userid AND gradetype='offline' AND gradetypeid=:gradetypeid");
-						$stm->execute(array(':score'=>$score, ':feedback'=>$feedback, ':userid'=>$cuserid, ':gradetypeid'=>$_GET['gbitem']));
+						$stm->execute(array(':score'=>$score, ':feedback'=>$feedback, ':userid'=>$cuserid, ':gradetypeid'=>$gbitemid));
 						$successes++;
 					} else {
 						$query = "INSERT INTO imas_grades (gradetype,gradetypeid,userid,score,feedback) VALUES ";
 						$query .= "(:gradetype, :gradetypeid, :userid, :score, :feedback)";
 						$stm = $DBH->prepare($query);
-						$stm->execute(array(':gradetype'=>'offline', ':gradetypeid'=>$_GET['gbitem'], ':userid'=>$cuserid, ':score'=>$score, ':feedback'=>$feedback));
+						$stm->execute(array(':gradetype'=>'offline', ':gradetypeid'=>$gbitemid, ':userid'=>$cuserid, ':score'=>$score, ':feedback'=>$feedback));
 						$successes++;
 					}
 				} else {
@@ -139,24 +146,27 @@ if ($overwriteBody==1) {
 
 	<form enctype="multipart/form-data" method=post action="uploadgrades.php?cid=<?php echo $cid ?>&gbmode=<?php echo Sanitize::encodeUrlParam($_GET['gbmode']); ?>&gbitem=<?php echo Sanitize::encodeUrlParam($_GET['gbitem']); ?>">
 		<input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
-		<span class=form>Grade file (CSV): </span>
-		<span class=formright><input name="userfile" type="file" /></span><br class=form>
-		<span class=form>File has header row?</span>
+		<label for="userfile" class=form>Grade file (CSV): </label>
+		<span class=formright><input name="userfile" id="userfile" type="file" /></span><br class=form>
+		<label class=form for="hashdr">File has header row?</label>
 		<span class=formright>
-			<input type=radio name="hashdr" value="0" checked=1 />No header<br/>
-			<input type=radio name="hashdr" value="1" />Has 1 row header <br/>
-			<input type=radio name="hashdr" value="2" />Has 2 row header <br/>
+			<select name="hashdr" id="hashdr">
+				<option value=0 selected>No header</option>
+				<option value=1>Has 1 row header</option>
+				<option value=2>Has 2 row header</option>
+			</select>
 		</span><br class="form" />
-		<span class=form>Grade is in column:</span>
-		<span class=formright><input type=text size=4 name="gradecol" value="2"/></span><br class="form" />
-		<span class=form>Feedback is in column (0 if none):</span>
-		<span class=formright><input type=text size=4 name="feedbackcol" value="0"/></span><br class="form" />
-		<span class=form>User is identified by:</span>
-		<span class=formright>
-			<input type=radio name="useridtype" value="0" checked=1 />Username (login name) in column
-			<input type=text size=4 name="usernamecol" value="2" /><br/>
-			<input type=radio name="useridtype" value="1" />Lastname, Firstname in column
-			<input type=text size=4 name="fullnamecol" value="1" />
+		<label class=form for="gradecol">Grade is in column:</label>
+		<span class=formright><input type=text size=4 name="gradecol" id=gradecol value="2"/></span><br class="form" />
+		<label class=form for="feedbackcol">Feedback is in column (0 if none):</label>
+		<span class=formright><input type=text size=4 name="feedbackcol" id=feedbackcol value="0"/></span><br class="form" />
+		<span class=form id="idlbl">User is identified by:</span>
+		<span class=formright role=group aria-labelledby="idlbl">
+			<label><input type=radio name="useridtype" value="0" checked=1 />Username (login name)</label>
+			<label>in column <input type=text size=4 name="usernamecol" value="2" /></label>
+			<br/>
+			<label><input type=radio name="useridtype" value="1" />Lastname, Firstname</label>
+			<label>in column <input type=text size=4 name="fullnamecol" value="1" /></label>
 		</span><br class="form" />
 
 		<div class=submit><input type=submit value="Upload Grades"></div>

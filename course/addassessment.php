@@ -250,8 +250,8 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
             } else {
                 $msgtoinstr = 0;
             }
-            $defpenalty = Sanitize::onlyFloat($_POST['defpenalty']);
-            $skippenalty_post = Sanitize::onlyInt($_POST['skippenalty']);
+            $defpenalty = Sanitize::onlyFloat($_POST['defpenalty'] ?? 0);
+            $skippenalty_post = Sanitize::onlyInt($_POST['skippenalty'] ?? 0);
             if ($skippenalty_post==10) {
                 $defpenalty = 'L'.$defpenalty;
             } else if ($skippenalty_post>0) {
@@ -288,7 +288,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
 				}
 
         $defattempts = Sanitize::onlyFloat($_POST['defattempts']);
-        $copyFromId = Sanitize::onlyInt($_POST['copyfrom']);
+        $copyFromId = Sanitize::onlyInt($_POST['copyfrom'] ?? 0);
         if (!empty($copyFromId)) {
                 $stm = $DBH->prepare("SELECT timelimit,minscore,displaymethod,defpoints,defattempts,defpenalty,deffeedback,shuffle,gbcategory,password,cntingb,tutoredit,showcat,intro,summary,startdate,enddate,reviewdate,isgroup,groupmax,groupsetid,showhints,reqscore,reqscoreaid,reqscoretype,noprint,allowlate,eqnhelper,endmsg,caltag,calrtag,deffeedbacktext,showtips,exceptionpenalty,ltisecret,msgtoinstr,posttoforum,istutorial,defoutcome,extrefs FROM imas_assessments WHERE id=:id");
                 $stm->execute(array(':id'=>$copyFromId));
@@ -406,7 +406,7 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
                     $query .= ",groupsetid=:groupsetid";
                     $qarr[':groupsetid'] = $updategroupset;
                 }
-                if (isset($_POST['defpenalty'])) {
+                if (isset($_POST['defpenalty']) && isset($_POST['skippenalty'])) {
                     $query .= ",defpenalty=:defpenalty";
                     $qarr[':defpenalty'] = $defpenalty;
                 }
@@ -733,9 +733,9 @@ if (!(isset($teacherid))) { // loaded by a NON-teacher
             }
 
             if (isset($_GET['id'])) {
-			$formTitle = "<div id=\"headeraddassessment\" class=\"pagetitle\"><h1>Modify Assessment <img src=\"$staticroot/img/help.gif\" alt=\"Help\" onClick=\"window.open('$imasroot/help.php?section=assessments','help','top=0,width=400,height=500,scrollbars=1,left='+(screen.width-420))\"/></h1></div>\n";
+			$formTitle = "<div id=\"headeraddassessment\" class=\"pagetitle\"><h1>Modify Assessment</h1></div>\n";
             } else {
-			$formTitle = "<div id=\"headeraddassessment\" class=\"pagetitle\"><h1>Add Assessment <img src=\"$staticroot/img/help.gif\" alt=\"Help\" onClick=\"window.open('$imasroot/help.php?section=assessments','help','top=0,width=400,height=500,scrollbars=1,left='+(screen.width-420))\"/></h1></div>\n";
+			$formTitle = "<div id=\"headeraddassessment\" class=\"pagetitle\"><h1>Add Assessment</h1></div>\n";
             }
 
             $page_formActionTag = sprintf("addassessment.php?block=%s&cid=%s", Sanitize::encodeUrlParam($block), $cid);
@@ -999,7 +999,7 @@ if ($overwriteBody==1) {
 			<input type=radio name="sdatetype" value="sdate" <?php writeHtmlChecked($startdate,"0",1); ?>/>
 			<input type=text size=10 name="sdate" value="<?php echo $sdate;?>">
 			<a href="#" onClick="displayDatePicker('sdate', this); return false">
-			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></A>
+			<img src="<?php echo $staticroot;?>/img/cal.svg" alt="Calendar"/></A>
 			at <input type=text size=8 name=stime value="<?php echo $stime;?>">
 		</span><BR class=form>
 
@@ -1013,7 +1013,7 @@ if ($overwriteBody==1) {
 			<input type=radio name="edatetype" value="edate"  <?php writeHtmlChecked($enddate,"2000000000",1); ?>/>
 			<input type=text size=10 name="edate" value="<?php echo $edate;?>">
 			<a href="#" onClick="displayDatePicker('edate', this, 'sdate', 'start date'); return false">
-			<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></A>
+			<img src="<?php echo $staticroot;?>/img/cal.svg" alt="Calendar"/></A>
 			at <input type=text size=8 name=etime value="<?php echo $etime;?>">
 		</span><BR class=form>
 <?php
@@ -1188,7 +1188,7 @@ if ($overwriteBody==1) {
 		 <div><a href="#" onclick="groupToggleAll(1);return false;">Expand All</a>
 		<a href="#" onclick="groupToggleAll(0);return false;">Collapse All</a></div>
 		 <div class="block grouptoggle">
-		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.gif" alt="Expand" />
+		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.svg" alt="Expand" />
 		   Additional Display Options
 		 </div>
 		 <div class="blockitems hidden">
@@ -1239,7 +1239,7 @@ if ($overwriteBody==1) {
 		 </div>
 
 		 <div class="block grouptoggle">
-		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.gif" alt="Expand"/>
+		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.svg" alt="Expand"/>
 		   Time Limit and Access Control
 		 </div>
 		 <div class="blockitems hidden">
@@ -1260,7 +1260,7 @@ if ($overwriteBody==1) {
 				<label for=lpcutoff>No extensions past</label>
 				<input type=text size=10 name="lpdate" value="<?php echo $lpdate;?>">
 				<a href="#" onClick="displayDatePicker('lpdate', this, 'edate', 'due date'); return false">
-				<img src="<?php echo $staticroot;?>/img/cal.gif" alt="Calendar"/></a>
+				<img src="<?php echo $staticroot;?>/img/cal.svg" alt="Calendar"/></a>
 				at <input type=text size=8 name=lptime value="<?php echo $lptime;?>">
 				</span>
 			</span><BR class=form>
@@ -1295,7 +1295,7 @@ if ($overwriteBody==1) {
 		 </div>
 
 		 <div class="block grouptoggle">
-		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.gif" alt="Expand"/>
+		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.svg" alt="Expand"/>
 		   Help and Hints
 		 </div>
 		 <div class="blockitems hidden">
@@ -1356,7 +1356,7 @@ if ($overwriteBody==1) {
 		 </div>
 
 		 <div class="block grouptoggle">
-		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.gif" alt="Expand" />
+		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.svg" alt="Expand" />
 		   Grading and Feedback
 		 </div>
 		 <div class="blockitems hidden">
@@ -1429,7 +1429,7 @@ if ($overwriteBody==1) {
 		 </div>
 
 		 <div class="block grouptoggle">
-		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.gif" alt="Expand" />
+		   <img class="mida" src="<?php echo $staticroot;?>/img/expand.svg" alt="Expand" />
 		   Group Assessment
 		 </div>
 		 <div class="blockitems hidden">

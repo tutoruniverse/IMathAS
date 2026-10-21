@@ -24,11 +24,19 @@ function diffeq_slopefield($func,$options=[]) {
     $vars = $options['vars'] ?? 'x,y';
     $width = floatval($options['width'] ?? 300);
     $height = floatval($options['height'] ?? 300);
+    $format = $options['format'] ?? 'slopefield';
+    if ($format == "vectorfield") {
+        if (!isset($options['arrows'])) {$options['arrows'] = true;}
+        if (!isset($options['norm'])) {$options['norm'] = false;}
+    }
     $showarrows = !empty($options['arrows']) ? true : false;
     $labels = (!empty($options['labels'] ?? true)) ? 1 : 'null';
     $linewidth = floatval($options['linewidth'] ?? 1);
     $color = $options['color'] ?? 'blue';
     $len = floatval($options['length'] ?? 0.75);
+    $norm = boolval($options['norm'] ?? true);
+    $caption = $options['caption'] ?? '';
+    
 
     $vs = array_map('trim', explode(',',$vars));
     $ystretch = ($ymax-$ymin)/($xmax-$xmin);
@@ -52,10 +60,17 @@ function diffeq_slopefield($func,$options=[]) {
     }
 
     if ($doalt) {
-        $alt = '<table class=gridded><caption>'._('Graph of a slopefield. The table lists the slope at various points.').'</caption>';
-        $alt .= '<thead><tr><th></th>';
-        for ($y = $xmin; $y < $ymax + $dy/2; $y += $dy) {
-            $alt .= '<th>'.$vs[1].'='.round($y,$yrnd).'</th>';
+        $alt = '<table class=gridded><caption>';
+        if (!empty($caption)) {
+            $alt .= $caption;
+        } else if ($format == 'vectorfield') {
+            $alt .= _('Vector field. Each cell lists the vector at that point.');
+        } else {
+            $alt .= _('Slope field. Each cell lists the slope at that point.');
+        }
+        $alt .= '</caption><thead><tr><th></th>';
+        for ($x = $xmin; $x < $xmax + $dx/2; $x += $dx) {
+            $alt .= '<th>'.$vs[0].'='.round($x,$xrnd).'</th>';
         }
         $alt .= '</tr></thead><tbody>';
     }
@@ -72,31 +87,58 @@ function diffeq_slopefield($func,$options=[]) {
     }
     $out .= "strokewidth=$linewidth;";
 
-
+    $data = [];
+    $maxmag = 0;
     for ($x = $xmin; $x < $xmax + $dx/2; $x += $dx) {
-        if ($doalt) {
-            $alt .= '<tr><th scope=row>'.$vs[0].'='.round($x,$xrnd).'</th>';
-        }
+        $data[$x] = [];
         for ($y = $ymin; $y < $ymax + $dy/2; $y += $dy) {
             $vy = $yfunc([$vs[0]=>$x, $vs[1]=>$y]);
             if ($issystem) {
                 $vx = $xfunc([$vs[0]=>$x, $vs[1]=>$y]);
             }
             if (!is_finite($vy) || !is_finite($vx)) {
+                $data[$x][$y] = [];
+            } else {
+                $mag = sqrt($vx*$vx+$vy/$ystretch*$vy/$ystretch);
+                if ($mag > $maxmag) {
+                    $maxmag = $mag;
+                }
+                $data[$x][$y] = [$vx,$vy,$mag];
+            }
+        }
+    }
+    for ($y = $ymin; $y < $ymax + $dy/2; $y += $dy) {
+        if ($doalt) {
+            $alt .= '<tr><th scope=row>'.$vs[1].'='.round($y,$yrnd).'</th>';
+        }
+        for ($x = $xmin; $x < $xmax + $dx/2; $x += $dx) {
+            if (empty($data[$x][$y])) {
                 if ($doalt) {
                     $alt .= '<td>-</td>';
                 }
                 continue;
             }
+            list($vx,$vy,$thismag) = $data[$x][$y];
             if ($doalt) {
-                $alt .= '<td>' . ($vx==0 ? _('undefined') : round($vy/$vx, 2)) . '</td>';
+                if ($format == "vectorfield") {
+                    $alt .= '<td>&lang;' . round($vx, 2) .','. round($vy, 2). '&rang;</td>';
+                } else {
+                    $alt .= '<td>' . ($vx==0 ? _('undefined') : round($vy/$vx, 2)) . '</td>';
+                }
             } else {
-                $mag = sqrt($vx*$vx+$vy/$ystretch*$vy/$ystretch);
+                $mag = $norm ? $thismag : $maxmag;
                 if ($mag == 0) { continue; }
-                $x0 = round($x - 0.5*$vx*$len/$mag, $xrnd);
-                $x1 = round($x + 0.5*$vx*$len/$mag, $xrnd);
-                $y0 = round($y - 0.5*$vy*$len/$mag, $yrnd);
-                $y1 = round($y + 0.5*$vy*$len/$mag, $yrnd);
+                if ($format == "vectorfield") {
+                    $x0 = round($x, $xrnd);
+                    $x1 = round($x + $vx*$len/$mag, $xrnd);
+                    $y0 = round($y, $yrnd);
+                    $y1 = round($y + $vy*$len/$mag, $yrnd);
+                } else {
+                    $x0 = round($x - 0.5*$vx*$len/$mag, $xrnd);
+                    $x1 = round($x + 0.5*$vx*$len/$mag, $xrnd);
+                    $y0 = round($y - 0.5*$vy*$len/$mag, $yrnd);
+                    $y1 = round($y + 0.5*$vy*$len/$mag, $yrnd);
+                }
                 $out .= "line([$x0,$y0],[$x1,$y1]);";
             }
         }

@@ -34,8 +34,8 @@
         if (empty($_COOKIE['fromltimenu'])) {
             echo " <a href=\"course.php?cid=$cid\">".Sanitize::encodeStringForDisplay($coursename)."</a> &gt; ";
         }
-        echo " <a href=\"gradebook.php?stu=0&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'])."&cid=$cid\">Gradebook</a> ";
-		echo "&gt; <a href=\"gbcomments.php?stu=0&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'])."&cid=$cid&comtype=".Sanitize::encodeUrlParam($comtype)."\">Gradebook Comments</a> &gt; Upload Comments</div>";
+        echo " <a href=\"gradebook.php?stu=0&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'] ?? '')."&cid=$cid\">Gradebook</a> ";
+		echo "&gt; <a href=\"gbcomments.php?stu=0&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'] ?? '')."&cid=$cid&comtype=".Sanitize::encodeUrlParam($comtype)."\">Gradebook Comments</a> &gt; Upload Comments</div>";
 
 		if ($comtype=='stu') {
 			echo '<div id="headergbcomments" class="pagetitle"><h1>Upload Student Comments</h1></div>';
@@ -59,12 +59,12 @@
 				// $_FILES[]['tmp_name'] is not user provided. This is safe.
 				$handle = fopen_utf8(realpath($_FILES['userfile']['tmp_name']),'r');
 				if ($_POST['hashdr']==1) {
-					$data = fgetcsv($handle,4096,',');
+					$data = fgetcsv($handle,4096, ',', '"', '');
 				} else if ($_POST['hashdr']==2) {
-					$data = fgetcsv($handle,4096,',');
-					$data = fgetcsv($handle,4096,',');
+					$data = fgetcsv($handle,4096, ',', '"', '');
+					$data = fgetcsv($handle,4096, ',', '"', '');
 				}
-				while (($data = fgetcsv($handle, 4096, ",")) !== FALSE) {
+				while (($data = fgetcsv($handle, 4096, ',', '"', '')) !== FALSE) {
 					$query = "SELECT imas_users.id FROM imas_users,imas_students WHERE imas_users.id=imas_students.userid AND imas_students.courseid=:cid AND ";
 					$qarr = array(':cid'=>$cid);
 					if ($_POST['useridtype']==0) {
@@ -105,7 +105,7 @@
 					echo '</p>';
 				}
 				if ($successes>0) {
-					echo "<a href=\"gbcomments.php?stu=0&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'])."&cid=$cid&comtype=".Sanitize::encodeUrlParam($comtype)."\">Return to comments list</a></p>";
+					echo "<a href=\"gbcomments.php?stu=0&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'] ?? '')."&cid=$cid&comtype=".Sanitize::encodeUrlParam($comtype)."\">Return to comments list</a></p>";
 					require_once "../footer.php";
 					exit;
 				}
@@ -116,22 +116,30 @@
 			}
 		}
 
-		echo "<form enctype=\"multipart/form-data\" method=post action=\"gbcomments.php?cid=$cid&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'])."&comtype=".Sanitize::encodeUrlParam($comtype)."&upload=true\">\n";
+		echo "<form enctype=\"multipart/form-data\" method=post action=\"gbcomments.php?cid=$cid&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'] ?? '')."&comtype=".Sanitize::encodeUrlParam($comtype)."&upload=true\">\n";
 
 		echo "<input type=\"hidden\" name=\"MAX_FILE_SIZE\" value=\"3000000\" />\n";
-		echo "<span class=form>Grade file (CSV): </span><span class=formright><input name=\"userfile\" type=\"file\" /></span><br class=form>\n";
-		echo '<span class=form>File has header row?</span><span class=formright>';
-		echo ' <input type=radio name="hashdr" value="0" checked=1 />No header<br/>';
-		echo ' <input type=radio name="hashdr" value="1" />Has 1 row header<br/>';
-		echo ' <input type=radio name="hashdr" value="2" />Has 2 row header</span><br class="form" />';
+		echo "<label for=userfile class=form>Grade file (CSV): </label><span class=formright><input name=\"userfile\" id=\"userfile\" type=\"file\" /></span><br class=form>\n";
+		echo '<label class=form for="hashdr">File has header row?</label>
+			<span class=formright>
+				<select name="hashdr" id="hashdr">
+					<option value=0 selected>No header</option>
+					<option value=1>Has 1 row header</option>
+					<option value=2>Has 2 row header</option>
+				</select>
+			</span><br class="form" />';
 
-		echo '<span class=form>Comments are in column:</span><span class=formright>';
-		echo '<input type=text size=4 name="gradecol" value="2"/></span><br class="form" />';
+		echo '<label for=gradecol class=form>Comments are in column:</label><span class=formright>';
+		echo '<input type=text size=4 name="gradecol" id="gradecol" value="2"/></span><br class="form" />';
 
-		echo '<span class=form>User is identified by:</span><span class=formright>';
-		echo '<input type=radio name="useridtype" value="0" checked=1 />Username (login name) in column <input type=text size=4 name="usernamecol" value="2" /><br/>';
-		echo '<input type=radio name="useridtype" value="1" />Lastname, Firstname in column <input type=text size=4 name="fullnamecol" value="1" />';
-		echo '</span><br class="form" />';
+		echo '<span class=form id="idlbl">User is identified by:</span>
+			<span class=formright role=group aria-labelledby="idlbl">
+				<label><input type=radio name="useridtype" value="0" checked=1 />Username (login name)</label>
+				<label>in column <input type=text size=4 name="usernamecol" value="2" /></label>
+				<br/>
+				<label><input type=radio name="useridtype" value="1" />Lastname, Firstname</label>
+				<label>in column <input type=text size=4 name="fullnamecol" value="1" /></label>
+			</span><br class="form" />';
 
 		echo "<div class=submit><input type=submit value=\"Submit\"></div>\n";
 
@@ -147,18 +155,16 @@
 		$stm = $DBH->prepare("SELECT id FROM imas_students WHERE courseid=:courseid");
 		$stm->execute(array(':courseid'=>$cid));
 		while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-			//if ($_POST[$row[0]]!='') {
-			$rowInfo = Sanitize::stripHtmlTags($_POST[$row[0]]);
-				if ($comtype=='stu') {
-					$stm2 = $DBH->prepare("UPDATE imas_students SET gbcomment=:gbcomment WHERE id=:id");
-					$stm2->execute(array(':gbcomment'=>$rowInfo, ':id'=>$row[0]));
-				} else if ($comtype=='instr') {
-					$stm2 = $DBH->prepare("UPDATE imas_students SET gbinstrcomment=:gbinstrcomment WHERE id=:id");
-					$stm2->execute(array(':gbinstrcomment'=>$rowInfo, ':id'=>$row[0]));
-				}
-			//}
+			$rowInfo = Sanitize::stripHtmlTags($_POST['c'.$row[0]]);
+			if ($comtype=='stu') {
+				$stm2 = $DBH->prepare("UPDATE imas_students SET gbcomment=:gbcomment WHERE id=:id");
+				$stm2->execute(array(':gbcomment'=>$rowInfo, ':id'=>$row[0]));
+			} else if ($comtype=='instr') {
+				$stm2 = $DBH->prepare("UPDATE imas_students SET gbinstrcomment=:gbinstrcomment WHERE id=:id");
+				$stm2->execute(array(':gbinstrcomment'=>$rowInfo, ':id'=>$row[0]));
+			}
 		}
-		header('Location: ' . $GLOBALS['basesiteurl'] . "/course/gradebook.php?stu=".Sanitize::encodeUrlParam($_GET['stu'])."&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'])."&cid=$cid" . "&r=" . Sanitize::randomQueryStringParam());
+		header('Location: ' . $GLOBALS['basesiteurl'] . "/course/gradebook.php?stu=".Sanitize::encodeUrlParam($_GET['stu'])."&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'] ?? '')."&cid=$cid" . "&r=" . Sanitize::randomQueryStringParam());
 		exit;
 	}
 
@@ -194,7 +200,7 @@
 	echo "<p><a href=\"gbcomments.php?cid=$cid&stu=".Sanitize::encodeUrlParam($_GET['stu'])."&gbmode=".Sanitize::encodeUrlParam($_GET['gbmode'] ?? '')."&upload=true&comtype=".Sanitize::encodeUrlParam($comtype)."\">Upload comments</a></p>";
 
 	echo "<form id=\"mainform\" method=post action=\"gbcomments.php?cid=$cid&stu=".Sanitize::encodeUrlParam($_GET['stu'])."&comtype=".Sanitize::encodeUrlParam($comtype)."&record=true\">";
-	echo "<span class=form>Add/Replace to all:</span><span class=formright><textarea cols=50 rows=3 id=\"toall\" ></textarea>";
+	echo "<label for=toall class=form>Add/Replace to all:</label><span class=formright><textarea cols=50 rows=3 id=\"toall\" ></textarea>";
 
 	echo '<br/><input type=button value="Prepend" onClick="sendtoall(0);"/> <input type=button value="Append" onclick="sendtoall(1)"/> <input type=button value="Replace" onclick="sendtoall(2)"/></span><br class="form"/>';
 	if ($comtype=='stu') {
@@ -206,7 +212,8 @@
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':courseid'=>$cid));
 	while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-		echo "<span class='form pii-full-name'>".Sanitize::encodeStringForDisplay($row[1]).", ". Sanitize::encodeStringForDisplay($row[2])."</span><span class=formright><textarea cols=50 rows=3 name=\"".Sanitize::encodeStringForDisplay($row[0])."\">".Sanitize::encodeStringForDisplay($row[3], true)."</textarea></span><br class=form>";
+		$stuid = Sanitize::encodeStringForDisplay($row[0]);
+		echo "<label for='c$stuid' class='form pii-full-name'>".Sanitize::encodeStringForDisplay($row[1]).", ". Sanitize::encodeStringForDisplay($row[2])."</label><span class=formright><textarea cols=50 rows=3 name=\"c$stuid\" id=\"c$stuid\">".Sanitize::encodeStringForDisplay($row[3], true)."</textarea></span><br class=form>";
 	}
 	echo '<div class="submit"><input type="submit" value="'._('Save Comments').'"/></div>';
 	echo "</form>";

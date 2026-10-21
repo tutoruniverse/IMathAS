@@ -21,8 +21,6 @@ require_once "./AssessInfo.php";
 require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 check_for_required('GET', array('aid', 'cid'));
 $cid = Sanitize::onlyInt($_GET['cid']);
 $aid = Sanitize::onlyInt($_GET['aid']);
@@ -71,6 +69,9 @@ $showscores = $assess_info->showScoresAtEnd();
 $reshowQs = $assess_info->reshowQuestionsInGb();
 $assess_info->loadQuestionSettings('all', $reshowQs);
 $assessInfoOut['questions'] = $assess_record->getAllQuestionObjects($showscores, true, $reshowQs);
+
+// get showwork_after, showwork_cutoff (min), showwork_cutoff_in (timestamp)
+getShowWorkAfter($assessInfoOut, $assess_record, $assess_info);
 
 //prep date display
 prepDateDisp($assessInfoOut);

@@ -53,10 +53,10 @@ export default {
       return (typeof this.errormsg === 'string');
     },
     errorTitle () {
-      return this.isError ? this.$t('error.error') : this.errormsg.title;
+      return this.isError ? this.$t('error-error') : this.errormsg.title;
     },
     errorMsg () {
-      return this.isError ? this.$t('error.' + this.errormsg) : this.errormsg.msg;
+      return this.isError ? this.$t('error-' + this.errormsg) : this.errormsg.msg;
     }
   },
   methods: {
@@ -80,7 +80,7 @@ export default {
       this.$refs.dialog.style.top = Math.max(20, lastHeight - this.$refs.dialog.offsetHeight) + 'px';
     }
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.$(document).off('keyup.dialog');
     this.dialog.destroy();
   }

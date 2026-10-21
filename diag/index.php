@@ -29,7 +29,7 @@
 		<div class=\"content\">
 		<div id=\"headerdiagindex\" class=\"pagetitle\"><h1>", _('Available Diagnostics'), "</h1></div>
 		<ul class=\"nomark\">";
-		$stm = $DBH->query("SELECT id,name FROM imas_diags WHERE public=3 OR public=7");
+		$stm = $DBH->query("SELECT id,name FROM imas_diags WHERE public&3=3");
 		if ($stm->rowCount()==0) {
 			echo "<li>", _('No diagnostics are available through this page at this time'), "</li>";
 		}
@@ -49,7 +49,7 @@
         exit;
     }
 	$pcid = $line['cid'];
-	$diagid = $line['id'];
+	$diagid = intval($line['id']);
 	if ($line['term']=='*mo*') {
 		$diagqtr = date("M y");
 	} else if ($line['term']=='*day*') {
@@ -60,12 +60,12 @@
 	$sel1 = array_map('decodeSelector', explode(',',$line['sel1list']));
 	$entryformat = $line['entryformat'];
 
-	if ($line['sel1name'][0]=='!') {
+	if (strlen($line['sel1name']) > 0 && $line['sel1name'][0]=='!') {
 		$line['sel1name'] = substr($line['sel1name'], 1);
 	} else {
 		$line['sel1name'] = sprintf(_('Select your %s'), $line['sel1name']);
 	}
-	if ($line['sel2name'][0]=='!') {
+	if (strlen($line['sel2name']) > 0 && $line['sel2name'][0]=='!') {
 		$line['sel2name'] = substr($line['sel2name'], 1);
 	} else {
 		$line['sel2name'] = sprintf(_('Select your %s'), $line['sel2name']);
@@ -97,7 +97,7 @@
 	if (!empty($_SESSION)) {
 	   $_SESSION = array();
 	   if (isset($_COOKIE[session_name()])) {
-		   setcookie(session_name(), '', time()-42000, '/', '', false, true);
+		   setsecurecookie(session_name(), '', time()-42000, true);
 	   }
 	   session_destroy();
 	   header('Location: ' . $GLOBALS['basesiteurl'] . "/diag/index.php?id=" . Sanitize::onlyInt($diagid));
@@ -130,7 +130,7 @@ if (isset($_POST['SID'])) {
 		if ($entrydig==0) {
 			$pattern .= '+';
 		} else {
-			$pattern .= '{'.$entrydig.'}';
+			$pattern .= '{'.intval($entrydig).'}';
 		}
 	}
 	$pattern .= '$/i';
@@ -226,17 +226,21 @@ if (isset($_POST['SID'])) {
 
 	$aids = explode(',',$line['aidlist']);
 	$paid = $aids[$_POST['course']];
-	$stm2 = $DBH->prepare("SELECT ver FROM imas_assessments WHERE id=:assessmentid");
-	$stm2->execute(array(':assessmentid'=>$paid));
+	$stm2 = $DBH->prepare("SELECT ver FROM imas_assessments WHERE id=:assessmentid AND courseid=:cid");
+	$stm2->execute(array(':assessmentid'=>$paid, ':cid'=>$pcid));
 	$aVer = $stm2->fetchColumn(0);
+	if ($aVer === false) {
+		echo 'Invalid aid';
+		exit;
+	}
 
-	$query = "SELECT iu.id,istu.id FROM imas_users AS iu ";
+	$query = "SELECT iu.id,istu.id,iu.email FROM imas_users AS iu ";
 	$query .= "LEFT JOIN imas_students AS istu ON iu.id=istu.userid ";
 	$query .= "AND istu.courseid=? WHERE iu.SID=?";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array($pcid, $diagSID));
 	if ($stm->rowCount()>0) {
-		list($userid, $stuid) = $stm->fetch(PDO::FETCH_NUM);
+		list($userid, $stuid, $stuemail) = $stm->fetch(PDO::FETCH_NUM);
 		if ($stuid == null) { // was unenrolled from course. reenroll
 			if (!isset($_POST['timelimitmult'])) {
 				$_POST['timelimitmult'] = 1;
@@ -245,6 +249,15 @@ if (isset($_POST['SID'])) {
 			$stm->execute(array(':userid'=>$userid, ':courseid'=>$pcid, ':section'=>$_POST['teachers'], ':timelimitmult'=>$_POST['timelimitmult']));
 		}
 		$allowreentry = ($line['public']&4);
+        if ($allowreentry && !in_array(strtolower($_POST['passwd'] ?? ''),$superpw) && $line['public']&8) {
+            // only allow reentry into original diagnostic
+            $emailpts = explode('@', $stuemail);
+            if ($emailpts[0] != $sel1[$_POST['course']]) {
+                echo sprintf(_('You can only continue on the original diagnostic, %s'), Sanitize::encodeStringForDisplay($emailpts[0]));
+                echo " <a href=\"index.php?id=" . Sanitize::onlyInt($diagid) . "\">", _('Back'), "</a>\n";
+                exit;
+            }
+        }
 		if (!in_array(strtolower($_POST['passwd'] ?? ''),$superpw) && (!$allowreentry || $line['reentrytime']>0)) {
 			$d = null;
 			$stm2 = $DBH->prepare("SELECT id,starttime FROM imas_assessment_sessions WHERE userid=:userid AND assessmentid=:assessmentid");
@@ -386,9 +399,12 @@ require_once (isset($CFG['GEN']['diagincludepath'])?$CFG['GEN']['diagincludepath
 ?>
 <div style="margin-left: 30px">
 <form method=post action="index.php?id=<?php echo Sanitize::onlyInt($diagid); ?>">
-<span class=form><?php echo Sanitize::encodeStringForDisplay($line['idprompt']); ?></span> <input class=form type=text size=12 name=SID><BR class=form>
-<span class=form><?php echo _('Enter First Name:'); ?></span> <input class=form type=text size=20 name=firstname><BR class=form>
-<span class=form><?php echo _('Enter Last Name:'); ?></span> <input class=form type=text size=20 name=lastname><BR class=form>
+<span class=form><label for="SID"><?php echo Sanitize::encodeStringForDisplay($line['idprompt']); ?></label></span> 
+<input class=form type=text size=12 name=SID id=SID><BR class=form>
+<span class=form><label for="firstname"><?php echo _('Enter First Name:'); ?></label></span> 
+<input class=form type=text size=20 name=firstname id=firstname><BR class=form>
+<span class=form><label for="lastname"><?php echo _('Enter Last Name:'); ?></label></span> 
+<input class=form type=text size=20 name=lastname id=lastname><BR class=form>
 
 <script type="text/javascript">
 var teach = new Array();
@@ -418,7 +434,7 @@ function getteach() {
 
 </script>
 
-<span class=form><?php echo Sanitize::encodeStringForDisplay($line['sel1name']); ?></span><span class=formright>
+<span class=form><label for=course><?php echo Sanitize::encodeStringForDisplay($line['sel1name']); ?></label></span><span class=formright>
 <select name="course" id="course" onchange="getteach()">
 <option value="-1"><?php echo Sanitize::encodeStringForDisplay($line['sel1name']); ?></option>
 <?php
@@ -428,7 +444,7 @@ for ($i=0;$i<count($sel1);$i++) {
 ?>
 </select></span><br class=form>
 
-<span class=form><?php echo Sanitize::encodeStringForDisplay($line['sel2name']); ?></span><span class=formright>
+<span class=form><label for="teachers"><?php echo Sanitize::encodeStringForDisplay($line['sel2name']); ?></label></span><span class=formright>
 <select name="teachers" id="teachers">
 <option value="not selected"><?php echo Sanitize::encodeStringForDisplay($line['sel1name']); ?></option>
 </select></span><br class=form>
@@ -441,10 +457,10 @@ for ($i=0;$i<count($sel1);$i++) {
 		$stm->execute($aids);
 		$hasTimeLimit = ($stm->fetchColumn(0)>0);
 		echo "<b>", _('This test can only be accessed from this location with an access password'), "</b><br/>\n";
-		echo "<span class=form>", _('Access password:'), "</span>  <input class=form type=password size=40 name=passwd><BR class=form>";
+		echo "<span class=form><label for=passwd>", _('Access password:'), "</label></span>  <input class=form type=password size=40 name=passwd id=passwd><BR class=form>";
 		if ($hasTimeLimit) {
-			echo "<span class=form>", _('Time limit (if timed):'), "</span>  ";
-			echo '<select name=timelimitmult><option value="1">'._('Standard').'</option><option value="1.5">'._('1.5x standard').'</option>';
+			echo "<span class=form><label for=timelimitmult>", _('Time limit (if timed):'), "</label></span>  ";
+			echo '<select name=timelimitmult id=timelimitmult><option value="1">'._('Standard').'</option><option value="1.5">'._('1.5x standard').'</option>';
 			echo '<option value="2">'._('2x standard').'</option></select><BR class=form>';
 		}
 
@@ -465,7 +481,7 @@ $allowreentry = ($line['public']&4);
 $pws = explode(';',$line['pws']);
 if ($noproctor && count($pws)>1 && trim($pws[1])!='' && (!$allowreentry || $line['reentrytime']>0)) {
 	echo "<p>", _('No access code is required for this diagnostic.  However, if your testing window has expired, a proctor can enter a password to allow reaccess to this test.'), "<br/>\n";
-	echo "<span class=form>", _('Override password'), ":</span>  <input class=form type=password size=40 name=passwd><BR class=form>";
+	echo "<span class=form><label for=passwd>", _('Override password'), "</label>:</span>  <input class=form type=password size=40 id=passwd name=passwd><BR class=form>";
 }
 ?>
 </form>

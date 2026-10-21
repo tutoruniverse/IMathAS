@@ -74,7 +74,7 @@
 	$openblocks = Array(0);
 	$prevloadedblocks = array(0);
 	if (isset($_COOKIE['openblocks-'.$cid]) && $_COOKIE['openblocks-'.$cid]!='') {$openblocks = explode(',',$_COOKIE['openblocks-'.$cid]); $firstload=false;} else {$firstload=true;}
-	if (isset($_COOKIE['prevloadedblocks-'.$cid]) && $_COOKIE['prevloadedblocks-'.$cid]!='') {$prevloadedblocks = explode(',',$_COOKIE['prevloadedblocks-'.$cid]);}
+	if (!empty($_SESSION['prevloadedblocks-'.$cid])) {$prevloadedblocks = $_SESSION['prevloadedblocks-'.$cid];}
 	$plblist = implode(',',$prevloadedblocks);
 	$oblist = implode(',',$openblocks);
 
@@ -102,7 +102,7 @@
 		$curname = $coursename;
 	}
 
-$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/course.js\"></script>";
+$placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/course.js?v=021326\"></script>";
 require_once "../header.php";
 ?>
 <script>

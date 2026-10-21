@@ -108,6 +108,7 @@ function htmlHeader() {
 	extract($GLOBALS, EXTR_SKIP | EXTR_REFS);
 
 	$placeinhead = '<script type="text/javascript" src="'.$GLOBALS['staticroot'].'/javascript/tablesorter.js"></script>';
+	$pagetitle = _('New Instructor Accounts');
 	require_once "../header.php";
 	echo '<div class=breadcrumb>';
 	echo $GLOBALS['breadcrumbbase'] .' <a href="../admin/userreports.php">'._('User Reports').'</a> &gt; ';
@@ -197,7 +198,7 @@ function outputCsv() {
         'course_count',
         'templates_copied',
 	);
-	fputcsv($stdout, $headers);
+	fputcsv($stdout, $headers, ',', '"', '');
 
 	while ($row = $GLOBALS['stm']->fetch(PDO::FETCH_ASSOC)) {
 		if ($row['name']===null) {
@@ -220,7 +221,7 @@ function outputCsv() {
 			implode('|', getTemplatesUsed($row))
         );
 
-		fputcsv($stdout, $data);
+		fputcsv($stdout, $data, ',', '"', '');
 		fflush($stdout);
 	}
 

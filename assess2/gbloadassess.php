@@ -20,8 +20,6 @@ require_once "./AssessInfo.php";
 require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 //validate inputs
 check_for_required('GET', array('aid', 'cid'));
 $cid = Sanitize::onlyInt($_GET['cid']);
@@ -133,6 +131,7 @@ if (!$assess_record->hasRecord()) {
             $lineitemparts = explode(':|:', $lineitemdata);
             $ph = Sanitize::generateQueryPlaceholders($current_members);
             $query = "SELECT userid,ltiuserid FROM imas_ltiusers WHERE org=? AND userid IN ($ph)";
+            $stm = $DBH->prepare($query);
             $stm->execute(array_merge([$ltiorg], $current_members));
             while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
                 $lineitemparts[1] = $row['ltiuserid'];
@@ -165,12 +164,17 @@ if (!$assess_record->hasRecord()) {
 $include_from_assess_info = array(
   'name', 'submitby', 'enddate', 'available', 'can_use_latepass', 'hasexception',
   'original_enddate', 'extended_with', 'latepasses_avail', 'points_possible',
-  'latepass_extendto', 'allowed_attempts', 'keepscore', 'timelimit', 'ver',
+  'latepass_extendto', 'latepass_enddate', 'allowed_attempts', 'keepscore', 'timelimit', 'ver',
   'scoresingb', 'viewingb', 'latepass_status', 'help_features', 'attemptext'
 );
+if ($_REQUEST['loadtexts'] == 1) {
+    $include_from_assess_info[] = 'intro';
+    $include_from_assess_info[] = 'interquestion_text';
+}
 $assessInfoOut = $assess_info->extractSettings($include_from_assess_info);
 
-if ($isstudent && $viewInGb == 'after_due' && $now < $assessInfoOut['enddate']) {
+if ($isstudent && (($viewInGb == 'after_due' && $now < $assessInfoOut['enddate']) ||
+    ($viewInGb == 'after_lp' && $now < $assessInfoOut['latepass_enddate'])))  {
   echo '{"error": "not_ready"}';
   exit;
 }
@@ -190,6 +194,8 @@ if ($isstudent) {
     if ($ansingb === 'never' || $ansingb === 'after_take') {
       $LPblockingView = false;
     } else if ($ansingb === 'after_due' && $now < $assessInfoOut['enddate']) {
+      $LPblockingView = false;
+    } else if ($ansingb === 'after_lp' && $now < $assessInfoOut['latepass_enddate']) {
       $LPblockingView = false;
     }
   }
@@ -225,6 +231,7 @@ if ($isActualTeacher || ($istutor && ($tutoredit&1) == 1)) {
       'data' => unserialize($row['rubric'])
     );
   }
+  $assessInfoOut['can_message'] = ($coursemsgset < 4);
 } else {
   $assessInfoOut['can_edit_scores'] = false;
 }
@@ -314,7 +321,7 @@ if ($isActualTeacher || $istutor) {
     $stm->execute($qarr);
     $stuarr = $stm->fetchAll(PDO::FETCH_COLUMN,0);
     $loc = array_search($uid, $stuarr);
-    if ($loc < count($stuarr) - 1) {
+    if ($loc !== false && $loc < count($stuarr) - 1) {
         $assessInfoOut['nextstu'] = $stuarr[$loc+1];
     }
 }

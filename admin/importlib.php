@@ -328,7 +328,7 @@ function parselibs($file) {
 			$libitemid = rtrim(fgets($handle, 4096));
 		} else if ($line=="QSETIDS") {
 			if ($libitemid!=-1) {
-				$libitems[$libitemid] = rtrim(fgets($handle, 4096));
+				$libitems[$libitemid] = rtrim(fgets($handle, 32768));
 			}
 		} else if ($dopackd ==true) {
 			$packname .= rtrim($line);
@@ -358,7 +358,7 @@ if ($myrights < 100) {
 
 	//FORM HAS BEEN POSTED, STEP 3 DATA MANIPULATION
 	if (isset($_POST['process'])) {
-		$filekey = Sanitize::simplestring($_POST['filekey']);
+		$filekey = Sanitize::simpleASCII($_POST['filekey']);
 		$uploadfile = getimportfilepath($filekey);
 
         $libstoadd = array_map('intval',$_POST['libs']);
@@ -495,9 +495,9 @@ if ($myrights < 100) {
 					$includedlist = implode(',', array_map('Sanitize::onlyInt', $includedqs));  //known decimal values from above
 					$stm = $DBH->query("SELECT id,uniqueid,deleted FROM imas_questionset WHERE uniqueid IN ($includedlist)");
 					while ($row = $stm->fetch(PDO::FETCH_NUM)) {
-						$includedbackref[$row[1]] = $row[0];
+						$includedbackref[$row[1]] = intval($row[0]);
 						if ($row[2]==1) {
-							$toundel[] = $row[0];
+							$toundel[] = intval($row[0]);
 						}
 					}
 				}
@@ -598,14 +598,14 @@ if ($overwriteBody==1) {
 	<script type="text/javascript">
 	var curlibs = '0';
 	function libselect() {
-		window.open('../course/libtree.php?libtree=popup&cid=<?php echo $cid ?>&selectrights=1&select=parent&type=radio&libs='+curlibs,'libtree','width=400,height='+(.7*screen.height)+',scrollbars=1,resizable=1,status=1,top=20,left='+(screen.width-420));
+		GB_show('<?php echo _('Library Select');?>','../course/libtree3.php?libtree=popup&selectrights=1&select=parents&mode=single&libs='+curlibs,500);
 	}
 	function setlib(libs) {
 		document.getElementById("parent").value = libs;
 		curlibs = libs;
 	}
 	function setlibnames(libn) {
-		document.getElementById("libnames").innerHTML = libn;
+		document.getElementById("libnames").textContent = libn;
 	}
 
 	function toggle(id) {

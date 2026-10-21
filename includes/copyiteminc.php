@@ -235,12 +235,12 @@ function copyitem($itemid, $gbcats = false, $sethidden = false)
         $query = "SELECT name,summary,intro,startdate,enddate,reviewdate,LPcutoff,
 			timelimit,minscore,displaymethod,defpoints,defattempts,deffeedback,
 			defpenalty,itemorder,shuffle,gbcategory,password,cntingb,showcat,showhints,showtips,
-			allowlate,exceptionpenalty,noprint,avail,groupmax,isgroup,groupsetid,endmsg,
+			allowlate,exceptionpenalty,earlybonus,noprint,avail,groupmax,isgroup,groupsetid,endmsg,
 			deffeedbacktext,eqnhelper,caltag,calrtag,tutoredit,posttoforum,msgtoinstr,
 			istutorial,viddata,reqscore,reqscoreaid,reqscoretype,ancestors,defoutcome,
 			posttoforum,ptsposs,extrefs,submitby,showscores,showans,viewingb,scoresingb,
 			ansingb,defregens,defregenpenalty,ver,keepscore,overtime_grace,overtime_penalty,
-			showwork,autoexcuse
+			showwork,autoexcuse,workcutoff
 			FROM imas_assessments WHERE id=:id";
         $stm = $DBH->prepare($query);
         $stm->execute(array(':id' => $typeid));
@@ -302,8 +302,6 @@ function copyitem($itemid, $gbcats = false, $sethidden = false)
         if ($cid != $sourcecid) { // if same course, can keep this
             unset($row['autoexcuse']);
         }
-        $row['name'] .= $_POST['append'];
-
         $row['courseid'] = $cid;
 
         if (isset($datesbylti) && $datesbylti == true) {
@@ -321,9 +319,12 @@ function copyitem($itemid, $gbcats = false, $sethidden = false)
             $questionDefaults = array('defattempts' => $row['defattempts']);
         }
 
-        $fields = implode(",", array_keys($row));
-        //$vals = "'".implode("','",addslashes_deep(array_values($row)))."'";
-        $fieldplaceholders = ':' . implode(',:', array_keys($row));
+        $fieldsarr = array_map('Sanitize::simpleString',array_keys($row));
+        $fields = implode(",", $fieldsarr);
+        $fieldplaceholders = ':' . implode(',:', $fieldsarr);
+
+        $row['name'] .= Sanitize::simpleASCII($_POST['append']);
+
         $stm = $DBH->prepare("INSERT INTO imas_assessments ($fields) VALUES ($fieldplaceholders)");
         $queryarr = array();
         foreach ($row as $k => $v) {
@@ -499,6 +500,7 @@ function copysub($items, $parent, &$addtoarr, $gbcats = false, $sethidden = fals
                 $newblock['public'] = $item['public'] ?? 0;
                 $newblock['fixedheight'] = $item['fixedheight'] ?? 0;
                 $newblock['grouplimit'] = $samecourse ? ($item['grouplimit'] ?? []) : [];
+                $newblock['innav'] = $item['innav'] ?? 0;
                 $newblock['items'] = array();
                 if (count($item['items']) > 0) {
                     copysub($item['items'], $parent . '-' . ($k + 1), $newblock['items'], $gbcats, $sethidden);
@@ -949,5 +951,18 @@ function copyallcalitems($sourcecid, $destcid)
         $query .= implode(',', $insarr);
         $stm = $DBH->prepare($query);
         $stm->execute($qarr);
+    }
+}
+
+function prepopulate_forumtrack($sourcecid, $destcid)
+{
+    // load forum mapping based on name match, to use for post-to-forum remapping
+    global $DBH, $forumtrack;
+    $query = "SELECT sf.id,df.id FROM imas_forums AS sf JOIN imas_forums AS df ON sf.name=df.name ";
+    $query .= "WHERE sf.courseid=:sourcecid AND df.courseid=:destcid";
+    $stm = $DBH->prepare($query);
+    $stm->execute(array(':sourcecid'=>$sourcecid, ':destcid'=>$destcid));
+    while ($row = $stm->fetch(PDO::FETCH_NUM)) {
+        $forumtrack[$row[0]] = $row[1];
     }
 }

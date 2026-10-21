@@ -29,7 +29,7 @@
 
 	$cid = Sanitize::courseId($_GET['cid']);
 	$page = Sanitize::onlyInt($_GET['page'] ?? 0);
-	$type = $_GET['type'] ?? '';
+	$type = Sanitize::simpleString($_GET['type'] ?? '');
 
 	$teacherof = array();
 	$stm = $DBH->prepare("SELECT courseid FROM imas_teachers WHERE userid=:userid");
@@ -40,8 +40,8 @@
 
 	if (isset($_GET['markunread'])) {
 		$msg = Sanitize::onlyInt($_GET['msgid']);
-		$stm = $DBH->prepare("UPDATE imas_msgs SET viewed=0 WHERE id=:id and viewed>0");
-		$stm->execute(array(':id'=>$msg));
+		$stm = $DBH->prepare("UPDATE imas_msgs SET viewed=0 WHERE id=:id and viewed>0 AND msgto=:msgto");
+		$stm->execute(array(':id'=>$msg, ':msgto'=>$userid));
 		if ($type=='new') {
 			header('Location: ' . $GLOBALS['basesiteurl'] . "/msgs/newmsglist.php?cid=$cid&r=" .Sanitize::randomQueryStringParam());
 		} else {
@@ -91,20 +91,23 @@
 	$query .= "WHERE imas_msgs.id=:id ";
 	if ($type!='allstu' || !$isteacher) {
 		$query .= "AND (imas_msgs.msgto=:msgto OR imas_msgs.msgfrom=:msgfrom)";
+	} else {
+		$query .= "AND imas_msgs.courseid=:cid";
 	}
 
 	$stm = $DBH->prepare($query);
 	if ($type!='allstu' || !$isteacher) {
 		$stm->execute(array(':courseid'=>$cid, ':id'=>$msgid, ':msgto'=>$userid, ':msgfrom'=>$userid));
 	} else {
-		$stm->execute(array(':courseid'=>$cid, ':id'=>$msgid));
+		$stm->execute(array(':courseid'=>$cid, ':cid'=>$cid, ':id'=>$msgid));
 	}
-	if ($stm->rowCount()==0) {
+	$line = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($line === false) {
 		echo "Message not found";
 		require_once "../footer.php";
 		exit;
 	}
-	$line = $stm->fetch(PDO::FETCH_ASSOC);
+	
 
 	$isteacher = isset($teacherof[$line['courseid']]);
 
@@ -117,7 +120,7 @@
 			echo " <img style=\"float:left;\" class=\"pii-image\" src=\"$imasroot/course/files/userimg_sm{$line['msgfrom']}.jpg\"  onclick=\"togglepic(this)\" alt=\"User picture\"/><br/>";
 		}
 	}
-	echo "<table class=gb ><tbody>";
+	echo "<table class=gb role=presentation><tbody>";
 	if ($type=='sent') {
 		echo '<tr><td><b>'._('To').':</b></td>';
 	} else {
@@ -149,15 +152,15 @@
 				$due = $adata['enddate'];
 
 				//list($aid,$due) = $stm->fetch(PDO::FETCH_NUM);
-				$stm = $DBH->prepare("SELECT startdate,enddate,islatepass FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
+				$stm = $DBH->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
 				$stm->execute(array(':userid'=>$line['msgfrom'], ':assessmentid'=>$adata['id']));
 				if ($stm->rowCount()>0) {
-					$exception = $stm->fetch(PDO::FETCH_NUM);
+					$exception = $stm->fetch(PDO::FETCH_ASSOC);
 					require_once "../includes/exceptionfuncs.php";
 					$exceptionfuncs = new ExceptionFuncs($userid, $cid, true);
 					$useexception = $exceptionfuncs->getCanUseAssessException($exception, $adata, true);
 					if ($useexception) {
-						$due = $exception[1];
+						$due = $exception['enddate'];
 					}
 				}
 				$duedate = tzdate('D m/d/Y g:i a',$due);
@@ -264,8 +267,8 @@
 
 	}
 	if ($type!='sent' && $type!='allstu' && $line['viewed']==0) {
-		$stm = $DBH->prepare("UPDATE imas_msgs SET viewed=1 WHERE id=:id");
-		$stm->execute(array(':id'=>$msgid));
+		$stm = $DBH->prepare("UPDATE imas_msgs SET viewed=1 WHERE id=:id AND msgto=:msgto");
+		$stm->execute(array(':id'=>$msgid, ':msgto'=>$userid));
 	}
 	echo '<p>&nbsp;</p>';
 	require_once "../footer.php";

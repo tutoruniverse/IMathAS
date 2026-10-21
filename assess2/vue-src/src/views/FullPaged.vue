@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <a href="#" class="sr-only" id="skipnav" @click.prevent="$refs.scrollpane.focus()">
+    <a href="#" class="sr-only" id="skipnav" @click.prevent="jumpFocus">
       {{ $t('jumptocontent') }}
     </a>
     <assess-header />
@@ -9,8 +9,7 @@
       class="scrollpane"
       role="region"
       ref="scrollpane"
-      tabindex="-1"
-      :aria-label="$t('regions.questions')"
+      :aria-label="$t('regions-questions')"
     >
       <intro-text
         :active = "page === -1 && hasIntro"
@@ -72,7 +71,7 @@
           <router-link
             :to="'/full/page/'+ (page+2)"
           >
-            {{ $t('pages.next') }}
+            {{ $t('pages-next') }}
           </router-link>
         </p>
       </div>
@@ -82,7 +81,7 @@
           class = "primary"
           @click = "submitAssess"
         >
-          {{ $t('header.assess_submit') }}
+          {{ $t('header-assess_submit') }}
         </button>
       </p>
     </div>
@@ -96,7 +95,7 @@ import FullQuestionHeader from '@/components/FullQuestionHeader.vue';
 import Question from '@/components/question/Question.vue';
 import InterQuestionTextList from '@/components/InterQuestionTextList.vue';
 import IntroText from '@/components/IntroText.vue';
-import { store, actions } from '../basicstore';
+import { store, actions } from '@/basicstore';
 
 export default {
   name: 'FullPaged',
@@ -137,6 +136,11 @@ export default {
   methods: {
     submitAssess () {
       actions.submitAssessment();
+    },
+    jumpFocus () {
+      this.$refs.scrollpane.setAttribute("tabindex","-1");
+      this.$refs.scrollpane.focus();
+      this.$refs.scrollpane.removeAttribute("tabindex");
     }
   }
 };

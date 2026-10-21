@@ -42,17 +42,18 @@ class MultipleAnswerAnswerBox implements AnswerBox
         $style = '';
         $params = [];
 
-        $optionkeys = ['answers', 'noshuffle', 'displayformat', 'readerlabel','answerformat'];
+        $optionkeys = ['answers', 'noshuffle', 'readerlabel','answerformat'];
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
+        $displayformat = "";
         $questions = getOptionVal($options, 'questions', $multi, $partnum, 2);
         if (is_array($answers)) {
             echo 'Eek! $answers in multans should be a list, not an array';
             $answers = implode(',', $answers);
         }
         $answers = trim($answers, ' ,');
-        
+
         if (!is_array($questions)) {
             echo _('Eeek!  $questions is not defined or needs to be an array');
             $questions = array();

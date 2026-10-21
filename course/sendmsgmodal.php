@@ -3,8 +3,9 @@
 //(c) 2014 David Lippman for Lumen Learning
 
 require_once "../init.php";
+require_once '../includes/checkdata.php';
 
-if (!isset($teacherid) && !isset($tutorid) && !isset($studentid) && !isset($instrPreviewId)) {
+if (!isset($teacherid) && !isset($tutorid) && !isset($studentid)) {
 	 require_once "../header.php";
 	 echo sprintf(_("You are not enrolled in this course.  Please return to the %s Home Page%s and enroll"),"<a href=\"../index.php\">","</a>")."\n";
 	 require_once "../footer.php";
@@ -25,15 +26,21 @@ if (isset($_POST['message'])) {
 	if ($myrights>10 && isset($_POST['markbroken'])) {
 		$subject .= ' - '._('Marked Broken');
 	}
-	$sendlist = array(array('to'=>$_POST['sendto'], 'sendtype'=>$_POST['sendtype']));
+	$sendlist = array(array('to'=>$_POST['sendto'], 'sendtype'=>$_POST['sendtype'], 'checkcourse'=>true));
 
 	//if it's an error report, and we've said we want a copy elsewhere, add that to the send list
 	if (isset($_POST['iserrreport']) && isset($CFG['GEN']['qerrorsendto']) && !empty($CFG['GEN']['qerrorsendto'][3])) {
-		$sendlist[] = array('to'=>$CFG['GEN']['qerrorsendto'][0], 'sendtype'=>$CFG['GEN']['qerrorsendto'][1]);
+		$sendlist[] = array('to'=>$CFG['GEN']['qerrorsendto'][0], 'sendtype'=>$CFG['GEN']['qerrorsendto'][1], 'checkcourse'=>false);
 	}
 	$error = '';
 	foreach ($sendlist as $sendcnt=>$sendinfo) {
 		$msgto = Sanitize::onlyInt($sendinfo['to']);
+
+		if ($sendinfo['checkcourse']) {
+			if (!check_user_in_course($msgto, $cid)) {
+				exit;
+			}
+		}
 
 		if (isset($_POST['iserrreport']) && $sendcnt>0) { //copy going to specified
 			$message = '<p><b>'._('This message was also sent to the question owner.').'</b></p>'.$origmessage;
@@ -120,8 +127,9 @@ if (isset($_POST['message'])) {
 	require_once "../header.php";
 
 	$iserrreport = false;
+	$qmessagetofallback = false;
 
-	if (isset($_GET['quoteq'])) {
+	if (isset($_GET['quoteq']) && $myrights>=20) {
 		$quoteq = Sanitize::stripHtmlTags($_GET['quoteq']);
 		$parts = explode('-',$quoteq);
         $GLOBALS['assessver'] = $parts[4];
@@ -177,6 +185,7 @@ if (isset($_POST['message'])) {
                 $_GET['to'] = $r['ownerid'];
                 if (!empty($CFG['GEN']['qerroronold']) && $r['lastaccess'] < time() - 60*60*24*$CFG['GEN']['qerroronold'][0]) {
                     $_GET['to'] = $CFG['GEN']['qerroronold'][1];
+					$qmessagetofallback = true;
                 }
 			}
 		} else if (isset($parts[3])) {  //sending to instructor
@@ -201,6 +210,9 @@ if (isset($_POST['message'])) {
 	}
 
 	$msgto = Sanitize::onlyInt($_GET['to']);
+	if (!check_user_in_course($msgto, $cid)) {
+		exit;
+	}
 	$stm = $DBH->prepare("SELECT FirstName,LastName,email FROM imas_users WHERE id=:id");
 	$stm->execute(array(':id'=>$msgto));
 	list($firstname, $lastname, $email) = $stm->fetch(PDO::FETCH_NUM);
@@ -213,6 +225,9 @@ if (isset($_POST['message'])) {
 		$to = Sanitize::stripHtmlTags("$lastname, $firstname ($email)");
 	}
 
+	if ($qmessagetofallback) {
+		echo '<p><span class=noticetext>'._('Note:').'</span> '._('The owner of this question has not been active recently, so this message will be sent to someone else who can try to help.').'</p>';
+	}
 	echo '<form method="post" action="sendmsgmodal.php?cid='.$cid.'">';
 	echo '<input type="hidden" name="sendto" value="'.$msgto.'"/>';
 	echo '<input type="hidden" name="sendtype" value="'.Sanitize::encodeStringForDisplay($_GET['sendtype']).'"/>';

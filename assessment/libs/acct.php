@@ -752,8 +752,8 @@ function makeaccttable($rowhead, $rows, $anshead, $ansarray, $sn, &$anstypes, &$
 			$sa .= '<td>'.$rows[$j][$i].'</td>';
 		}
 		for ($j=0;$j<count($ansarray);$j++) {
-			$out .= '<td class="r">'.($ansarray[$j][$i][0]=='$'?'$':'').'[AB'.$sn.']</td>';
-			$sa .= '<td class="r">'.($ansarray[$j][$i][0]=='$'?'$':'');
+			$out .= '<td class="r">'.(substr($ansarray[$j][$i],0,1)=='$'?'$':'').'[AB'.$sn.']</td>';
+			$sa .= '<td class="r">'.(substr($ansarray[$j][$i],0,1)=='$'?'$':'');
 			$ansarray[$j][$i] = str_replace(array('$',','),'',$ansarray[$j][$i]) * 1;
 			$answer[$sn] = $ansarray[$j][$i];
 			if ($hasdecimals) {
@@ -1878,7 +1878,7 @@ function maketrialbalance($data, $sn, $numrows, $ops, $bigtitle, &$anstypes, &$a
 	}
 	for ($j=$c; $j<$numrows;$j++) {
 		$out .= '<tr><td>[AB'.$sn.']</td>';
-		$anstypes[$sn] = 'string'; $displayformat[$sn] = 'typeahead'; $questions[$sn] = $ops;  $answer[$sn] = $dt[$i]; $answerboxsize[$sn] = $maxsizedescr;
+		$anstypes[$sn] = 'string'; $displayformat[$sn] = 'typeahead'; $questions[$sn] = $ops;  $answer[$sn] = ''; $answerboxsize[$sn] = $maxsizedescr;
 		$sn++;
 		$out .= '<td class="r">[AB'.$sn.']</td>';
 		$anstypes[$sn] = 'string'; $displayformat[$sn] = 'alignright'; $answer[$sn] = ''; $answerboxsize[$sn] = 8;

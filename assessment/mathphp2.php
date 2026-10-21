@@ -431,7 +431,7 @@ function mathphptokenize($str,$vars,$ignorestrings) {
 			}
 			if ($j==$len) {
 				$i = $j;
-				if (isset($GLOBALS['teacherid'])) {
+				if (!empty($GLOBALS['inQuestionTesting'])) {
 					echo _('unmatched parens/brackets - likely will cause an error');
 				}
 			} else {
@@ -564,7 +564,9 @@ function coth($x) {
 }
 */
 function root($n,$x) {
-	if ($n%2==0 && $x<0) { //if even root and negative base
+	if (floor($n) != $n) { 
+		return safepow($x, 1/$n);
+	} else if ($n%2==0 && $x<0) { //if even root and negative base
 		return sqrt(-1);
 	} else if ($x<0) { //odd root of negative base - negative result
 		return -1*exp(1/$n*log(abs($x)));

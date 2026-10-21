@@ -81,6 +81,13 @@
 		$w = preg_replace('/.*\bwidth\s*=\s*.?(\d+).*/',"$1",$arr[0]);
 		$h = preg_replace('/.*\bheight\s*=\s*.?(\d+).*/',"$1",$arr[0]);
 
+		if ($w === $arr[0]) {
+			$w = 200;
+		}
+		if ($h === $arr[0]) {
+			$h = 200;
+		}
+
 		if (strpos($arr[0],'style')!==FALSE) {
 			$sty = preg_replace('/.*style\s*=\s*(.)(.+?)\1.*/',"$2",$arr[0]);
 		} else {
@@ -108,6 +115,7 @@
 		if (strip_tags($str)==$str) {
 			$str = str_replace("\n","<br/>\n",$str);
 		}
+		$str = str_replace('alt="decorative"', 'alt="" role="presentation"', $str);
 		if ($_SESSION['graphdisp']==0) {
 			if (strpos($str,'embed')!==FALSE) {
 				$str = preg_replace('/<embed[^>]*alt="([^"]*)"[^>]*>/',"[$1]", $str);
@@ -161,7 +169,8 @@
                         $tag = '<div id="'.$uniqid.'wrap" class="embedwrap">';
                         $tag .= "<iframe id=\"$uniqid\" width=\"$w\" height=\"$h\" src=\"$url\" style=\"z-index:$zindex\" frameborder=\"0\">";
                         $tag .= '</iframe></div>';
-                        $str = str_replace($resval[0], $tag, $str);
+                        //$str = str_replace($resval[0], $tag, $str);
+                        $str = substr_replace($str, $tag, strpos($str, $resval[0]), strlen($resval[0]));
                         $zindex--;
                         continue;
                     }
@@ -278,6 +287,7 @@
 		$str = preg_replace('/<canvas.*?\'(\w+\.png)\'.*?\/script>/','<div><img src="'.$imasroot.'/filter/graph/imgs/$1" alt="Graph"/></div>',$str);
 		$str = preg_replace('/<script.*?\/script>/','',$str);  //strip scripts
         $str = preg_replace('/<input[^>]*Preview[^>]*>/','',$str); //strip preview buttons
+        $str = preg_replace('/<button[^>]*>Preview.*?<\/button>/','',$str); //strip preview buttons
 		if ($stripbuttons) {
 			$str = preg_replace('/<input[^>]*button[^>]*>/','',$str); //strip buttons
 			$str = preg_replace('/<button[^>]*>.*?<\/button>/','',$str); //strip buttons

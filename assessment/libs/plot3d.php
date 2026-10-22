@@ -314,6 +314,11 @@ function CalcPlot3DprepFunc($str,$gxmin=-2,$gxmax=2,$gymin=-2,$gymax=2,$gzmin=-2
 		$def = array(array('tmin','tmax','tsteps','width','color','dashed'), array(-10,10,100,2,'rainbow','false'));
         if (isset($bits[8]) && $bits[8]!='rainbow' && $bits[8]!='gradient') {
             $out[] = 'constcol=true';
+            // CalcPlot3D draws a constcol curve white for bare hex (FF0000); rgb() always works
+            if (preg_match('/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i', $bits[8], $m)) {
+                $hex = strlen($m[1]) == 3 ? preg_replace('/./', '$0$0', $m[1]) : $m[1];
+                $bits[8] = 'rgb('.implode(',', array_map('hexdec', str_split($hex, 2))).')';
+            }
         }
 		$start = 4;
 	} else if ($bits[0]=='psurf') {

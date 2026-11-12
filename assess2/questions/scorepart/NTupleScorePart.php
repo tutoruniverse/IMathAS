@@ -38,6 +38,8 @@ class NTupleScorePart implements ScorePart
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
+        $reltolerance = normalizeTolerance($reltolerance);
+        $abstolerance = normalizeTolerance($abstolerance);
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
 
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }

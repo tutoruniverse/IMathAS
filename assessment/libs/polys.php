@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //Polynomial functions.  Version 1.1, Nov 11, 2007
 
 global $allowedmacros;
@@ -123,7 +124,7 @@ function writepoly($poly,$var="x",$sz=false,$tofrac=false) {
 //rounds the coefficients in the poly to d places
 function roundpoly($poly, $d) {
 	for ($i=0;$i<count($poly);$i++) {
-		$poly[$i][0] = round($poly[$i][0],$d);
+		$poly[$i][0] = round74($poly[$i][0],$d);
 	}
 	return $poly;
 }
@@ -275,7 +276,7 @@ function scalepoly($poly,$c) {
 		$poly[$i][0] *= $c;
 	}
 	for ($i=0; $i<count($poly); $i++) {
-		$poly[$i][0] = round($poly[$i][0],10);
+		$poly[$i][0] = round74($poly[$i][0],10);
 	}
 	return $poly;
 }
@@ -439,7 +440,7 @@ function describerational($eqn, $xints, $vas, $ha, $invar="x", $outvar="y", $oth
 	$donepoint = false;
 	for ($i=0;$i<$cnt;$i++) {
 		if ($left === null) {
-			$left = round($func([$invar=> $critical[$i][0] - 1]),4);
+			$left = round74($func([$invar=> $critical[$i][0] - 1]),4);
 			if ($ha===null) {
 				$dir = ($left>0)?_('infinity'):_('negative infinity');
 			} else {
@@ -449,7 +450,7 @@ function describerational($eqn, $xints, $vas, $ha, $invar="x", $outvar="y", $oth
 				$invar, $outvar, $dir);
 		}
 		if ($critical[$i][1]=='yint') {
-			$right = round($func([$invar=>0]),4);
+			$right = round74($func([$invar=>0]),4);
 			$alt .= sprintf(_('%s-intercept at %s. '),
 				$outvar, $right);
 			$donepoint = true;
@@ -462,7 +463,7 @@ function describerational($eqn, $xints, $vas, $ha, $invar="x", $outvar="y", $oth
 			if (isset($critical[$i+1])) {
 				$rightx = min($rightx, ($critical[$i][0]+$critical[$i+1][0])/2);
 			}
-			$right = round($func([$invar=>$rightx]),4);
+			$right = round74($func([$invar=>$rightx]),4);
 			if ($rightx >= 0 && !$donepoint) {
 				$alt .= sprintf(_('Graph passes through the point (%s,%s). '),
 					$rightx, $right);

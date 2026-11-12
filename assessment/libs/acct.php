@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //A collection of accounting macros
 //
 //June 2013
@@ -277,7 +278,7 @@ function makestatement($s, $sn, $ops, &$anstypes, &$questions, &$answer, &$showa
             }
 			for ($i=1;$i<count($sg['totaltotal']);$i++) {
 				if ($sg['totaltotal'][$i]<0) {
-					$tottot -= $grouptots[-1*round($sg['totaltotal'][$i])];
+					$tottot -= $grouptots[-1*round74($sg['totaltotal'][$i])];
 				} else {
 					$tottot += $grouptots[$sg['totaltotal'][$i]];
 				}
@@ -1683,10 +1684,10 @@ function makeinventory($invs, $type, $rowper, $sn, &$anstypes, &$questions, &$an
 						}
 					} else if ($type=='WA') {
 						if ($q>$str[0][0]) {echo "Trying to sell more than we have"; break;}
-						$sq[] = $q; $su[] = $str[0][1]; $st[] = round($q*$str[0][1],2); $cogs += round($q*$str[0][1],2); $c++;
+						$sq[] = $q; $su[] = $str[0][1]; $st[] = round74($q*$str[0][1],2); $cogs += round74($q*$str[0][1],2); $c++;
 						$str[0][0] -= $q;
 						$q -= $q;
-						$thiscalc .= $q.' units @ '.round($str[0][1],2);
+						$thiscalc .= $q.' units @ '.round74($str[0][1],2);
 					}
 				}
 			}
@@ -1741,7 +1742,7 @@ function makeinventory($invs, $type, $rowper, $sn, &$anstypes, &$questions, &$an
 		$totinv = 0; $totinvval = 0;
 		foreach ($str as $s) {
 			$totinv += $s[0];
-			$totinvval += round($s[0]*$s[1],2);
+			$totinvval += round74($s[0]*$s[1],2);
 		}
 		return array($cogs, $totinv, $totinvval, $totsales);
 	} else if ($get=='journal') {

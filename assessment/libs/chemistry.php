@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //A collection of chemistry routines
 //
 //Version 0.31 May 7, 2022
@@ -406,13 +407,13 @@ function chem_getcompoundmolmass($c,$round=4) {
 	$molmass = 0;
 	foreach ($els as $k=>$el) {
 		if ($round==.5) {
-			if (abs(round(2*$chem_periodic_table[$chem_numberbyatom[$el]][3])/2 - $chem_periodic_table[$chem_numberbyatom[$el]][3]) < .05) {
-				$molmass += round(2*$chem_periodic_table[$chem_numberbyatom[$el]][3])/2*$cnt[$k];
+			if (abs(round74(2*$chem_periodic_table[$chem_numberbyatom[$el]][3])/2 - $chem_periodic_table[$chem_numberbyatom[$el]][3]) < .05) {
+				$molmass += round74(2*$chem_periodic_table[$chem_numberbyatom[$el]][3])/2*$cnt[$k];
 			} else {
-				$molmass += round($chem_periodic_table[$chem_numberbyatom[$el]][3])*$cnt[$k];
+				$molmass += round74($chem_periodic_table[$chem_numberbyatom[$el]][3])*$cnt[$k];
 			}
 		} else if ($round<4) {
-			$molmass += round($chem_periodic_table[$chem_numberbyatom[$el]][3],$round)*$cnt[$k];
+			$molmass += round74($chem_periodic_table[$chem_numberbyatom[$el]][3],$round)*$cnt[$k];
 		} else {
 			$molmass += $chem_periodic_table[$chem_numberbyatom[$el]][3]*$cnt[$k];
 		}

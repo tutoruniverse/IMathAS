@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //Inequality graphing functions.  Version 1.0, Oct 30, 2006
 
 global $allowedmacros;
@@ -121,7 +122,7 @@ function ineqbetweenplot($funcs) {
 					}
 					continue;
 				}
-				$y = round($y,3);
+				$y = round74($y,3);
 				if ($filltype=='above') {
 					$mins[$i][$k] = $y;
 				} else {
@@ -197,13 +198,13 @@ function ineqbetweenplot($funcs) {
 		}
 		for ($j=0;$j<count($shape[$i]);$j++) {
 			if ($j>0) { $path .= ',';}
-			$x = round($xmin + $dx*$shape[$i][$j][0],3);
+			$x = round74($xmin + $dx*$shape[$i][$j][0],3);
 			$y = $shape[$i][$j][1];
 			$path .= "[$x,$y]";
 		}
 		for ($j=count($shape[$i])-1;$j>=0;$j--) {
 			if (!isset($shape[$i][$j][2])) { continue;}
-			$x = round($xmin + $dx*$shape[$i][$j][0],3);
+			$x = round74($xmin + $dx*$shape[$i][$j][0],3);
 			$y = $shape[$i][$j][2];
 			$path .= ",[$x,$y]";
 		}

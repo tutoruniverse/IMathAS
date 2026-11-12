@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 // A library for financial derivative Functions.  Version 1.0  December 27, 2020
 // Author:  Daniel Brown
 //          University of Colorado Boulder
@@ -687,5 +688,5 @@ function finderiv_checkpayout($xValues,$yValues,$lines, $xTol=0.0001, $yTol=0.00
 		}
 	}
 
-	return round($answer,2);
+	return round74($answer,2);
 }

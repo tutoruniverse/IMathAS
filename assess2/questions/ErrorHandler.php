@@ -25,6 +25,26 @@ class ErrorHandler
      * @param array $errcontext
      * @return bool
      */
+    /**
+     * PHP 8 raised these PHP 7.4 notices to warnings (and reworded some); PHP 8.3 added array_sum() and
+     * array_product() warnings for values 7.4 skipped silently. The question error handlers
+     * show warnings and ignore notices, so on PHP 8 such a warning must be ignored to keep 7.4 output.
+     * "A non-numeric value encountered" is listed because on PHP 8 it only comes from a leading-numeric
+     * string ("3abc"), which was the 7.4 notice "A non well formed numeric value encountered".
+     *
+     * Example: wasNoticeBeforePhp8('Undefined variable $x') === true (on PHP 8 only).
+     */
+    public static function wasNoticeBeforePhp8(int $errno, string $errstr): bool
+    {
+        if (PHP_MAJOR_VERSION < 8 || $errno !== E_WARNING) {
+            return false;
+        }
+        return (bool) preg_match('/^(Undefined variable \$|Undefined global variable \$|Undefined array key |'
+            . 'Undefined property: |Trying to access array offset on |Attempt to read property "|'
+            . 'Array to string conversion$|Uninitialized string offset |A non-numeric value encountered$|'
+            . 'array_sum\(\): Addition is not supported|array_product\(\): Multiplication is not supported)/', $errstr);
+    }
+
     public static function evalErrorHandler(int $errno, string $errstr, string $errfile,
                                             int $errline, array $errcontext = []): bool
     {

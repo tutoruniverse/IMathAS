@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 // conditional test and scoring macros
 
@@ -699,7 +700,7 @@ function scoreperiodic($ans, $stuans, $var, $tol = .0015) {
             if (!empty($used[$k]) || $ansperiods[$k] == 0) { continue; }
             $mult = ($ab - $sb)/$ansperiods[$k];
             // check if mult is whole number and period is same
-            if (abs($mult - round($mult)) < $tol/$ansperiods[$k]) {
+            if (abs($mult - round74($mult)) < $tol/$ansperiods[$k]) {
                 $anss[$k] = $sb . ' + (' . $ansperiods[$k] . ')*' . $var;
                 $used[$k] = 1;
                 continue 2;

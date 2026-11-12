@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 // Conversion module - this contains constants for use with Rate and Ratio conversion questions
 // Mike Jenck, Originally developed Jan 29-31, 2021
 // licensed under GPL version 2 or later
@@ -1240,7 +1241,7 @@ function conversionArea2() {
         #region American to Metric Conversion
 
         //6.45160000 cm^2 https://www.wolframalpha.com/input/?i=convert+1+square+inch+to+mm+squared
-        $CF = round(6.4516, $rounding);
+        $CF = round74(6.4516, $rounding);
         if($fullname==0 || $fullname==3) {
             $retval[0] = array("",1,$unitabbr["Inch"],$CF,$unitabbr["Centimeter"]);
             $retval[0][0] = conversionUnits2ScreenReader2($retval[0][1],$retval[0][2],2,$retval[0][3],$retval[0][4],2,$sign,$tick,"y");
@@ -1260,8 +1261,8 @@ function conversionArea2() {
 
         // 1.19599005 yd^2 https://www.wolframalpha.com/input/?i=convert+1+square+meter+to+square+feet
         // https://www.wolframalpha.com/input/?i=convert+1+hectares+to+square+feet
-        $CF0 = round(1.19599005, $rounding);
-        $CF1 = round(2.471, $rounding);
+        $CF0 = round74(1.19599005, $rounding);
+        $CF1 = round74(2.471, $rounding);
         if($fullname==0 || $fullname==3) {
             $retval[0] = array("",1,$unitabbr["Meter"],$CF0,$unitabbr["Yards"]);
             $retval[0][0] = conversionUnits2ScreenReader2($retval[0][1],$retval[0][2],2,$retval[0][3],$retval[0][4],2,$sign,$tick,"y");
@@ -1426,17 +1427,17 @@ function conversionCapacity2() {
         #region American to Metric Conversion
 
 		if($fullname==0) {
-			$retval[0] = array("",1,$unitabbr["fluid ounces"],round(0.0295735296, $rounding),$unitabbr["Liter"]);
-            $retval[1] = array("",1,$unitabbr["cup"],round(0.236588236, $rounding),$unitabbr["Liter"]);
-            $retval[2] = array("",1,$unitabbr["pint"],round(0.473176473, $rounding),$unitabbr["Liter"]);
-            $retval[3] = array("",1,$unitabbr["quart"],round(0.946352946, $rounding),$unitabbr["Liter"]);
-            $retval[4] = array("",1,$unitabbr["gallon"],round(3.78541178, $rounding),$unitabbr["Liter"]);
+			$retval[0] = array("",1,$unitabbr["fluid ounces"],round74(0.0295735296, $rounding),$unitabbr["Liter"]);
+            $retval[1] = array("",1,$unitabbr["cup"],round74(0.236588236, $rounding),$unitabbr["Liter"]);
+            $retval[2] = array("",1,$unitabbr["pint"],round74(0.473176473, $rounding),$unitabbr["Liter"]);
+            $retval[3] = array("",1,$unitabbr["quart"],round74(0.946352946, $rounding),$unitabbr["Liter"]);
+            $retval[4] = array("",1,$unitabbr["gallon"],round74(3.78541178, $rounding),$unitabbr["Liter"]);
         } else {
-			$retval[0] = array("",1,$unit["fluid ounces"],round(0.0295735296, $rounding),$unit["Liter"]);
-            $retval[1] = array("",1,$unit["cup"],round(0.236588236, $rounding),$unit["Liter"]);
-            $retval[2] = array("",1,$unit["pint"],round(0.473176473, $rounding),$unit["Liter"]);
-            $retval[3] = array("",1,$unit["quart"],round(0.946352946, $rounding),$unit["Liter"]);
-            $retval[4] = array("",1,$unit["gallon"],round(3.78541178, $rounding),$unit["Liter"]);
+			$retval[0] = array("",1,$unit["fluid ounces"],round74(0.0295735296, $rounding),$unit["Liter"]);
+            $retval[1] = array("",1,$unit["cup"],round74(0.236588236, $rounding),$unit["Liter"]);
+            $retval[2] = array("",1,$unit["pint"],round74(0.473176473, $rounding),$unit["Liter"]);
+            $retval[3] = array("",1,$unit["quart"],round74(0.946352946, $rounding),$unit["Liter"]);
+            $retval[4] = array("",1,$unit["gallon"],round74(3.78541178, $rounding),$unit["Liter"]);
         }
         for($i=0;$i<5;$i+=1){
             $retval[$i][0] = "{$retval[$i][1]} {$retval[$i][2]} $sign_tick {$retval[$i][3]} {$retval[$i][4]}";
@@ -1449,17 +1450,17 @@ function conversionCapacity2() {
         #region Metric to American Conversion
 
 		if($fullname==0) {
-			$retval[0] = array("",1,$unitabbr["Liter"],round(33.8140227, $rounding),$unitabbr["fluid ounces"]);
-            $retval[1] = array("",1,$unitabbr["Liter"],round(4.22675284, $rounding),$unitabbr["cups"]);
-            $retval[2] = array("",1,$unitabbr["Liter"],round(2.11337642, $rounding),$unitabbr["pints"]);
-            $retval[3] = array("",1,$unitabbr["Liter"],round(1.05668821, $rounding),$unitabbr["quarts"]);
-            $retval[4] = array("",1,$unitabbr["Liter"],round(0.264172052, $rounding),$unitabbr["gallon"]);
+			$retval[0] = array("",1,$unitabbr["Liter"],round74(33.8140227, $rounding),$unitabbr["fluid ounces"]);
+            $retval[1] = array("",1,$unitabbr["Liter"],round74(4.22675284, $rounding),$unitabbr["cups"]);
+            $retval[2] = array("",1,$unitabbr["Liter"],round74(2.11337642, $rounding),$unitabbr["pints"]);
+            $retval[3] = array("",1,$unitabbr["Liter"],round74(1.05668821, $rounding),$unitabbr["quarts"]);
+            $retval[4] = array("",1,$unitabbr["Liter"],round74(0.264172052, $rounding),$unitabbr["gallon"]);
         } else {
-			$retval[0] = array("",1,$unit["Liter"],round(33.8140227, $rounding),$unit["fluid ounces"]);
-            $retval[1] = array("",1,$unit["Liter"],round(4.22675284, $rounding),$unit["cups"]);
-            $retval[2] = array("",1,$unit["Liter"],round(2.11337642, $rounding),$unit["pints"]);
-            $retval[3] = array("",1,$unit["Liter"],round(1.05668821, $rounding),$unit["quarts"]);
-            $retval[4] = array("",1,$unit["Liter"],round(0.264172052, $rounding),$unit["gallon"]);
+			$retval[0] = array("",1,$unit["Liter"],round74(33.8140227, $rounding),$unit["fluid ounces"]);
+            $retval[1] = array("",1,$unit["Liter"],round74(4.22675284, $rounding),$unit["cups"]);
+            $retval[2] = array("",1,$unit["Liter"],round74(2.11337642, $rounding),$unit["pints"]);
+            $retval[3] = array("",1,$unit["Liter"],round74(1.05668821, $rounding),$unit["quarts"]);
+            $retval[4] = array("",1,$unit["Liter"],round74(0.264172052, $rounding),$unit["gallon"]);
         }
         for($i=0;$i<5;$i+=1){
             $retval[$i][0] = "{$retval[$i][1]} {$retval[$i][2]} $sign_tick {$retval[$i][3]} {$retval[$i][4]}";
@@ -1901,15 +1902,15 @@ function conversionLength2() {
         #region American to Metric Conversion
 
 		if($fullname==0) {
-			$retval[0] = array("",1,$unitabbr["inch"],round(2.54, $rounding),$unitabbr["Centimeter"]);      // https://www.wolframalpha.com/input/?i=convert+1+inch+to+mm
-            $retval[1] = array("",1,$unitabbr["foot"],round(0.3048, $rounding),$unitabbr["Meter"]);         // https://www.wolframalpha.com/input/?i=convert+1+foot+to+dm
-            $retval[2] = array("",1,$unitabbr["yard"],round(0.9144, $rounding),$unitabbr["Meter"]);         // https://www.wolframalpha.com/input/?i=convert+1+yard+to+dm
-            $retval[3] = array("",1,$unitabbr["mile"],round(1.60934400, $rounding),$unitabbr["Kilometer"]); // 1.60934400 km https://www.wolframalpha.com/input/?i=convert+1+mile+to+m
+			$retval[0] = array("",1,$unitabbr["inch"],round74(2.54, $rounding),$unitabbr["Centimeter"]);      // https://www.wolframalpha.com/input/?i=convert+1+inch+to+mm
+            $retval[1] = array("",1,$unitabbr["foot"],round74(0.3048, $rounding),$unitabbr["Meter"]);         // https://www.wolframalpha.com/input/?i=convert+1+foot+to+dm
+            $retval[2] = array("",1,$unitabbr["yard"],round74(0.9144, $rounding),$unitabbr["Meter"]);         // https://www.wolframalpha.com/input/?i=convert+1+yard+to+dm
+            $retval[3] = array("",1,$unitabbr["mile"],round74(1.60934400, $rounding),$unitabbr["Kilometer"]); // 1.60934400 km https://www.wolframalpha.com/input/?i=convert+1+mile+to+m
         } else {
-			$retval[0] = array("",1,$unit["inch"],round(2.54, $rounding),$unit["Centimeter"]);
-            $retval[1] = array("",1,$unit["foot"],round(0.3048, $rounding),$unit["Meter"]);
-            $retval[2] = array("",1,$unit["yard"],round(0.9144, $rounding),$unit["Meter"]);
-            $retval[3] = array("",1,$unit["mile"],round(1.60934400, $rounding),$unit["Kilometer"]);
+			$retval[0] = array("",1,$unit["inch"],round74(2.54, $rounding),$unit["Centimeter"]);
+            $retval[1] = array("",1,$unit["foot"],round74(0.3048, $rounding),$unit["Meter"]);
+            $retval[2] = array("",1,$unit["yard"],round74(0.9144, $rounding),$unit["Meter"]);
+            $retval[3] = array("",1,$unit["mile"],round74(1.60934400, $rounding),$unit["Kilometer"]);
         }
         for($i=0;$i<4;$i+=1){
             $retval[$i][0] = "{$retval[$i][1]} {$retval[$i][2]} $sign_tick {$retval[$i][3]} {$retval[$i][4]}";
@@ -1922,15 +1923,15 @@ function conversionLength2() {
         #region Metric to American Conversion
 
 		if($fullname==0) {
-			$retval[0] = array("",1,$unitabbr["Centimeter"],round(0.393700787, $rounding),$unitabbr["inch"]); // 393.700787 mils https://www.wolframalpha.com/input/?i=convert+1+centimeter+to+inch
-            $retval[1] = array("",1,$unitabbr["Meter"],round(3.28083990, $rounding),$unitabbr["feet"]);       // 3.28083990 feet https://www.wolframalpha.com/input/?i=convert+1+meter+to+inch
-            $retval[2] = array("",1,$unitabbr["Meter"],round(1.0936133, $rounding),$unitabbr["yard"]);        // 3.28083990 feet divided by 3
-            $retval[3] = array("",1,$unitabbr["Kilometer"],round(0.621371, $rounding),$unitabbr["mile"]);     // 621371 miles https://www.wolframalpha.com/input/?i=convert+1000000+kilometer+to+miles
+			$retval[0] = array("",1,$unitabbr["Centimeter"],round74(0.393700787, $rounding),$unitabbr["inch"]); // 393.700787 mils https://www.wolframalpha.com/input/?i=convert+1+centimeter+to+inch
+            $retval[1] = array("",1,$unitabbr["Meter"],round74(3.28083990, $rounding),$unitabbr["feet"]);       // 3.28083990 feet https://www.wolframalpha.com/input/?i=convert+1+meter+to+inch
+            $retval[2] = array("",1,$unitabbr["Meter"],round74(1.0936133, $rounding),$unitabbr["yard"]);        // 3.28083990 feet divided by 3
+            $retval[3] = array("",1,$unitabbr["Kilometer"],round74(0.621371, $rounding),$unitabbr["mile"]);     // 621371 miles https://www.wolframalpha.com/input/?i=convert+1000000+kilometer+to+miles
         } else {
-			$retval[0] = array("",1,$unit["Centimeter"],round(0.393700787, $rounding),$unit["inch"]);
-            $retval[1] = array("",1,$unit["Meter"],round(3.28083990, $rounding),$unit["feet"]);
-            $retval[2] = array("",1,$unit["Meter"],round(1.0936133, $rounding),$unit["yard"]);
-            $retval[3] = array("",1,$unit["Kilometer"],round(0.621371, $rounding),$unit["mile"]);
+			$retval[0] = array("",1,$unit["Centimeter"],round74(0.393700787, $rounding),$unit["inch"]);
+            $retval[1] = array("",1,$unit["Meter"],round74(3.28083990, $rounding),$unit["feet"]);
+            $retval[2] = array("",1,$unit["Meter"],round74(1.0936133, $rounding),$unit["yard"]);
+            $retval[3] = array("",1,$unit["Kilometer"],round74(0.621371, $rounding),$unit["mile"]);
         }
         for($i=0;$i<4;$i+=1){
             $retval[$i][0] = "{$retval[$i][1]} {$retval[$i][2]} $sign_tick {$retval[$i][3]} {$retval[$i][4]}";
@@ -2442,7 +2443,7 @@ function conversionVolume2() {
         #region American to Metric Conversion
 
         // 0.0163870640 L https://www.wolframalpha.com/input/?i=convert+1+cubic+inch+to+ml
-        $CF = round(16.3870640, $rounding);
+        $CF = round74(16.3870640, $rounding);
 		if($fullname==0) {
             $retval[0] = array("",1,$unitabbr["Inch"],$CF,$unitabbr["Millimeter"]);
 			$retval[0][0] = conversionUnits2ScreenReader2($retval[0][1],$retval[0][2],3,$retval[0][3],$retval[0][4],1,$sign,$tick);
@@ -2461,7 +2462,7 @@ function conversionVolume2() {
         #region Metric to American Conversion
 
         // 61.0237441 in^3  https://www.wolframalpha.com/input/?i=convert+1+liter+to+cubic+feet
-        $CF = round(61.0237441, $rounding);
+        $CF = round74(61.0237441, $rounding);
 		if($fullname==0) {
             $retval[0] = array("",1,$unitabbr["Liter"],$CF,$unitabbr["Inch"]);
 			$retval[0][0] = conversionUnits2ScreenReader2($retval[0][1],$retval[0][2],1,$retval[0][3],$retval[0][4],3,$sign,$tick);
@@ -2608,11 +2609,11 @@ function conversionWeight2() {
         #region American to Metric Conversion
 
         if($fullname==0) {
-			$retval[0] = array("",1,$unitabbr["ounce"],round(28.3495231, $rounding),$unitabbr["Gram"]);    // 0.0283495231 kg https://www.wolframalpha.com/input/?i=convert+1+ounce+to+gram
-            $retval[1] = array("",1,$unitabbr["pound"],round(0.453592370, $rounding),$unitabbr["Kilogram"]); // 0.453592370 kg https://www.wolframalpha.com/input/?i=convert+1+pound+to+gram
+			$retval[0] = array("",1,$unitabbr["ounce"],round74(28.3495231, $rounding),$unitabbr["Gram"]);    // 0.0283495231 kg https://www.wolframalpha.com/input/?i=convert+1+ounce+to+gram
+            $retval[1] = array("",1,$unitabbr["pound"],round74(0.453592370, $rounding),$unitabbr["Kilogram"]); // 0.453592370 kg https://www.wolframalpha.com/input/?i=convert+1+pound+to+gram
         } else {
-			$retval[0] = array("",1,$unit["ounce"],round(28.3495231, $rounding),$unit["Gram"]);
-            $retval[1] = array("",1,$unit["pound"],round(0.453592370, $rounding),$unit["Kilogram"]);
+			$retval[0] = array("",1,$unit["ounce"],round74(28.3495231, $rounding),$unit["Gram"]);
+            $retval[1] = array("",1,$unit["pound"],round74(0.453592370, $rounding),$unit["Kilogram"]);
         }
         for($i=0;$i<2;$i+=1){
             $retval[$i][0] = "{$retval[$i][1]} {$retval[$i][2]} $sign_tick {$retval[$i][3]} {$retval[$i][4]}";
@@ -2625,11 +2626,11 @@ function conversionWeight2() {
         #region Metric to American Conversion
 
 		if($fullname==0) {
-			$retval[0] = array("",1,$unitabbr["Gram"],round(0.035274, $rounding),$unitabbr["ounces"]);
-            $retval[1] = array("",1,$unitabbr["Kilogram"],round(2.20462, $rounding),$unitabbr["pound"]);
+			$retval[0] = array("",1,$unitabbr["Gram"],round74(0.035274, $rounding),$unitabbr["ounces"]);
+            $retval[1] = array("",1,$unitabbr["Kilogram"],round74(2.20462, $rounding),$unitabbr["pound"]);
         } else {
-			$retval[0] = array("",1,$unit["Gram"],round(0.035274, $rounding),$unit["ounces"]);
-            $retval[1] = array("",1,$unit["Kilogram"],round(2.20462, $rounding),$unit["pound"]);
+			$retval[0] = array("",1,$unit["Gram"],round74(0.035274, $rounding),$unit["ounces"]);
+            $retval[1] = array("",1,$unit["Kilogram"],round74(2.20462, $rounding),$unit["pound"]);
         }
         for($i=0;$i<2;$i+=1){
             $retval[$i][0] = "{$retval[$i][1]} {$retval[$i][2]} $sign_tick {$retval[$i][3]} {$retval[$i][4]}";

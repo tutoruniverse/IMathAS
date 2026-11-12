@@ -42,6 +42,8 @@ class FunctionExpressionScorePart implements ScorePart
         }
         $requiretimes = getOptionVal($options, 'requiretimes', $multi, $partnum, 1);
 
+        $reltolerance = normalizeTolerance($reltolerance);
+        $abstolerance = normalizeTolerance($abstolerance);
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
 
         $ansformats = array_map('trim',explode(',',$answerformat));

@@ -46,6 +46,8 @@ class CalculatedScorePart implements ScorePart
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum, 1);
         }
 
+        $reltolerance = normalizeTolerance($reltolerance);
+        $abstolerance = normalizeTolerance($abstolerance);
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
         
         if ($multi) { $qn = ($qn+1)*1000+$partnum; }

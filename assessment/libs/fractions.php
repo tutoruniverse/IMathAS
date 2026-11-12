@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //Fraction operations library
 
 global $allowedmacros;
@@ -9,7 +10,7 @@ array_push($allowedmacros, "fractionrand", "fractiondiffdrands", "fractiondiffdr
 function fractionrand($d, $returnval = false) {
 	global $RND;
 	$goodnum = array('4'=>array(1,3), '6'=>array(1,5), '8'=>array(1,3,5,7), '10'=>array(1,3,7,9), '12'=>array(1,5,7,11));
-	$d = round($d);
+	$d = round74($d);
 	if ($d<1) {
 		echo "denominator must be larger than 1";
 		return "";
@@ -212,7 +213,7 @@ function fractionadd() {
 	}
 	$num = 0;
 	foreach ($fracs as $f) {
-		$num += round($commondenom/$f[1],0)*$f[0];
+		$num += round74($commondenom/$f[1],0)*$f[0];
 	}
 	return fractionreduce($num,$commondenom,$fracarr);
 }
@@ -242,9 +243,9 @@ function fractionsubtract() {
 	$num = 0;
 	foreach ($fracs as $i=>$f) {
 		if ($i==0) {
-			$num += round($commondenom/$f[1],0)*$f[0];
+			$num += round74($commondenom/$f[1],0)*$f[0];
 		} else {
-			$num -= round($commondenom/$f[1],0)*$f[0];
+			$num -= round74($commondenom/$f[1],0)*$f[0];
 		}
 	}
 	return fractionreduce($num,$commondenom,$fracarr);

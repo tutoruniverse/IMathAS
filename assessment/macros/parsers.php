@@ -300,6 +300,7 @@ function numfuncParseVarsDomain($variables, $domain, $varstoadd = []) {
    $variables  array
    $testpoints  2d array
    $flist string (function variables, comma separated) 
+   $fromto array of [min, max, isInteger] per variable, in $variables order
 */
 function numfuncGenerateTestpoints($variables, $domain = '') {
 
@@ -342,7 +343,7 @@ function numfuncGenerateTestpoints($variables, $domain = '') {
             $tps[19][$j] = $fromto[$j][1] - $w * rand(1, 499) / 10000.0;
         }
     }
-    return [$variables, $tps, $flist];
+    return [$variables, $tps, $flist, $fromto];
 }
 
 /* do any necessary rewrite of expression (not including equation rewrite)

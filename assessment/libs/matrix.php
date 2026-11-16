@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../php74compat.php';
 require_once __DIR__ . '/../round74.php';
 //Matrix functions.  Version 1.5, Dec, 2017
 //
@@ -149,8 +148,8 @@ function matrixdisplaytable() {
     $m = $args[0];
 
     // counts
-    $rows = count74($m);
-    $cols = count74($m[0]);
+    $rows = count($m);
+    $cols = count($m[0]);
 
     if (!isMatrix($m)) {
         if (!empty($GLOBALS['inQuestionTesting'])) { echo 'error: matrixdisplaytable input not a valid matrix'; }
@@ -166,8 +165,7 @@ function matrixdisplaytable() {
 
     //displayASCII
     if(isset($args[2])) {
-        // PHP 7.4 compared a non-numeric string ('', "no") as 0 here, so it meant no ticks.
-        if(num74($args[2])==0) { $ticks = ""; } else { $ticks = "`";}
+        if($args[2]==0) { $ticks = ""; } else { $ticks = "`";}
     }
     else { $ticks = ""; }
 

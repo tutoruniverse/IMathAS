@@ -166,7 +166,8 @@ function matrixdisplaytable() {
 
     //displayASCII
     if(isset($args[2])) {
-        if($args[2]==0) { $ticks = ""; } else { $ticks = "`";}
+        // PHP 7.4 compared a non-numeric string ('', "no") as 0 here, so it meant no ticks.
+        if(num74($args[2])==0) { $ticks = ""; } else { $ticks = "`";}
     }
     else { $ticks = ""; }
 

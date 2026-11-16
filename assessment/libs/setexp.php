@@ -388,10 +388,11 @@ function setexpequals($exp1,$exp2,$vars,$contents=[],$universe=[]){
     }
     $eval1 = setexpPostfixEvaluate($exp1,$vardict,$universe);
     $eval2 = setexpPostfixEvaluate($exp2,$vardict,$universe);
-    if(count(array_diff($eval1,$eval2))>0){
+    // PHP 7.4: array_diff() on a FALSE evaluation gave NULL and count(NULL) 0, so the check passed.
+    if(is_array($eval1) && is_array($eval2) && count(array_diff($eval1,$eval2))>0){
         return FALSE;
     }
-    if(count(array_diff($eval2,$eval1))>0){
+    if(is_array($eval1) && is_array($eval2) && count(array_diff($eval2,$eval1))>0){
         return FALSE;
     }
     return TRUE;
@@ -445,7 +446,8 @@ function setexpsubset($exp1,$exp2,$vars,$contents=[],$universe=[]){
     }
     $eval1 = setexpPostfixEvaluate($exp1,$vardict,$universe);
     $eval2 = setexpPostfixEvaluate($exp2,$vardict,$universe);
-    if(count(array_diff($eval1,$eval2))>0){
+    // PHP 7.4: array_diff() on a FALSE evaluation gave NULL and count(NULL) 0, so the check passed.
+    if(is_array($eval1) && is_array($eval2) && count(array_diff($eval1,$eval2))>0){
         return FALSE;
     }
     return TRUE;

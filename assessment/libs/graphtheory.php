@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php74compat.php';
 
 // PHP 7.4 accepted a number as $op (e.g. graphcircle($n, 1, $ops)): every $op['key'] read gave null and
 // every write was ignored with a warning. PHP 8 throws on the write. This object behaves like 7.4 did.
@@ -1048,8 +1049,8 @@ function graphspringlayout($g,$op=array()) {
 //g[i][j] &gt; 0 if vertexes i and j are connected
 function graphcirclelayout($g,$op=array()) {
 	$op = graphscalaroptions74($op);
-	$n = count($g[0]);
-	$dtheta = 2*M_PI/$n;
+	$n = count74($g[0]);
+	$dtheta = div74(2*M_PI,$n);
 	for ($i = 0; $i<$n; $i++) {
 		$pos[$i][0] = 10*cos($dtheta*$i);
 		$pos[$i][1] = 10*sin($dtheta*$i);
@@ -1240,11 +1241,11 @@ function graphdrawit($pos,$g,$op) {
 	if (!isset($op['width'])) {$op['width'] = 360;}
 	if (!isset($op['height'])) {$op['height'] = 300;}
 	if (!isset($op['weightoffset'])) { $op['weightoffset'] = .5; }
-    if (isset($op['labels']) && is_array($op['labels']) && count($op['labels']) < count($g)) {
+    if (isset($op['labels']) && is_array($op['labels']) && count($op['labels']) < count74($g)) {
         echo "insufficient labels for all vertices";
         $op['labels'] = "letters";
     }
-	$n = count($pos);
+	$n = count74($pos);
 	if (!isset($op['xmin'])) {
 		$pxmin = 10000; $pxmax = -10000; $pymin = 10000; $pymax = -10000;
 		for ($i=0; $i<$n; $i++) {

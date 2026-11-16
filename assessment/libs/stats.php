@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php74compat.php';
 require_once __DIR__ . '/../round74.php';
 //A library of Stats functions.  Version 1.10, Nov 17, 2017
 
@@ -92,7 +93,7 @@ function variance($a,$w=null) {
 	$v = 0;
 	$mean = mean($a,$w);
 	foreach ($a as $i=>$x) {
-		$v += pow($x-$mean,2) * ($useW ? $w[$i] : 1);
+		$v += pow(num74($x)-$mean,2) * ($useW ? $w[$i] : 1);
 	}
 	return ($v/(($useW ? array_sum($w) : count($a))-1));
 }

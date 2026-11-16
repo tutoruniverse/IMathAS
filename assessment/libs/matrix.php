@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php74compat.php';
 require_once __DIR__ . '/../round74.php';
 //Matrix functions.  Version 1.5, Dec, 2017
 //
@@ -148,8 +149,8 @@ function matrixdisplaytable() {
     $m = $args[0];
 
     // counts
-    $rows = count($m);
-    $cols = count($m[0]);
+    $rows = count74($m);
+    $cols = count74($m[0]);
 
     if (!isMatrix($m)) {
         if (!empty($GLOBALS['inQuestionTesting'])) { echo 'error: matrixdisplaytable input not a valid matrix'; }

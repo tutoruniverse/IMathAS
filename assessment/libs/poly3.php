@@ -735,7 +735,8 @@ function longdivisionpoly3($dividend, $divisor, $variable="x", $IsFraction=1, $d
 	for ($i = $quotientposition; $i>=0; $i--) {
 		$index = $quotientposition-$i;
 		$quotientPower = NULL;
-		if(array_key_exists(1,$TableResults[$index])) {
+		// PHP 7.4: array_key_exists() on a missing (null) row gave NULL, so the row was skipped.
+		if(is_array($TableResults[$index] ?? null) && array_key_exists(1,$TableResults[$index])) {
 			if(array_key_exists(0,$TableResults[$index][1])) {
 				$quotientPower = $TableResults[$index][1][0];
 			}

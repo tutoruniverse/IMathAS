@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php74compat.php';
 require_once __DIR__ . '/../round74.php';
 //Fraction operations library
 
@@ -213,7 +214,7 @@ function fractionadd() {
 	}
 	$num = 0;
 	foreach ($fracs as $f) {
-		$num += round74($commondenom/$f[1],0)*$f[0];
+		$num += round74(div74($commondenom,$f[1]),0)*$f[0];
 	}
 	return fractionreduce($num,$commondenom,$fracarr);
 }
@@ -243,7 +244,7 @@ function fractionsubtract() {
 	$num = 0;
 	foreach ($fracs as $i=>$f) {
 		if ($i==0) {
-			$num += round74($commondenom/$f[1],0)*$f[0];
+			$num += round74(div74($commondenom,$f[1]),0)*$f[0];
 		} else {
 			$num -= round74($commondenom/$f[1],0)*$f[0];
 		}

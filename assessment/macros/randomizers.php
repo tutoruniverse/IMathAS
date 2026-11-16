@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php74compat.php';
 require_once __DIR__ . '/../round74.php';
 
 // core randomizers macros
@@ -194,7 +195,7 @@ function diffrandsfrom($lst, $n, $ord = 'def') {
     if (!is_array($lst)) {
         $lst = listtoarray($lst);
     }
-    $n = floor($n);
+    $n = floor(num74($n));
     if ($n <= 0) {
         echo "diffrandsfrom: need n &gt; 0";
     }

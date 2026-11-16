@@ -2,6 +2,7 @@
 
 namespace IMathAS\assess2\questions;
 
+require_once __DIR__ . '/../../assessment/php74compat.php';
 require_once __DIR__ . '/answerboxes/AnswerBoxParams.php';
 require_once __DIR__ . '/answerboxes/AnswerBoxFactory.php';
 require_once __DIR__ . '/models/Question.php';
@@ -632,7 +633,7 @@ class QuestionHtmlGenerator
                     }
                     
                     if ($anstype === 'choices') {
-                        $qanskey = array_search($jsParams[$qnRef]['livepoll_ans'], $jsParams[$qnRef]['livepoll_randkeys']);
+                        $qanskey = array_search(\num74($jsParams[$qnRef]['livepoll_ans']), $jsParams[$qnRef]['livepoll_randkeys']);
                         $displayedAnswersForParts[$atIdx] = chr(65+$qanskey) . ': ' . $displayedAnswersForParts[$atIdx];    
                     }
                 }
@@ -736,7 +737,7 @@ class QuestionHtmlGenerator
                 }
 
                 if ($quesData['qtype'] == 'choices') {
-                    $qanskey = array_search($jsParams[$qnRef]['livepoll_ans'], $jsParams[$qnRef]['livepoll_randkeys']);
+                    $qanskey = array_search(\num74($jsParams[$qnRef]['livepoll_ans']), $jsParams[$qnRef]['livepoll_randkeys']);
                     $displayedAnswersForParts[0] = chr(65+$qanskey) . ': ' . $displayedAnswersForParts[0];
                 }
             }

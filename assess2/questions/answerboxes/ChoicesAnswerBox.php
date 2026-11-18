@@ -46,9 +46,12 @@ class ChoicesAnswerBox implements AnswerBox
         foreach ($optionkeys as $optionkey) {
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum);
         }
-        // MathGPT shows choices as a radio list. A "select" part becomes inline radios instead: a block list would
-        // break the sentence it sits in, and the FE turns the inline radios into a dropdown.
-        $displayformat = getOptionVal($options, 'displayformat', $multi, $partnum) === 'select' ? 'inline' : '';
+        // MathGPT shows choices as a radio list. When the request opts in (problems.php "inline_select"), a "select"
+        // part becomes inline radios instead: a block list would break the sentence it sits in, and the FE turns the
+        // inline radios into a dropdown.
+        $isInlineSelect = !empty($GLOBALS['mathgpt_inline_select'])
+            && getOptionVal($options, 'displayformat', $multi, $partnum) === 'select';
+        $displayformat = $isInlineSelect ? 'inline' : '';
         $questions = getOptionVal($options, 'questions', $multi, $partnum, 2);
 
         if (!is_array($questions)) {

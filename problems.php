@@ -329,6 +329,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stype = isset($data["stype"]) ? $data["stype"] : "template";
     $convertToLatex = isset($data['convert_to_latex']) ? $data['convert_to_latex'] : false;
     $showplot = isset($data["showplot"]) ? $data["showplot"] : "";
+    // Opt-in: render choices parts with displayformat "select" as inline radios. Every MathGPT env shares this
+    // service, so only an API that also ships the matching FE asks for it.
+    $GLOBALS['mathgpt_inline_select'] = !empty($data['inline_select']);
     if (isset($data['nonce_secret']) && is_string($data['nonce_secret']) && $data['nonce_secret'] !== '') {
         $GLOBALS['csv_nonce_secret'] = $data['nonce_secret'];
     }

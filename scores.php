@@ -6,6 +6,10 @@ function getPost($key, $default = "") {
     return $_POST[$key] ?? $default;
 }
 
+// PHP 8: an unset graphdisp warns on every plot-loop iteration in graph.php (memory exhaustion).
+// Unset compared == 0 as true on PHP 7.4, so 0 keeps the 7.4 result.
+$_SESSION['graphdisp'] = $_SESSION['graphdisp'] ?? 0;
+
 $a2 = new AssessStandalone($DBH);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $seed = getPost('seed');

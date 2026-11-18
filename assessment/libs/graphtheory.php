@@ -1,4 +1,17 @@
 <?php
+
+// PHP 7.4 accepted a number as $op (e.g. graphcircle($n, 1, $ops)): every $op['key'] read gave null and
+// every write was ignored with a warning. PHP 8 throws on the write. This object behaves like 7.4 did.
+class GraphScalarOptions74 implements ArrayAccess {
+	public function offsetExists($k): bool { return false; }
+	#[\ReturnTypeWillChange]
+	public function offsetGet($k) { return null; }
+	public function offsetSet($k, $v): void {}
+	public function offsetUnset($k): void {}
+}
+function graphscalaroptions74($op) {
+	return (is_int($op) || is_float($op) || $op === true) ? new GraphScalarOptions74() : $op;
+}
 //A library of graph theory and scheduling functions.  Version 1.1, April 3, 2012
 //
 //Most graphing functions in this library use an options array.  Here are the
@@ -30,6 +43,7 @@ array_push($allowedmacros,"graphspringlayout","graphcirclelayout","graphgridlayo
 //connected around circle and between circles
 //returns array(pic,g)
 function graphcircleladder($n,$m,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$tot = $n*$m;
 	$dtheta = 2*M_PI/$n;
 	$dr = 10/$m;
@@ -66,6 +80,7 @@ function graphcircleladder($n,$m,$op=array()) {
 //vertices of inner polygon touches midpoint of outer polygon
 //returns array(pic,g)
 function graphnestedpolygons($n,$m,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$tot = $n*$m;
 	$dtheta = M_PI/$n;
 	$g = graphemptygraph($tot);
@@ -125,6 +140,7 @@ function graphnestedpolygons($n,$m,$op=array()) {
 //with n vertices
 //returns array(pic,g)
 function graphcircle($n,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$g = graphemptygraph($n);
 	for ($i = 0; $i<$n; $i++) {
 		for ($j=$i+1;$j<$n; $j++) {
@@ -141,6 +157,7 @@ function graphcircle($n,$op=array()) {
 //connected to the center vertex
 //returns array(pic,g)
 function graphcircledstar($n,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$g = graphemptygraph($n+1);
 	for ($i = 1; $i<=$n; $i++) {
 		$g[0][$i] = 1;
@@ -160,6 +177,7 @@ function graphcircledstar($n,$op=array()) {
 //with n vertices in the first column, m in the second
 //returns array(pic,g)
 function graphbipartite($n,$m,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$tot = $n+$m;
 	$g = graphemptygraph($tot);
 	$dv = 10/($n+1);
@@ -186,6 +204,7 @@ function graphbipartite($n,$m,$op=array()) {
 //draws a n by m grid of vertices.
 //returns array(pic,g)
 function graphgrid($n,$m,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$tot = $n*$m;
 	$g = graphemptygraph($tot);
 	for ($i = 0; $i<$tot; $i++) {
@@ -205,6 +224,7 @@ function graphgrid($n,$m,$op=array()) {
 //graphrandom(n,[options])
 //draws a randomly spring laid out graph with n vertices.
 function graphrandom($n,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$g = graphemptygraph($n);
 	for ($i = 0; $i<$n; $i++) {
 		for ($j=$i+1;$j<$n; $j++) {
@@ -236,6 +256,7 @@ function graphemptygraph($n) {
 //dist[i] is the shortest dist to end, and
 //next[i] is the vertex next closest to the end
 function graphdijkstra($g,$dest=-1,$op=[]) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$dist = array();
 	$next = array();
@@ -451,6 +472,7 @@ function graphsortededges($g) {
 //returns 0 if all edges covered with no dup
 //returns # of dups if covers all edges with duplications
 function graphsequenceeuleredgedups($g,$op,$seq) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
     $seq = trim($seq);
 	if (isset($op['labels']) && $op['labels'] != 'letters') {
@@ -506,6 +528,7 @@ function graphsequenceeuleredgedups($g,$op,$seq) {
 //a hamiltonian circuit on graph g.  options op is needed
 //for labels
 function graphsequenceishamiltonian($g,$op,$seq) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	if ($op['labels'] != 'letters') {
 		$lbl = $op['labels'];
@@ -554,6 +577,7 @@ function graphsequenceishamiltonian($g,$op,$seq) {
 //length of the path on graph g
 //options needed for vertex labels
 function graphgetpathlength($g,$op,$seq) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	if ($op['labels'] != 'letters') {
 		$lbl = $op['labels'];
@@ -588,6 +612,7 @@ function graphgetpathlength($g,$op,$seq) {
 //type=0 returns labeledpath, like ABCD
 //type=1 returns array of vertex indices
 function graphshortestpath($g,$op,$start,$end,$type=0) {
+	$op = graphscalaroptions74($op);
 	if ($op['labels'] != 'letters') {
 		$lbl = $op['labels'];
 	} else {
@@ -691,6 +716,7 @@ function graphcircuittoarray($g,$start=0) {
 //need op['labels'] set
 //return (goodedges,badedges)
 function graphgetedges($g,$op) {
+	$op = graphscalaroptions74($op);
 	if ($op['labels'] != 'letters') {
 		$lbl = $op['labels'];
 	} else {
@@ -728,6 +754,7 @@ function graphgetedges($g,$op) {
 //gets array of edges in a graph
 //returns array of edges; each edge is array(startvert,endvert)
 function graphgetedgesarray($g,$op=[]) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$good = array();
 	for ($i=0; $i<$n; $i++) {
@@ -768,6 +795,7 @@ function graphgettotalcost($g) {
 //outputs list where list[i] is array of vertices
 //  that lead to i.  Only intended for digraphs.
 function graphadjacencytoprereqs($g,$op) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$list = array();
 	for ($i=0; $i<$n; $i++) {
@@ -791,6 +819,7 @@ function graphadjacencytoprereqs($g,$op) {
 //the tasks that must be completed first.
 //use $op['labels'] to provide array of labels, or ='letters' to use letters
 function graphprereqtable($g,$w,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$prereq = graphadjacencytoprereqs($g,$op);
 	if ($op['labels'] != 'letters') {
 		$lbl = $op['labels'];
@@ -817,6 +846,7 @@ function graphprereqtable($g,$w,$op=array()) {
 //outputs list where list[i] is array of vertices
 //  that i leads to
 function graphadjacencytoincidence($g,$op) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$list = array();
 	for ($i=0; $i<$n; $i++) {
@@ -848,6 +878,7 @@ function graphadjacencytoincidence($g,$op) {
 //  that i leads to
 //outputs matrix g[i][j]=1 if edge from i to j
 function graphincidencetoadjacency($list,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($list);
 	$g = graphemptygraph($n);
 	for ($i=0; $i<$n; $i++) {
@@ -911,6 +942,7 @@ function graphisconnected($g) {
 //graphmaketable(g,[op])
 //makes a weights table based on a given graph
 function graphmaketable($g,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$lettersarray = array('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z');
 	if (!isset($op['labels']) || !is_array($op['labels'])) {
@@ -946,6 +978,7 @@ function graphmaketable($g,$op=array()) {
 //g[i][j] &gt; 0 if vertices i and j are connected
 //not a digraph
 function graphspringlayout($g,$op=array()) {
+	$op = graphscalaroptions74($op);
 	global $RND;
 	$iterations = 40;
 	$t = 2;
@@ -1014,6 +1047,7 @@ function graphspringlayout($g,$op=array()) {
 //g is a 2-dimensional upper triangular matrix
 //g[i][j] &gt; 0 if vertexes i and j are connected
 function graphcirclelayout($g,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$dtheta = 2*M_PI/$n;
 	for ($i = 0; $i<$n; $i++) {
@@ -1033,6 +1067,7 @@ function graphcirclelayout($g,$op=array()) {
 //g is a 2-dimensional upper triangular matrix
 //g[i][j] &gt; 0 if vertexes i and j are connected
 function graphcircledstarlayout($g,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0])-1;
 	$dtheta = 2*M_PI/$n;
 	$pos[0][0] = 0;
@@ -1056,6 +1091,7 @@ function graphcircledstarlayout($g,$op=array()) {
 //g is a 2-dimensional matrix
 //g[i][j] &gt; 0 if vertexes i and j are connected
 function graphgridlayout($g,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	if (isset($op['gridv'])) {
 		$sn = $op['gridv'];
@@ -1079,6 +1115,7 @@ function graphgridlayout($g,$op=array()) {
 //g is a 2-dimensional matrix
 //g[i][j] &gt; 0 if vertexes i and j are connected
 function graphpathlayout($g,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	list($dist,$next) = graphbackflow($g);
 	$maxh = max($dist);
@@ -1102,6 +1139,7 @@ function graphpathlayout($g,$op=array()) {
 
 //internal function, not to be used directly
 function graphprocessoptions($g,$op) {
+	$op = graphscalaroptions74($op);
 	global $RND;
 	$n = count($g[0]);
 
@@ -1198,6 +1236,7 @@ function graphprocessoptions($g,$op) {
 //can get called with graph matrix g, g[i][j] if vertex i has edge to j
 //pos is array where pos[i] = array(x,y) positions for vertices
 function graphdrawit($pos,$g,$op) {
+	$op = graphscalaroptions74($op);
 	if (!isset($op['width'])) {$op['width'] = 360;}
 	if (!isset($op['height'])) {$op['height'] = 300;}
 	if (!isset($op['weightoffset'])) { $op['weightoffset'] = .5; }
@@ -1321,6 +1360,7 @@ function graphcomparecircuits($a,$b) {
 //  value
 //if options['labels'] are used, "start" and "end" will be added automatically
 function graphrandomgridschedule($n,$m,$p,$op=array()) {
+	$op = graphscalaroptions74($op);
 	global $RND;
 	$op['digraph'] = true;
 	$lettersarray = array('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z');
@@ -1558,6 +1598,7 @@ function graphbackflow($g,$w=array()) {
 //last task on the priority list and have task time 0.
 //output is out[processor] = array of array(task, timestarted, tasklength)
 function graphlistprocessing($g,$t,$L,$p,$op=array()) {
+	$op = graphscalaroptions74($op);
 	//print_r($L);
 	//print_r($t);
 	$out = array();
@@ -1733,6 +1774,7 @@ function graphdrawschedule($sc,$w=600,$h=-1,$names=array()) {
 //pos is array where L[task number] = array(column,row (counting up from bottom))
 //use $options['labels'] to specify labels, or T1 - TN will be used
 function graphschedulelayout($g,$w,$pos,$op=array()) {
+	$op = graphscalaroptions74($op);
 	$n = count($g[0]);
 	$op['digraph'] = true;
 	if (!isset($op['width'])) {

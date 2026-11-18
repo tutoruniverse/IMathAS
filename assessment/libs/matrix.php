@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //Matrix functions.  Version 1.5, Dec, 2017
 //
 //Contributors:  David Lippman, Larry Green
@@ -1108,7 +1109,7 @@ function matrixround($m,$d) {
 	$r = count($m);
 	for ($i=0; $i<$r; $i++) {
 		for ($j=0; $j<$c; $j++) {
-			$m[$i][$j] = round($m[$i][$j], $d);
+			$m[$i][$j] = round74($m[$i][$j], $d);
 		}
 	}
 	return $m;

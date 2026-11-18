@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 // core randomizers macros
 
@@ -50,7 +51,7 @@ function rrand($min, $max, $p = 0) {
     list($min, $max) = checkMinMax($min, $max, false, 'rrand');
 
     $rn = max(0, getRoundNumber($p), getRoundNumber($min));
-    $out = round($min + $p * $GLOBALS['RND']->rand(0, floor(($max - $min) / $p + 1e-12)), $rn);
+    $out = round74($min + $p * $GLOBALS['RND']->rand(0, floor(($max - $min) / $p + 1e-12)), $rn);
     if ($rn == 0) {
         $out = (int) $out;
     }
@@ -108,7 +109,7 @@ function rrands($min, $max, $p = 0, $n = 0, $ord = 'def') {
     $r = [];
     $maxi = floor(($max - $min) / $p + 1e-12);
     for ($i = 0; $i < $n; $i++) {
-        $r[$i] = round($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
+        $r[$i] = round74($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
         if ($rn == 0) {
             $r[$i] = (int) $r[$i];
         }
@@ -245,7 +246,7 @@ function nonzerorrand($min, $max, $p = 0) {
     $rn = max(0, getRoundNumber($p), getRoundNumber($min));
     $cnt = 0;
     do {
-        $ret = round($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
+        $ret = round74($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
         $cnt++;
         if ($cnt > 1000) {
             echo "Error in nonzerorrand - not able to find valid value";
@@ -321,7 +322,7 @@ function nonzerorrands($min, $max, $p = 0, $n = 0, $ord = 'def') {
     for ($i = 0; $i < $n; $i++) {
         $cnt = 0;
         do {
-            $r[$i] = round($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
+            $r[$i] = round74($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
             if ($rn == 0) {
                 $r[$i] = (int) $r[$i];
             }
@@ -430,7 +431,7 @@ function diffrrands($min, $max, $p = 0, $n = 0, $ord = 'def', $nonzero = false) 
         $out = array();
         $cnt = 0;
         while (count($out) < $n) {
-            $x = round($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
+            $x = round74($min + $p * $GLOBALS['RND']->rand(0, $maxi), $rn);
             if ($rn == 0) {
                 $x = (int) $x;
             }
@@ -448,7 +449,7 @@ function diffrrands($min, $max, $p = 0, $n = 0, $ord = 'def', $nonzero = false) 
         $r = range(0, $maxi);
         if ($nonzero) {
             if ($min <= 0 && $max >= 0) {
-                array_splice($r, -1 * round($min / $p), 1);
+                array_splice($r, -1 * round74($min / $p), 1);
             }
         }
         while ($n > count($r)) {
@@ -458,7 +459,7 @@ function diffrrands($min, $max, $p = 0, $n = 0, $ord = 'def', $nonzero = false) 
         $GLOBALS['RND']->shuffle($r);
         $r = array_slice($r, 0, $n);
         for ($i = 0; $i < $n; $i++) {
-            $r[$i] = round($min + $p * $r[$i], $rn);
+            $r[$i] = round74($min + $p * $r[$i], $rn);
             if ($rn == 0) {
                 $r[$i] = (int) $r[$i];
             }

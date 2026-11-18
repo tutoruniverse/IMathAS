@@ -42,6 +42,8 @@ class FunctionExpressionScorePart implements ScorePart
         }
         $requiretimes = getOptionVal($options, 'requiretimes', $multi, $partnum, 1);
 
+        $reltolerance = normalizeTolerance($reltolerance);
+        $abstolerance = normalizeTolerance($abstolerance);
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
 
         $ansformats = array_map('trim',explode(',',$answerformat));
@@ -66,7 +68,7 @@ class FunctionExpressionScorePart implements ScorePart
         $correct = true;
 
         if (empty($variables)) { $variables = "x";}
-        list($variables, $tps, $flist) = numfuncGenerateTestpoints($variables, $domain);
+        list($variables, $tps, $flist, $fromto) = numfuncGenerateTestpoints($variables, $domain);
 
         $givenans = numfuncPrepForEval($givenans, $variables);
         $answer = numfuncPrepForEval($answer, $variables);
@@ -134,6 +136,7 @@ class FunctionExpressionScorePart implements ScorePart
         }
 
         $givenanslistvals = array();
+        $givenanslistfuncs = array();
         $givenanslistineq = array();
         $givenanslistnormalized = array();
         $givenansused = array();
@@ -174,6 +177,7 @@ class FunctionExpressionScorePart implements ScorePart
                 $givenansvals[] = $givenansfunc->evaluateQuiet($varvals);
             }
             $givenanslistvals[] = $givenansvals;
+            $givenanslistfuncs[] = $givenansfunc;
 
             if (isset($givenInequality)) {
                 $givenanslistineq[] = $givenInequality;
@@ -260,9 +264,37 @@ class FunctionExpressionScorePart implements ScorePart
                     $realanstmp[] = $realans;
                 }
 
+                // When $answer is NaN at every test point, nothing gets compared and any answer would score full
+                // credit. Look for other points where $answer is defined, and compare there instead.
+                $fallbackpoints = [];
+                $fallbackrealvals = [];
+                if (count(array_filter($realanstmp, 'isNaN')) == count($realanstmp) && $flist === '') {
+                    $fallbackpoints = self::findDefinedTestpoints($answerfunc, $variables, $fromto);
+                    $fallbackrealvals = self::evaluateAt($answerfunc, $variables, $fallbackpoints);
+                }
+
                 foreach ($givenanslistvals as $gaidx => $givenansvals) {
                     if (isset($givenansused[$gaidx])) {
                         continue; // already used this givenans
+                    }
+
+                    $onfallbackpoints = false;
+                    $realvals = $realanstmp;
+                    if (count($fallbackpoints) > 0) {
+                        $fallbackgivenvals = self::evaluateAt($givenanslistfuncs[$gaidx], $variables, $fallbackpoints);
+                        $cntbothdefined = 0;
+                        foreach ($fallbackrealvals as $i => $v) {
+                            if (!isNaN($fallbackgivenvals[$i])) {
+                                $cntbothdefined++;
+                            }
+                        }
+                        // Too few shared points to judge: keep the regular points, where nothing is compared and
+                        // the answer is accepted as before. A rejection must always rest on a real value mismatch.
+                        if ($cntbothdefined >= 3) {
+                            $onfallbackpoints = true;
+                            $realvals = $fallbackrealvals;
+                            $givenansvals = $fallbackgivenvals;
+                        }
                     }
 
                     $givenansnormalized = $givenanslistnormalized[$gaidx] ?? '';
@@ -283,7 +315,7 @@ class FunctionExpressionScorePart implements ScorePart
                     $rollingreali = 0;
                     $rollingtotcnt = 0;
 
-                    foreach ($realanstmp as $i=>$realans) {
+                    foreach ($realvals as $i=>$realans) {
                         //echo "$answer, real: $realans, my: {$givenansvals[$i]},rel: ". (abs(10^16*$givenansvals[$i]-10^16*$realans))  ."<br/>";
                         if (isNaN($realans)) {
                             $cntnan++; continue;
@@ -437,7 +469,9 @@ class FunctionExpressionScorePart implements ScorePart
                     if ($cntnan==20) {
                         echo _('Debug info: $answer function evaled to Not-a-number at all test points.  Check $domain');
                     }
-                    if ($stunan>1) { //if more than 1 student NaN response
+                    // On fallback points a student NaN is not held against the answer: it may be an equivalent
+                    // form with a smaller domain, and these points were picked only because $answer is defined there.
+                    if ($stunan>1 && !$onfallbackpoints) { //if more than 1 student NaN response
                         $correct = false; continue;
                     }
 
@@ -538,6 +572,82 @@ class FunctionExpressionScorePart implements ScorePart
 
         $scorePartResult->setRawScore(0);
         return $scorePartResult;
+    }
+
+    /**
+     * Find up to 20 points where $func is defined (not NaN), for when every regular test point gave NaN.
+     * Samples uniformly inside the domain first, then inside the domain widened on each side by 1, 4 and 16 times
+     * its width, and returns the points of the first pass that finds any. Widening step by step keeps the points
+     * close to the domain: far away, one dominant term can hide a wrong lower-order term inside the tolerance.
+     * A variable whose domain is a single value keeps that value.
+     *
+     * @param object $func       parsed function from parseMathQuiet()
+     * @param array  $variables  variable names, as returned by numfuncGenerateTestpoints()
+     * @param array  $fromto     [min, max, isInteger] per variable, as returned by numfuncGenerateTestpoints()
+     * @return array points, each a list of values in $variables order; empty if none found
+     *
+     * Example: for sqrt(x-6) with domain 0,5 the first pass finds nothing and the second (-5..10) returns
+     * points with x > 6.
+     */
+    private static function findDefinedTestpoints($func, array $variables, array $fromto): array
+    {
+        $maxtriesperpass = 1000;
+        $passes = [];
+        foreach ([0, 1, 4, 16] as $widen) {
+            $passes[] = array_map(function ($ft) use ($widen) {
+                $w = ($ft[1] - $ft[0]) * $widen;
+                return [$ft[0] - $w, $ft[1] + $w, $ft[2]];
+            }, $fromto);
+        }
+        foreach ($passes as $bounds) {
+            $points = [];
+            for ($try = 0; $try < $maxtriesperpass && count($points) < 20; $try++) {
+                $point = [];
+                foreach ($bounds as $ft) {
+                    if (!empty($ft[2])) {
+                        $point[] = rand((int)ceil($ft[0]), (int)floor($ft[1]));
+                    } else {
+                        $point[] = $ft[0] + ($ft[1] - $ft[0]) * rand(0, 1000000) / 1000000;
+                    }
+                }
+                if (!isNaN(self::evaluateAt($func, $variables, [$point])[0])) {
+                    $points[] = $point;
+                }
+            }
+            if (count($points) > 0) {
+                return $points;
+            }
+        }
+        return [];
+    }
+
+    /**
+     * Evaluate $func at each point.
+     *
+     * @param object $func       parsed function from parseMathQuiet()
+     * @param array  $variables  variable names, in the same order as the values of each point
+     * @param array  $points     list of points, each a list of values
+     * @return array one value per point (NaN, INF or a complex pair are passed through as evaluateQuiet() returns them)
+     *
+     * Example: evaluateAt(parseMathQuiet('x+y', 'x,y'), ['x', 'y'], [[1, 2]]) returns [3]
+     */
+    private static function evaluateAt($func, array $variables, array $points): array
+    {
+        $vals = [];
+        $oblevel = ob_get_level();
+        foreach ($points as $point) {
+            $varvals = [];
+            foreach ($variables as $j => $v) {
+                $varvals[$v] = $point[$j];
+            }
+            $vals[] = $func->evaluateQuiet($varvals);
+            // evaluateQuiet() leaves its output buffer open when evaluate() throws (mathparser.php). Close the
+            // ones left here, or the thousands of evaluations of findDefinedTestpoints() exhaust memory.
+            while (ob_get_level() > $oblevel) {
+                ob_end_clean();
+            }
+        }
+        return $vals;
     }
 }
 

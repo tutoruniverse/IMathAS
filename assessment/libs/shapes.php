@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 # Library name: shapes
 # Functions for creating asciisvg for common shapes.  Version 1.  December 2020
@@ -2367,7 +2368,7 @@ function draw_polygon() {
   }
   //number of sides
   $n = $argsArray[0][0];
-  if (!is_numeric($n) || abs($n-round($n))>1E-9 || $n < 3 || $n > 50) {
+  if (!is_numeric($n) || abs($n-round74($n))>1E-9 || $n < 3 || $n > 50) {
     echo 'Eek! First argument must be a whole number of sides greater than 2 (maximum of 50).';
     return '';
   }
@@ -2541,7 +2542,7 @@ function draw_prismcubes() {
     }
     if ($in[0]=="cubes") {
       for ($i=1;$i<4;$i++) {
-        if ($in[$i]<1 || abs($in[$i]-round($in[$i]))>1E-9) {
+        if ($in[$i]<1 || abs($in[$i]-round74($in[$i]))>1E-9) {
           echo "Eek! Sides must be whole numbers greater than zero.";
           return '';
         }

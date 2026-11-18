@@ -210,6 +210,9 @@ class QuestionGenerator
     public function evalErrorHandler(int $errno, string $errstr, string $errfile,
                                      int $errline, array $errcontext = []): bool
     {
+        if (ErrorHandler::wasNoticeBeforePhp8($errno, $errstr)) {
+            return true; // a PHP 7.4 notice: ignored there, so ignored here
+        }
         if ($errstr == 'Trying to access array offset on value of type null') {
             $errstr = 'Trying to access array offset of undefined variable';
         }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //a collection of social choice routines
 //
 //Version 1.0 Sept 27, 2012
@@ -45,7 +46,7 @@ function apportion($pop, $seats, $method, $md = 0) {
 			} else if ($method=='adams') {
 				$chopped[$s] = ceil($p/$moddiv);
 			} else if ($method=='webster') {
-				$chopped[$s] = round($p/$moddiv);
+				$chopped[$s] = round74($p/$moddiv);
 			}
 		}
 		return $chopped;
@@ -173,7 +174,7 @@ function apportion_info($pop, $seats, $method) {
 	} else if ($method=='webster') {
 		$tolowerdown = array();
 		foreach ($quotas as $s=>$q) {
-			$luq[$s] = round($q);
+			$luq[$s] = round74($q);
 			//calculate divisor needed to lower to next whole value
 		}
 		$toadd = $seats - array_sum($luq);

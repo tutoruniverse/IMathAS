@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //Virtual Manipulatives
 //Functions for displaying and scoring virtual manipulatives.
 //
@@ -417,29 +418,29 @@ function vmdrawclock($hr,$min,$size=200) {
 	$svg = "setBorder(5);initPicture(-5,5,-5,5);fontsize=$fontsize;";
 	for ($i=0;$i<60;$i++) {
 		if ($i%5==0) { continue; }
-		$x1 = round(3.7*cos($i*M_PI/30),3);
-		$x2 = round(3.9*cos($i*M_PI/30),3);
-		$y1 = round(3.7*sin($i*M_PI/30),3);
-		$y2 = round(3.9*sin($i*M_PI/30),3);
+		$x1 = round74(3.7*cos($i*M_PI/30),3);
+		$x2 = round74(3.9*cos($i*M_PI/30),3);
+		$y1 = round74(3.7*sin($i*M_PI/30),3);
+		$y2 = round74(3.9*sin($i*M_PI/30),3);
 		$svg .= "line([$x1,$y1],[$x2,$y2]);";
 	}
 	$svg .= 'strokewidth=2;circle([0,0],5);';
 	for ($i=1;$i<13;$i++) {
-		$x1 = round(3.5*cos($i*M_PI/6),3);
-		$x2 = round(3.9*cos($i*M_PI/6),3);
-		$x3 = round(4.5*cos($i*M_PI/6),3);
-		$y1 = round(3.5*sin($i*M_PI/6),3);
-		$y2 = round(3.9*sin($i*M_PI/6),3);
-		$y3 = round(4.5*sin($i*M_PI/6),3);
+		$x1 = round74(3.5*cos($i*M_PI/6),3);
+		$x2 = round74(3.9*cos($i*M_PI/6),3);
+		$x3 = round74(4.5*cos($i*M_PI/6),3);
+		$y1 = round74(3.5*sin($i*M_PI/6),3);
+		$y2 = round74(3.9*sin($i*M_PI/6),3);
+		$y3 = round74(4.5*sin($i*M_PI/6),3);
 		$svg .= "line([$x1,$y1],[$x2,$y2]);";
 		$val = (14-$i)%12 + 1;
 		$svg .= "text([$x3,$y3],'$val');";
 	}
 
-	$x1 = round(2.4*cos((3-$hr-$min/60)/12*2*M_PI),3);
-	$x2 = round(3.3*cos((15-$min)/60*2*M_PI),3);
-	$y1 = round(2.4*sin((3-$hr-$min/60)/12*2*M_PI),3);
-	$y2 = round(3.3*sin((15-$min)/60*2*M_PI),3);
+	$x1 = round74(2.4*cos((3-$hr-$min/60)/12*2*M_PI),3);
+	$x2 = round74(3.3*cos((15-$min)/60*2*M_PI),3);
+	$y1 = round74(2.4*sin((3-$hr-$min/60)/12*2*M_PI),3);
+	$y2 = round74(3.3*sin((15-$min)/60*2*M_PI),3);
 	$svg .= "line([0,0],[$x1,$y1]);line([0,0],[$x2,$y2]);dot([0,0]);";
 	$alt = 'Analog clock with the short hand pointing ';
 	if ($min==0) {

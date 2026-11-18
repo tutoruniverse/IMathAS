@@ -371,15 +371,16 @@ class QuestionHtmlGenerator
             }
         }
 
+        // MathGPT generates in print format but keeps "select": ChoicesAnswerBox renders it as inline radios.
         if ($printFormat) {
             if (isset($displayformat)) {
                 if (is_array($displayformat)) {
                     foreach ($displayformat as $kidx => $iidx) {
-                        if ($iidx == 'select' || preg_match('/\dcolumn/', $iidx)) {
+                        if (preg_match('/\dcolumn/', $iidx)) {
                             unset($displayformat[$kidx]);
                         }
                     }
-                } else if ($displayformat == 'select' || preg_match('/\dcolumn/', $displayformat)) {
+                } else if (preg_match('/\dcolumn/', $displayformat)) {
                     unset($displayformat);
                 }
             }

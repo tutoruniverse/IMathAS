@@ -371,15 +371,17 @@ class QuestionHtmlGenerator
             }
         }
 
+        // MathGPT generates in print format; with "inline_select" it keeps "select" for ChoicesAnswerBox.
+        $_mathgptKeepsSelect = !empty($GLOBALS['mathgpt_inline_select']);
         if ($printFormat) {
             if (isset($displayformat)) {
                 if (is_array($displayformat)) {
                     foreach ($displayformat as $kidx => $iidx) {
-                        if ($iidx == 'select' || preg_match('/\dcolumn/', $iidx)) {
+                        if ((!$_mathgptKeepsSelect && $iidx == 'select') || preg_match('/\dcolumn/', $iidx)) {
                             unset($displayformat[$kidx]);
                         }
                     }
-                } else if ($displayformat == 'select' || preg_match('/\dcolumn/', $displayformat)) {
+                } else if ((!$_mathgptKeepsSelect && $displayformat == 'select') || preg_match('/\dcolumn/', $displayformat)) {
                     unset($displayformat);
                 }
             }

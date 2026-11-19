@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../../assessment/round74.php';
 
 /*
  * Row reduce a matrix specified by the array of values $A with $N rows
@@ -54,7 +55,7 @@ function matrix_scorer_rref($A, $N)
  */
 function matrix_scorer_roworder($A, $N)
 {
-    $rows = array_chunk($A, round(count($A)/$N));
+    $rows = array_chunk($A, round74(count($A)/$N));
 
     usort($rows, function($a,$b) {
         for ($i=0;$i<count($a);$i++) {

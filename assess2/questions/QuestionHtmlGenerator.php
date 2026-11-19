@@ -28,6 +28,26 @@ use IMathAS\assess2\questions\models\ShowAnswer;
 class QuestionHtmlGenerator
 {
     /**
+     * Value to look up in livepoll_randkeys, compared the way PHP 7.4 did.
+     *
+     * array_search() compares loosely. PHP 7.4 read a non-numeric string as its leading
+     * number (or 0) when comparing it with an int; PHP 8 compares the int as a string instead.
+     * So an answer of "1 or 2" matched key 1 and "" matched key 0 on 7.4, and nothing on 8.
+     *   php74ChoiceKey("1 or 2") === 1; php74ChoiceKey("") === 0; php74ChoiceKey(2) === 2
+     */
+    private static function php74ChoiceKey($answer)
+    {
+        // PHP 8 also accepts trailing whitespace ("4 ") as numeric; parse it below so both versions agree.
+        if (!is_string($answer) || (is_numeric($answer) && !preg_match('/\s$/', $answer))) {
+            return $answer;
+        }
+        if (!preg_match('/^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/', $answer, $m)) {
+            return 0;
+        }
+        return preg_match('/[.eE]/', $m[0]) ? (float) $m[0] : (int) $m[0];
+    }
+
+    /**
      * Allowed variable names used by question writers in eval'd question code
      * that need to be packaged up and passed to other methods or objects.
      */
@@ -632,7 +652,7 @@ class QuestionHtmlGenerator
                     }
                     
                     if ($anstype === 'choices') {
-                        $qanskey = array_search($jsParams[$qnRef]['livepoll_ans'], $jsParams[$qnRef]['livepoll_randkeys']);
+                        $qanskey = array_search(self::php74ChoiceKey($jsParams[$qnRef]['livepoll_ans']), $jsParams[$qnRef]['livepoll_randkeys']);
                         $displayedAnswersForParts[$atIdx] = chr(65+$qanskey) . ': ' . $displayedAnswersForParts[$atIdx];    
                     }
                 }
@@ -736,7 +756,7 @@ class QuestionHtmlGenerator
                 }
 
                 if ($quesData['qtype'] == 'choices') {
-                    $qanskey = array_search($jsParams[$qnRef]['livepoll_ans'], $jsParams[$qnRef]['livepoll_randkeys']);
+                    $qanskey = array_search(self::php74ChoiceKey($jsParams[$qnRef]['livepoll_ans']), $jsParams[$qnRef]['livepoll_randkeys']);
                     $displayedAnswersForParts[0] = chr(65+$qanskey) . ': ' . $displayedAnswersForParts[0];
                 }
             }

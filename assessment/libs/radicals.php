@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //A collection of functions for working with radicals
 //reduceradicalfrac3 added 10/7/24
 //Version 3 Nov 27 2017
@@ -19,7 +20,7 @@ function reduceradical($in,$root=2,$format="string") {
 		echo 'inputs to radicalfrac must be integers';
 		return;
 	}
-	$in = (int)round($in);
+	$in = (int)round74($in);
 	$err = false;
 	if ($in > 1E10) {
 		if ($GLOBALS['myrights'] > 10) {
@@ -58,7 +59,7 @@ function reduceradical($in,$root=2,$format="string") {
 		}
 	}
 
-	$root = (int)round($root);
+	$root = (int)round74($root);
 
     $iscomplex = false;
     $sign = '';
@@ -129,6 +130,22 @@ function reduceradical($in,$root=2,$format="string") {
 	}
 }
 
+
+// is_finite() with PHP 7.4 argument handling: a leading-numeric string ("2,string") counts as its
+// number, a non-numeric string or an array gives NULL (falsy). PHP 8 throws a TypeError for both.
+function radicals_is_finite74($v) {
+	if (is_array($v)) {
+		return null;
+	}
+	if (is_string($v) && !is_numeric($v)) {
+		if (!preg_match('/^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/', $v)) {
+			return null;
+		}
+		$v = (float) $v;
+	}
+	return is_finite($v);
+}
+
 //reduceradicalfrac(wholenum,rootnum,denom,[root,format])
 //given (wholenum*root(rootnum))/denom, reduces the root then the fraction
 //root: root of radical.  Default is 2 (sqrt)
@@ -136,7 +153,7 @@ function reduceradical($in,$root=2,$format="string") {
 //                   "disp", returns the string wrapped in backticks for display
 //                   "parts", returns an array of the parts:  array(4,5,2)
 function reduceradicalfrac($n,$rootnum,$d,$root=2,$format="string") {
-	if (!is_finite($n) || !is_finite($rootnum) || !is_finite($d) || !is_finite($root)) {
+	if (!radicals_is_finite74($n) || !radicals_is_finite74($rootnum) || !radicals_is_finite74($d) || !radicals_is_finite74($root)) {
 		echo 'inputs to reduceradicalfrac must be integers';
 		return 0;
 	}

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 // macros for parsing question type data,
 // checking formats
@@ -611,12 +612,12 @@ function getsnapwidthheight($xmin, $xmax, $ymin, $ymax, $width, $height, $snapto
     }
     $snapparts = array_map('floatval', $snapparts);
     if ($xmax - $xmin > 0 && !empty($snapparts[0])) {
-        $newwidth = ($xmax - $xmin) * (round($snapparts[0] * ($width - 2 * $imgborder) / ($xmax - $xmin)) / $snapparts[0]) + 2 * $imgborder;
+        $newwidth = ($xmax - $xmin) * (round74($snapparts[0] * ($width - 2 * $imgborder) / ($xmax - $xmin)) / $snapparts[0]) + 2 * $imgborder;
     } else {
         $newwidth = $width;
     }
     if ($ymax - $ymin > 0 && !empty($snapparts[1])) {
-        $newheight = ($ymax - $ymin) * (round($snapparts[1] * ($height - 2 * $imgborder) / ($ymax - $ymin)) / $snapparts[1]) + 2 * $imgborder;
+        $newheight = ($ymax - $ymin) * (round74($snapparts[1] * ($height - 2 * $imgborder) / ($ymax - $ymin)) / $snapparts[1]) + 2 * $imgborder;
     } else {
         $newheight = $height;
     }

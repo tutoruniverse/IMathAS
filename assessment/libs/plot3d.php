@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //Basic 3D display, using HTML5 Canvas fallback.
 // Version 2.1 Mar 7 2026 removed flash backup
 // Version 2.0 May 3 2018 adding CalcPlot3D functions
@@ -53,14 +54,14 @@ function plot3d($func,$umin=-2,$umax=2,$vmin=-2,$vmax=2,$disc=20,$width=300,$hei
 			$u = $umin+$du*$i;
 			$v = $vmin+$dv*$j;
 			if ($isparam) {
-				$x = round($usefunc[0](['u'=>$u,'v'=>$v]),$urnd);
-				$y = round($usefunc[1](['u'=>$u,'v'=>$v]),$vrnd);
-				$z = round($usefunc[2](['u'=>$u,'v'=>$v]),$zrnd);
+				$x = round74($usefunc[0](['u'=>$u,'v'=>$v]),$urnd);
+				$y = round74($usefunc[1](['u'=>$u,'v'=>$v]),$vrnd);
+				$z = round74($usefunc[2](['u'=>$u,'v'=>$v]),$zrnd);
 				$verts .= "$x,$y,$z";
 			} else {
-				$z = round($zfunc(['x'=>$u,'y'=>$v]),$zrnd);
-				$u = round($u,$urnd);
-				$v = round($v,$vrnd);
+				$z = round74($zfunc(['x'=>$u,'y'=>$v]),$zrnd);
+				$u = round74($u,$urnd);
+				$v = round74($v,$vrnd);
 				$verts .= "$u,$v,$z";
 			}
 			$count++;
@@ -205,7 +206,7 @@ function CalcPlot3Dembed($funcs, $width=500, $height=500, $xmin=-2, $xmax=2, $ym
 	$height = max(350, (int)$height);
 	$querystring = CalcPlot3Dquerystring($funcs, $xmin, $xmax, $ymin, $ymax, $zmin, $zmax, $xscl, $yscl, $zscl, $zclipmin, $zclipmax,$showbox);
 	$out = '<div class="video-wrapper-wrapper" style="max-width: '.Sanitize::onlyInt($width).'px">';
-	$aspectRatio = round(100*$height/$width,2);
+	$aspectRatio = round74(100*$height/$width,2);
 	$out .= '<div class="fluid-width-video-wrapper" style="padding-top:'.$aspectRatio.'%">';
 	$out .= '<iframe frameborder=0 scrolling="no" aria-hidden="true" ';
 	//$querystring is sanitized as it's constructed

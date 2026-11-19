@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 // A library of Financial Functions.  Version 1.  May 22, 2014
 // Author:  William Meacham
 //          Scottsdale Community College
@@ -31,7 +32,7 @@ function futureValue($interest, $bigN, $littleN, $payment,$principal) {
             $x = pow(1 + $rate, $bigN);
             $accruedVal = - ( -$payment + $x * $payment + $rate * $x * $principal ) /$rate;
         }
-        $accruedVal = round($accruedVal,2);
+        $accruedVal = round74($accruedVal,2);
         return $accruedVal;   
 }
 
@@ -60,7 +61,7 @@ function presentValue($interest, $bigN, $littleN, $payment,$accruedVal) {
             $x = pow(1 + $rate, $bigN);
             $principal = (-$accruedVal*$rate+$payment-$x*$payment)/($rate*$x);
         }
-        $principal = round($principal,2);
+        $principal = round74($principal,2);
         return $principal;
 }
 
@@ -89,7 +90,7 @@ function payment($interest,$bigN,$littleN,$principal,$accruedVal) {
             $x = pow(1 + $rate, $bigN);
             $payment = (-$accruedVal * $rate - $rate*$x*$principal)/($x-1);
         }
-        $payment = round($payment,2);
+        $payment = round74($payment,2);
         return $payment;
 }
 
@@ -117,7 +118,7 @@ function numberOfPeriods($interest,$littleN,$payment,$principal,$accruedVal) {
         } else {
             $bigN = log((-$accruedVal*$rate+$payment)/($payment+$rate*$principal))/log(1+$rate);
         }
-        $bigN = round($bigN,2);
+        $bigN = round74($bigN,2);
         return $bigN;
 }
 
@@ -140,7 +141,7 @@ function numberOfPeriods($interest,$littleN,$payment,$principal,$accruedVal) {
 function interest($bigN,$littleN,$payment,$principal,$accruedVal) {
 
         $rate = calcNR($payment, $principal, $accruedVal, $bigN, $littleN);
-        $rate = round($rate,2);
+        $rate = round74($rate,2);
         return $rate;
 }
 

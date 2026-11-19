@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/round74.php';
 
 //IMathAS:  ASCIIMath to PHP conversion
 //(c) 2009 David Lippman
@@ -269,6 +270,9 @@ function mathphptokenize($str,$vars,$ignorestrings) {
 						$out = 'log10';
 					} else if ($out=='ln') {
 						$out = 'log';
+					} else if ($out=='round') {
+						// PHP 8.4 round() dropped pre-rounding; round74() keeps the PHP 7.4 result.
+						$out = 'round74';
 					} else if ($out=='rand') {
 						$out = '$GLOBALS[\'RND\']->rand';
 					} else {

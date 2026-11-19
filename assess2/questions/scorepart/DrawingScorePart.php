@@ -1,6 +1,7 @@
 <?php
 
 namespace IMathAS\assess2\questions\scorepart;
+require_once __DIR__ . '/../../../assessment/round74.php';
 
 require_once __DIR__ . '/ScorePart.php';
 require_once __DIR__ . '/../models/ScorePartResult.php';
@@ -703,7 +704,7 @@ class DrawingScorePart implements ScorePart
                         $ansexps[$key] = array($str, $base, $asy);
 
                     } else if (strpos($function[0],'/x')!==false || preg_match('|/\s*\([^\)]*x|', $function[0])) {
-                        $denom = round(-$x1*$y2+$x1*$y3+$x2*$y1-$x2*$y3-$x3*$y1+$x3*$y2, 10);
+                        $denom = round74(-$x1*$y2+$x1*$y3+$x2*$y1-$x2*$y3-$x3*$y1+$x3*$y2, 10);
                         if ($denom == 0) {
                             $y = (($x1*$y1-$x2*$y2))/($x1-$x2);
                             $anslines[$key] = array('y',0,$y,false);
@@ -1611,7 +1612,7 @@ class DrawingScorePart implements ScorePart
                     $per = abs($anscos[0] - $anscos[1])*2;
                     // make sure horizontal shift is ok
                     $adjdiff = abs($anscos[0]-$coss[$i][0]);
-                    $adjdiff = abs($adjdiff - $per*round($adjdiff/$per));
+                    $adjdiff = abs($adjdiff - $per*round74($adjdiff/$per));
                     if ($adjdiff>$defpttol*$reltolerance) {
                         continue;
                     }
@@ -1638,7 +1639,7 @@ class DrawingScorePart implements ScorePart
                 for ($i=0; $i<count($tans); $i++) {
                     if (!empty($usedtan[$i])) { continue; }
                     // need to check if atan[0] = tans[i][0] + k*period
-                    $pk = round(($atan[0]-$tans[$i][0])/$period);
+                    $pk = round74(($atan[0]-$tans[$i][0])/$period);
                     $shiftedxb = $tans[$i][0] + $period*$pk;
                     if (abs($atan[0]-$shiftedxb)>$defpttol*$reltolerance) {
                         continue;
@@ -1647,7 +1648,7 @@ class DrawingScorePart implements ScorePart
                         continue;
                     }
                     // need to check if atan[2] = tans[i][2] + k*period
-                    $pk = round(($atan[2]-$tans[$i][2])/$period);
+                    $pk = round74(($atan[2]-$tans[$i][2])/$period);
                     $shiftedx2 = $tans[$i][2] + $period*$pk;
                     if (abs($atan[2]-$shiftedx2)>$defpttol*$reltolerance) {
                         continue;
@@ -1934,12 +1935,12 @@ class DrawingScorePart implements ScorePart
                 if (trim($function[1])==='-oo') {
                     $xminpix = 1;
                 } else {
-                    $xminpix = round(max(1,($function[1] - $settings[0])*$pixelsperx + $imgborder));
+                    $xminpix = round74(max(1,($function[1] - $settings[0])*$pixelsperx + $imgborder));
                 }
                 if (trim($function[2])==='oo') {
                     $xmaxpix = $settings[6]-1;
                 } else {
-                    $xmaxpix = round(min($settings[6]-1,($function[2] - $settings[0])*$pixelsperx + $imgborder));
+                    $xmaxpix = round74(min($settings[6]-1,($function[2] - $settings[0])*$pixelsperx + $imgborder));
                 }
                 if ($xminpix == $xmaxpix) { continue; } // skip if zero-length line
       					$overlap = false;
@@ -2135,8 +2136,8 @@ class DrawingScorePart implements ScorePart
                     $function[2] = $function[1];
                     $function[1] = $tmp;
                 }
-                $xminpix = round(max(2*$imgborder,($function[1] - $settings[0])*$pixelsperx + $imgborder));
-                $xmaxpix = round(min($settings[6]-2*$imgborder,($function[2] - $settings[0])*$pixelsperx + $imgborder));
+                $xminpix = round74(max(2*$imgborder,($function[1] - $settings[0])*$pixelsperx + $imgborder));
+                $xmaxpix = round74(min($settings[6]-2*$imgborder,($function[2] - $settings[0])*$pixelsperx + $imgborder));
 
                 for ($k=ceil($xminpix/$step); $k*$step <= $xmaxpix; $k++) {
                     $x = $k*$step;
@@ -2197,8 +2198,8 @@ class DrawingScorePart implements ScorePart
             $totinterp = 0;
             foreach ($lines as $line) {
                 for ($i=1;$i<count($line);$i++) {
-                    $leftx = round(max(min($line[$i][0],$line[$i-1][0]), 2*$imgborder));
-                    $rightx = round(min(max($line[$i][0],$line[$i-1][0]), $settings[6]-2*$imgborder));
+                    $leftx = round74(max(min($line[$i][0],$line[$i-1][0]), 2*$imgborder));
+                    $rightx = round74(min(max($line[$i][0],$line[$i-1][0]), $settings[6]-2*$imgborder));
                     if ($line[$i][0]==$line[$i-1][0]) {
                         $m = 9999;
                     } else {
@@ -2207,7 +2208,7 @@ class DrawingScorePart implements ScorePart
                     for ($k = ceil($leftx/$step); $k*$step<=$rightx; $k++) {
                         if (!isset($linedata[$k])) { $linedata[$k] = []; }
                         $x = $k*$step;
-                        $y = round($line[$i-1][1] + $m*($x-$line[$i-1][0]),10);
+                        $y = round74($line[$i-1][1] + $m*($x-$line[$i-1][0]),10);
                         if ($y>$imgborder && $y<($settings[7]-$imgborder)) {
                             if ($scoremethod != 'ignoreoverlap' || !in_array($y,$linedata[$k])) {
                                 $linedata[$k][] = $y;

@@ -1,6 +1,7 @@
 <?php
 
 namespace IMathAS\assess2\questions\scorepart;
+require_once __DIR__ . '/../../../assessment/round74.php';
 
 require_once __DIR__ . '/ScorePart.php';
 require_once __DIR__ . '/../models/ScorePartResult.php';
@@ -47,6 +48,8 @@ class NumberScorePart implements ScorePart
             ${$optionkey} = getOptionVal($options, $optionkey, $multi, $partnum, 1);
         }
 
+        $reltolerance = normalizeTolerance($reltolerance);
+        $abstolerance = normalizeTolerance($abstolerance);
         if ($reltolerance === '' && $abstolerance === '') { $reltolerance = $defaultreltol;}
 
         $ansformats = array_map('trim',explode(',',$answerformat));
@@ -398,7 +401,7 @@ class NumberScorePart implements ScorePart
                                     if ($exactreqdec == 1 && $thisreqdecimals != (($p = strpos($givenans,'.'))===false?0:(strlen($givenans)-$p-1))) {
                                         continue;
                                     }
-                                    $anans = round($anans, $thisreqdecimals);
+                                    $anans = round74($anans, $thisreqdecimals);
                                 } else if ($thisreqdecimals !== '' && $reqdecoffset > 0) {
                                     $gadec = ($p = strpos($givenans,'.'))===false?0:(strlen($givenans)-$p-1);
                                     if ($gadec - $thisreqdecimals > $reqdecoffset) {

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 /* Differential equations functions
 
@@ -70,7 +71,7 @@ function diffeq_slopefield($func,$options=[]) {
         }
         $alt .= '</caption><thead><tr><th></th>';
         for ($x = $xmin; $x < $xmax + $dx/2; $x += $dx) {
-            $alt .= '<th>'.$vs[0].'='.round($x,$xrnd).'</th>';
+            $alt .= '<th>'.$vs[0].'='.round74($x,$xrnd).'</th>';
         }
         $alt .= '</tr></thead><tbody>';
     }
@@ -109,7 +110,7 @@ function diffeq_slopefield($func,$options=[]) {
     }
     for ($y = $ymin; $y < $ymax + $dy/2; $y += $dy) {
         if ($doalt) {
-            $alt .= '<tr><th scope=row>'.$vs[1].'='.round($y,$yrnd).'</th>';
+            $alt .= '<tr><th scope=row>'.$vs[1].'='.round74($y,$yrnd).'</th>';
         }
         for ($x = $xmin; $x < $xmax + $dx/2; $x += $dx) {
             if (empty($data[$x][$y])) {
@@ -121,23 +122,23 @@ function diffeq_slopefield($func,$options=[]) {
             list($vx,$vy,$thismag) = $data[$x][$y];
             if ($doalt) {
                 if ($format == "vectorfield") {
-                    $alt .= '<td>&lang;' . round($vx, 2) .','. round($vy, 2). '&rang;</td>';
+                    $alt .= '<td>&lang;' . round74($vx, 2) .','. round74($vy, 2). '&rang;</td>';
                 } else {
-                    $alt .= '<td>' . ($vx==0 ? _('undefined') : round($vy/$vx, 2)) . '</td>';
+                    $alt .= '<td>' . ($vx==0 ? _('undefined') : round74($vy/$vx, 2)) . '</td>';
                 }
             } else {
                 $mag = $norm ? $thismag : $maxmag;
                 if ($mag == 0) { continue; }
                 if ($format == "vectorfield") {
-                    $x0 = round($x, $xrnd);
-                    $x1 = round($x + $vx*$len/$mag, $xrnd);
-                    $y0 = round($y, $yrnd);
-                    $y1 = round($y + $vy*$len/$mag, $yrnd);
+                    $x0 = round74($x, $xrnd);
+                    $x1 = round74($x + $vx*$len/$mag, $xrnd);
+                    $y0 = round74($y, $yrnd);
+                    $y1 = round74($y + $vy*$len/$mag, $yrnd);
                 } else {
-                    $x0 = round($x - 0.5*$vx*$len/$mag, $xrnd);
-                    $x1 = round($x + 0.5*$vx*$len/$mag, $xrnd);
-                    $y0 = round($y - 0.5*$vy*$len/$mag, $yrnd);
-                    $y1 = round($y + 0.5*$vy*$len/$mag, $yrnd);
+                    $x0 = round74($x - 0.5*$vx*$len/$mag, $xrnd);
+                    $x1 = round74($x + 0.5*$vx*$len/$mag, $xrnd);
+                    $y0 = round74($y - 0.5*$vy*$len/$mag, $yrnd);
+                    $y1 = round74($y + 0.5*$vy*$len/$mag, $yrnd);
                 }
                 $out .= "line([$x0,$y0],[$x1,$y1]);";
             }

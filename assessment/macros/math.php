@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 // math and function evaluation macros
 
@@ -43,9 +44,9 @@ function gcd(...$args) {
             echo "gcd requires numeric inputs.";
             return 1;
         } else if ($g === null) {
-            $g = (int) round(abs($v));
+            $g = (int) round74(abs($v));
         } else {
-            $n = (int) round(abs($v));
+            $n = (int) round74(abs($v));
             if ($g == 0 && $n == 0) {
                 return 1;
             } // not technically correct, but will avoid divide by 0 issues in the case of bad input
@@ -70,10 +71,10 @@ function lcm(...$args) {
             echo "lcm requires numeric inputs.";
             return 1;
         } else if ($g === null) {
-            $g = (int) round($v);
+            $g = (int) round74($v);
         } else {
-            $v = (int) round($v);
-            $g = round($g * ($v / gcd($g, $v)));
+            $v = (int) round74($v);
+            $g = round74($g * ($v / gcd($g, $v)));
         }
     }
     return $g;
@@ -421,7 +422,7 @@ function evalReturnValue($str, $errordispstr = '', $vars = array()) {
 }
 
 function cleanround($n,$d) {
-    $n = round($n,$d);
+    $n = round74($n,$d);
     return ($n==0)?0:$n;
 }
 

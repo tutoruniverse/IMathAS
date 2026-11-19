@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 //A library of Stats functions.  Version 1.10, Nov 17, 2017
 
 global $allowedmacros;
@@ -136,7 +137,7 @@ function percentile($a,$p) {
 		return $a[count($a)-1];
 	}
 
-	$l = round($p*count($a)/100,2);
+	$l = round74($p*count($a)/100,2);
 	if (floor($l)==$l) {
 		return (($a[$l-1]+$a[$l])/2);
 	} else {
@@ -163,7 +164,7 @@ function Nplus1percentile($a,$p) {
 		return $a[count($a)-1];
 	}
 
-	$l = round(($p/100)*(count($a)+1),2);
+	$l = round74(($p/100)*(count($a)+1),2);
 	if (floor($l)==$l) {
 		return ($a[$l-1]);
 	} else if ($l>count($a)) {
@@ -319,7 +320,7 @@ function Excelquartile($a,$q) {
 			return ($a[floor($n/2)]);
 		}
 	} else {
-		$l = round((count($a)-1)*.25*$q ,3);
+		$l = round74((count($a)-1)*.25*$q ,3);
 		if (floor($l)==$l) {
 			return ($a[$l]);
 		} else {
@@ -929,16 +930,16 @@ function normrand($mu,$sig,$n,$rnd=null,$pos=false,$skew=0) {
             $v3 = $d*$v1 + $d2*$v2;
             $v3 = $v1 >=0 ? $v3 : -$v3;
             if (!$pos || $v3 > 0) {
-                $z[] = round($v3, $rnd);
+                $z[] = round74($v3, $rnd);
             }
             $icnt += 0.5;
             continue;
         }
         if (!$pos || $v1 > 0) {
-            $z[] = ($rnd===null) ? $v1 : round($v1, $rnd);
+            $z[] = ($rnd===null) ? $v1 : round74($v1, $rnd);
         }
         if (!$pos || $v2 > 0) {
-            $z[] = ($rnd===null) ? $v2 : round($v2, $rnd);
+            $z[] = ($rnd===null) ? $v2 : round74($v2, $rnd);
         }
         $icnt++;
     }
@@ -961,7 +962,7 @@ function expdistrand($mu=1, $n=1, $rnd=3) {
 
 	$out = array();
 	for ($i=0; $i<$n; $i++) {
-		$out[] = round(-$mu*log($RND->rand(1,32768)/32768), $rnd);
+		$out[] = round74(-$mu*log($RND->rand(1,32768)/32768), $rnd);
 	}
 	return $out;
 }
@@ -1202,7 +1203,7 @@ function normalcdf($z,$dec=4) {
 		echo 'invalid value for z';
 		return 0;
 	}
-  return round(0.5 * (1 + erf(($z) / sqrt(2))), $dec);
+  return round74(0.5 * (1 + erf(($z) / sqrt(2))), $dec);
 }
 
 //tcdf(t,df,[dec])
@@ -1233,7 +1234,7 @@ function tcdf($X, $df, $dec=4) {
 			$tcdf=1-$betacdf/2;
 		}
 	}
-	return round($tcdf,$dec);
+	return round74($tcdf,$dec);
 }
 
 function Betinc($X,$A,$B, $dec) {
@@ -1338,7 +1339,7 @@ function invnormalcdf($p,$dec=5) {
       $y = sqrt(log(1/($pp*$pp)));
       $xp = $y + (((($y * $p4 + $p3) * $y + $p2) * $y + $p1) * $y + $p0) / (((($y * $q4 + $q3) * $y + $q2) * $y + $q1) * $y + $q0);
    }
-   $xp = round($xp,$dec);
+   $xp = round74($xp,$dec);
    if ($p < 0.5) { return (-1*$xp); }  else { return  $xp; }
 }
 
@@ -1364,15 +1365,15 @@ function invtcdf($p,$ndf,$dec=4) {
 	}
 
 	if ( abs($ndf - 2) < $eps ) {  //special case ndf=2
-	  $fn_val = round(SQRT(2 / ( $p * (2 - $p) ) - 2),$dec);
+	  $fn_val = round74(SQRT(2 / ( $p * (2 - $p) ) - 2),$dec);
 	  if ($origp<.5) {return (-1*$fn_val);} else { return $fn_val;}
 	} else if (abs($ndf-4) < $eps) {  //special case ndf=4
 	  $v = 4/sqrt($p*(2-$p))*cos(1/3*acos(sqrt($p*(2-$p))));
-	  $fn_val = round(sqrt($v-4),$dec);
+	  $fn_val = round74(sqrt($v-4),$dec);
 	  if ($origp<.5) {return (-1*$fn_val);} else { return $fn_val;}
 	} else if ($ndf < 1+$eps) { //special case ndf=1
 	  $prob = $p * $half_pi;
-	  $fn_val = round(cos($prob) / sin($prob),$dec);
+	  $fn_val = round74(cos($prob) / sin($prob),$dec);
 	  if ($origp<.5) {return (-1*$fn_val);} else { return $fn_val;}
 	} else {
 	  $a = 1/ ($ndf - 0.5);
@@ -1404,7 +1405,7 @@ function invtcdf($p,$ndf,$dec=4) {
 		$fn_val = invtrefine(sqrt($ndf*$y),1-$p/2,$ndf,$dec);
 		//echo "orig: ".sqrt($ndf*$y).", refined: $fn_val <br/>";
 	} else {
-		$fn_val = round( sqrt($ndf * $y) , $dec);
+		$fn_val = round74( sqrt($ndf * $y) , $dec);
 	}
 	if ($origp<.5) {return (-1*$fn_val);} else { return $fn_val;}
 }
@@ -1420,7 +1421,7 @@ function invtrefine($t,$p,$ndf,$dec) {
 			$t = $t+$dv;
 		}
 	}
-	return round($t,$dec);
+	return round74($t,$dec);
 }
 
 //linreg(xarray,yarray)
@@ -2283,7 +2284,7 @@ function beta_inv($p, $a, $b) {
     $afac = -gamma_log($a) - gamma_log($b) + gamma_log($a + $b);
     for ($j=0; $j < 10; $j++) {
         if ($x < 1e-10 || $x === 1) {
-            return round($x,10);
+            return round74($x,10);
         }
         $err = beta_cdf($x, $a, $b) - $p;
         $t = exp($a1 * log($x) + $b1 * log(1 - $x) + $afac);
@@ -2299,7 +2300,7 @@ function beta_inv($p, $a, $b) {
             break;
         }
     }
-    return round($x,10);
+    return round74($x,10);
 }
 
 function jstat_betacf($x,$a,$b) {
@@ -2401,20 +2402,20 @@ function mosaicplot($rlbl,$clbl,$m, $w = 300, $h=300) {
 	$widths = array();
 
 	for ($i=0;$i<$ncol;$i++) {
-		$widths[$i] = round($w*$ccnt[$i]/$ctot);
+		$widths[$i] = round74($w*$ccnt[$i]/$ctot);
 	}
 
 	$out .= '<table style="float:left;"><tbody>';
 	$out .= '<tr><td style="height: 3em;">&nbsp;</td></tr>';
 	for ($j=0;$j<$nrow;$j++) {
-		$out .= '<tr><td style="height: '.round($h*$m[$j][0]/$ccnt[0]).'px; text-align: right;">'.$rlbl[$j].'</td></tr>';
+		$out .= '<tr><td style="height: '.round74($h*$m[$j][0]/$ccnt[0]).'px; text-align: right;">'.$rlbl[$j].'</td></tr>';
 	}
 	$out .= '</tbody></table>';
 	for ($i=0;$i<$ncol;$i++) {
 		$out .= '<table style="table-layout: fixed; float:left;"><tbody>';
 		$out .= '<tr style="line-height: 1px;"><td style="text-align: center; width: '.$widths[$i].'px; height: 3em;">'.$clbl[$i].'</td></tr>';
 		for ($j=0;$j<$nrow;$j++) {
-			$out .= '<tr style="line-height: 1px;"><td style="height: '.round($h*$m[$j][$i]/$ccnt[$i]).'px; background-color: '.$cols[$j].';">&nbsp;</td></tr>';
+			$out .= '<tr style="line-height: 1px;"><td style="height: '.round74($h*$m[$j][$i]/$ccnt[$i]).'px; background-color: '.$cols[$j].';">&nbsp;</td></tr>';
 		}
 		$out .= '</tbody></table>';
 	}
@@ -2489,7 +2490,7 @@ function dotplot($a,$label,$dotspace=1,$labelspace=null,$width=300,$height=150) 
 
 	sort($a, SORT_NUMERIC);
 
-    $start = round($a[0]/$dotspace)*$dotspace;
+    $start = round74($a[0]/$dotspace)*$dotspace;
 	
 	$x = $start;
 	$curr = 0;
@@ -2543,7 +2544,7 @@ function dotplot($a,$label,$dotspace=1,$labelspace=null,$width=300,$height=150) 
 	// Draw the horizontal axes
     // draws the tick marks for the axes.
     $startlabel = floor($start/$labelspace+1e-12)*$labelspace;
-    $maxx = round($a[count($a)-1]/$dotspace)*$dotspace;
+    $maxx = round74($a[count($a)-1]/$dotspace)*$dotspace;
     $endlabel = ceil($maxx/$labelspace-1e-12)*$labelspace;
     for ($x=$startlabel; $x <=$endlabel; $x+=$labelspace) {
         if ($dotspace >= $labelspace) {
@@ -2884,7 +2885,7 @@ function anova_table(array $array, int $factor = 1, $rep=False, int $roundto=12,
 	/*if (!function_exists('calconarray')) {
        // require_once __DIR__.'/assessment/macros.php';
 	}*/
-	array_walk_recursive($array, function(&$x) use ($roundto) { $x = round($x,$roundto);});
+	array_walk_recursive($array, function(&$x) use ($roundto) { $x = round74($x,$roundto);});
 	
 	if ($factor==1){
 		$r0=$array[0];
@@ -2968,7 +2969,7 @@ function student_t($arr1, $arr2, bool $equalVar = False, bool $paired = False, i
 	if ($equalVar==True && $paired==False){
 
 		$sp = sqrt((($n1-1)*$v1 + ($n2-1)*$v2)/($n1+$n2-2));  //pooled variance for equal-variance case
-		$t = round(($m1-$m2)/($sp*sqrt(1/$n1 + 1/$n2)), $roundto);
+		$t = round74(($m1-$m2)/($sp*sqrt(1/$n1 + 1/$n2)), $roundto);
 		$df = $n1 + $n2 -2;
 
 	// t statistic for dependent samples (equal variances) 
@@ -2983,13 +2984,13 @@ function student_t($arr1, $arr2, bool $equalVar = False, bool $paired = False, i
 
 		$mD = mean($diff); //mean of differences
 		$vD = variance($diff); //variance of differences
-		$t = round($mD/(sqrt($vD/$n1)), $roundto);
+		$t = round74($mD/(sqrt($vD/$n1)), $roundto);
 		$df = $n1 - 1;
 
 		// t statistic for unequal variances; independent samples
 	} elseif ($equalVar == False && $paired == False) {
 
-		$t = round(($m1-$m2)/sqrt($v1/$n1 + $v2/$n2), $roundto);
+		$t = round74(($m1-$m2)/sqrt($v1/$n1 + $v2/$n2), $roundto);
 		$df_num = ($v1/$n1 + $v2/$n2)**2;
 		$df_den = ($v1/$n1)**2/($n1-1) + ($v2/$n2)**2/($n2-1);
 		$df = $df_num/$df_den;
@@ -3338,7 +3339,7 @@ function stem_plot($data,$options=array()) {
 		return 0;
     } else {
 		
-		$data = array_map(function($v){return round($v,0);}, $data) ;
+		$data = array_map(function($v){return round74($v,0);}, $data) ;
 	}
 	
 	if (isset($options['split'])){

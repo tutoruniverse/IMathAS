@@ -31,7 +31,7 @@ class IntervalScorePart implements ScorePart
         $partnum = $this->scoreQuestionParams->getQuestionPartNumber();
         $anstype = $this->scoreQuestionParams->getAnswerType();
 
-        $defaultreltol = .0015;
+        $defaultreltol = .001;
 
         $optionkeys = ['answer', 'reltolerance', 'abstolerance', 'answerformat',
             'requiretimes', 'variables', 'ansprompt', 'scoremethod'];
@@ -101,7 +101,7 @@ class IntervalScorePart implements ScorePart
                     foreach ($matches[0] as $var) {
                         if (in_array($var,$mathfuncs)) { continue;}
                         if ($var!= 'or' && $var!='and' && $var!='DNE' && $var!='oo' &&
-                            strtolower($var) != 'var' && $var != 'pi' && $var != 'e' 
+                            strtolower($var) != 'var' && $var != 'pi' && $var != 'e'
                             && $var != 'E') {
                             $scorePartResult->setRawScore(0);
                             return $scorePartResult;
@@ -159,6 +159,8 @@ class IntervalScorePart implements ScorePart
         }
         $correct = 0;
         $ansar = explode(' or ',$answer);
+        // Convert mixed numbers before space-stripping (e.g., "1 1/2" -> "(1+1/2)")
+        $givenans = preg_replace('/(\d+)\s+(\d+)\s*\/\s*(\d+)/', '($1+$2/$3)', $givenans);
         $givenans = str_replace(' ','',$givenans);
 
         if (in_array('allowsloppyintervals',$ansformats)) {

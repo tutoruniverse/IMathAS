@@ -38,6 +38,10 @@ if (!(isset($_GET['cid'])) || !isset($_REQUEST['bid'])) { //if the cid is missin
 		$sub =& $items;
 		if (count($blocktree)>1) {
 			for ($i=1;$i<count($blocktree);$i++) {
+				if (!isset($sub[$blocktree[$i]-1]['items'])) {
+					echo _('Uh oh, something changed.  Please go back and try again');
+                	exit;
+				}
 				$sub =& $sub[$blocktree[$i]-1]['items']; //-1 to adjust for 1-indexing
 			}
 		}
@@ -65,10 +69,12 @@ if (!(isset($_GET['cid'])) || !isset($_REQUEST['bid'])) { //if the cid is missin
 		$stm->execute(array(':itemorder'=>$itemlist, ':id'=>$cid));
 		$DBH->commit();
 
-		$obarr = explode(',',$_COOKIE['openblocks-'.$cid]);
+		$obarr = explode(',',$_COOKIE['openblocks-'.$cid] ?? '');
 		$obloc = array_search($obid,$obarr);
-		array_splice($obarr,$obloc,1);
-		setcookie('openblocks-'.Sanitize::courseId($_GET['cid']),implode(',',array_map('Sanitize::onlyInt',$obarr)));
+		if ($obloc !== false) {
+			array_splice($obarr,$obloc,1);
+			setsecurecookie('openblocks-'.$cid,implode(',',array_map('Sanitize::onlyInt',$obarr)), 0, false);
+		}
 		$btf = isset($_GET['btf']) ? '&folder=' . Sanitize::encodeUrlParam($_GET['btf']) : '';
 		header('Location: ' . $GLOBALS['basesiteurl'] . "/course/course.php?cid=". $cid.$btf . "&r=" . Sanitize::randomQueryStringParam());
         exit;
@@ -85,7 +91,7 @@ if (!(isset($_GET['cid'])) || !isset($_REQUEST['bid'])) { //if the cid is missin
 				$sub =& $sub[$blocktree[$i]-1]['items']; //-1 to adjust for 1-indexing
 			}
 		}
-        if (!is_array($sub[$blockid])) { echo 'Error'; exit; }
+        if (!isset($sub[$blockid]) || !is_array($sub[$blockid])) { echo 'Error'; exit; }
 		$itemname =  $sub[$blockid]['name'];
 	}
 }

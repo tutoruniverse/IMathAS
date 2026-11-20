@@ -19,6 +19,7 @@ if ($myrights == 100) {
 	$curBreadcrumb .= ' &gt; <a href="utils.php">Utilities</a>';
 }
 $curBreadcrumb .= ' &gt; Cross-Course Results'; 
+$pagetitle = _('Cross-Course Results');
 
 function reporterror($err) {
 	extract($GLOBALS, EXTR_SKIP | EXTR_REFS);
@@ -279,7 +280,7 @@ $query .= "assessmentid IN ($phcopyaids)";
 $stm = $DBH->prepare($query);
 $stm->execute(array_keys($assessdata));
 while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
-    $data = json_decode(gzdecode($row['scoreddata']), true);
+    $data = json_decode(Sanitize::gzexpand($row['scoreddata']), true);
     if (empty($data)) { continue; }
     $thisaid = $row['assessmentid'];
 
@@ -346,10 +347,10 @@ if ($_REQUEST['output']=='html') {
 	header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 	header('Pragma: public');
 	$out = fopen('php://output', 'w');
-	fputcsv($out, array($assessname));
-	fputcsv($out, $headerrow);
+	fputcsv($out, array($assessname), ',', '"', '');
+	fputcsv($out, $headerrow, ',', '"', '');
 	foreach ($bodydata as $bodyrow) {
-		fputcsv($out,$bodyrow);
+		fputcsv($out,$bodyrow, ',', '"', '');
 	}
 	fclose($out);
 }

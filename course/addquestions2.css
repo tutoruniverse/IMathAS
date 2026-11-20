@@ -7,7 +7,7 @@ input[id^=pts],input[id^=grppts],input[id^=grpn],#defpts {
 .textsegment {
 	border: 2px solid transparent;
 }
-.highlightbackground button {
+button.highlightbackground {
 	background-color: #F8F810 !important;
 }
 .highlightborder .textsegment {
@@ -45,6 +45,14 @@ h4.textsegment {
 	max-height: 1.7em;
 	max-width: 93%;
 	overflow: hidden;
+}
+textarea.textsegment.collapsed, input.textsegment.collapsedheader {
+    width: 60%;
+}
+textarea.textsegment, input.textsegment {
+    width: 90%;
+    field-sizing: content;
+    border: 1px solid black;
 }
 .intro-like {
 	position: relative;
@@ -263,3 +271,47 @@ tr.textsegmentrow td {
   input[type=number] {
     -moz-appearance: textfield;
   }
+@media (max-width: 740px) {
+	.tox-tbtn[data-mce-name="alignright"] {
+		display: none !important;
+	}
+}
+@media (max-width: 710px) {
+	.tox-tbtn[data-mce-name="snippet"] {
+		display: none !important;
+	}
+    .tox-toolbar__group {
+		padding: 0 0px !important;
+		border-right: 0px !important;
+	}
+}
+@media (max-width: 595px) {
+    .tox-tbtn[data-mce-name="attach"] {
+		display: none !important;
+	}
+}
+@media (max-width: 520px) {
+	.tox-tbtn[data-mce-name="alignleft"],
+    .tox-tbtn[data-mce-name="aligncenter"]{
+		display: none !important;
+	}
+}
+@media (max-width: 445px) {
+	.tox-tbtn[data-mce-name="image"] {
+		display: none !important;
+	}
+}
+@media (max-width: 410px) {
+	.tox-tbtn[data-mce-name="link"],
+    .tox-tbtn[data-mce-name="numlist"],
+    .tox-tbtn[data-mce-name="numlist-chevron"] {
+		display: none !important;
+	}
+}
+@media (max-width: 370px) {
+	.tox-tbtn[data-mce-name="indent"],
+    .tox-tbtn[data-mce-name="outdent"] {
+		display: none !important;
+	}
+}
+

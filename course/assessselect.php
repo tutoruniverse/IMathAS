@@ -7,7 +7,7 @@ if (!isset($teacherid)) {
     exit;
 }
 
-$aid = intval($_GET['aid']);
+$aid = intval($_GET['aid'] ?? 0);
 if (!empty($_GET['curassess'])) {
     $cur = explode(',', $_GET['curassess']);
 } else {
@@ -81,6 +81,7 @@ $placeinhead = '<script>
 </style>';
 $flexwidth = true;
 $nologo = true;
+$pagetitle = _('Select Assessment');
 require_once "../header.php";
 
 echo '<p><button type="button" onclick="uncheckall()">',_('Uncheck All'),'</button> ';
@@ -93,13 +94,13 @@ echo '</tr>';
 echo '</thead><tbody>';
 
 foreach ($page_assessmentList as $i=>$assess) {
-    echo '<tr><td><input type="checkbox" value="'.$assess['id'].'" ';
+    echo '<tr><td><input type="checkbox" value="'.$assess['id'].'" id="cb'.$assess['id'].'"';
     if (in_array($assess['id'], $cur)) {
         echo 'checked';
     }
     echo '></td>';
-    echo '<td><span>'.Sanitize::encodeStringForDisplay($assess['name']);
-    echo '</span><span class="sumtxt">'.Sanitize::encodeStringForDisplay($assess['summary']).'</span>';
+    echo '<td><label for="cb'.$assess['id'].'">'.Sanitize::encodeStringForDisplay($assess['name']);
+    echo '</label><span class="sumtxt">'.Sanitize::encodeStringForDisplay($assess['summary']).'</span>';
     echo '</td>';
     echo '</tr>';
 }

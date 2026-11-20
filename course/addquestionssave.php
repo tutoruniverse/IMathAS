@@ -34,7 +34,7 @@
 	}
 
     if (isset($_POST['addnewdef'])) {
-        if (!isset($_POST['lastitemhash']) || md5($rawitemorder) !== $_POST['lastitemhash']) {
+        if (!isset($_POST['lastitemhash']) || md5($rawitemorder . $current_intro_json) !== $_POST['lastitemhash']) {
             echo '{"error": "assessment questions have changed elsewhere. Reload the page and try again."}';
             exit;
         }
@@ -110,7 +110,7 @@
             'showhints' => $showhints
         ]);
         
-        echo json_encode(['itemarray'=>$jsarr, 'lastitemhash'=>md5($itemorder)], 
+        echo json_encode(['itemarray'=>$jsarr, 'lastitemhash'=>md5($itemorder . $current_intro_json)], 
             JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_INVALID_UTF8_IGNORE);
         exit;
     } else if (isset($_POST['addnew'])) {
@@ -125,7 +125,7 @@
         echo 'error: '._('Students have started the assessment, and you cannot change questions or order after students have started; reload the page');
         exit;
     }
-    if (md5($rawitemorder) !== $_POST['lastitemhash']) {
+    if (md5($rawitemorder . $current_intro_json) !== $_POST['lastitemhash']) {
         echo "error: assessment questions have changed elsewhere. Reload the page and try again.";
         exit;
     }
@@ -166,12 +166,19 @@
 	$submitted = $_REQUEST['order'];
 	$submitted = str_replace('~',',',$submitted);
 	$newitems = array();
-	foreach (explode(',',$submitted) as $qid) {
-		if (strpos($qid,'|')===false) {
-			$newitems[] = Sanitize::onlyInt($qid);
+	if ($submitted !== '') {
+		foreach (explode(',',$submitted) as $qid) {
+			if (strpos($qid,'|')===false) {
+				$newitems[] = Sanitize::onlyInt($qid);
+			}
 		}
 	}
 	$toremove = array_diff($curitems,$newitems);
+	if (!empty(array_diff($newitems, $curitems))) {
+		// this would mean there's a qid in the itemorder that didn't previously exist
+		echo "error: invalid item in order";
+        exit;
+	}
 
 	if ($viddata != '') {
 		$viddata = unserialize($viddata);
@@ -278,7 +285,18 @@
 				$ptschanged = true;
 			}
 		}
-	}
+	} else if (isset($_POST['extracredit'])) {
+        $newextracredit = json_decode($_POST['extracredit'], true);
+		$upd_pts = $DBH->prepare("UPDATE imas_questions SET extracredit=? WHERE id=?");
+		$stm = $DBH->prepare("SELECT id,extracredit FROM imas_questions WHERE assessmentid=?");
+		$stm->execute(array($aid));
+		while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
+			if ($row['extracredit'] != $newextracredit['qn'.$row['id']]) {
+				$upd_pts->execute(array($newextracredit['qn'.$row['id']], $row['id']));
+				$ptschanged = true;
+			}
+		}
+    }
 
 	$qarr = array(':itemorder'=>$_REQUEST['order'], ':viddata'=>$viddata, ':intro'=>$new_intro, ':id'=>$aid, ':courseid'=>$cid);
 	$query = "UPDATE imas_assessments SET itemorder=:itemorder,viddata=:viddata,intro=:intro";
@@ -313,7 +331,7 @@
 		$stm = $DBH->prepare($query);
 		$stm->execute(array($cid, $aid));
 
-        echo md5($_REQUEST['order']);
+        echo md5($_REQUEST['order'] . $new_intro);
 		//echo "OK";
 	} else {
 		echo "error: not saved";

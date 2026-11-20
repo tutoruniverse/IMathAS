@@ -26,8 +26,6 @@ require_once "./AssessInfo.php";
 require_once "./AssessRecord.php";
 require_once './AssessUtils.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 check_for_required('GET', array('aid', 'cid'));
 check_for_required('POST', array('newquestion', 'newstate'));
 $cid = Sanitize::onlyInt($_GET['cid']);
@@ -149,7 +147,7 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
 
   // call the livepoll server
   if (isset($CFG['GEN']['livepollpassword'])) {
-    $livepollsig = base64_encode(sha1($aid . $qn . $seed. $CFG['GEN']['livepollpassword'] . $now, true));
+    $livepollsig = base64_encode(hash('sha256',$aid . $qn . $seed. $CFG['GEN']['livepollpassword'] . $now, true));
   } else {
     $livepollsig = '';
   }
@@ -162,7 +160,8 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
     'sig' => $livepollsig
   ));
 
-  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/startq?' . $qs);
+  $port = $CFG['GEN']['livepollserverport'] ?? '3000';
+  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/startq?' . $qs);
 
   if ($result !== 'success') {
     echo '{"error": "'.Sanitize::encodeStringForDisplay($r).'"}';
@@ -194,7 +193,7 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
 
   // call the livepoll server
   if (isset($CFG['GEN']['livepollpassword'])) {
-    $livepollsig = base64_encode(sha1($aid . $qn . $newState. $CFG['GEN']['livepollpassword'] . $now, true));
+    $livepollsig = base64_encode(hash('sha256',$aid . $qn . $newState. $CFG['GEN']['livepollpassword'] . $now, true));
   } else {
     $livepollsig = '';
   }
@@ -205,7 +204,8 @@ if ($newQuestion !== $livepollStatus['curquestion'] ||
     'now' => $now,
     'sig' => $livepollsig
   ));
-  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':3000/stopq?' . $qs);
+  $port = $CFG['GEN']['livepollserverport'] ?? '3000';
+  $result = file_get_contents('https://'.$CFG['GEN']['livepollserver'].':'.$port.'/stopq?' . $qs);
 
   if ($result !== 'success') {
     echo '{"error": "'.Sanitize::encodeStringForDisplay($r).'"}';

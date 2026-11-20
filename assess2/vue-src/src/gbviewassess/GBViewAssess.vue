@@ -4,27 +4,27 @@
       {{ $t('loading') }}
     </div>
     <div v-else class="gbmainview">
-      <h1>{{ $t('gradebook.detail_title')}}</h1>
+      <h1>{{ $t('gradebook-detail_title')}}</h1>
       <h2><span class="pii-full-name">{{ aData.userfullname }}</span></h2>
       <h3>{{ aData.name }}</h3>
 
       <div>
-        {{ $t('gradebook.started') }}: {{ startedString }}<br/>
-        {{ $t('gradebook.lastchange') }}: {{ lastchangeString }}
+        {{ $t('gradebook-started') }}: {{ startedString }}<br/>
+        {{ $t('gradebook-lastchange') }}: {{ lastchangeString }}
         <span v-if="aData.timeontask > 0">
           <br/>
-          {{ $tc('gradebook.time_onscreen', attemptCount) }}:
+          {{ $t('gradebook-time_onscreen', {n: attemptCount}) }}:
           {{ totalTimeOnTask }}
         </span>
         <span v-if="aData.hasOwnProperty('timelimit_ext')">
           <br/>
-          {{ $t('gradebook.'+ (aData.timelimit_ext > 0 ? 'has_timeext' : 'used_timeext'),
+          {{ $t('gradebook-'+ (aData.timelimit_ext > 0 ? 'has_timeext' : 'used_timeext'),
             {n: Math.abs(aData.timelimit_ext)}) }}
         </span>
       </div>
 
       <div>
-        {{ $t('gradebook.due')}}: {{ aData.enddate_disp }}
+        {{ $t('gradebook-due')}}: {{ aData.enddate_disp }}
           <button
             v-if = "canEdit && aData.can_make_exception"
             type="button"
@@ -35,13 +35,13 @@
           </button>
         <span v-if="aData.hasOwnProperty('original_enddate')">
           <br/>
-          {{ $t('gradebook.originally_due') }}:
+          {{ $t('gradebook-originally_due') }}:
             {{ aData.original_enddate_disp }}.
           {{ extensionString }}
         </span>
         <span v-if="aData.hasOwnProperty('attemptext')">
           <br/>
-          {{ $t('gradebook.attemptext', {n: aData.attemptext}) }}
+          {{ $t('gradebook-attemptext', {n: aData.attemptext}) }}
         </span>
       </div>
 
@@ -52,12 +52,12 @@
           type="button"
           @click="clearLPblock"
         >
-          {{ $t('gradebook.clear_latepass_block' )}}
+          {{ $t('gradebook-clear_latepass_block' )}}
         </button>
       </div>
       <div>
         <strong>
-          {{ $t('gradebook.gb_score') }}:
+          {{ $t('gradebook-gb_score') }}:
           <span v-if="aData.hasOwnProperty('scoreoverride') && canEdit">
             <input id="assessoverride" size=4
               :value = "aData.scoreoverride"
@@ -67,7 +67,7 @@
           </span>
           <span v-else>
             <span v-if="!canEdit && aData.gbscore === 'N/A'">
-              {{ $t('gradebook.avail_' + aData.scoresingb) }}
+              {{ $t('gradebook-avail_' + aData.scoresingb) }}
             </span>
             <span v-else>
               {{ aData.gbscore }}/{{ aData.points_possible }}
@@ -75,7 +75,7 @@
           </span>
         </strong>
         <span v-if="aData.hasOwnProperty('scoreoverride')">
-          ({{ $t('gradebook.overridden') }})
+          ({{ $t('gradebook-overridden') }})
         </span>
         <span v-else-if="canEdit">
           <button
@@ -83,10 +83,10 @@
             type="button"
             @click="showOverride = !showOverride"
           >
-            {{ $t('gradebook.override') }}
+            {{ $t('gradebook-override') }}
           </button>
           <span v-if="showOverride">
-            <label for="assessoverride">{{ $t('gradebook.override') }}</label>:
+            <label for="assessoverride">{{ $t('gradebook-override') }}</label>:
             <input id="assessoverride" size=4 v-model="assessOverride" @keyup.enter="submitForm" />
           </span>
         </span>
@@ -96,7 +96,7 @@
           class="slim"
           @click="clearAttempts('all')"
         >
-          {{ $t('gradebook.clear_all') }}
+          {{ $t('gradebook-clear_all') }}
         </button>
         <button
           v-if="aData.hasOwnProperty('excused')"
@@ -104,12 +104,23 @@
           class="slim"
           @click="showExcused = !showExcused"
         >
-          {{ $t('gradebook.' + (showExcused ? 'hide' : 'show') + '_excused') }}
+          {{ $t('gradebook-' + (showExcused ? 'hide' : 'show') + '_excused') }}
+        </button>
+      </div>
+      <div v-if="canEdit && aData.scoresingb === 'manual'">
+        {{ $t('gradebook-manualstatus' + aData.manual_released) }}
+        <button
+          type="button"
+          class="slim"
+          :disabled = "!canSubmit"
+          @click="setManualRelease"
+        >
+          {{ $t('gradebook-manualbutton' + aData.manual_released) }}
         </button>
       </div>
 
       <div v-if="showExcused" class="introtext">
-        {{ $t('gradebook.excused_list') }}
+        {{ $t('gradebook-excused_list') }}
         <ul>
           <li v-for="name in aData.excused" :key="name">
             {{ name }}
@@ -119,16 +130,19 @@
 
       <div v-if="canEdit">
         <a v-if="showViewAsStu" :href="viewAsStuUrl">
-          {{ $t('gradebook.view_as_stu') }}
+          {{ $t('gradebook-view_as_stu') }}
         </a>
-        <span v-if="showViewAsStu">|</span>
+        <span v-if="showViewAsStu"> | </span>
         <a :href="viewAsStuUrl + '#/print'">
-          {{ $t('gradebook.print') }}
+          {{ $t('gradebook-print') }}
+        </a> |
+        <a :href="activityLogUrl" target="_blank">
+          {{ $t('gradebook-activitylog') }}
         </a>
       </div>
 
       <div v-if="aData.assess_versions.length == 0">
-        {{ $t('gradebook.no_versions') }}
+        {{ $t('gradebook-no_versions') }}
       </div>
       <div v-else class="gbmainview">
         <div>
@@ -148,23 +162,30 @@
               type="button"
               @click="clearAttempts('attempt')"
             >
-              {{ $t('gradebook.clear_attempt') }}
+              {{ $t('gradebook-clear_attempt') }}
+            </button>
+            <button
+              v-if = "!isByQuestion && canEdit && aData.keepscore === 'last' && curAver < aData.assess_versions.length - 1"
+              type="button"
+              @click="setVerAsLast"
+            >
+              {{ $t('gradebook-set_as_last') }}
             </button>
           </div>
           <div v-if="isUnsubmitted">
-            {{ $t('gradebook.unsubmitted') }}
+            {{ $t('gradebook-unsubmitted') }}
             <button
               type="button"
               @click="submitVersion"
             >
-              {{ $t('closed.submit_now') }}
+              {{ $t('closed-submit_now') }}
             </button>
             <button
               v-if="!canEdit && aData.can_use_latepass"
               type = "button"
               @click = "redeemLatePass"
             >
-              {{ $t('lti.use_latepass') }}
+              {{ $t('lti-use_latepass') }}
             </button>
           </div>
         </div>
@@ -175,7 +196,7 @@
             type="button"
             @click = "showEndmsg = !showEndmsg"
           >
-            {{ $t('gradebook.' + (showEndmsg ? 'hide' : 'show') + '_endmsg') }}
+            {{ $t('gradebook-' + (showEndmsg ? 'hide' : 'show') + '_endmsg') }}
           </button>
           <div
             class="introtext"
@@ -186,94 +207,110 @@
 
         <div v-if="canEdit && viewFull">
           <button @click = "showFilters = !showFilters">
-            {{ $t('gradebook.filters') }}
+            {{ $t('gradebook-filters') }}
           </button>
-          <div v-if = "showFilters" class="tabpanel">
-            <p>{{ $t('gradebook.hide') }}:</p>
+          <div v-if = "showFilters" class="tabpanel" @change="storeFilters">
+            <p>{{ $t('gradebook-hide') }}:</p>
             <ul style="list-style-type: none; margin:0; padding-left: 15px;">
               <li>
                 <label>
                   <input type=checkbox v-model="hideUnanswered">
-                  {{ $t('gradebook.hide_unans') }}
+                  {{ $t('gradebook-hide_unans') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hideZero">
-                  {{ $t('gradebook.hide_zero') }}
+                  {{ $t('gradebook-hide_zero') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hideNonzero">
-                  {{ $t('gradebook.hide_nonzero') }}
+                  {{ $t('gradebook-hide_nonzero') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hidePerfect">
-                  {{ $t('gradebook.hide_perfect') }}
+                  {{ $t('gradebook-hide_perfect') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hide100">
-                  {{ $t('gradebook.hide_100') }}
+                  {{ $t('gradebook-hide_100') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hideFeedback">
-                  {{ $t('gradebook.hide_fb') }}
+                  {{ $t('gradebook-hide_fb') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hideNowork">
-                  {{ $t('gradebook.hide_nowork') }}
+                  {{ $t('gradebook-hide_nowork') }}
                 </label>
               </li>
               <li>
                 <label>
                   <input type=checkbox v-model="hidetexts" @change="loadTexts">
-                  {{ $t('gradebook.introtexts') }}
+                  {{ $t('gradebook-introtexts') }}
                 </label>
               </li>
             </ul>
-            <p>
-              <button
-                type="button"
-                @click = "showAllAns"
-              >
-                {{ $t('gradebook.show_all_ans') }}
-              </button>
-              <button
-                type="button"
-                @click = "showAllWork = !showAllWork"
-              >
-                {{ $t('gradebook.show_all_work') }}
-              </button>
-              <button
-                type="button"
-                @click = "previewFiles"
-              >
-                {{ $t('gradebook.preview_files') }}
-              </button>
-              <button
-                type="button"
-                @click="toggleFloatingScoreboxes"
-              >
-                {{ $t('gradebook.floating_scoreboxes') }}
-              </button>
+            <p id="showopts">
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="op_showans"
+                  @change = "showAllAns"
+                />{{ $t('gradebook-show_all_ans') }}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="showAllWork"
+                />{{ $t('gradebook-show_all_work') }}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="op_previewFiles"
+                  @change = "previewFiles"
+                />{{ $t('gradebook-preview_files') }}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="op_floatingSB"
+                  @change = "toggleFloatingScoreboxes"
+                />{{ $t('gradebook-floating_scoreboxes') }}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="sidebysideon"
+                  @change = "sidebysideAction"
+                />{{ $t('gradebook-sidebyside') }}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="op_oneatatime"
+                />{{ $t('gradebook-oneatatime') }}
+              </label>
             </p>
           </div>
         </div>
         <div v-else-if="viewFull">
           <button @click="hidetexts = !hidetexts; loadTexts()">
-            {{ $t(hidetexts ? 'print.show_text' : 'print.hide_text') }}
+            {{ $t(hidetexts ? 'print-show_text' : 'print-hide_text') }}
           </button>
           <p class="noticetext">
-            {{ $t('gradebook.no_edit') }}
+            {{ $t('gradebook-no_edit') }}
           </p>
         </div>
 
@@ -294,15 +331,15 @@
               pos="beforeexact"
               :qn="qn"
               :key="'iqt'+qn"
-              v-show = "!hidetexts"
+              v-show = "!hidetexts && showQuestion[qn] && (!op_oneatatime || curqn === qn)"
               :active = "!hidetexts"
               :lastq = "lastQ"
               :textlist = "textList"
             />
-            <div class = "bigquestionwrap">
+            <div class = "bigquestionwrap" v-show="showQuestion[qn] && (!op_oneatatime || curqn === qn)">
               <div class="headerpane">
                 <strong>
-                  {{ $tc('question_n', qn+1) }}.
+                  {{ $t('question_n', {n: qn+1}) }}.
                 </strong>
                 <em v-if="qdata[curQver[qn]].extracredit" class="small subdued">
                   {{ $t('extracredit') }}
@@ -317,25 +354,41 @@
                   class = "med-left"
                 />
                 <span v-else-if = "qdata[curQver[qn]].hasOwnProperty('gbscore') && qdata[curQver[qn]].gbscore !== 'N/A'">
-                  {{ $t('gradebook.score') }}:
+                  {{ $t('gradebook-score') }}:
                   <strong>
                     {{ qdata[curQver[qn]].gbscore }}/{{ qdata[curQver[qn]].points_possible }}
                   </strong>
                 </span>
-
+                <span v-if="qdata[curQver[qn]].useda11yalt"> ({{ $t('gradebook-a11yalt') }})</span>
               </div>
-              <div class="scrollpane">
-                <gb-question
-                  :class = "{'inactive':!showQuestion[qn]}"
-                  :qdata = "qdata[curQver[qn]]"
-                  :qn = "qn"
-                  :disabled = "!canEdit"
-                />
-                <gb-showwork
-                  :work = "qdata[curQver[qn]].work"
-                  :worktime = "qdata[curQver[qn]].worktime"
-                  :showall = "showAllWork"
-                />
+              <div class="sidebyside" :class="{sidebysideon:sidebysideon}">
+                <div class="scrollpane">
+                  <gb-question
+                    :class = "{'inactive':!showQuestion[qn]}"
+                    :qdata = "qdata[curQver[qn]]"
+                    :qn = "qn"
+                    :disabled = "!canEdit"
+                    @qloaded = "questionLoaded"
+                  />
+                  <gb-showwork
+                    v-if="!sidebysideon"
+                    :work = "qdata[curQver[qn]].work"
+                    :worktime = "qdata[curQver[qn]].worktime"
+                    :showall = "showAllWork"
+                    :previewfiles = "op_previewFiles"
+                  />
+                </div>
+                <div class="sidepreview">
+                  <div class="sidepreviewtarget">
+                  </div>
+                  <gb-showwork
+                    v-if="sidebysideon"
+                    :work = "qdata[curQver[qn]].work"
+                    :worktime = "qdata[curQver[qn]].worktime"
+                    :showall = "showAllWork"
+                    :previewfiles = "op_previewFiles"
+                  />
+                </div>
               </div>
               <gb-score-details
                 :showfull = "showQuestion[qn]"
@@ -358,13 +411,28 @@
         <gb-feedback
           qn="gen"
           :username="aData.userfullname"
-          :show="viewFull && (canEdit || assessFeedback !== '')"
+          :show="viewFull && (canEdit || assessFeedback !== '') && (!op_oneatatime || nextVisible === -1)"
           :canedit = "canEdit"
           :useeditor = "useEditor"
           :value = "assessFeedback"
           @update = "updateFeedback"
         />
-        <div>
+        <div v-if = "!op_oneatatime || nextVisible === -1">
+          <p v-if = "canEdit && aData.scoresingb === 'manual' && aData.manual_released == 0">
+            <label>
+              <input type="checkbox" v-model="releaseOnSave" />
+              {{ $t('gradebook-release_on_save') }}
+            </label>
+          </p>
+          <button
+            v-if = "op_oneatatime"
+            :disabled = "prevVisible === -1"
+            type = "button"
+            class = "secondary"
+            @click = "setCurqn(prevVisible)"
+          >
+            {{ $t('gradebook-prevq') }}
+          </button>
           <button
             v-if = "canEdit"
             type = "button"
@@ -372,7 +440,7 @@
             class = "primary"
             @click = "submitChanges(true)"
           >
-            {{ $t('gradebook.save') }}
+            {{ $t('gradebook-save') }}
           </button>
           <button
             v-if = "canEdit && aData.nextstu"
@@ -381,18 +449,57 @@
             class = "primary"
             @click = "submitChanges(false,true)"
           >
-            {{ $t('gradebook.savenext') }}
+            {{ $t('gradebook-savenext') }}
           </button>
           <span v-if="savedMsg !== ''" class="noticetext">
             {{ savedMsg }}
           </span>
           <button
+            v-if="hasExit"
             type = "button"
             class = "secondary"
             :disabled = "!canSubmit"
             @click = "exit"
           >
-            {{ $t('gradebook.return') }}
+            {{ $t('gradebook-return') }}
+          </button>
+          <a 
+            v-if="canEdit && aData?.can_message"
+            href="#"
+            @click.prevent="msgStu"
+            target="_blank"
+          >
+            {{  $t('gradebook-msg_student') }}
+          </a>
+        </div>
+        <div v-else>
+          <button
+            :disabled = "prevVisible === -1"
+            type = "button"
+            class = "secondary"
+            @click = "setCurqn(prevVisible)"
+          >
+            {{ $t('gradebook-prevq') }}
+          </button>
+          <button
+            :disabled = "nextVisible === -1"
+            type = "button"
+            class = "primary"
+            @click = "setCurqn(nextVisible)"
+          >
+            {{ $t('gradebook-nextq') }}
+          </button>
+          <span v-if="savedMsg !== ''" class="noticetext">
+            {{ savedMsg }}
+          </span>
+          <button
+            v-if="hasExit"
+            type = "button"
+            class = "secondary"
+            :disabled = "!canSubmit"
+            @click = "exit"
+          >
+            {{ $t('gradebook-return') }}
           </button>
         </div>
         <div class="floatrightbutton">
@@ -406,7 +513,7 @@
             class = "primary"
             @click = "submitChanges"
           >
-            {{ $t('gradebook.save') }}
+            {{ $t('gradebook-save') }}
           </button>
         </div>
         <summary-categories
@@ -477,7 +584,14 @@ export default {
       showEndmsg: false,
       showExcused: false,
       showAllWork: false,
-      hidetexts: true
+      hidetexts: true,
+      op_previewFiles: false,
+      op_floatingSB: false,
+      op_showans: false,
+      sidebysideon: false,
+      op_oneatatime: false,
+      releaseOnSave: false,
+      curqn: 0
     };
   },
   computed: {
@@ -504,20 +618,20 @@ export default {
     },
     startedString () {
       if (this.aData.starttime === 0) {
-        return this.$t('gradebook.not_started');
+        return this.$t('gradebook-not_started');
       } else {
         return this.aData.starttime_disp;
       }
     },
     lastchangeString () {
       if (this.aData.lastchange === 0) {
-        return this.$t('gradebook.not_submitted');
+        return this.$t('gradebook-not_submitted');
       } else {
         return this.aData.lastchange_disp;
       }
     },
     totalTimeOnTask () {
-      return Math.round(10 * this.aData.timeontask / 60) / 10 + ' ' + this.$t('gradebook.minutes');
+      return Math.round(10 * this.aData.timeontask / 60) / 10 + ' ' + this.$t('gradebook-minutes');
     },
     attemptCount () {
       let cnt = 0;
@@ -530,12 +644,15 @@ export default {
     },
     extensionString () {
       if (this.aData.extended_with.type === 'latepass') {
-        return this.$tc('setlist.latepass_used', this.aData.extended_with.n);
+        return this.$t('setlist-latepass_used', {n: this.aData.extended_with.n});
       } else {
-        return this.$t('setlist.extension');
+        return this.$t('setlist-extension');
       }
     },
     curQuestions () {
+      if (store.assessInfo === null) {
+        return [];
+      }
       return this.aData.assess_versions[store.curAver].questions;
     },
     curAver () {
@@ -571,17 +688,17 @@ export default {
     },
     scoreCalc () {
       if (this.aData.submitby === 'by_question') {
-        return this.$t('gradebook.best_on_question');
+        return this.$t('gradebook-best_on_question');
       } else if (this.aData.keepscore === 'best') {
-        let out = this.$t('gradebook.keep_best');
+        let out = this.$t('gradebook-keep_best');
         if (typeof this.aData.gbscore === 'number') {
-          out += ' (' + this.$tc('gradebook.attempt_n', this.aData.scored_version + 1) + ')';
+          out += ' (' + this.$t('gradebook-attempt_n', {n: this.aData.scored_version + 1}) + ')';
         }
         return out;
       } else if (this.aData.keepscore === 'average') {
-        return this.$t('gradebook.keep_avg');
+        return this.$t('gradebook-keep_avg');
       } else if (this.aData.keepscore === 'last') {
-        return this.$t('gradebook.keep_last');
+        return this.$t('gradebook-keep_last');
       } else {
         return '';
       }
@@ -596,14 +713,17 @@ export default {
     viewAsStuUrl () {
       return 'index.php?cid=' + store.cid + '&aid=' + store.aid + '&uid=' + store.uid;
     },
+    activityLogUrl () {
+      return '../course/viewactionlog.php?cid=' + store.cid + '&uid=' + store.uid;
+    },
     showQuestion () {
       const out = {};
       for (let i = 0; i < this.curQuestions.length; i++) {
         const qdata = this.curQuestions[i][this.curQver[i]];
         let showit = true;
-        if (this.hide100 && Math.abs(qdata.score - qdata.points_possible) < 0.002) {
+        if (this.hide100 && qdata.score > qdata.points_possible - 0.002) {
           showit = false;
-        } else if (this.hidePerfect && Math.abs(qdata.rawscore - 1) < 0.002) {
+        } else if (this.hidePerfect && Math.abs(qdata.rawscore) > 0.998) {
           showit = false;
         } else if (this.hideUnanswered && qdata.parts.reduce((a, c) => Math.max(a, c.try), 0) === 0) {
           showit = false;
@@ -620,11 +740,27 @@ export default {
       }
       return out;
     },
+    nextVisible () {
+      for (let i = this.curqn + 1; i < this.curQuestions.length; i++) {
+        if (this.showQuestion[i]) {
+          return i;
+        }
+      }
+      return -1;
+    },
+    prevVisible () {
+      for (let i = this.curqn - 1; i >= 0; i--) {
+        if (this.showQuestion[i]) {
+          return i;
+        }
+      }
+      return -1;
+    },
     exceptionActionLabel () {
       if (this.aData.hasexception) {
-        return this.$t('gradebook.edit_exception');
+        return this.$t('gradebook-edit_exception');
       } else {
-        return this.$t('gradebook.make_exception');
+        return this.$t('gradebook-make_exception');
       }
     },
     assessFeedback () {
@@ -634,7 +770,7 @@ export default {
       if (store.saving === '') {
         return '';
       } else {
-        return this.$t('gradebook.' + store.saving);
+        return this.$t('gradebook-' + store.saving);
       }
     },
     latepassBlockMsg () {
@@ -648,7 +784,7 @@ export default {
         case 5: m = 'toolate'; break;
         case 6: m = 'toofew'; break;
       }
-      return this.$t('gradebook.latepass_blocked_' + m);
+      return this.$t('gradebook-latepass_blocked_' + m);
     },
     isUnsubmitted () {
       return (this.aData.submitby === 'by_assessment' &&
@@ -672,6 +808,9 @@ export default {
       } else {
         return store.assessInfo.interquestion_text;
       }
+    },
+    hasExit () {
+      return (window.exiturl && window.exiturl !== '');
     }
   },
   methods: {
@@ -683,7 +822,7 @@ export default {
         Object.keys(store.feedbacks).length > 0
       ) {
         store.confirmObj = {
-          body: 'gradebook.unsaved_warn',
+          body: 'gradebook-unsaved_warn',
           action: () => this.doChangeAssessVersion(val)
         };
       } else {
@@ -719,7 +858,7 @@ export default {
       }
       if (hasUnsaved) {
         store.confirmObj = {
-          body: 'gradebook.unsaved_warn',
+          body: 'gradebook-unsaved_warn',
           action: () => actions.loadGbQuestionVersion(qn, val)
         };
       } else {
@@ -746,7 +885,7 @@ export default {
       }
       var doexit = (exit === true);
       var donextstu = (nextstu === true);
-      actions.saveChanges(doexit, donextstu);
+      actions.saveChanges(doexit, donextstu, this.releaseOnSave);
     },
     submitForm () {
       this.submitChanges(true);
@@ -757,6 +896,17 @@ export default {
     clearAttempts (type) {
       store.clearAttempts.type = type;
       store.clearAttempts.show = true;
+    },
+    setVerAsLast () {
+      store.confirmObj = {
+        body: 'gradebook-setaslast_warn',
+        action: () => actions.setVerAsLast()
+      };
+    },
+    setManualRelease () {
+      // toggle value
+      this.releaseOnSave = false;
+      actions.setManualRelease(1 - this.aData.manual_released);
     },
     clearLPblock () {
       actions.clearLPblock();
@@ -773,14 +923,6 @@ export default {
       url += '&from=gb';
       window.location = url;
     },
-    showAllAns () {
-      window.$('span[id^=ans]').toggleClass('hidden', false).show();
-      window.$('.sabtn').replaceWith('<span>Answer: </span>');
-      window.$('.keybtn').attr('aria-expanded', 'true');
-      window.$('div[id^=dsbox]').toggleClass('hidden', false).attr('aria-hidden', false)
-        .attr('aria-expanded', true);
-      window.$('input[aria-controls^=dsbox]').attr('aria-expanded', true);
-    },
     beforeUnload (evt) {
       if (Object.keys(store.scoreOverrides).length > 0 ||
         Object.keys(store.feedbacks).length > 0
@@ -796,16 +938,56 @@ export default {
     closeConfirm () {
       store.confirmObj = null;
     },
+    showAllAns () {
+      window.toggleshowallans(this.op_showans);
+    },
     previewFiles () {
-      window.previewallfiles();
+      window.togglepreviewallfiles(this.op_previewFiles);
     },
     toggleFloatingScoreboxes () {
-      window.toggleScrollingScoreboxes();
+      window.toggleScrollingScoreboxState(this.op_floatingSB);
+    },
+    sidebysideAction () {
+      window.sidebysidemoveels(this.sidebysideon);
     },
     loadTexts () {
       if (!store.assessInfo.hasOwnProperty('intro')) {
         actions.loadGbTexts();
       }
+    },
+    storeFilters () {
+      const tocheck = ['hide100', 'hidePerfect', 'hideNonzero', 'hideZero', 'hideUnanswered',
+        'hideFeedback', 'hideNowork', 'showEndmsg', 'showExcused', 'showAllWork',
+        'hidetexts', 'op_previewFiles', 'op_floatingSB', 'op_showans', 'sidebysideon', 'op_oneatatime'];
+      const out = [];
+      for (const v of tocheck) {
+        if ((v === 'hidetexts' && this[v] === false) || (v !== 'hidetexts' && this[v] === true)) {
+          out.push(v);
+        }
+      }
+      window.setCookie('gvaf' + store.aid, out.join(','));
+    },
+    questionLoaded (base) {
+      if (this.op_previewFiles) {
+        window.togglepreviewallfiles(true, base);
+      }
+      if (this.op_showans) {
+        window.toggleshowallans(true, base);
+      }
+      if (this.sidebysideon) {
+        window.sidebysidemoveels(true, base);
+      }
+      this.$nextTick(window.sendLTIresizemsg);
+    },
+    setCurqn (val) {
+      this.curqn = val;
+      this.$nextTick(() => window.document.getElementById('qwrap' + (val + 1)).scrollIntoView());
+    },
+    msgStu () {
+      let url = store.APIbase + '../course/sendmsgmodal.php?add=new&sendtype=msg';
+      url += '&cid=' + store.cid + '&to=' + store.uid;
+      url += '&title=' + encodeURIComponent(this.aData.name);
+      window.GB_show(this.$t('gradebook-msg_student'), url, 600, 'auto', false);
     }
   },
   created () {
@@ -815,6 +997,7 @@ export default {
     } else {
       store.APIbase = process.env.BASE_URL;
     }
+
     // if no assessinfo, or if cid/aid has changed, load data
     const querycid = window.location.search.replace(/^.*cid=(\d+).*$/, '$1');
     const queryaid = window.location.search.replace(/^.*aid=(\d+).*$/, '$1');
@@ -831,7 +1014,48 @@ export default {
       store.uid = queryuid;
       store.stu = querystu;
       store.queryString = '?cid=' + store.cid + '&aid=' + store.aid + '&uid=' + store.uid;
-      actions.loadGbAssessData();
+
+      const filtercookie = window.readCookie('gvaf' + store.aid);
+      if (filtercookie !== null && filtercookie.length > 0) {
+        this.showFilters = true;
+        const cookieparts = filtercookie.split(',');
+        for (const v of cookieparts) {
+          if (v === 'hidetexts') {
+            this[v] = false;
+          } else {
+            this[v] = true;
+          }
+        }
+      }
+
+      actions.loadGbAssessData(this.hidetexts === false);
+    }
+  },
+  mounted () {
+    const filtercookie = window.readCookie('gvaf' + store.aid);
+    if (filtercookie !== null && filtercookie.length > 0) {
+      const cookieparts = filtercookie.split(',');
+      if (cookieparts.indexOf('op_floatingSB') !== -1) {
+        window.toggleScrollingScoreboxState(true);
+      }
+      this.$nextTick(window.sendLTIresizemsg);
+    }
+  },
+  updated () {
+    this.$nextTick(window.sendLTIresizemsg);
+  },
+  watch: {
+    showQuestion: {
+      handler (newVal) {
+        if (this.op_oneatatime && !newVal[this.curqn]) {
+          if (newVal[this.nextVisible]) {
+            this.curqn = this.nextVisible;
+          } else if (newVal[this.prevVisible]) {
+            this.curqn = this.prevVisible;
+          }
+        }
+      },
+      deep: true
     }
   }
 };
@@ -862,5 +1086,29 @@ export default {
 }
 .hoverbox {
   background-color: #fff; z-index: 9; box-shadow: 0px -3px 5px 0px rgb(0 0 0 / 75%);
+}
+#showopts label {
+  margin-right: 8px;
+  user-select: none;
+}
+.sidebyside {
+  display:flex;
+  flex-wrap:nowrap;
+}
+.scrollpane {
+  width: 100%;
+}
+.sidepreview {
+  width: 0%;
+}
+.sidebysideon .sidepreview {
+  border-left: 1px solid #ccc;
+  padding: 10px;
+}
+.sidebysideon > div {
+  width: 50%;
+}
+.sidepreview .viewworkwrap {
+  margin: 15px 0;
 }
 </style>

@@ -32,7 +32,7 @@ function getitemstolookup($items,$inpublic,$viewall,&$tolookup,$onlyopen,$ispubl
 			 	 }
 			 }
 			 if (!$viewall && !empty($studentinfo) && isset($item['grouplimit']) && count($item['grouplimit'])>0) {
-				 if (!in_array('s-'.$studentinfo['section'],$item['grouplimit'])) {
+                 if (!in_array(strtolower('s-' . $studentinfo['section']), array_map('strtolower', $item['grouplimit']))) {
 					 continue;
 				 }
 			 }
@@ -142,7 +142,7 @@ function loadItemShowData($items,$onlyopen,$viewall,$inpublic=false,$ispublic=fa
 			}
 			if (count($newAssesses) > 0) {
 				$ph2 = Sanitize::generateQueryPlaceholders($newAssesses);
-				$stm = $DBH->prepare("SELECT assessmentid,score,status,lastchange FROM imas_assessment_records WHERE assessmentid IN ($ph2) AND userid=?");
+				$stm = $DBH->prepare("SELECT assessmentid,score,status,status2,lastchange FROM imas_assessment_records WHERE assessmentid IN ($ph2) AND userid=?");
 				$stm->execute(array_merge($newAssesses, array($userid)));
 				while ($line = $stm->fetch(PDO::FETCH_ASSOC)) {
 					if (($line['status']&3)==0 && $line['lastchange']==0) {
@@ -151,6 +151,7 @@ function loadItemShowData($items,$onlyopen,$viewall,$inpublic=false,$ispublic=fa
 					$itemshowdata[$typelookups['Assessment'][$line['assessmentid']]]['ptsstatus'] = (($line['status']&3)>0)?1:2;
 					$itemshowdata[$typelookups['Assessment'][$line['assessmentid']]]['ptsearned'] = $line['score'];
 					$itemshowdata[$typelookups['Assessment'][$line['assessmentid']]]['outofattempts'] = (($line['status']&32)==32);
+					$itemshowdata[$typelookups['Assessment'][$line['assessmentid']]]['manualreleased'] = (($line['status2']&1)==1);
 				}
 			}
 		}
@@ -275,19 +276,22 @@ function loadExcusals($cid, $userid) {
 }
 
 function loadExceptions($cid, $userid) {
-	global $DBH;
+	global $DBH, $courseenddate;
 
 	$exceptions = array();
-	$query = "SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.waivereqscore,ex.itemtype FROM ";
+	$query = "SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.is_lti,ex.waivereqscore,ex.itemtype FROM ";
 	$query .= "imas_exceptions AS ex,imas_items as items,imas_assessments as i_a WHERE ex.userid=:userid AND ";
-	$query .= "ex.assessmentid=i_a.id AND (items.typeid=i_a.id AND items.itemtype='Assessment' AND items.courseid=:courseid) ";
-	$query .= "UNION SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.waivereqscore,ex.itemtype FROM ";
+	$query .= "ex.assessmentid=i_a.id AND ex.itemtype='A' AND (items.typeid=i_a.id AND items.itemtype='Assessment' AND items.courseid=:courseid) ";
+	$query .= "UNION ALL SELECT items.id,ex.startdate,ex.enddate,ex.islatepass,ex.is_lti,ex.waivereqscore,ex.itemtype FROM ";
 	$query .= "imas_exceptions AS ex,imas_items as items,imas_forums as i_f WHERE ex.userid=:userid2 AND ";
-	$query .= "ex.assessmentid=i_f.id AND (items.typeid=i_f.id AND items.itemtype='Forum' AND items.courseid=:courseid2) ";
+	$query .= "ex.assessmentid=i_f.id AND (ex.itemtype='F' OR ex.itemtype='R' OR ex.itemtype='P') AND (items.typeid=i_f.id AND items.itemtype='Forum' AND items.courseid=:courseid2) ";
 	$stm = $DBH->prepare($query);
 	$stm->execute(array(':userid'=>$userid, ':courseid'=>$cid, ':userid2'=>$userid, ':courseid2'=>$cid));
 	while ($line = $stm->fetch(PDO::FETCH_ASSOC)) {
-		$exceptions[$line['id']] = array($line['startdate'],$line['enddate'],$line['islatepass'],$line['waivereqscore'],$line['itemtype']);
+        if ($line['enddate'] > $courseenddate && $line['islatepass'] > 0) {
+            $line['enddate'] = $courseenddate;
+        }
+		$exceptions[$line['id']] = $line;
 	}
 	return $exceptions;
 }
@@ -312,14 +316,14 @@ function upsendexceptions(&$items) {
 				if ($hasexc[1]>$maxedate) { $maxedate = $hasexc[1];}
 			  }
 		   } else {
-			   if (isset($exceptions[$item]) && $exceptions[$item][4]=='A') {
+			   if (isset($exceptions[$item]) && $exceptions[$item]['itemtype']=='A') {
 				  // return ($exceptions[$item]);
-				   if ($exceptions[$item][0]<$minsdate) { $minsdate = $exceptions[$item][0];}
-				   if ($exceptions[$item][1]>$maxedate) { $maxedate = $exceptions[$item][1];}
-			   } else if (isset($exceptions[$item]) && ($exceptions[$item][4]=='F' || $exceptions[$item][4]=='P' || $exceptions[$item][4]=='R')) {
+				   if ($exceptions[$item]['startdate']<$minsdate) { $minsdate = $exceptions[$item]['startdate'];}
+				   if ($exceptions[$item]['enddate']>$maxedate) { $maxedate = $exceptions[$item]['enddate'];}
+			   } else if (isset($exceptions[$item]) && ($exceptions[$item]['itemtype']=='F' || $exceptions[$item]['itemtype']=='P' || $exceptions[$item]['itemtype']=='R')) {
 			   	   //extend due date if replyby or postby bigger than enddate
-			   	   if ($exceptions[$item][0]>$maxedate) { $maxedate = $exceptions[$item][0];}
-			   	   if ($exceptions[$item][1]>$maxedate) { $maxedate = $exceptions[$item][1];}
+			   	   if ($exceptions[$item]['startdate']>$maxedate) { $maxedate = $exceptions[$item]['startdate'];}
+			   	   if ($exceptions[$item]['enddate']>$maxedate) { $maxedate = $exceptions[$item]['enddate'];}
 			   }
 		   }
 	   }

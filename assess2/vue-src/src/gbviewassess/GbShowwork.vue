@@ -1,5 +1,5 @@
 <template>
-  <div class = "questionpane viewworkwrap" v-if="!!work">
+  <div class = "questionpane viewworkwrap" v-if="!!work" ref="wrap">
     <div>
       <button type="button" class="slim"
         @click = "show = !show"
@@ -7,7 +7,7 @@
         {{ btnLabel }}
       </button>
       <span class="small" v-if="show && worktime !== '0'">
-        {{ $t('gradebook.lastchange')}} {{ worktime }}
+        {{ $t('gradebook-lastchange')}} {{ worktime }}
       </span>
     </div>
     <transition name="fade">
@@ -19,7 +19,7 @@
 <script>
 export default {
   name: 'GbShowwork',
-  props: ['work', 'worktime', 'showall'],
+  props: ['work', 'worktime', 'showall', 'previewfiles'],
   data: function () {
     return {
       show: false,
@@ -28,7 +28,7 @@ export default {
   },
   computed: {
     btnLabel () {
-      return this.$t(this.show ? 'gradebook.hidework' : 'gradebook.showwork');
+      return this.$t(this.show ? 'gradebook-hidework' : 'gradebook-showwork');
     }
   },
   methods: {
@@ -41,10 +41,14 @@ export default {
       window.initlinkmarkup(this.$refs.workbox);
       window.$(this.$refs.workbox).find('img').on('click', window.rotateimg);
       this.rendered = true;
+      if (this.previewfiles) {
+        window.togglepreviewallfiles(true, this.$refs.wrap);
+      }
     }
   },
   mounted () {
     this.renderInit();
+    this.show = this.showall;
   },
   watch: {
     work: function (newVal, oldVal) {

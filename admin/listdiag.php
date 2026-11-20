@@ -12,6 +12,7 @@ $body = "";
 if (($myspecialrights&4)!=4 && $myrights < 100) {
  	$overwriteBody = 1;
 	$body = "You don't have authority to view this page.";
+  $from = '';
 }  else {
   if ($myrights<75 || (isset($_GET['show']) && $_GET['show'][0]=='u')) {  //only show own
     if ($myrights<75) {
@@ -21,16 +22,22 @@ if (($myspecialrights&4)!=4 && $myrights < 100) {
       $showuser = Sanitize::onlyInt(substr($_GET['show'],1));
       $from = 'ldu'.$showuser;
     }
-    $query = "SELECT d.id,d.name,d.public,d.cid,ic.name AS cname FROM imas_diags as d JOIN imas_users AS u ON u.id=d.ownerid ";
+    $query = "SELECT d.id,d.name,d.public,d.cid,ic.name AS cname FROM imas_diags as d ";
     $query .= "JOIN imas_courses AS ic ON d.cid=ic.id ";
     $query .= "WHERE d.ownerid=:ownerid ORDER BY d.name";
     $stm = $DBH->prepare($query);
     $stm->execute(array(':ownerid'=>$showuser));
     $diags = $stm->fetchAll(PDO::FETCH_ASSOC);
 
-    $stm = $DBH->prepare("SELECT LastName,FirstName FROM imas_users WHERE id=:userid");
+    $stm = $DBH->prepare("SELECT LastName,FirstName,groupid FROM imas_users WHERE id=:userid");
     $stm->execute(array(':userid'=>$showuser));
-    $userdisplayname = implode(', ',$stm->fetch(PDO::FETCH_NUM));
+    $userdata = $stm->fetch(PDO::FETCH_ASSOC);
+    $userdisplayname = $userdata['LastName'] . ', ' . $userdata['FirstName'];
+
+    if ($myrights == 75 && $userdata['groupid'] !== $groupid) {
+      echo "Invalid user";
+      exit;
+    }
 
     $list = 'self';
   } else if ($myrights<100 || (isset($_GET['show']) && $_GET['show'][0]=='g')) {  //show group's
@@ -82,7 +89,7 @@ $curBreadcrumb .= _('Diagnostics');
 $placeinhead = "<script type=\"text/javascript\" src=\"$staticroot/javascript/tablesorter.js\"></script>\n";
 $placeinhead .= '<script type="text/javascript">
 $(function() {
-  var html = \'<span class="dropdown"><a role="button" tabindex=0 class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="'.$staticroot.'/img/gears.png" alt="Options"/></a>\';
+  var html = \'<span class="dropdown"><a role="button" tabindex=0 class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="'.$staticroot.'/img/gears.svg" alt="Options"/></a>\';
   html += \'<ul role="menu" class="dropdown-menu">\';
   $("tr td:first-child").css("clear","both").each(function (i,el) {
     var href = $(el).find("a").attr("href");

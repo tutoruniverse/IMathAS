@@ -11,6 +11,8 @@ ini_set("max_execution_time", "1600");
 
 require_once "../init.php";
 require_once "../includes/copyiteminc.php";
+require_once "../includes/TeacherAuditLog.php";
+
 //Look to see if a hook file is defined, and include if it is
 if (isset($CFG['hooks']['util/batchcreateinstr'])) {
     require_once $CFG['hooks']['util/batchcreateinstr'];
@@ -33,9 +35,8 @@ if (isset($_POST['groupid']) && is_uploaded_file($_FILES['uploadedfile']['tmp_na
   } else {
   	  $newusergroupid = $groupid;
   }
-  if (isset($CFG['GEN']['newpasswords'])) {
-    require_once "../includes/password.php";
-  }
+  require_once "../includes/password.php";
+  
   if (isset($CFG['GEN']['homelayout'])) {
     $homelayout = $CFG['GEN']['homelayout'];
   } else {
@@ -44,7 +45,7 @@ if (isset($_POST['groupid']) && is_uploaded_file($_FILES['uploadedfile']['tmp_na
   $now = time();
   $isoktocopy = array();
   $handle = fopen_utf8(realpath($_FILES['uploadedfile']['tmp_name']),'r');
-  while (($data = fgetcsv($handle,2096))!==false) {
+  while (($data = fgetcsv($handle,2096, ',', '"', ''))!==false) {
     if (trim($data[0])=='') {continue;}
     if (count($data)<5) {
       echo "Invalid row - skipping<br/>";
@@ -57,11 +58,8 @@ if (isset($_POST['groupid']) && is_uploaded_file($_FILES['uploadedfile']['tmp_na
       continue;
     }
 
-    if (isset($CFG['GEN']['newpasswords'])) {
-			$hashpw = password_hash($data[1], PASSWORD_DEFAULT);
-		} else {
-			$hashpw = md5($data[1]);
-		}
+    $hashpw = password_hash($data[1], PASSWORD_DEFAULT);
+		
     echo "Importing ".Sanitize::encodeStringForDisplay($data[0])."<br/>";
     $query = 'INSERT INTO imas_users (SID,password,FirstName,LastName,rights,email,groupid,homelayout,forcepwreset) VALUES (:SID, :password, :FirstName, :LastName, :rights, :email, :groupid, :homelayout, 1)';
     $stm = $DBH->prepare($query);
@@ -246,6 +244,19 @@ if (isset($_POST['groupid']) && is_uploaded_file($_FILES['uploadedfile']['tmp_na
       if (function_exists('onAddCourse')) {
       	  onAddCourse($cid, $uid);
       }
+
+      TeacherAuditLog::addTracking(
+        $cid,
+        "Course Settings Change",
+        null,
+        [
+          'action' => 'Course Created',
+          'via' => 'batchcreateinstr',
+          'copy' => $sourcecid,
+          'for' => $uid
+        ]
+      );
+
       $i++;
     }
   }
@@ -261,6 +272,7 @@ if (isset($_POST['groupid']) && is_uploaded_file($_FILES['uploadedfile']['tmp_na
 
   echo '</p>';
 } else {
+  $pagetitle = _('Batch Create Instructors');
   require_once "../header.php";
   if ($_GET['from']=='userreports') {
   	  $curBreadcrumb = "$breadcrumbbase <a href=\"$imasroot/admin/userreports.php\">User Reports</a>\n";

@@ -2,26 +2,36 @@
 
 require_once '../init.php';
 
-if (!isset($teacherid)) {
+if ($myrights < 20) {
     echo 'You do not have access to this page';
     exit;
 }
 
-$aid = intval($_GET['aid']);
+if (isset($_GET['aid']) && isset($teacherid)) {
+    $searchcontext = '';
+    $aid = intval($_GET['aid']);
+} else if (isset($_GET['did']) && isset($teacherid)) {
+    $searchcontext = 'd';
+    $aid = intval($_GET['did']);
+} else {
+    $searchcontext = 'c';
+    $aid = Sanitize::courseId($_GET['cid']);
+}
+
 
 $libs = explode(',', $_POST['libs']);
-$_SESSION['searchtype'.$aid] = $_POST['searchtype'];
-$_SESSION['searchin'.$aid] = $libs;
-$_SESSION['lastsearch'.$aid] = $_POST['search'];
+$_SESSION['searchtype'.$searchcontext.$aid] = $_POST['searchtype'];
+$_SESSION['searchin'.$searchcontext.$aid] = $libs;
+$_SESSION['lastsearch'.$searchcontext.$aid] = $_POST['search'];
 if ($_POST['searchtype'] == 'libs') {
-    $_SESSION['lastsearchlibs'.$aid] = $_POST['libs'];
+    $_SESSION['lastsearchlibs'.$searchcontext.$aid] = $_POST['libs'];
 } else {
-    unset($_SESSION['lastsearchlibs'.$aid]);
+    unset($_SESSION['lastsearchlibs'.$searchcontext.$aid]);
 }
 
 header('Content-Type: application/json; charset=utf-8');
 
-if (isset($_GET['getassess'])) {
+if (isset($_GET['getassess']) && $cid > 0) {
     // get assessment list 
     $stm = $DBH->prepare("SELECT itemorder FROM imas_courses WHERE id=:id");
     $stm->execute(array(':id'=>$cid));
@@ -31,7 +41,7 @@ if (isset($_GET['getassess'])) {
     $query = "SELECT ii.id AS itemid,ia.id,ia.name,ia.summary FROM imas_items AS ii JOIN imas_assessments AS ia ";
     $query .= "ON ii.typeid=ia.id AND ii.itemtype='Assessment' WHERE ii.courseid=:courseid AND ia.id<>:aid";
     $stm = $DBH->prepare($query);
-    $stm->execute(array(':courseid'=>$cid, ':aid'=>$aid));
+    $stm->execute(array(':courseid'=>$cid, ':aid'=>($searchcontext=='c'?0:$aid)));
     while ($row = $stm->fetch(PDO::FETCH_ASSOC)) {
         $itemassoc[$row['itemid']] = $row;
     }
@@ -66,16 +76,27 @@ $search = parseSearchString($_POST['search']);
 $offset = intval($_POST['offset']);
 
 $options = [];
-if (!empty($search['unused'])) {
+if (!empty($search['unused']) && $searchcontext!='c') {
     // populate existing if unused is set
     $query = 'SELECT iqs.id FROM imas_questionset AS iqs
         JOIN imas_questions AS iq ON iq.questionsetid=iqs.id
-        WHERE iq.assessmentid=?';
+        JOIN imas_assessments AS ia ON iq.assessmentid=ia.id
+        WHERE iq.assessmentid=? AND ia.courseid=?';
     $stm = $DBH->prepare($query);
-    $stm->execute(array($aid));
+    $stm->execute(array($aid, $cid));
     $options['existing'] = $stm->fetchAll(PDO::FETCH_COLUMN, 0);
 }
-
+if ($searchcontext=='c') {
+    $options['includelastmod'] = 1;
+}
+if ($_GET['cid'] === 'admin') {
+    $options['includeowner'] = 1;
+    if ($myrights == 100) {
+        $options['isadmin'] = true;
+    } else if ($myrights > 74) {
+        $options['isgroupadmin'] = $groupid;
+    }
+}
 $res = searchQuestions($search, $userid, $_POST['searchtype'], $libs, $options, $offset);
 
 echo json_encode($res, JSON_INVALID_UTF8_IGNORE);

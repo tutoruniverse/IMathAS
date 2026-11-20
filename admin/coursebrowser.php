@@ -137,11 +137,16 @@ $placeinhead = '<script type="text/javascript">';
 $placeinhead .= 'var courses = '.getCourseBrowserJSON().';';
 $placeinhead .= 'var courseBrowserAction = "'.Sanitize::simpleString($action).'";';
 $placeinhead .= '</script>';
-$placeinhead .= '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js"></script>
-<script src="'.$imasroot.'/javascript/'.$CFG['coursebrowser'].'"></script>
+if (!empty($CFG['GEN']['uselocaljs'])) {
+	$placeinhead .= '<script type="text/javascript" src="'.$staticroot.'/javascript/vue3-4-31.min.js"></script>';
+} else {
+    $placeinhead .= '<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.31/vue.global.prod.min.js" integrity="sha512-Dg9zup8nHc50WBBvFpkEyU0H8QRVZTkiJa/U1a5Pdwf9XdbJj+hZjshorMtLKIg642bh/kb0+EvznGUwq9lQqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>';
+}
+$placeinhead .= '<script src="'.$imasroot.'/javascript/'.$CFG['coursebrowser'].'"></script>
 <link rel="stylesheet" href="coursebrowser.css?v=072018" type="text/css" />';
 
 $pagetitle = _('Course Browser');
+$noskipnavlink = true;
 require_once "../header.php";
 
 if (!isset($_GET['embedded'])) {
@@ -163,7 +168,7 @@ if (!isset($_GET['embedded'])) {
 </div>
 <div id="filters">
 	Filter results:
-	<span v-for="propname in propsToFilter" class="dropdown-wrap">
+	<span v-for="propname in propsToFilter" class="dropdown-wrap" @focusout="handleFocusOut" @keydown.esc="handleEsc">
 		<button @click="showFilter = (showFilter==propname)?'':propname">
 			{{ courseBrowserProps[propname].name }} {{ catprops[propname].length > 0 ? '('+catprops[propname].length+')': '' }}
 			<span class="arrow-down2" :class="{rotated: showFilter==propname}"></span>
@@ -213,8 +218,7 @@ if (!isset($_GET['embedded'])) {
 		</tr>
 
 		</tbody></table>
-		<p v-for="(propval,propname) in course"
-		   v-if="courseBrowserProps[propname] && courseBrowserProps[propname].type && courseBrowserProps[propname].type=='textarea'"
+		<p v-for="(propval,propname) in courseText(course)"
 		   class="pre-line"
 		>{{ propval }}</p>
 	</div>
@@ -229,9 +233,10 @@ if (!isset($_GET['embedded'])) {
 
 </div>
 <script type="text/javascript">
-new Vue({
-	el: '#app',
-	data: {
+const { createApp } = Vue;
+createApp({
+	data: function() {
+        return {
 		selectedItems: [],
 		courseBrowserProps: courseBrowserProps,
 		showFilters: false,
@@ -239,6 +244,7 @@ new Vue({
 		filterLeft: 0,
 		courseTypes: courseBrowserProps.meta.courseTypes,
 		activeTab: 0,
+        }
 	},
 	methods: {
 		clickaway: function(event) {
@@ -266,9 +272,21 @@ new Vue({
 						} else {
 							courseout[propname] = this.courseBrowserProps[propname].options[course[propname]];
 						}
-					} else if (courseBrowserProps[propname].type && courseBrowserProps[propname].type=='string' && propname!='name') {
+					} else if (courseBrowserProps[propname].type && (courseBrowserProps[propname].type=='string' || courseBrowserProps[propname].showinlist) && propname!='name') {
 						courseout[propname] = course[propname];
 					}
+				}
+			}
+			return courseout;
+		},
+        courseText: function (course) {
+			var courseout = {};
+			for (propname in course) {
+				if (this.courseBrowserProps[propname] && 
+                    this.courseBrowserProps[propname].type &&
+					!this.courseBrowserProps[propname].showinlist &&
+                    this.courseBrowserProps[propname].type == 'textarea') {
+							courseout[propname] = course[propname];
 				}
 			}
 			return courseout;
@@ -302,6 +320,18 @@ new Vue({
 			} else {
 				tgt.style.right = "auto";
 				tgt.style.left = "0px";
+			}
+		},
+		handleFocusOut(event) {
+			if (!event.currentTarget.contains(event.relatedTarget)) {
+				this.showFilter = '';
+			}
+		},
+		handleEsc(event) {
+			this.showFilter = '';
+			const button = event.currentTarget.querySelector('button');
+			if (button) {
+				button.focus();
 			}
 		}
 	},
@@ -398,10 +428,12 @@ new Vue({
 		document.addEventListener('click', this.clickaway);
 	},
 	mounted: function() {
-		$("#fixedfilters + #card-deck-wrap").css("margin-top", $("#fixedfilters").outerHeight() + 10);
+        this.$nextTick(function() {
+		    $("#fixedfilters + #card-deck-wrap").css("margin-top", $("#fixedfilters").outerHeight() + 10);
+        });
 	}
 
-});
+}).mount('#app');
 </script>
 <?php
 require_once "../footer.php";

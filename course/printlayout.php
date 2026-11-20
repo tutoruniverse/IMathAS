@@ -40,20 +40,24 @@ if ($overwriteBody==1) {
 	$cid = Sanitize::courseId($_GET['cid']);
 	$aid = Sanitize::onlyInt($_GET['aid']);
 	if (isset($_POST['vert'])) {
-		$ph = 11 - $_POST['vert'];
-		$pw = 8.5 - $_POST['horiz'];
+		$ph = 11 - Sanitize::onlyFloat($_POST['vert']);
+		$pw = 8.5 - Sanitize::onlyFloat($_POST['horiz']);
 		if ($_POST['browser']==1) {
 			$ph -= .5;
 			$pw -= .5;
 		}
 	} else if (isset ($_POST['pw'])) {
-		$ph = $_POST['ph'];
-		$pw = $_POST['pw'];
+		$ph = Sanitize::onlyFloat($_POST['ph']);
+		$pw = Sanitize::onlyFloat($_POST['pw']);
 	}
 	$isfinal = isset($_GET['final']);
-	$stm = $DBH->prepare("SELECT itemorder,shuffle,defpoints,name,intro FROM imas_assessments WHERE id=:id");
-	$stm->execute(array(':id'=>$aid));
+	$stm = $DBH->prepare("SELECT itemorder,shuffle,defpoints,name,intro FROM imas_assessments WHERE id=:id AND courseid=:cid");
+	$stm->execute(array(':id'=>$aid, ':cid'=>$cid));
 	$line = $stm->fetch(PDO::FETCH_ASSOC);
+	if ($line === false) {
+		echo 'Invalid aid';
+		exit;
+	}
 	if (($introjson=json_decode($line['intro']))!==null) { //is json intro
 		$line['intro'] = $introjson[0];
 	}
@@ -133,7 +137,7 @@ if ($overwriteBody==1) {
 
 <?php
 	if ($isfinal) {
-		$heights = explode(',',$_POST['heights']);
+		$heights = array_map('floatval', explode(',',$_POST['heights']));
 		for ($i=0;$i<count($heights);$i++) {
 			echo "div.trq$i {float: left; width: ".Sanitize::encodeStringForCSS($pw)."in; height: ".Sanitize::encodeStringForCSS($heights[$i])."in; padding: 0px; overflow: hidden;}\n";
 		}

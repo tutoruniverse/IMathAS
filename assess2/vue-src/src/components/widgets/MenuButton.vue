@@ -7,23 +7,25 @@
     @focusin = "handleFocus"
     @focusout = "handleBlur"
   >
-    <button
-      :id = "id"
-      ref = "button"
-      :tabindex = "open?-1:0"
-      :class = "{'nobutton': !!nobutton, 'flex-nowrap-center': true}"
-      aria-haspopup = "true"
-      :aria-controls = "id + '_wrap'"
-      :aria-expanded = "open?'true':'false'"
-      @click = "toggleOpen"
-      @keydown.space.prevent = "toggleOpen"
-    >
-      <slot v-if="!hasButton" :option="options[selected]" :selected="true"></slot>
-      <tooltip-span :show="!open" :tip="header">
+    <tooltip-span :show="!open" :tip="header" :tipid="'mbtip' + id">
+      <button
+        :id = "id"
+        ref = "button"
+        :tabindex = "open?-1:0"
+        :class = "{'nobutton': !!nobutton, 'flex-nowrap-center': true}"
+        aria-haspopup = "true"
+        :aria-controls = "id + '_wrap'"
+        :aria-expanded = "open?'true':'false'"
+        :aria-describedby = "header === '' ? undefined : 'mbtip' + id"
+        @click = "toggleOpen"
+        @keydown.space.prevent = "toggleOpen"
+      >
+        <slot v-if="!hasButton" :option="options[selected]" :selected="true"></slot>
         <slot v-if="hasButton" name=button></slot>
-      </tooltip-span>
-      <icons class="mb_downarrow" v-if="!noarrow" name="downarrow" size="micro"/>
-    </button>
+
+        <icons class="mb_downarrow" v-if="!noarrow" name="downarrow" size="micro"/>
+      </button>
+    </tooltip-span>
     <transition name="fade">
       <ul
         v-if="open"
@@ -43,8 +45,8 @@
           <router-link
             v-if = "option.internallink"
             :to = "option.internallink"
-            @click.native = "toggleOpen"
-            @mouseover.native = "curSelected = index"
+            @click = "toggleOpen"
+            @mouseover = "curSelected = index"
             :id = "id + '_' + index"
             :class="{'menubutton-focus': index==curSelected}"
             role = "menuitem"
@@ -57,6 +59,7 @@
           </router-link>
           <component
             v-else
+            :is = "getLinkProps(option,index).is"
             v-bind = "getLinkProps(option,index)"
             @click = "linkClick($event,option)"
             @keydown.enter = "linkClick($event,option)"
@@ -106,13 +109,20 @@ export default {
   },
   computed: {
     hasButton () {
-      return !!this.$scopedSlots.button;
+      return !!this.$slots.button;
     },
     hasSlot () {
-      return !!this.$scopedSlots.default;
+      return !!this.$slots.default;
     },
     filteredOptions () {
-      return this.options.filter(a => (a !== null));
+      // convert to object to retain indices and filter out null
+      const out = {};
+      for (const i in this.options) {
+        if (this.options[i] !== null) {
+          out[i] = this.options[i];
+        }
+      }
+      return out;
     }
   },
   methods: {
@@ -137,7 +147,7 @@ export default {
     linkClick (event, option) {
       if (option.link && option.popup) {
         event.preventDefault();
-        window.GB_show(option.label, option.link, 400, 400, false);
+        window.GB_show(option.label, option.link, option?.popupwidth ?? 400, option?.popupheight ?? 400, false);
         this.toggleOpen(false, true);
       }
       if (option.onclick) {

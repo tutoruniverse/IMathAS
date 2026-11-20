@@ -1,10 +1,11 @@
 <template>
-  <div v-if="texts.length > 0" class = "questionpane introtext">
+  <div v-if="texts.length > 0">
     <inter-question-text
       v-for = "(textitem,index) in texts"
       :textobj = "textitem"
       :key = "index"
       :active = "active"
+      class = "questionpane introtext"
     />
   </div>
 </template>

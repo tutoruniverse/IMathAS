@@ -27,6 +27,7 @@ if (isset($_GET['greybox'])) {
 	$gb = '&greybox=true';
 	$flexwidth = true;
 	$nologo = true;
+	$noskipnavlink = true;
 } else {
 	$gb = '';
 }
@@ -45,13 +46,14 @@ switch($_GET['action']) {
 		}
 		echo '<div id="headerforms" class="pagetitle"><h1>',_('New Student Signup'),'</h1></div>';
 		echo "<form id=\"newuserform\" class=limitaftervalidate method=post action=\"actions.php?action=newuser$gb\">\n";
-		echo "<span class=form><label for=\"SID\">$longloginprompt:</label></span> <input class=\"form pii-username\" type=\"text\" size=12 id=SID name=SID><BR class=\"form\">\n";
+		echo '<div id="errorlive" aria-live="polite" class="sr-only"></div>';
+        echo "<span class=form><label for=\"SID\">$longloginprompt:</label></span> <input class=\"form pii-username\" type=\"text\" size=12 id=SID name=SID><BR class=\"form\">\n";
 		echo "<span class=\"form\"><label for=\"pw1\">",_('Choose a password:'),"</label></span><input class=\"form\" type=\"password\" size=20 id=pw1 name=pw1><BR class=\"form\">\n";
 		echo "<span class=\"form\"><label for=\"pw2\">",_('Confirm password:'),"</label></span> <input class=\"form\" type=\"password\" size=20 id=pw2 name=pw2><BR class=\"form\">\n";
 		echo "<span class=\"form\"><label for=\"firstname\">",_('Enter First Name:'),"</label></span> <input class=\"form pii-first-name\" type=\"text\" size=20 id=firstname name=firstname autocomplete=\"given-name\"><BR class=\"form\">\n";
 		echo "<span class=\"form\"><label for=\"lastname\">",_('Enter Last Name:'),"</label></span> <input class=\"form pii-last-name\" type=\"text\" size=20 id=lastname name=lastname autocomplete=\"family-name\"><BR class=\"form\">\n";
 		echo "<span class=\"form\"><label for=\"email\">",_('Enter E-mail address:'),"</label></span>  <input class=\"form pii-email\" type=\"text\" size=60 id=email name=email autocomplete=\"email\"><BR class=\"form\">\n";
-		echo "<span class=form><label for=\"msgnot\">",_('Notify me by email when I receive a new message:'),"</label></span><span class=formright><input type=checkbox id=msgnot name=msgnot checked=\"checked\" /></span><BR class=form>\n";
+		echo "<span class=form>",_('Notifications:'),"</span><span class=formright><label><input type=checkbox id=msgnot name=msgnot checked=\"checked\" /> ",_('Notify me by email when I receive a new message:'),"</label></span><BR class=form>\n";
         if (isset($CFG['GEN']['COPPA'])) {
 			echo "<span class=form><label for=\"over13\">",_('I am 13 years old or older'),"</label></span><span class=formright><input type=checkbox name=over13 id=over13 onchange=\"toggleOver13()\"></span><br class=form />\n";
         }
@@ -159,6 +161,7 @@ switch($_GET['action']) {
 		} else {
 			echo "<form id=\"pageform\" class=limitaftervalidate method=post action=\"actions.php?action=chgpwd$gb\">\n";
 		}
+        echo '<div id="errorlive" aria-live="polite" class="sr-only"></div>';
 		echo "<span class=form><label for=\"oldpw\">",_('Enter old password'),":</label></span> <input class=form type=password id=oldpw name=oldpw size=40 /> <BR class=form>\n";
         if ($mfa !== '') {
             echo "<span class=form><label for=\"mfa\">",_('Enter 2-factor Authentication code'),":</label></span> <input class=form type=text id=mfa name=mfa size=10 /> <BR class=form>\n";
@@ -188,11 +191,21 @@ switch($_GET['action']) {
             }
         }
         echo '<script type="text/javascript">
-            function togglechgpw(val) { 
-                document.getElementById("pwinfo").style.display=val?"":"none"; 
+            function togglechgpw(el) {
+                document.getElementById("pwinfo").style.display=el.checked?"":"none"; 
+                el.setAttribute("aria-expanded", el.checked);
+                if (checked) {
+                    $("#pwinfo").focus();
+                }
             } 
-            function togglechgmfa(val) { 
-                $("#mfainfo").toggle(val>0);
+            function togglechgmfa(el) { 
+                if (document.getElementById("mfainfo")) {
+                    $("#mfainfo").toggle(el.value>0);
+                    el.setAttribute("aria-expanded", el.value>0);
+                    if (el.value > 0) {
+                        $("#mfainfo").focus();
+                    }
+                }
             }
             var oldemail = "'.Sanitize::encodeStringForJavascript($line['email']).'";
             $(function () {
@@ -200,6 +213,11 @@ switch($_GET['action']) {
                     var needchk = $("#dochgpw").prop("checked") ||
                         $("#email").val() != oldemail ||
                         ($("#dochgmfa").val() < '.$mfatype.');
+                    if (needchk && !$("#seccheck").is(":visible")) {
+                      $("#infolive").html("'._('The changes you are making require additional security verification. Re-enter your password later in the form.').'");
+                    } else if (!needchk) {
+                      $("#infolive").html("");
+                    }
                     $("#seccheck").toggle(needchk);
                     $("#oldpw,#oldmfa").prop("required", needchk);
                 });
@@ -221,6 +239,8 @@ switch($_GET['action']) {
 
 		echo "<form id=\"pageform\" class=limitaftervalidate enctype=\"multipart/form-data\" method=post action=\"actions.php?action=chguserinfo$gb\">\n";
 		echo '<fieldset id="userinfoprofile"><legend>',_('Profile Settings'),'</legend>';
+        echo '<div id="errorlive" aria-live="polite" class="sr-only"></div>';
+        echo '<div id="infolive" aria-live="polite" class="sr-only"></div>';
 		echo "<span class=form><label for=\"firstname\">",_('Enter First Name'),":</label></span> <input class=\"form pii-first-name\" type=text size=20 id=firstname name=firstname autocomplete=\"given-name\" value=\"".Sanitize::encodeStringForDisplay($line['FirstName'])."\" /><br class=\"form\" />\n";
 		echo "<span class=form><label for=\"lastname\">",_('Enter Last Name'),":</label></span> <input class=\"form pii-first-name\" type=text size=20 id=lastname name=lastname autocomplete=\"family-name\" value=\"".Sanitize::encodeStringForDisplay($line['LastName'])."\"><BR class=form>\n";
 		if ($myrights>10 && $groupid>0) {
@@ -229,13 +249,18 @@ switch($_GET['action']) {
 			$r = $stm->fetch(PDO::FETCH_NUM);
 			echo '<span class="form">'._('Group').':</span><span class="formright">'.Sanitize::encodeStringForDisplay($r[0]).'</span><br class="form"/>';
 		}
-		echo '<span class="form"><label for="dochgpw">',_('Change Password?'),'</label></span> <span class="formright"><input type="checkbox" name="dochgpw" id="dochgpw" onclick="togglechgpw(this.checked)" /></span><br class="form" />';
-		echo '<div style="display:none" id="pwinfo">';
+		echo '<span class="form">',_('Password'),'</span> ';
+        echo '<span class="formright"><label><input type="checkbox" name="dochgpw" id="dochgpw" onclick="togglechgpw(this)" aria-controls="pwinfo" aria-expanded="false"/> ',_('Change Password?'),'</span><br class="form" />';
+		echo '<div style="display:none" id="pwinfo" tabindex="-1">';
 		echo "<span class=form><label for=\"pw1\">",_('Enter new password:'),"</label></span>  <input class=form type=password id=pw1 name=pw1 size=40> <BR class=form>\n";
 		echo "<span class=form><label for=\"pw2\">",_('Verify new password:'),"</label></span>  <input class=form type=password id=pw2 name=pw2 size=40> <BR class=form>\n";
         echo '</div>';
         echo '<span class=form><label for="dochgmfa">'._('2-factor Authentication').'</label></span>';
-        echo '<span class="formright"><select name="dochgmfa" id="dochgmfa" onchange="togglechgmfa(this.value)" /> ';
+        echo '<span class="formright"><select name="dochgmfa" id="dochgmfa" onchange="togglechgmfa(this)" ';
+        if ($line['mfa']=='') {
+            echo 'aria-controls="mfainfo" aria-expanded=false ';
+        }
+        echo '/> ';
         echo '<option value=0 '.($mfatype == 0 ? 'selected':'').'>'._('Disable').'</option>';
         if ($line['rights'] > 74) {
             echo '<option value=1 '.($mfatype == 1 ? 'selected':'').'>'._('Enable for admin actions').'</option>';
@@ -250,7 +275,7 @@ switch($_GET['action']) {
             $MFA = new GoogleAuthenticator();
             $mfasecret = $MFA->createSecret();
             $mfaurl = $MFA->getOtpauthUrl($installname.':'.$line['SID'], $mfasecret, $installname);
-            echo '<div style="display:none" id="mfainfo">';
+            echo '<div style="display:none" id="mfainfo" tabindex="-1">';
             echo '<script type="text/javascript" src="javascript/jquery.qrcode.min.js"></script>';
             echo '<script type="text/javascript">$(function(){$("#mfaqrcode").qrcode({width:128,height:128,text:"'.Sanitize::encodeStringForJavascript($mfaurl).'"})});</script>';
             echo '<input type=hidden name=mfasecret value="'.Sanitize::encodeStringForDisplay($mfasecret).'" />';
@@ -277,12 +302,23 @@ switch($_GET['action']) {
         }
         echo '</div>';
 
-        echo "<span class=form><label for=\"msgnot\">",_('Notify me by email when I receive a new message:'),"</label></span><span class=formright><input type=checkbox id=msgnot name=msgnot ";
+		echo "<span class=form>",_('Notifications:'),"</span><span class=formright><label><input type=checkbox id=msgnot name=msgnot ";
+
+        //echo "<span class=form><label for=\"msgnot\">",_('Notify me by email when I receive a new message:'),"</label></span><span class=formright><input type=checkbox id=msgnot name=msgnot ";
 		if ($line['msgnotify']==1) {echo "checked=1";}
-		echo " /></span><BR class=form>\n";
-		if (isset($CFG['FCM']) && isset($CFG['FCM']['webApiKey']) && strpos($_SERVER['HTTP_USER_AGENT'], 'Chrome') !== false) {
+		echo " /> ",_('Notify me by email when I receive a new message:'),"</label></span><BR class=form>\n";
+
+
+		if (isset($CFG['FCM']) && isset($CFG['FCM']['webApiKey'])) {
+			echo '<div id=fcmwrap style="display:none">';
 			echo '<span class=form>'._('Push notifications:').'</span><span class=formright>';
 			echo '<a href="'.$imasroot.'/admin/FCMsetup.php">'.('Setup push notifications on this device').'</a></span><br class=form>';
+			echo '</div>';
+			echo '<script>$(function() {
+					if ("serviceWorker" in navigator && "PushManager" in window && "Notification" in window) {
+						$("#fcmwrap").show();
+					}
+				});</script>';
 		}
 
 		echo "<span class=form><label for=\"stupic\">",_('Picture:'),"</label></span>";
@@ -391,23 +427,23 @@ switch($_GET['action']) {
 			echo "<script type=\"text/javascript\">";
 			echo "var curlibs = '{$line['deflib']}';";
 			echo "function libselect() {";
-			echo "  window.open('$imasroot/course/libtree2.php?libtree=popup&type=radio&libs='+curlibs,'libtree','width=400,height='+(.7*screen.height)+',scrollbars=1,resizable=1,status=1,top=20,left='+(screen.width-420));";
-			echo " }";
+			echo ' GB_show("'. _('Library Select') .'","'.$imasroot.'/course/libtree3.php?libtree=popup&mode=single&selectrights=1&libs="+curlibs,500);';
+			echo "}";
 			echo "function setlib(libs) {";
 			echo "  document.getElementById(\"libs\").value = libs;";
 			echo "  curlibs = libs;";
 			echo "}";
 			echo "function setlibnames(libn) {";
-			echo "  document.getElementById(\"libnames\").innerHTML = libn;";
+			echo "  document.getElementById(\"libnames\").textContent = libn;";
 			echo "}";
 			echo "</script>";
 			echo "<span class=form>"._('Default question library').":</span><span class=formright> <span id=\"libnames\">".Sanitize::encodeStringForDisplay($lname)."</span><input type=hidden name=\"libs\" id=\"libs\"  value=\"".Sanitize::encodeStringForDisplay($line['deflib'])."\">\n";
 			echo " <input type=button value=\"",_('Select Library'),"\" onClick=\"libselect()\"></span><br class=form> ";
 
-			echo "<span class=form><label for=usedeflib>",_('Use default question library for all templated questions?'),"</label></span>";
-			echo "<span class=formright><input type=checkbox name=\"usedeflib\" id=\"usedeflib\"";
+			echo "<span class=form>",_('Use on template'),"</span>";
+			echo "<span class=formright><label><input type=checkbox name=\"usedeflib\" id=\"usedeflib\"";
 			if ($line['usedeflib']==1) {echo "checked=1";}
-			echo "> ";
+			echo "> ",_('Use default question library for all templated questions'),'</label>';
 			echo "</span><br class=form><p>",_("Default question library is used for all local (assessment-only) copies of questions created when you edit a question (that's not yours) in an assessment.  You can elect to have all templated questions be assigned to this library."),"</p>";
 			echo '</fieldset>';
 
@@ -442,7 +478,7 @@ switch($_GET['action']) {
             }
         }
 		if ($doselfenroll) {
-			echo '<p>',_('Select the course you\'d like to enroll in'),'</p>';
+			echo '<p><label for="courseselect">',_('Select the course you\'d like to enroll in'),'</label></p>';
 			echo '<p><select id="courseselect" name="courseselect" onchange="courseselectupdate(this);">';
 			echo '<option value="0" selected="selected">',_('My teacher gave me a course ID (enter below)').'</option>';
 			echo '<optgroup label="Self-study courses">';
@@ -498,7 +534,8 @@ switch($_GET['action']) {
 		}
 		echo '<div id="headerforms" class="pagetitle"><h1>',_('Reset Password'),'</h1></div>';
 		echo "<form id=\"pageform\" class=limitaftervalidate method=post action=\"actions.php?action=resetpw$gb\">\n";
-		if (isset($_GET['code'])) {
+		echo '<div id="errorlive" aria-live="polite" class="sr-only"></div>';
+        if (isset($_GET['code'])) {
             require_once './includes/passwordreset.php';
             // verify reset code
             $linkdata = verify_pwreset_link($_GET['code']);
@@ -507,6 +544,16 @@ switch($_GET['action']) {
 				echo '<p>',_('Please select a new password'),':</p>';
 				echo '<p>',_('Enter new password'),':  <input type="password" size="25" id=pw1 name="pw1"/><br/>';
 				echo '<p>',_('Verify new password'),':  <input type="password" size="25" id=pw2 name="pw2"/></p>';
+
+				if ($linkdata['recoverylink']) {
+					$stm = $DBH->prepare("SELECT email FROM imas_users WHERE id=?");
+					$stm->execute([$linkdata['uid']]);
+					$email = $stm->fetchColumn(0);
+
+					echo '<p>'._('Verify email, and fix if needed').': <input type=text size=40 id=email name=email value="' . 
+						Sanitize::encodeStringForDisplay($email) . '" /></p>';
+				}
+
 				echo "<p><input type=submit value=\"",_('Submit'),"\" /></p></form>";
 				showNewUserValidation("pageform");
 			} else {

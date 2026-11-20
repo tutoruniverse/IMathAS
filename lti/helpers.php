@@ -28,7 +28,10 @@ function standardize_role(array $roles): string {
       $currentRole = 'Instructor';
       $currentPriority = 1;
     } else if (preg_match('~http://purl.imsglobal.org/vocab/lis/v2/(membership|institution|system)(/person)?(#|/)(\w+)~', $role, $m)) {
-      if ($contextPriorities[$m[1]] > $currentPriority) {
+      if ($contextPriorities[$m[1]] == $currentPriority && in_array($m[4], $instructorRoles)) {
+        // if the LMS sent two roles at same level, use the Instructor one
+        $currentRole = 'Instructor';
+      } else if ($contextPriorities[$m[1]] > $currentPriority) {
         $currentPriority = $contextPriorities[$m[1]] ;
         if (in_array($m[4], $instructorRoles)) {
           $currentRole = 'Instructor';
@@ -73,6 +76,17 @@ function parse_target_link(string $targetlink, \IMSGlobal\LTI\Database $db): arr
   parse_str($linkquery, $param);
 
   if (!empty($param['refaid'])) {
+    $sourcecid = $db->get_course_from_aid($param['refaid']);
+    // if sourcecid is null, then original assess was deleted;
+    // we'll try to work around it.  If sourcecid is defined but
+    // doesn't match, then link is invalid
+    if ($sourcecid !== null && $sourcecid != $param['refcid']) {
+      // triggering when shouldn't; log for now to investigate
+      $stm = $GLOBALS['DBH']->prepare("INSERT INTO imas_log (time,log) VALUES (?,?)");
+      $stm->execute([time(), "Inconsistent refcid on $targetlink"]);
+      //echo 'Invalid resource link; inconsistent refcid';
+      //exit;
+    }
     $out = ['type'=>'aid', 'refaid'=>$param['refaid'], 'refcid'=>$param['refcid']];
   } else if (!empty($param['refblock'])) {
     $out = ['type'=>'block', 'refblock'=>$param['refblock'], 'refcid'=>$param['refcid']];

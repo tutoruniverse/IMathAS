@@ -190,7 +190,7 @@ class Imathas_LTI_Database implements LTI\Database
     {
         $stm = $this->dbh->prepare('SELECT * FROM imas_lti_deployments WHERE platform=? AND deployment=?');
         $stm->execute(array($platform_id, $deployment_id));
-        if ($stm->rowCount() === 0) {
+        if ($stm->fetchColumn(0) === false) {
             // no existing deployment record, create one
             $stm = $this->dbh->prepare('INSERT INTO imas_lti_deployments (platform,deployment) VALUES (?,?)');
             $stm->execute(array($platform_id, $deployment_id));
@@ -261,6 +261,14 @@ class Imathas_LTI_Database implements LTI\Database
         foreach ($keys as $kid => $keyinfo) {
             $stm->execute(array($keyseturl, $kid, $keyinfo['alg'], $keyinfo['pub']));
         }
+        // expire any existing keys from that keyset url
+        $kids = array_keys($keys);
+        if (count($kids)>0) {
+            $ph = Sanitize::generateQueryPlaceholders($kids);
+            $stm = $this->dbh->prepare("DELETE FROM imas_lti_keys WHERE key_set_url=? AND kid NOT IN ($ph)");
+            array_unshift($kids, $keyseturl);
+            $stm->execute($kids);
+        }
     }
 
     /**
@@ -318,7 +326,7 @@ class Imathas_LTI_Database implements LTI\Database
         $ltiuserid = $launch->get_platform_user_id();
         $platform_id = $launch->get_platform_id();
 
-        $query = 'SELECT lti.userid FROM imas_ltiusers AS lti 
+        $query = 'SELECT lti.userid,iu.LastName,lti.id FROM imas_ltiusers AS lti 
             JOIN imas_users AS iu ON lti.userid=iu.id 
             WHERE lti.ltiuserid=? AND lti.org=?';
         if ($role == 'Instructor') {
@@ -328,10 +336,27 @@ class Imathas_LTI_Database implements LTI\Database
 
         $stm = $this->dbh->prepare($query);
         $stm->execute(array($ltiuserid, 'LTI13-' . $platform_id));
-        $userid = $stm->fetchColumn(0);
+        list($userid,$lastname,$refid) = $stm->fetch(PDO::FETCH_NUM);
+
+        if ($userid === null) {
+            $userid = false;
+        }
+
         if ($userid === false) {
             $contextid = $launch->get_platform_context_id();
             $migration_claim = $launch->get_migration_claim();
+        } else if (substr($lastname,0,5) == 'anon_') {
+            // if anonymized user, restore name from launch if possible
+            $name = parse_name_from_launch($launch->get_launch_data());
+            if (!empty($name) && 
+                (!empty($name['first']) || !empty($name['last']))
+            ) {
+                $deffirst = $name['first'] ?? '';
+                $deflast = $name['last'] ?? '';
+                $newsid = 'lti-' . $refid;
+                $stm = $this->dbh->prepare('UPDATE imas_users SET SID=?, FirstName=?, LastName=? WHERE id=?');
+                $stm->execute(array($newsid, $deffirst, $deflast, $userid));
+            }
         }
 
         if ($userid === false && 
@@ -445,15 +470,32 @@ class Imathas_LTI_Database implements LTI\Database
         LTI\LTI_Localcourse $localcourse, string $section = ''
     ): void {
         if ($role == 'Instructor') {
+            // see if they're already a teacher
             $stm = $this->dbh->prepare('SELECT id FROM imas_teachers WHERE userid=? AND courseid=?');
             $stm->execute(array($userid, $localcourse->get_courseid()));
-            if (!$stm->fetchColumn(0)) {
-                $stm = $this->dbh->prepare('INSERT INTO imas_teachers (userid,courseid) VALUES (?,?)');
+            if ($stm->fetchColumn(0) === false) {
+                // see if they're a tutor; that might be the intent and we should just use it
+                $stm = $this->dbh->prepare('SELECT id FROM imas_tutors WHERE userid=? AND courseid=?');
                 $stm->execute(array($userid, $localcourse->get_courseid()));
+                if ($stm->fetchColumn(0) === false) {
+                    // check user's rights on imathas
+                    $stm = $this->dbh->prepare('SELECT rights FROM imas_users WHERE id=?');
+                    $stm->execute(array($userid));
+                    $userrights = $stm->fetchColumn(0);
+                    if ($userrights > 19) {
+                        // sufficient rights; add them as a teacher
+                        $stm = $this->dbh->prepare('INSERT INTO imas_teachers (userid,courseid) VALUES (?,?)');
+                        $stm->execute(array($userid, $localcourse->get_courseid()));
+                    } else {
+                        // add them as a tutor
+                        $stm = $this->dbh->prepare('INSERT INTO imas_tutors (userid,courseid) VALUES (?,?)');
+                        $stm->execute(array($userid, $localcourse->get_courseid()));
+                    }
+                }
             }
         } else {
             // check to see if they're already a teacher or tutor
-            $stm = $this->dbh->prepare('SELECT id FROM imas_teachers WHERE userid=? AND courseid=? UNION SELECT id FROM imas_tutors WHERE userid=? AND courseid=?');
+            $stm = $this->dbh->prepare('SELECT id FROM imas_teachers WHERE userid=? AND courseid=? UNION ALL SELECT id FROM imas_tutors WHERE userid=? AND courseid=?');
             $stm->execute(array($userid, $localcourse->get_courseid(), $userid, $localcourse->get_courseid()));
             if ($stm->fetchColumn(0) === false) {
                 $stm = $this->dbh->prepare('SELECT id,lticourseid FROM imas_students WHERE userid=? AND courseid=?');
@@ -814,6 +856,18 @@ class Imathas_LTI_Database implements LTI\Database
         $stm->execute(array($resource_link_id, $contextid, 'LTI13-' . $platform_id));
         $row = $stm->fetch(PDO::FETCH_ASSOC);
         if ($row !== false) {
+            if ($row['enddate'] === null) {
+                // lti link exists but assessment doesn't exist anymore
+                // so probably deleted since link was established.
+                throw new LTI\LTI_Exception("Linked assessment appears to have been deleted. Ref: " . $row['typeid'] . '-' . $resource_link_id);
+                /* Alt approach:
+                // Delete existing lti placement, which will trigger
+                // system to try to relink to assessment
+                $stm = $this->dbh->prepare("DELETE FROM imas_lti_placements WHERE placementtype='assess' AND linkid=? AND contextid=? AND org=?");
+                $stm->execute(array($resource_link_id, $contextid, 'LTI13-' . $platform_id));
+                return null;
+                */
+            }
             return LTI\LTI_Placement::new ()
                 ->set_typeid($row['typeid'])
                 ->set_placementtype($row['placementtype'])
@@ -885,9 +939,9 @@ class Imathas_LTI_Database implements LTI\Database
     /**
      * Get assessment info, including name, ptsposs, submitby, and dates
      * @param  int   $aid imas_assessments.id
-     * @return array
+     * @return array|false
      */
-    public function get_assess_info(int $aid): array
+    public function get_assess_info(int $aid) //: array|false
     {
         $stm = $this->dbh->prepare('SELECT name,ptsposs,startdate,enddate,date_by_lti,submitby FROM imas_assessments WHERE id=?');
         $stm->execute(array($aid));
@@ -921,15 +975,15 @@ class Imathas_LTI_Database implements LTI\Database
         $aid = $link->get_typeid();
         $stm = $this->dbh->prepare("SELECT startdate,enddate,islatepass,is_lti FROM imas_exceptions WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
         $stm->execute(array(':userid' => $userid, ':assessmentid' => $aid));
-        $exceptionrow = $stm->fetch(PDO::FETCH_NUM);
+        $exceptionrow = $stm->fetch(PDO::FETCH_ASSOC);
         $useexception = false;
         if ($exceptionrow != null) {
             //have exception.  Update using lti_duedate if needed
-            if ($link->get_date_by_lti() > 0 && $lms_duedate != $exceptionrow[1]) {
+            if ($link->get_date_by_lti() > 0 && $lms_duedate != $exceptionrow['enddate']) {
                 //if new due date is later, or no latepass used, then update
-                if ($exceptionrow[2] == 0 || $lms_duedate > $exceptionrow[1]) {
+                if ($exceptionrow['islatepass'] == 0 || $lms_duedate > $exceptionrow['enddate']) {
                     $stm = $this->dbh->prepare("UPDATE imas_exceptions SET startdate=:startdate,enddate=:enddate,is_lti=1,islatepass=0 WHERE userid=:userid AND assessmentid=:assessmentid AND itemtype='A'");
-                    $stm->execute(array(':startdate' => min($now, $lms_duedate, $exceptionrow[0]),
+                    $stm->execute(array(':startdate' => min($now, $lms_duedate, $exceptionrow['startdate']),
                         ':enddate' => $lms_duedate, ':userid' => $userid, ':assessmentid' => $aid));
                 }
             }
@@ -1002,6 +1056,7 @@ class Imathas_LTI_Database implements LTI\Database
         $stm->execute(array($destcid));
         $ancestors = explode(',', $stm->fetchColumn(0));
         $ciddepth = array_search($aidsourcecid, $ancestors); //so if we're looking for 23, "20,24,23,26" would give 2 here.
+        // if aidsource is in ancestry, use that to help find the right assessment
         if ($ciddepth !== false) {
             // first approach: look for aidsourcecid:sourcecid in ancestry of current course
             // then we'll walk back through the ancestors and make sure the course
@@ -1055,40 +1110,41 @@ class Imathas_LTI_Database implements LTI\Database
             if ($foundsubaid) { // tracked it back all the way
                 return $aidtolookfor;
             }
+        }
 
-            // ok, still didn't work, so assessment wasn't copied through the whole
-            // history.  So let's see if we have a copy in our course with the assessment
-            // anywhere in the ancestry.
-            $anregex = MYSQL_LEFT_WRDBND . $sourceaid . MYSQL_RIGHT_WRDBND;
-            $stm = $this->dbh->prepare("SELECT id,name,ancestors FROM imas_assessments WHERE ancestors REGEXP :ancestors AND courseid=:destcid");
-            $stm->execute(array(':ancestors' => $anregex, ':destcid' => $destcid));
-            $res = $stm->fetchAll(PDO::FETCH_ASSOC);
-            if (count($res) == 1) { //only one result - we found it
-                return $res[0]['id'];
-            }
-            $stm = $this->dbh->prepare("SELECT name FROM imas_assessments WHERE id=?");
-            $stm->execute(array($sourceaid));
-            $aidsourcename = $stm->fetchColumn(0);
-            if (count($res) > 1) { //multiple results - look for the identical name
-                foreach ($res as $k => $row) {
-                    $res[$k]['loc'] = strpos($row['ancestors'], (string) $aidtolookfor);
-                    if ($row['name'] == $aidsourcename) {
-                        return $row['id'];
-                    }
+        // ok, still didn't work, so assessment wasn't copied through the whole
+        // history.  So let's see if we have a copy in our course with the assessment
+        // anywhere in the ancestry.
+        $anregex = MYSQL_LEFT_WRDBND . $sourceaid . MYSQL_RIGHT_WRDBND;
+        $stm = $this->dbh->prepare("SELECT id,name,ancestors FROM imas_assessments WHERE ancestors REGEXP :ancestors AND courseid=:destcid");
+        $stm->execute(array(':ancestors' => $anregex, ':destcid' => $destcid));
+        $res = $stm->fetchAll(PDO::FETCH_ASSOC);
+        if (count($res) == 1) { //only one result - we found it
+            return $res[0]['id'];
+        }
+        $stm = $this->dbh->prepare("SELECT name FROM imas_assessments WHERE id=?");
+        $stm->execute(array($sourceaid));
+        $aidsourcename = $stm->fetchColumn(0);
+        if (count($res) > 1) { //multiple results - look for the identical name
+            foreach ($res as $k => $row) {
+                $res[$k]['loc'] = strpos($row['ancestors'], (string) $sourceaid);
+                if ($row['name'] == $aidsourcename) {
+                    return $row['id'];
                 }
-                //no name match. pick the one with the assessment closest to the start
-                usort($res, function ($a, $b) {return $a['loc'] - $b['loc'];});
-                return $res[0]['id'];
             }
+            //no name match. pick the one with the assessment closest to the start
+            usort($res, function ($a, $b) {return $a['loc'] - $b['loc'];});
+            return $res[0]['id'];
+        }
 
-            // still haven't found it, so nothing in our current course has the
-            // desired assessment as an ancestor.  Try finding something just with
-            // the right name maybe?
-            $stm = $this->dbh->prepare("SELECT id FROM imas_assessments WHERE name=:name AND courseid=:courseid");
-            $stm->execute(array(':name' => $aidsourcename, ':courseid' => $destcid));
-            if ($stm->rowCount() > 0) {
-                return $stm->fetchColumn(0);
-            }
+        // still haven't found it, so nothing in our current course has the
+        // desired assessment as an ancestor.  Try finding something just with
+        // the right name maybe?
+        $stm = $this->dbh->prepare("SELECT id FROM imas_assessments WHERE name=:name AND courseid=:courseid");
+        $stm->execute(array(':name' => $aidsourcename, ':courseid' => $destcid));
+        $resid = $stm->fetchColumn(0);
+        if ($resid !== false) {
+            return $resid;
         }
         return false;
     }
@@ -1356,6 +1412,12 @@ class Imathas_LTI_Database implements LTI\Database
             $stm = $this->dbh->prepare($query);
             $stm->execute(array_merge(array(time()), $stuids, array($courseid)));
         }
+    }
+
+    public function record_log($logdata): void
+    {
+        $logstm = $this->dbh->prepare("INSERT INTO imas_log (time,log) VALUES (?,?)");
+        $logstm->execute([time(), $logdata]);
     }
 
     private function verify_migration_claim($claim) {

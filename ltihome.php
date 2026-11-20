@@ -38,6 +38,10 @@ if ($_SESSION['ltiitemtype']==0) {
 		$role = 'teacher';
 	}
 } else {
+	if (empty($_SESSION['ltiorg']) || empty($_SESSION['lti_context_id'])) {
+		echo _('Missing assessment information. Try opening from the LMS again');
+		exit;
+	}
     $shortorg = explode(':', $_SESSION['ltiorg'])[0];
 	$stm = $DBH->prepare("SELECT courseid FROM imas_lti_courses WHERE contextid=:contextid AND org LIKE :org");
     $stm->execute(array(':contextid'=>$_SESSION['lti_context_id'], ':org'=>"$shortorg:%"));
@@ -91,9 +95,12 @@ if (!empty($createcourse)) {
 	$stm->execute(array(':courseid'=>$createcourse, ':userid'=>$userid));
 	if ($stm->rowCount()>0) {
 		$cid = $createcourse;
+	} else if ($myrights < 40) {
+		echo 'Insufficient rights for this action';
+		exit;
 	} else {
 		//log terms agreement if needed
-		$stm = $DBH->prepare("SELECT termsurl FROM imas_courses WHERE id=:id");
+		$stm = $DBH->prepare("SELECT termsurl,istemplate FROM imas_courses WHERE id=:id");
 		$stm->execute(array(':id'=>$createcourse));
 		$row = $stm->fetch(PDO::FETCH_NUM);
 		if ($row[0]!='') { //has terms of use url
@@ -101,6 +108,11 @@ if (!empty($createcourse)) {
 			$userid = intval($userid);
 			$stm = $DBH->prepare("INSERT INTO imas_log (time,log) VALUES (:time, :log)");
 			$stm->execute(array(':time'=>$now, ':log'=>'User $userid agreed to terms of use on course '.$createcourse));
+		}
+		if (($row[1]&3)==0) { // check it's template course
+			// todo: also check copyrights, group
+			echo 'Invalid course';
+			exit;
 		}
 		//creating a copy of a template course
 		$blockcnt = 1;
@@ -171,6 +183,19 @@ if (!empty($createcourse)) {
 		if (function_exists('onAddCourse')) {
 			onAddCourse($cid, $userid);
 		}
+
+		require_once 'includes/TeacherAuditLog.php';
+		TeacherAuditLog::addTracking(
+			$destcid,
+			"Course Settings Change",
+			$destcid,
+			[
+				'action'=>'Establish LTI course connection',
+				'type'=>'ltihome',
+				'contextid'=>$_SESSION['lti_context_id'],
+				'copycourse'=>$createcourse
+			]
+		);
     }
     
     $shortorg = explode(':', $_SESSION['ltiorg'])[0];
@@ -196,6 +221,12 @@ if (!empty($createcourse)) {
 	} else {
 		$placementtype = 'assess';
 		$typeid = $_POST['setplacement'];
+		$stm = $DBH->prepare("SELECT courseid FROM imas_assessments WHERE id=:id");
+		$stm->execute(array(':id'=>$typeid));
+		if ($stm->fetchColumn(0) !== $cid) {
+			echo 'Invalid aid';
+			exit;
+		}
 	}
 	if (isset($_SESSION['lti_selection_return']) && $_SESSION['lti_selection_return_format'] == "Canvas") {
 		//Canvas custom LTI selection return or IMS deeplink LTI selection return
@@ -205,7 +236,7 @@ if (!empty($createcourse)) {
 			$atitle = $stm->fetchColumn(0);
 			$url = $GLOBALS['basesiteurl'] . "/bltilaunch.php?custom_place_aid=$typeid";
 
-			header('Location: '.$_SESSION['lti_selection_return'].'?embed_type=basic_lti&url='.Sanitize::encodeUrlParam($url).'&title='.Sanitize::encodeUrlParam($atitle).'&text='.Sanitize::encodeUrlParam($atitle). '&r=' .Sanitize::randomQueryStringParam());
+			header('Location: '.$_SESSION['lti_selection_return'].'?embed_type=basic_lti&url='.Sanitize::encodeUrlParam($url).'&title='.Sanitize::encodeUrlParam($atitle). '&r=' .Sanitize::randomQueryStringParam());
 			exit;
 
 		} else {
@@ -213,7 +244,7 @@ if (!empty($createcourse)) {
 			$stm->execute(array(':id'=>$typeid));
 			$cname = $stm->fetchColumn(0);
 			$url = $GLOBALS['basesiteurl'] . "/bltilaunch.php?custom_open_folder=$typeid-0";
-			header('Location: '.$_SESSION['lti_selection_return'].'?embed_type=basic_lti&url='.Sanitize::encodeUrlParam($url).'&title='.Sanitize::encodeUrlParam($cname).'&text='.Sanitize::encodeUrlParam($cname). '&r=' .Sanitize::randomQueryStringParam());
+			header('Location: '.$_SESSION['lti_selection_return'].'?embed_type=basic_lti&url='.Sanitize::encodeUrlParam($url).'&title='.Sanitize::encodeUrlParam($cname). '&r=' .Sanitize::randomQueryStringParam());
 			exit;
 		}
 	} else if (isset($_SESSION['lti_selection_return']) && $_SESSION['lti_selection_return_format'] == "IMSdeeplink") {

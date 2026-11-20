@@ -21,7 +21,7 @@
 
 <script>
 import Icons from '@/components/widgets/Icons.vue';
-import { store } from '../basicstore';
+import { store } from '@/basicstore';
 import { attemptedMixin } from '@/mixins/attemptedMixin';
 
 export default {
@@ -52,7 +52,7 @@ export default {
       if (this.option.type === 'q' &&
           store.assessInfo.questions[this.option.qn].withdrawn !== 0
       ) {
-        return this.$t('header.withdrawn');
+        return this.$t('header-withdrawn');
       }
       return '';
     },
@@ -67,7 +67,7 @@ export default {
           str += qdata.canretry ? ')' : ']';
           return str;
         } else {
-          return this.$tc('header.pts', qdata.points_possible);
+          return this.$t('header-pts', {n: qdata.points_possible});
         }
       }
     },

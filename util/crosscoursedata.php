@@ -19,6 +19,7 @@ if ($myrights == 100) {
 	$curBreadcrumb .= ' &gt; <a href="utils.php">Utilities</a>';
 }
 $curBreadcrumb .= ' &gt; Cross-Course Results';
+$pagetitle = _('Cross-Course Assessment Results');
 
 function reporterror($err) {
 	extract($GLOBALS, EXTR_SKIP | EXTR_REFS);
@@ -258,9 +259,9 @@ if ($_REQUEST['output']=='html') {
 	header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 	header('Pragma: public');
 	$out = fopen('php://output', 'w');
-	fputcsv($out, $headerrow);
+	fputcsv($out, $headerrow, ',', '"', '');
 	foreach ($bodydata as $bodyrow) {
-		fputcsv($out,$bodyrow);
+		fputcsv($out,$bodyrow, ',', '"', '');
 	}
 	fclose($out);
 }

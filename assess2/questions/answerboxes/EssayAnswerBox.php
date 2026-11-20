@@ -49,7 +49,11 @@ class EssayAnswerBox implements AnswerBox
         if ($multi) {$qn = ($qn + 1) * 1000 + $partnum;}
 
         if (empty($answerboxsize)) {
-            $rows = 5;
+            if ($displayformat == 'editor') {
+                $rows = 8;
+            } else {
+                $rows = 5;
+            }
             $cols = 50;
         } else if (strpos($answerboxsize, ',') > 0) {
             list($rows, $cols) = explode(',', $answerboxsize);
@@ -59,18 +63,25 @@ class EssayAnswerBox implements AnswerBox
             $cols = 50;
             $rows = intval($answerboxsize);
         }
+        $nopaste = false;
+        if ($displayformat == 'editornopaste') {
+            $nopaste = true;
+            $displayformat = 'editor';
+        }
         if ($displayformat == 'editor') {
             $rows += 5;
         }
 
         if (!isset($GLOBALS['useeditor'])) { // should be defined, but avoid errors if not
-            $GLOBALS['useeditor'] = 1;
+            $GLOBALS['useeditor'] = "noinit";
         }
 
         if ($GLOBALS['useeditor'] == 'review' || ($GLOBALS['useeditor'] == 'reviewifneeded' && trim($la) == '')) {
             $la = str_replace('&quot;', '"', $la);
 
-            if ($displayformat != 'editor') {
+            if ($displayformat == 'pre') {
+                $la = str_replace(['<','>'],['&lt;','&gt;'], $la);
+            } else if ($displayformat != 'editor') {
                 $la = preg_replace('/\n/', '<br/>', $la);
             }
             if ($colorbox == '') {
@@ -78,21 +89,27 @@ class EssayAnswerBox implements AnswerBox
             } else {
                 $out .= '<div class="introtext ' . $colorbox . '" id="qnwrap' . $qn . '">';
             }
-            $out .= filter($la);
+            if ($displayformat == 'pre') {
+                $out .= '<pre>';
+                $out .= $la;
+                $out .= '</pre>';
+            } else {
+                $out .= filter($la);
+            }
+            
             $out .= "</div>";
         } else {
             $arialabel = $this->answerBoxParams->getQuestionIdentifierString() .
                 (!empty($readerlabel) ? ' ' . Sanitize::encodeStringForDisplay($readerlabel) : '');
-            if ($displayformat == 'editor' && $GLOBALS['useeditor'] == 1) {
-                $la = str_replace('&quot;', '"', $la);
-            }
+            $la = str_replace('&quot;', '"', $la);
+
             if ($rows < 2) {
                 $out .= "<input type=\"text\" class=\"text $colorbox\" size=\"$cols\" name=\"qn$qn\" id=\"qn$qn\" value=\"" . Sanitize::encodeStringForDisplay($la) . "\" ";
                 $out .= 'aria-label="' . $arialabel . '" />';
             } else {
                 if ($colorbox != '') {$out .= '<div class="' . $colorbox . '">';}
                 $out .= "<textarea rows=\"$rows\" name=\"qn$qn\" id=\"qn$qn\" ";
-                if ($displayformat == 'editor' && $GLOBALS['useeditor'] == 1) {
+                if ($displayformat == 'editor' && $_SESSION['userprefs']['useed'] == 1) {
                     $out .= "style=\"width:98%;\" class=\"mceEditor\" ";
                 } else {
                     $out .= "cols=\"$cols\" ";
@@ -101,8 +118,11 @@ class EssayAnswerBox implements AnswerBox
                 $out .= sprintf(">%s</textarea>\n", Sanitize::encodeStringForDisplay($la, true));
                 if ($colorbox != '') {$out .= '</div>';}
             }
-            if ($displayformat == 'editor' && $GLOBALS['useeditor'] == 1) {
+            if ($displayformat == 'editor' && $_SESSION['userprefs']['useed'] == 1) {
                 $params['usetinymce'] = 1;
+                if ($nopaste) {
+                    $params['nopaste'] = 1;
+                }
             }
         }
         $tip .= _('Enter your answer as text.  This question is not automatically graded.');
@@ -110,7 +130,7 @@ class EssayAnswerBox implements AnswerBox
             $sa .= $answer;
         }
 
-        if ($scoremethod == 'takeanythingorblank' && trim($la) == '') {
+        if ($scoremethod == 'takeanythingorblank') {
             $params['submitblank'] = 1;
         }
 

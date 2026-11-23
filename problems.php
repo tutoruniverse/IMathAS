@@ -13,8 +13,9 @@ $_SESSION['userprefs']['drawentry'] = 1;
 /**
  * Macro libraries the question code loads that this server does not have.
  *
- * Reads every loadlibrary("a,b") / loadlibrary('a') call in $control, cleans each name the way
- * loadlibrary() in assessment/interpret5.php does, and keeps the names with no assessment/libs/<name>.php.
+ * Reads every loadlibrary("a,b") / loadlibrary('a') call in $control outside // line and slash-star block comments (which
+ * iMathAS does not run), cleans each name exactly as loadlibrary() in assessment/interpret5.php does (no
+ * trimming: "stats, polys" loads " polys", which fails), and keeps the names with no assessment/libs/<name>.php.
  * loadlibrary() itself only echoes an error for a missing library, so the question then fails on the first
  * call into it with a less helpful message; this list names the cause.
  *
@@ -22,6 +23,9 @@ $_SESSION['userprefs']['drawentry'] = 1;
  * on a server without billsmacro.php.
  */
 function problems_missing_libraries($control) {
+    if (is_string($control)) {
+        $control = preg_replace(array('~/\*.*?\*/~s', '~//[^\n]*~'), '', $control);
+    }
     if (!is_string($control) || !preg_match_all('/loadlibrary\s*\(\s*["\']([^"\']*)["\']\s*\)/i', $control, $matches)) {
         return array();
     }
@@ -29,7 +33,6 @@ function problems_missing_libraries($control) {
     $missing = array();
     foreach ($matches[1] as $arg) {
         foreach (explode(",", str_replace(array("/", ".", '"'), "", $arg)) as $lib) {
-            $lib = trim($lib);
             if ($lib !== '' && !in_array($lib, $missing, true) && !is_file($libdir . $lib . ".php")) {
                 $missing[] = $lib;
             }

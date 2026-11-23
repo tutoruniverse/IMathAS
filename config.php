@@ -75,7 +75,7 @@ $CFG['GEN']['newpasswords'] = 'only';
 //no need to change anything from here on
   /* Connecting, selecting database */
 	try {
-	 $DBH = new PDO("mysql:host=$dbserver;dbname=$dbname", $dbusername, $dbpassword);
+	 $DBH = new PDO("mysql:host=$dbserver;dbname=$dbname;charset=utf8mb4", $dbusername, $dbpassword);
 	 $DBH->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING );
 	 $GLOBALS["DBH"] = $DBH;
 	} catch(PDOException $e) {

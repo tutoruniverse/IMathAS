@@ -11,6 +11,37 @@ $_SESSION['graphdisp'] = 1;
 $_SESSION['userprefs']['drawentry'] = 1;
 
 /**
+ * Macro libraries the question code loads that this server does not have.
+ *
+ * Reads every loadlibrary("a,b") / loadlibrary('a') call in $control outside // line and slash-star block comments (which
+ * iMathAS does not run), cleans each name exactly as loadlibrary() in assessment/interpret5.php does (no
+ * trimming: "stats, polys" loads " polys", which fails), and keeps the names with no assessment/libs/<name>.php.
+ * loadlibrary() itself only echoes an error for a missing library, so the question then fails on the first
+ * call into it with a less helpful message; this list names the cause.
+ *
+ * Example: problems_missing_libraries('loadlibrary("stats,billsmacro");') returns ["billsmacro"]
+ * on a server without billsmacro.php.
+ */
+function problems_missing_libraries($control) {
+    if (is_string($control)) {
+        $control = preg_replace(array('~/\*.*?\*/~s', '~//[^\n]*~'), '', $control);
+    }
+    if (!is_string($control) || !preg_match_all('/loadlibrary\s*\(\s*["\']([^"\']*)["\']\s*\)/i', $control, $matches)) {
+        return array();
+    }
+    $libdir = __DIR__ . '/assessment/libs/';
+    $missing = array();
+    foreach ($matches[1] as $arg) {
+        foreach (explode(",", str_replace(array("/", ".", '"'), "", $arg)) as $lib) {
+            if ($lib !== '' && !in_array($lib, $missing, true) && !is_file($libdir . $lib . ".php")) {
+                $missing[] = $lib;
+            }
+        }
+    }
+    return $missing;
+}
+
+/**
  * Parses graph settings and function definitions from a set of inputs.
  *
  * NOTE: This function assumes the existence of helper functions:
@@ -333,6 +364,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $GLOBALS['csv_nonce_secret'] = $data['nonce_secret'];
     }
 
+    $missingLibraries = problems_missing_libraries($control);
+
     if ($showplot == "fn") {
         $control = str_replace("showplot", "showplot_with_functions", $control);
     }
@@ -427,7 +460,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         "seed" => $seed,
         "jsparams" => $jsparams,
         "vars" => $vars,
-        "answers" => $answers
+        "answers" => $answers,
+        // Diagnostics for callers; MathGPT stores them when a question fails to import.
+        "errors" => array_values($question->getErrors()),
+        "missing_libraries" => $missingLibraries
     );
 
     // Send response

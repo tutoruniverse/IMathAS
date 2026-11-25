@@ -2,7 +2,6 @@
 require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
 require_once "filter/math/ASCIIMath2TeX.php";
-require_once "filter/math/latexconversion.php";
 global $allowedmacros;
 $allowedmacros[] = "showplot_with_functions";
 
@@ -316,6 +315,33 @@ function processContent($matches) {
     $content = $matches[1];
     $processedContent = makepretty($content);
     return "`" . $processedContent . "`";
+}
+
+function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
+    if (is_array($text)) {
+        foreach ($text as $k => $v) {
+            $text[$k] = applyLatexConversion($v, $AMT, $wrap, $isAnswerMode);
+        }
+        return $text;
+    }
+
+    if (!is_string($text)) return $text;
+
+    // Regex: Find anything between backticks and convert it
+    return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
+        // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. Malformed
+        // entities ("&nbsp" without ";") stay: content fix. U+00A0 is dropped, as AMtoTeX did with "&nbsp;".
+        $asciimath = str_replace("\u{00A0}", '', html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $tex = $AMT->convert($asciimath);
+
+        if ($wrap) {
+            return '<math-field read-only="">' . $tex . '</math-field>';
+        } else if ($isAnswerMode) {
+            return '\[' . $tex . '\]';
+        } else {
+            return $tex;
+        }
+    }, $text);
 }
 
 $a2 = new AssessStandalone($DBH);

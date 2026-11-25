@@ -2,6 +2,7 @@
 require_once "init_without_validate.php";
 require_once 'assess2/AssessStandalone.php';
 require_once "filter/math/ASCIIMath2TeX.php";
+require_once "filter/math/latexconversion.php";
 global $allowedmacros;
 $allowedmacros[] = "showplot_with_functions";
 
@@ -315,31 +316,6 @@ function processContent($matches) {
     $content = $matches[1];
     $processedContent = makepretty($content);
     return "`" . $processedContent . "`";
-}
-
-function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
-    if (is_array($text)) {
-        foreach ($text as $k => $v) {
-            $text[$k] = applyLatexConversion($v, $AMT, $wrap, $isAnswerMode);
-        }
-        return $text;
-    }
-
-    if (!is_string($text)) return $text;
-
-    // Regex: Find anything between backticks and convert it
-    return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
-        $asciimath = $matches[1];
-        $tex = $AMT->convert($asciimath);
-
-        if ($wrap) {
-            return '<math-field read-only="">' . $tex . '</math-field>';
-        } else if ($isAnswerMode) {
-            return '\[' . $tex . '\]';
-        } else {
-            return $tex;
-        }
-    }, $text);
 }
 
 $a2 = new AssessStandalone($DBH);

@@ -317,6 +317,9 @@ function processContent($matches) {
     return "`" . $processedContent . "`";
 }
 
+// HTML5 entity names a browser decodes without their ";" (the "legacy" ones) that appear in math.
+const LEGACY_ENTITIES_WITHOUT_SEMICOLON = 'nbsp|deg|sup1|sup2|sup3|times|divide|plusmn|micro|middot|frac12|frac14|frac34|not|lt|gt|amp|quot|para|sect|copy|reg|cent|pound|yen|laquo|raquo';
+
 function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
     if (is_array($text)) {
         foreach ($text as $k => $v) {
@@ -329,9 +332,12 @@ function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) 
 
     // Regex: Find anything between backticks and convert it
     return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
-        // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. Malformed
-        // entities ("&nbsp" without ";") stay: content fix. U+00A0 is dropped, as AMtoTeX did with "&nbsp;".
-        $asciimath = str_replace("\u{00A0}", '', html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. Browsers also read
+        // the legacy names below without ";" ("&nbsp dx", "30&deg"), so the web shows them right: decode them too.
+        // "&ne" or "&theta" without ";" is shown raw on the web as well and stays a content fix. U+00A0 is dropped,
+        // as AMtoTeX did with "&nbsp;".
+        $asciimath = preg_replace('/&(' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')(?![A-Za-z0-9;])/', '&$1;', $matches[1]);
+        $asciimath = str_replace("\u{00A0}", '', html_entity_decode($asciimath, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         $tex = $AMT->convert($asciimath);
 
         if ($wrap) {

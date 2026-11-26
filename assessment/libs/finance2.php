@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 # Library name: finance2
 # Financial Functions.  Version Pan2020.  September 2020
 # Author:  Amir Tavangar
@@ -66,7 +67,7 @@ function fin_FV(float $IY, float $Nper, float $PMT, int $PY, int $CY, float $PV=
             $FV = -((($PMT*(1+$i2*$type)*(((1+$i2)**$Nper)-1))/$i2)+$PV*(1+$i2)**$Nper);
     }
     
-    $FV = round($FV,9);
+    $FV = round74($FV,9);
     return $FV;   
 }
 
@@ -116,7 +117,7 @@ function fin_PV(float $IY, float $Nper, float $PMT, int $PY, int $CY, float $FV=
             $PV = -((($PMT*(1+$i2*$type)*(1-((1+$i2)**-$Nper)))/$i2)+$FV*(1+$i2)**-$Nper);
     }
     
-    $PV = round($PV,9);
+    $PV = round74($PV,9);
     return $PV;   
 }
 
@@ -166,7 +167,7 @@ function fin_PMT(float $IY, float $Nper, float $PV, int $PY, int $CY, float $FV=
             $PMT = -($pv0+$fv0);
     }
     
-    $PMT = round($PMT,9);
+    $PMT = round74($PMT,9);
     return $PMT;   
 }
 
@@ -229,7 +230,7 @@ function fin_Nper(float $IY, float $PMT, float $PV, int $PY, int $CY, float $FV=
             
     }
     
-    $Nper = round($Nper,9);
+    $Nper = round74($Nper,9);
     return $Nper;   
 }
 
@@ -334,7 +335,7 @@ function fin_iPMT(array $per,float $IY,float $Nper, float $PV, int $PY, int $CY,
     if ($CY<=0 or $PY<=0) { echo 'error: CY and PY must be positive'; return '';}
     if ($type!=0 && $type!=1) { echo 'error: type gets either 1 for annuity due (beginning) or 0 for general annuity (end)'; return '';}
     if ($IY<0) { echo 'error: IY cannot be negative'; return '';}
-    $pmt=round(fin_PMT($IY,$Nper,$PV,$PY,$CY,$FV=0,$type=0),3);
+    $pmt=round74(fin_PMT($IY,$Nper,$PV,$PY,$CY,$FV=0,$type=0),3);
     $i=$IY/($CY*100);
     $i2=((1+$i)**($CY/$PY))-1;
 
@@ -349,11 +350,11 @@ function fin_iPMT(array $per,float $IY,float $Nper, float $PV, int $PY, int $CY,
     $prnsum=array();
     $prnsum[0]=0;
     for ($j=1;$j<=$upto;$j++){
-        $ipmt[$j]=round($bal*$i2,3);
-        $intsum[$j]= round($intsum[$j-1]+$ipmt[$j],3);
+        $ipmt[$j]=round74($bal*$i2,3);
+        $intsum[$j]= round74($intsum[$j-1]+$ipmt[$j],3);
         $ppmt[$j]=abs($pmt)-$ipmt[$j];
-        $prnsum[$j]= round($prnsum[$j-1]+$ppmt[$j],3);
-        $bal=round($bal-$ppmt[$j],3);
+        $prnsum[$j]= round74($prnsum[$j-1]+$ppmt[$j],3);
+        $bal=round74($bal-$ppmt[$j],3);
     }
     $k1=$per[0]-1;
     $k2=$per[1];
@@ -395,7 +396,7 @@ function fin_pPMT(array $per,float $IY,float $Nper, float $PV, int $PY, int $CY,
     if ($CY<=0 or $PY<=0) { echo 'error: CY and PY must be positive'; return '';}
     if ($type!=0 && $type!=1) { echo 'error: type gets either 1 for annuity due (beginning) or 0 for general annuity (end)'; return '';}
     if ($IY<0) { echo 'error: IY cannot be negative'; return '';}
-    $pmt=round(fin_PMT($IY,$Nper,$PV,$PY,$CY,$FV=0,$type=0),3);
+    $pmt=round74(fin_PMT($IY,$Nper,$PV,$PY,$CY,$FV=0,$type=0),3);
     $i=$IY/($CY*100);
     $i2=((1+$i)**($CY/$PY))-1;
 
@@ -410,11 +411,11 @@ function fin_pPMT(array $per,float $IY,float $Nper, float $PV, int $PY, int $CY,
     $prnsum=array();
     $prnsum[0]=0;
     for ($j=1;$j<=$upto;$j++){
-        $ipmt[$j]=round($bal*$i2,3);
-        $intsum[$j]= round($intsum[$j-1]+$ipmt[$j],3);
+        $ipmt[$j]=round74($bal*$i2,3);
+        $intsum[$j]= round74($intsum[$j-1]+$ipmt[$j],3);
         $ppmt[$j]=abs($pmt)-$ipmt[$j];
-        $prnsum[$j]= round($prnsum[$j-1]+$ppmt[$j],3);
-        $bal=round($bal-$ppmt[$j],3);
+        $prnsum[$j]= round74($prnsum[$j-1]+$ppmt[$j],3);
+        $bal=round74($bal-$ppmt[$j],3);
     }
     $k1=$per[0]-1;
     $k2=$per[1];

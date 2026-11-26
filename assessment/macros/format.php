@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 // format and cleaning macros
 
@@ -270,10 +271,13 @@ function prettyreal_instring($str, $d = 0, $comma = ',') {
 }
 function round_instring($str, $d = 0) {
     return preg_replace_callback('/\d*\.?\d+/', function ($m) use ($d) {
-        return round($m[0], $d);
+        return round74($m[0], $d);
     }, $str);
 }
 function prettysmallnumber($n, $space = false) {
+    if (is_array($n)) {
+        return $n; // PHP 7.4 result for an array argument
+    }
     if (abs($n) < .01) {
         $a = explode("E", $n);
         if (count($a) == 2) {
@@ -295,7 +299,7 @@ function prettysmallnumber($n, $space = false) {
 
 function roundsigfig($val, $sigfig) {
     $log = (int) floor(log10(abs($val)));
-    return round($val, $sigfig - $log - 1);
+    return round74($val, $sigfig - $log - 1);
 }
 
 function prettysigfig($aarr, $sigfig, $comma = ',', $choptrailing = false, $orscinot = false, $sigfigbar = false) {
@@ -343,7 +347,7 @@ function prettysigfig($aarr, $sigfig, $comma = ',', $choptrailing = false, $orsc
         $v = floor(-$loga - 1e-12);
         if ($v + $sigfig <= 0) {
             $multof3 = floor(- ($v + $sigfig) / 3);
-            $tmp = round($a / pow(10, $multof3 * 3), $v + $sigfig + $multof3 * 3);
+            $tmp = round74($a / pow(10, $multof3 * 3), $v + $sigfig + $multof3 * 3);
             $a = number_format($tmp, 0, '.', $comma) . str_repeat($comma . '000', $multof3);
             if ($sigfigbar) {
                 //number of digits before first comma
@@ -363,9 +367,9 @@ function prettysigfig($aarr, $sigfig, $comma = ',', $choptrailing = false, $orsc
             }
             $out[] = $sign . $a . $scinot;
         } else {
-            $nv = round($a, $v + $sigfig);
+            $nv = round74($a, $v + $sigfig);
             $n = number_format($a, $v + $sigfig, '.', $comma);
-            if ($choptrailing && ($v + $sigfig > 0) && abs($a - round($a, $v + $sigfig)) < 1e-12) {
+            if ($choptrailing && ($v + $sigfig > 0) && abs($a - round74($a, $v + $sigfig)) < 1e-12) {
                 $n = rtrim($n, '0');
                 $n = rtrim($n, '.');
             } else {
@@ -405,7 +409,7 @@ function makescinot($n, $d = 8, $f = "x") {
     }
     $exp = floor(log10($n) + 1e-12);
     if ($d == -1) {
-        $mant = round($n / pow(10, $exp), 8);
+        $mant = round74($n / pow(10, $exp), 8);
     } else {
         $mant = number_format($n / pow(10, $exp), $d);
     }
@@ -446,9 +450,9 @@ function numtowords($num, $doth = false, $addcontractiontonum = false, $addcomma
         $out .= 'negative ';
         $num = abs($num);
     }
-    $num = round($num, 9);
+    $num = round74($num, 9);
     $int = floor($num);
-    $dec = round($num - $int, 9);
+    $dec = round74($num - $int, 9);
 
     if ($int > 0) {
         $out .= convertTri($int, 0, $doth, $addcommas);
@@ -458,13 +462,13 @@ function numtowords($num, $doth = false, $addcontractiontonum = false, $addcomma
     }
     if (abs($dec) > 1e-10) {
         $cnt = 0;
-        while (abs($dec - round($dec)) > 1e-10 && $cnt < 9) {
-            $dec = round(10 * $dec, 9);
+        while (abs($dec - round74($dec)) > 1e-10 && $cnt < 9) {
+            $dec = round74(10 * $dec, 9);
             $cnt++;
         }
-        $out .= convertTri(round($dec), 0);
+        $out .= convertTri(round74($dec), 0);
         $out .= ' ' . $placevals[$cnt];
-        if (round($dec) != 1) {
+        if (round74($dec) != 1) {
             $out .= 's';
         }
     }
@@ -542,8 +546,8 @@ function fractowords($numer, $denom, $options = 'no') { //options can combine 'h
                 } else {
                     $bot = 'negative halve';
                 }
-            } else if (abs(round(log10(abs($denom))) - log10(abs($denom))) < 1e-12) { // is multiple of 10
-                $bot = $placevals[round(log10(abs($denom)))];
+            } else if (abs(round74(log10(abs($denom))) - log10(abs($denom))) < 1e-12) { // is multiple of 10
+                $bot = $placevals[round74(log10(abs($denom)))];
             } else {
                 $bot = str_replace(' ', '-', numtowords($denom, true));
             }
@@ -575,7 +579,7 @@ function prettytime($time, $in, $out) {
     if (strpos($out, 'clock') !== false) { //clock time
         $hrs = floor($hrs);
         $min = floor($min - 60 * $hrs);
-        $sec = round($time - 60 * $min - 3600 * $hrs);
+        $sec = round74($time - 60 * $min - 3600 * $hrs);
         while ($hrs > 24) {
             $hrs -= 24;
         }
@@ -606,23 +610,23 @@ function prettytime($time, $in, $out) {
             $hrs = floor($hrs);
             if (strpos($out, 's') !== false) {  //hrs min sec
                 $min = floor($min - 60 * $hrs);
-                $sec = round($time - 60 * $min - 3600 * $hrs, 4);
+                $sec = round74($time - 60 * $min - 3600 * $hrs, 4);
                 $outst = "$hrs hour" . ($hrs > 1 ? 's' : '');
                 $outst .= ", $min minute" . ($min > 1 ? 's' : '');
                 $outst .= ", and $sec second" . ($sec != 1 ? 's' : '');
             } else { //hrs min
-                $min = round($min - 60 * $hrs, 4);
+                $min = round74($min - 60 * $hrs, 4);
                 $outst = "$hrs hour" . ($hrs > 1 ? 's' : '');
                 $outst .= " and $min minute" . ($min != 1 ? 's' : '');
             }
         } else { //no min
             if (strpos($out, 's') !== false) {  //hrs sec
                 $hrs = floor($hrs);
-                $sec = round($time - 3600 * $hrs, 4);
+                $sec = round74($time - 3600 * $hrs, 4);
                 $outst = "$hrs hour" . ($hrs > 1 ? 's' : '');
                 $outst .= " and $sec second" . ($sec != 1 ? 's' : '');
             } else { //just hrs
-                $hrs = round($hrs, 4);
+                $hrs = round74($hrs, 4);
                 $outst = "$hrs hour" . ($hrs != 1 ? 's' : '');
             }
         }
@@ -630,15 +634,15 @@ function prettytime($time, $in, $out) {
         if (strpos($out, 'm') !== false) { //
             if (strpos($out, 's') !== false) {  //min sec
                 $min = floor($min);
-                $sec = round($time - 60 * $min, 4);
+                $sec = round74($time - 60 * $min, 4);
                 $outst = "$min minute" . ($min > 1 ? 's' : '');
                 $outst .= " and $sec second" . ($sec != 1 ? 's' : '');
             } else { //min only
-                $min = round($min, 4);
+                $min = round74($min, 4);
                 $outst = "$min minute" . ($min != 1 ? 's' : '');
             }
         } else if (strpos($out, 's') !== false) {  //sec
-            $time = round($time, 4);
+            $time = round74($time, 4);
             $outst = "$time second" . ($time != 1 ? 's' : '');
         }
     }
@@ -1091,7 +1095,7 @@ function cleantokenize($str, $funcs) {
 	12: separator
 	*/
     $str = (string) $str;
-    $knownfuncs = array_merge($funcs, array("sin", "cos", "sec", "csc", "tan", "csc", "cot", "sinh", "cosh", "sech", "csch", "tanh", "coth", "arcsin", "arccos", "arcsec", "arccsc", "arctan", "arccot", "arcsinh", "arccosh", "arctanh", "sqrt", "ceil", "floor", "root", "log", "ln", "abs", "max", "min"));
+    $knownfuncs = !is_array($funcs) ? array() : array_merge($funcs, array("sin", "cos", "sec", "csc", "tan", "csc", "cot", "sinh", "cosh", "sech", "csch", "tanh", "coth", "arcsin", "arccos", "arcsec", "arccsc", "arctan", "arccot", "arcsinh", "arccosh", "arctanh", "sqrt", "ceil", "floor", "root", "log", "ln", "abs", "max", "min"));
 
     $lookfor = array("e", "pi");
     $maxvarlen = 0;

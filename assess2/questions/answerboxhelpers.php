@@ -343,6 +343,18 @@ if (!function_exists('stripslashes_deep')) {
 }
 
 // hasarrayval: 0 not array, 1 may be array, 2 must be array
+/**
+ * Turn a non-numeric tolerance string (e.g. "=0") into the number PHP 7.4 arithmetic used.
+ * PHP 7.4: "=0" + 1E-12 = 1E-12 with a warning; PHP 8: TypeError. (float) gives the 7.4 value.
+ * '' (unset), numbers, numeric strings and arrays are returned unchanged.
+ */
+function normalizeTolerance($tol) {
+    if (is_string($tol) && $tol !== '' && !is_numeric($tol)) {
+        return (float) $tol;
+    }
+    return $tol;
+}
+
 function getOptionVal($options, $key, $multi, $partnum, $hasarrayval=0) {
     if (isset($options[$key])) {
         if ($multi) {

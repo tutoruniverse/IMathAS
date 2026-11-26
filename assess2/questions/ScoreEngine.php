@@ -1,6 +1,7 @@
 <?php
 
 namespace IMathAS\assess2\questions;
+require_once __DIR__ . '/../../assessment/round74.php';
 
 require_once __DIR__ . '/ErrorHandler.php';
 require_once __DIR__ . '/QuestionHtmlGenerator.php';
@@ -197,6 +198,8 @@ class ScoreEngine
             foreach ($defaults as $kidx => $atIdx) {
                 if (!in_array($kidx, self::VARS_FOR_SCOREPART_EVALS)) { continue; }
                 if ($quesData['qtype'] == "multipart" && is_array($anstypes)) {
+                    // PHP 8 throws on an offset write to int/float/true; PHP 7.4 ignored it with a warning.
+                    if (is_int(${$kidx} ?? null) || is_float(${$kidx} ?? null) || (${$kidx} ?? null) === true) { continue; }
                     for ($_pnidx=0; $_pnidx < count($anstypes); $_pnidx++) {
                         if (!isset(${$kidx}[$_pnidx]) && 
                             ($anstypes[$_pnidx] !== 'draw' || ($kidx !== 'abstolerance' && $kidx !== 'reltolerance'))
@@ -456,7 +459,7 @@ class ScoreEngine
             if ($prefix == 'qn') { // TODO: handle "qs" from nosolninf
                 $partnum = intval(substr($postk, 2));
                 if (floor($partnum / 1000) == $thisq) {
-                    $kidx = round($partnum - 1000 * floor($partnum / 1000));
+                    $kidx = round74($partnum - 1000 * floor($partnum / 1000));
                     if (is_array($parts_to_score) && empty($parts_to_score[$kidx])) {
                         continue; // don't process if not in to-score list
                     }
@@ -762,10 +765,10 @@ class ScoreEngine
                     $accpts++;
                 }
             } else {
-                $scores[$partnum] = ($raw[$partnum] < 0) ? 0 : round($raw[$partnum] * $answeights[$partnum]/$answeightTot, 4);
+                $scores[$partnum] = ($raw[$partnum] < 0) ? 0 : round74($raw[$partnum] * $answeights[$partnum]/$answeightTot, 4);
             }
 
-            $raw[$partnum] = round($raw[$partnum], 2);
+            $raw[$partnum] = round74($raw[$partnum], 2);
             if (isset($scorePartResult)) {
                 $partLastAnswerAsGiven[$partnum] = $scorePartResult->getLastAnswerAsGiven();
                 $partLastAnswerAsNumber[$partnum] = $scorePartResult->getLastAnswerAsNumber();
@@ -794,7 +797,7 @@ class ScoreEngine
 
         if ($scoremethodwhole == "singlescore") {
             return array_merge($returnData, [
-                'scores' => array(round(array_sum($scores), 3)),
+                'scores' => array(round74(array_sum($scores), 3)),
                 'scoreMethod' => 'singlescore',
             ]);
         } else if ($scoremethodwhole == "allornothing") {
@@ -810,7 +813,7 @@ class ScoreEngine
                 ]);
             }
         } else if ($scoremethodwhole == "acct") {
-            $sc = round(array_sum($scores) / $accpts, 3);
+            $sc = round74(array_sum($scores) / $accpts, 3);
             return array_merge($returnData, [
                 'scores' => array($sc),
                 'scoreMethod' => 'singlescore',
@@ -864,8 +867,8 @@ class ScoreEngine
             }
         }
         $returnData = array(
-            'scores' => array(round($score, 3)),
-            'rawScores' => array(round($score, 3)),
+            'scores' => array(round74($score, 3)),
+            'rawScores' => array(round74($score, 3)),
             'lastAnswerAsGiven' => array(
                 $scorePartResult !== null ? $scorePartResult->getLastAnswerAsGiven() : ''
             ),
@@ -947,6 +950,9 @@ class ScoreEngine
     public function evalErrorHandler(int $errno, string $errstr, string $errfile,
                                      int $errline, array $errcontext = []): bool
     {
+        if (ErrorHandler::wasNoticeBeforePhp8($errno, $errstr)) {
+            return true; // a PHP 7.4 notice: ignored there, so ignored here
+        }
         $showallerrors = (!empty($GLOBALS['isquestionauthor']) || $GLOBALS['myrights']===100);
         if (E_ERROR == $errno || (E_WARNING == $errno &&
             (

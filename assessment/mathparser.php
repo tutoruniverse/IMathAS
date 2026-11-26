@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/round74.php';
 
 /**
  * Utility front-end for Parser class
@@ -242,8 +243,8 @@ class MathParser
             } else if ($a < 0 && floor($b) != $b) {
                 // some code replication here, but allows us to throw proper exception for invalid inputs
                 for ($j=3; $j<50; $j+=2) {
-                    if (abs(round($j*$b)-($j*$b))<.000001) {
-                        if (round($j*$b)%2==0) {
+                    if (abs(round74($j*$b)-($j*$b))<.000001) {
+                        if (round74($j*$b)%2==0) {
                             return exp($b*log(abs($a)));
                         } else {
                             return -1*exp($b*log(abs($a)));
@@ -934,7 +935,7 @@ class MathParser
             break;
           case 'arcsin':
           case 'arccos':
-            $insideval = round($insideval, 12);
+            $insideval = round74($insideval, 12);
             if ($insideval < -1 || $insideval > 1) {
               throw new MathParserException("Invalid input to $funcname");
             }
@@ -963,7 +964,7 @@ class MathParser
             }
             break;
           case 'factorial':
-            if (round($insideval) !== floor($insideval) || $insideval<0) {
+            if (round74($insideval) !== floor($insideval) || $insideval<0) {
               throw new MathParserException("invalid factorial input ($insideval)");
             } else if ($insideval > 150) {
               throw new MathParserException("too big of factorial input ($insideval)");
@@ -973,6 +974,9 @@ class MathParser
       }
       //rewrite arctan to atan to match php function name
       $funcname = str_replace('arc', 'a', $funcname);
+      if ($funcname === 'round') {
+        $funcname = 'round74'; // PHP 7.4 round() result on PHP 8.4
+      }
       if ($this->docomplex) {
         $funcname = 'cplx_'.$funcname;
         if (!is_array($insideval)) {
@@ -1498,8 +1502,8 @@ function safepow($base,$power) {
   }
 	if ($base<0 && floor($power)!=$power) {
 		for ($j=3; $j<50; $j+=2) {
-			if (abs(round($j*$power)-($j*$power))<.000001) {
-				if (round($j*$power)%2==0) {
+			if (abs(round74($j*$power)-($j*$power))<.000001) {
+				if (round74($j*$power)%2==0) {
 					return exp($power*log(abs($base)));
 				} else {
 					return -1*exp($power*log(abs($base)));
@@ -1573,7 +1577,7 @@ function asec($x) {
     echo "Invalid input for arcsec";
     return NAN;
   }
-  $inv = round(1/$x, 12);
+  $inv = round74(1/$x, 12);
   if ($inv < -1 || $inv > 1) {
     echo "Invalid input for arcsec";
     return NAN;
@@ -1585,7 +1589,7 @@ function acsc($x) {
     echo "Invalid input for arccsc";
     return NAN;
   }
-  $inv = round(1/$x, 12);
+  $inv = round74(1/$x, 12);
   if ($inv < -1 || $inv > 1) {
     echo "Invalid input for arccsc";
     return NAN;
@@ -1604,7 +1608,7 @@ function asech($x) {
         echo "Invalid input for arcsech";
         return NAN;
     }
-    $inv = round(1/$x, 12);
+    $inv = round74(1/$x, 12);
     if ($inv < 1) {
         echo "Invalid input for arcsech";
         return NAN;
@@ -1616,7 +1620,7 @@ function acsch($x) {
         echo "Invalid input for arccsch";
         return NAN;
     }
-    $inv = round(1/$x, 12);
+    $inv = round74(1/$x, 12);
     return asinh($inv);
 }
 function acoth($x) {
@@ -1624,7 +1628,7 @@ function acoth($x) {
         echo "Invalid input for arccoth";
         return NAN;
     }
-    $inv = round(1/$x, 12);
+    $inv = round74(1/$x, 12);
     if ($inv < -1 || $inv > 1) {
         echo "Invalid input for arccoth";
         return NAN;
@@ -1632,7 +1636,7 @@ function acoth($x) {
     return atanh($inv);
 }
 function safeasin($x) {
-  $inp = round($x, 12);
+  $inp = round74($x, 12);
   if ($inp < -1 || $inp > 1) {
     echo "Invalid input for arcsin";
     return NAN;
@@ -1640,7 +1644,7 @@ function safeasin($x) {
   return asin($inp);  
 }
 function safeacos($x) {
-  $inp = round($x, 12);
+  $inp = round74($x, 12);
   if ($inp < -1 || $inp > 1) {
     echo "Invalid input for arccos";
     return NAN;

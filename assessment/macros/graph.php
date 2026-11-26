@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 // graphing macros
 
@@ -596,7 +597,7 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
                             $y = $yymin - .5 * ($ymax - $ymin);
                         }
                     }
-                    $ix = round(($x - $px) * ($iy - $py) / ($y - $py) + $px, $xrnd);
+                    $ix = round74(($x - $px) * ($iy - $py) / ($y - $py) + $px, $xrnd);
                     if ($lastl == 0) {
                         $pathstr .= "path([";
                     } else {
@@ -632,7 +633,7 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
                             $py = $yymin - .5 * ($ymax - $ymin);
                         }
                     }
-                    $ix = round(($x - $px) * ($iy - $py) / ($y - $py) + $px, $xrnd);
+                    $ix = round74(($x - $px) * ($iy - $py) / ($y - $py) + $px, $xrnd);
                     if ($lastl == 0) {
                         $pathstr .= "path([";
                     } else {
@@ -815,6 +816,10 @@ function showplot($funcs) { //optional arguments:  $xmin,$xmax,$ymin,$ymax,label
         $function_names = [];
         foreach ($funcs as $f) {
             if ($f === '') continue;
+            if (is_array($f)) {
+                $function_names[] = ''; // PHP 7.4 result for a nested array
+                continue;
+            }
             $parts = explode(',', $f);
             foreach ($parts as &$part) {
                 if (substr($part, 0, 1) === '[') {
@@ -1089,10 +1094,11 @@ function addlabel($plot, $x, $y, $lbl, $color = "black", $loc = "", $angle = 0, 
         $outstr .= 'fontsize=' . floatval($size) . ';';
     }
     $outstr .= "text([$x,$y],\"$lbl\"";
-    if ($loc != "" || $angle != 0) {
+    $angleNum = is_string($angle) ? (float) $angle : $angle; // PHP 7.4 string-to-number comparison
+    if ($loc != "" || $angleNum != 0) {
         $outstr .= ",\"$loc\"";
     }
-    if ($angle != 0) {
+    if ($angleNum != 0) {
         $outstr .= ",\"$angle\"";
     }
     $outstr .= ');';

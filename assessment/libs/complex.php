@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../round74.php';
 
 # Library name: complex
 # Functions to handle operations for complex numbers.  Version 1.  October 2020
@@ -41,7 +42,7 @@ function cx_modul(array $num, int $roundto=12) {
     if (!cx_is_ok($num)) { echo "cx_modul expects 1 complex number as an input in the form [Re, Im]"; return "";}
     
     $sq=$num[0]**2+$num[1]**2;
-    $r= round(sqrt($sq),$roundto);
+    $r= round74(sqrt($sq),$roundto);
    
     return $r;
 }
@@ -101,7 +102,7 @@ function cx_arg(array $num, string $argin="rad", int $roundto=12) {
             $th2=$theta;
         }
    
-    return round($th2, $roundto);
+    return round74($th2, $roundto);
 }
 
 
@@ -126,7 +127,7 @@ function cx_conj(array $num, int $roundto=12) {
     $re=$num[0];
     $im=$num[1];
     $im2=-$im;
-    $st=[round($re, $roundto),round($im2, $roundto)];
+    $st=[round74($re, $roundto),round74($im2, $roundto)];
    
    return $st;
 }
@@ -149,12 +150,12 @@ function cx_std2pol(array $num, string $argin="rad", int $roundto= 12) {
     
     if (!cx_is_ok($num)) { echo "cx_std2pol expects 1 complex number as an input"; return "";}
     
-    $r= round(cx_modul($num),$roundto);
+    $r= round74(cx_modul($num),$roundto);
     if ($argin=="deg"){
-        $th1=round(cx_arg($num,"deg"),$roundto);
+        $th1=round74(cx_arg($num,"deg"),$roundto);
     }
         else{
-            $th1=round(cx_arg($num),$roundto);
+            $th1=round74(cx_arg($num),$roundto);
         }
     
     $polar=[$r,$th1];    
@@ -195,9 +196,9 @@ function cx_polEu(array $num, string $argin="rad", int $roundto=12) {
     if ($argin=="deg"){
         for ($i=0;$i<count($num);$i++){
             
-            $th1=round(cx_arg($num[$i],"deg"),$roundto);
+            $th1=round74(cx_arg($num[$i],"deg"),$roundto);
             $th2=$th1;
-            $sq=round($num[$i][0]**2+$num[$i][1]**2,12);
+            $sq=round74($num[$i][0]**2+$num[$i][1]**2,12);
             $r= reduceradical($sq); 
             $A[$i]=makexpretty("$r e^($th2 i)");
         }
@@ -207,9 +208,9 @@ function cx_polEu(array $num, string $argin="rad", int $roundto=12) {
             for ($i=0;$i<count($num);$i++){
             
                 $th0= cx_arg($num[$i]);
-                $th1= round($th0/pi(),$roundto);
+                $th1= round74($th0/pi(),$roundto);
                 $th2=makexxpretty("$th1 pi");
-                $sq=round($num[$i][0]**2+$num[$i][1]**2,12);
+                $sq=round74($num[$i][0]**2+$num[$i][1]**2,12);
                 $r= reduceradical($sq); 
                 $A[$i]=makexpretty("$r e^($th2 i)");
             }
@@ -249,8 +250,8 @@ function cx_pol2std(array $num, string $argin="rad", int $roundto= 12) {
         $arg=deg2rad($arg);
     }
             
-    $re=round($mod*cos($arg),$roundto);
-    $im=round($mod*sin($arg),$roundto);
+    $re=round74($mod*cos($arg),$roundto);
+    $im=round74($mod*sin($arg),$roundto);
     
     $st= [$re , $im];  
         
@@ -287,7 +288,7 @@ function cx_add(array $num, int $roundto=12) {
         $imt+= $im;
     }
 
-    $st= [round($ret,$roundto) , round($imt,$roundto)];    
+    $st= [round74($ret,$roundto) , round74($imt,$roundto)];    
         
     return $st;
 }
@@ -324,7 +325,7 @@ function cx_sub(array $num, int $roundto=12) {
     }
     $re=$num[0][0]-$ret;
     $im=$num[0][1]-$imt;
-    $st= [round($re,$roundto) , round($im,$roundto)];    
+    $st= [round74($re,$roundto) , round74($im,$roundto)];    
         
     return $st;
 }
@@ -358,7 +359,7 @@ function cx_mul(array $num, int $roundto=12) {
     $re_p=$rt*cos($tht);
     $im_p=$rt*sin($tht); 
     
-    $st= [round($re_p, $roundto) , round($im_p,$roundto)];    
+    $st= [round74($re_p, $roundto) , round74($im_p,$roundto)];    
         
     return $st;
 }
@@ -389,7 +390,7 @@ function cx_pow(array $num, $pow, int $roundto=12) {
     $re=$r*cos($tht);
     $im=$r*sin($tht);  
         
-    $st= [round($re,$roundto) , round($im,$roundto)];   
+    $st= [round74($re,$roundto) , round74($im,$roundto)];   
         
     return $st;
 }
@@ -422,7 +423,7 @@ function cx_root(array $num, int $root, int $roundto=12) {
         $tht = ($th1+2*pi()*$k)/$root;
         $re_f = $r*cos($tht);
         $im_f = $r*sin($tht);
-        $A[$k] = [round($re_f,$roundto) , round($im_f,$roundto)];
+        $A[$k] = [round74($re_f,$roundto) , round74($im_f,$roundto)];
     }
     return $A;
 }
@@ -467,7 +468,7 @@ function cx_div(array $num, int $roundto=12) {
     $re=$r*cos($tht);
     $im=$r*sin($tht);  
         
-    $st= [round($re,$roundto) , round($im,$roundto)];     
+    $st= [round74($re,$roundto) , round74($im,$roundto)];     
         
     return $st;
 }
@@ -493,14 +494,14 @@ function cx_quadRoot(float $a, float $b, float $c, int $roundto = 12, $disp = Fa
     $d=$b**2 - 4*$a*$c;
     if ($d<0){
 
-        $re= round(-$b/(2*$a),$roundto);
-        $im= round(sqrt(abs($d))/(2*$a),$roundto);
+        $re= round74(-$b/(2*$a),$roundto);
+        $im= round74(sqrt(abs($d))/(2*$a),$roundto);
         $im2=-$im;
         $st=array([$re,$im],[$re,$im2]);
     }
         else {
-            $r1=round(((-$b-sqrt($d))/(2*$a)),$roundto);
-            $r2=round(((-$b+sqrt($d))/(2*$a)),$roundto);
+            $r1=round74(((-$b-sqrt($d))/(2*$a)),$roundto);
+            $r2=round74(((-$b+sqrt($d))/(2*$a)),$roundto);
             $st=array([$r1],[$r2]);
         }
 
@@ -591,7 +592,7 @@ function cx_cubicRoot( array $poly, $disp = False, int $roundto = 12){
         $xq = cx_quadRoot($q1[0][0],$q1[0][1],$q1[0][2],$roundto);
         $x2 = $xq[0];
         $x3 = $xq[1];
-        $x = [[round($x1,$roundto)],$x2,$x3];
+        $x = [[round74($x1,$roundto)],$x2,$x3];
         
 
         //Quadratic
@@ -633,8 +634,8 @@ function cx_format2std(array $num,int $roundto=3) {
     $A=array();
     for ($i=0;$i<count($num);$i++){
         if (!cx_is_ok($num[$i])) { echo 'invalid input to cx_format2std'; return '';}
-        $re=round($num[$i][0],$roundto);
-        $im=round($num[$i][1],$roundto);
+        $re=round74($num[$i][0],$roundto);
+        $im=round74($num[$i][1],$roundto);
 
         $A[$i]=makexxpretty("$re + $im i");
     }
@@ -677,21 +678,21 @@ function cx_format2pol(array $num, string $argin="rad", int $roundto=3) {
         if (!cx_is_ok($num[$i])) { echo 'invalid input to cx_format2pol'; return '';}
 
         $num1=$num[$i];
-        $sq=round($num[$i][0]**2+$num[$i][1]**2,12);
-        if (round($sq)==round($sq,8)) { // close enough to int
+        $sq=round74($num[$i][0]**2+$num[$i][1]**2,12);
+        if (round74($sq)==round74($sq,8)) { // close enough to int
             $r= reduceradical($sq);
         } else {
-            $r = round(sqrt($sq),$roundto);
+            $r = round74(sqrt($sq),$roundto);
         }
         //$r= round(cx_modul($num1),$roundto);
 
         if ($argin=="rad"){
                 $th0= cx_arg($num1);
-                $th1= round($th0/pi(),$roundto);  
+                $th1= round74($th0/pi(),$roundto);  
                 $th1=makexxpretty("$th1 pi"); 
         }
             else {
-                $th1=round(cx_arg($num1,"deg"),$roundto);
+                $th1=round74(cx_arg($num1,"deg"),$roundto);
         }
         
         $A[$i]=makexpretty("$r (cos($th1)+isin($th1))");
@@ -765,14 +766,14 @@ function cx_prettyquadRoot(float $a, float $b, float $c){
 
 function cx_plot(array $num, string $argin = "deg" ,int $roundto = 3, bool $showlabels = True){
     
-    $x=round($num[0],$roundto);
-    $y=round($num[1],$roundto);
+    $x=round74($num[0],$roundto);
+    $y=round74($num[1],$roundto);
 
     $r=cx_modul($num);
-    $r_d=round($r,$roundto);
+    $r_d=round74($r,$roundto);
     
     $th=cx_arg($num);
-    $thd=round(cx_arg($num,$argin),$roundto);
+    $thd=round74(cx_arg($num,$argin),$roundto);
     $z=makexxpretty("$x + $y i");
 
     if (abs($x)>abs($y)){$g=abs($x)+2;} 

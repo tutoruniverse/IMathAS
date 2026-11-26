@@ -43,7 +43,13 @@ function interpret($blockname,$anstype,$str,$countcnt=1,$included_qs=[])
 		$str = str_replace("\r\n","\n",$str);
 		$str = str_replace("&&\n","<br/>",$str);
         $str = preg_replace('/&\s*\n/', ' ', $str);
-        $r =  interpretline($str.';',$anstype,$countcnt,$included_qs).';';
+        $r =  interpretline($str.';',$anstype,$countcnt,$included_qs);
+        // A parse error makes interpretline() return the bare word error. PHP 7.4 evaluated that as the
+        // string 'error' (undefined-constant warning); PHP 8 throws. Emit the string literal instead.
+        if ($r === 'error') {
+            $r = "'error'";
+        }
+        $r .= ';';
         $r = '$wherecount[0]=0;' . $r;
         if ($countcnt==1 && count($GLOBALS['interpretcurvars']) > 0) {
             $r = genVarInit(array_unique($GLOBALS['interpretcurvars'])) . $r;
@@ -485,6 +491,9 @@ function tokenize($str,$anstype,$countcnt,$included_qs=[]) {
 						$out = 'log';
 					} else if ($out=='is_numeric') {
                         $out = 'is_nicenumber';  
+                    } else if ($out=='round') {
+                        // PHP 8.4 round() dropped pre-rounding; round74() keeps the PHP 7.4 result.
+                        $out = 'round74';
                     } else if ($out=='rand') {
 						$out = '$GLOBALS[\'RND\']->rand';
 					} else {

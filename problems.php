@@ -317,8 +317,8 @@ function processContent($matches) {
     return "`" . $processedContent . "`";
 }
 
-// HTML5 entity names a browser decodes without their ";" (the "legacy" ones) that appear in math.
-const LEGACY_ENTITIES_WITHOUT_SEMICOLON = 'nbsp|deg|sup1|sup2|sup3|times|divide|plusmn|micro|middot|frac12|frac14|frac34|not|lt|gt|amp|quot|para|sect|copy|reg|cent|pound|yen|laquo|raquo';
+// HTML5 entity names a browser decodes without their ";" (the "legacy" ones) that appear in math. No "quot": see below.
+const LEGACY_ENTITIES_WITHOUT_SEMICOLON = 'nbsp|deg|sup1|sup2|sup3|times|divide|plusmn|micro|middot|frac12|frac14|frac34|not|lt|gt|amp|para|sect|copy|reg|cent|pound|yen|laquo|raquo';
 
 function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
     if (is_array($text)) {
@@ -333,11 +333,27 @@ function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) 
     // Regex: Find anything between backticks and convert it
     return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
         // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. Browsers also read
-        // the legacy names below without ";" ("&nbsp dx", "30&deg"), so the web shows them right: decode them too.
-        // "&ne" or "&theta" without ";" is shown raw on the web as well and stays a content fix. U+00A0 is dropped,
-        // as AMtoTeX did with "&nbsp;".
-        $asciimath = preg_replace('/&(' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')(?![A-Za-z0-9;])/', '&$1;', $matches[1]);
-        $asciimath = str_replace("\u{00A0}", '', html_entity_decode($asciimath, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        // the legacy names below without ";", even before a letter or digit ("&nbsp dx", "30&deg", "3&times2"), so
+        // the web shows them right: decode them too. Like a browser, a complete entity wins over a legacy prefix
+        // ("&notin;" is ∉, not ¬in;). "&ne" or "&theta" without ";" is shown raw on the web as well and stays a
+        // content fix. A decoded '"' would open an AMtoTeX text group that swallows the rest of the math, so
+        // "&quot;" stays an entity and the print gate still reports it. U+00A0 is dropped, as AMtoTeX does with
+        // "&nbsp;" (a plain space would be dropped by AMtoTeX anyway).
+        $legacyPrefix = '&(' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')';
+        $asciimath = preg_replace_callback(
+            '/&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);|' . $legacyPrefix . '/',
+            function ($entity) use ($legacyPrefix) {
+                $text = $entity[0];
+                $char = html_entity_decode(rtrim($text, ';') . ';', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                if ($char === rtrim($text, ';') . ';' && preg_match('/^' . $legacyPrefix . '/', $text, $prefix)) {
+                    // unknown complete name such as "&times2;": a browser falls back to the legacy prefix
+                    return html_entity_decode($prefix[0] . ';', ENT_QUOTES | ENT_HTML5, 'UTF-8') . substr($text, strlen($prefix[0]));
+                }
+                return $char === '"' || $char === rtrim($text, ';') . ';' ? $text : $char;
+            },
+            $matches[1]
+        );
+        $asciimath = str_replace("\u{00A0}", '', $asciimath);
         $tex = $AMT->convert($asciimath);
 
         if ($wrap) {

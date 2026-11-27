@@ -317,8 +317,34 @@ function processContent($matches) {
     return "`" . $processedContent . "`";
 }
 
-// HTML5 entity names a browser decodes without their ";" (the "legacy" ones) that appear in math. No "quot": see below.
+// HTML5 entity names a browser decodes without their ";" (the "legacy" ones) that appear in math. No "quot": a
+// decoded '"' opens an AMtoTeX text group that swallows the rest of the math.
 const LEGACY_ENTITIES_WITHOUT_SEMICOLON = 'nbsp|deg|sup1|sup2|sup3|times|divide|plusmn|micro|middot|frac12|frac14|frac34|not|lt|gt|amp|para|sect|copy|reg|cent|pound|yen|laquo|raquo';
+// "&ne;", "&#8800;", "&#x2260;"
+const COMPLETE_ENTITY_PATTERN = '&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);';
+// "&nbsp" in "&nbsp dx", "&times" in "3&times2"
+const LEGACY_ENTITY_PREFIX_PATTERN = '&(?:' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')';
+
+function decodeHtmlEntity(string $entity): string {
+    return html_entity_decode($entity, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+// Decodes one entity the way a browser shows it in page text. A complete entity wins over a legacy prefix
+// ("&notin;" is ∉, not ¬in;); an unknown complete name falls back to its legacy prefix ("&times2;" is ×2;).
+function decodeMathEntity(string $match): string {
+    $withSemicolon = rtrim($match, ';') . ';';
+    $char = decodeHtmlEntity($withSemicolon);
+    if ($char === '"') {
+        return $match;
+    }
+    if ($char !== $withSemicolon) {
+        return $char;
+    }
+    if (preg_match('/^' . LEGACY_ENTITY_PREFIX_PATTERN . '/', $match, $prefix)) {
+        return decodeHtmlEntity($prefix[0] . ';') . substr($match, strlen($prefix[0]));
+    }
+    return $match;
+}
 
 function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
     if (is_array($text)) {
@@ -332,25 +358,12 @@ function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) 
 
     // Regex: Find anything between backticks and convert it
     return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
-        // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. Browsers also read
-        // the legacy names below without ";", even before a letter or digit ("&nbsp dx", "30&deg", "3&times2"), so
-        // the web shows them right: decode them too. Like a browser, a complete entity wins over a legacy prefix
-        // ("&notin;" is ∉, not ¬in;). "&ne" or "&theta" without ";" is shown raw on the web as well and stays a
-        // content fix. A decoded '"' would open an AMtoTeX text group that swallows the rest of the math, so
-        // "&quot;" stays an entity and the print gate still reports it. U+00A0 is dropped, as AMtoTeX does with
-        // "&nbsp;" (a plain space would be dropped by AMtoTeX anyway).
-        $legacyPrefix = '&(' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')';
+        // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. "&ne" or "&theta"
+        // without ";" is shown raw on the web as well and stays a content fix. U+00A0 is dropped, as AMtoTeX does
+        // with "&nbsp;" (a plain space would be dropped by AMtoTeX anyway).
         $asciimath = preg_replace_callback(
-            '/&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);|' . $legacyPrefix . '/',
-            function ($entity) use ($legacyPrefix) {
-                $text = $entity[0];
-                $char = html_entity_decode(rtrim($text, ';') . ';', ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                if ($char === rtrim($text, ';') . ';' && preg_match('/^' . $legacyPrefix . '/', $text, $prefix)) {
-                    // unknown complete name such as "&times2;": a browser falls back to the legacy prefix
-                    return html_entity_decode($prefix[0] . ';', ENT_QUOTES | ENT_HTML5, 'UTF-8') . substr($text, strlen($prefix[0]));
-                }
-                return $char === '"' || $char === rtrim($text, ';') . ';' ? $text : $char;
-            },
+            '/' . COMPLETE_ENTITY_PATTERN . '|' . LEGACY_ENTITY_PREFIX_PATTERN . '/',
+            fn($entity) => decodeMathEntity($entity[0]),
             $matches[1]
         );
         $asciimath = str_replace("\u{00A0}", '', $asciimath);

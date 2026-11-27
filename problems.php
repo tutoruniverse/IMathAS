@@ -325,8 +325,13 @@ const COMPLETE_ENTITY_PATTERN = '&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-
 // "&nbsp" in "&nbsp dx", "&times" in "3&times2"
 const LEGACY_ENTITY_PREFIX_PATTERN = '&(?:' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')';
 
+// Entities AMtoTeX turns into TeX itself ("&deg;" -> ^\circ, "x&#770;" -> \hat{x}, "x&#772;" -> \overline{x}), keyed by
+// the character they decode to: any spelling of them is handed to AMtoTeX in the form it knows.
+const AMTOTEX_ENTITIES = ['°' => '&deg;', "\u{0302}" => '&#770;', "\u{0304}" => '&#772;'];
+
 function decodeHtmlEntity(string $entity): string {
-    return html_entity_decode($entity, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $char = html_entity_decode($entity, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return AMTOTEX_ENTITIES[$char] ?? $char;
 }
 
 // Decodes one entity the way a browser shows it in page text. A complete entity wins over a legacy prefix
@@ -337,7 +342,7 @@ function decodeMathEntity(string $match): string {
     if ($char === '"') {
         return $match;
     }
-    if ($char !== $withSemicolon) {
+    if ($char !== $withSemicolon || in_array($char, AMTOTEX_ENTITIES, true)) {
         return $char;
     }
     if (preg_match('/^' . LEGACY_ENTITY_PREFIX_PATTERN . '/', $match, $prefix)) {

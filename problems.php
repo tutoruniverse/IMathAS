@@ -317,6 +317,40 @@ function processContent($matches) {
     return "`" . $processedContent . "`";
 }
 
+// HTML5 entity names a browser decodes without their ";" (the "legacy" ones) that appear in math. No "quot": a
+// decoded '"' opens an AMtoTeX text group that swallows the rest of the math.
+const LEGACY_ENTITIES_WITHOUT_SEMICOLON = 'nbsp|deg|sup1|sup2|sup3|times|divide|plusmn|micro|middot|frac12|frac14|frac34|not|lt|gt|amp|para|sect|copy|reg|cent|pound|yen|laquo|raquo';
+// "&ne;", "&#8800;", "&#x2260;"
+const COMPLETE_ENTITY_PATTERN = '&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);';
+// "&nbsp" in "&nbsp dx", "&times" in "3&times2"
+const LEGACY_ENTITY_PREFIX_PATTERN = '&(?:' . LEGACY_ENTITIES_WITHOUT_SEMICOLON . ')';
+
+// Entities AMtoTeX turns into TeX itself ("&deg;" -> ^\circ, "x&#770;" -> \hat{x}, "x&#772;" -> \overline{x}), keyed by
+// the character they decode to: any spelling of them is handed to AMtoTeX in the form it knows.
+const AMTOTEX_ENTITIES = ['°' => '&deg;', "\u{0302}" => '&#770;', "\u{0304}" => '&#772;'];
+
+function decodeHtmlEntity(string $entity): string {
+    $char = html_entity_decode($entity, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return AMTOTEX_ENTITIES[$char] ?? $char;
+}
+
+// Decodes one entity the way a browser shows it in page text. A complete entity wins over a legacy prefix
+// ("&notin;" is ∉, not ¬in;); an unknown complete name falls back to its legacy prefix ("&times2;" is ×2;).
+function decodeMathEntity(string $match): string {
+    $withSemicolon = rtrim($match, ';') . ';';
+    $char = decodeHtmlEntity($withSemicolon);
+    if ($char === '"') {
+        return $match;
+    }
+    if ($char !== $withSemicolon || in_array($char, AMTOTEX_ENTITIES, true)) {
+        return $char;
+    }
+    if (preg_match('/^' . LEGACY_ENTITY_PREFIX_PATTERN . '/', $match, $prefix)) {
+        return decodeHtmlEntity($prefix[0] . ';') . substr($match, strlen($prefix[0]));
+    }
+    return $match;
+}
+
 function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) {
     if (is_array($text)) {
         foreach ($text as $k => $v) {
@@ -329,7 +363,15 @@ function applyLatexConversion($text, $AMT, $wrap = true, $isAnswerMode = false) 
 
     // Regex: Find anything between backticks and convert it
     return preg_replace_callback('/`(.*?)`/s', function($matches) use ($AMT, $wrap, $isAnswerMode) {
-        $asciimath = $matches[1];
+        // AMtoTeX only maps &lt; &gt; &nbsp;, so "&ne;0" became "&\ne;0", which pandoc refuses. "&ne" or "&theta"
+        // without ";" is shown raw on the web as well and stays a content fix. U+00A0 is dropped, as AMtoTeX does
+        // with "&nbsp;" (a plain space would be dropped by AMtoTeX anyway).
+        $asciimath = preg_replace_callback(
+            '/' . COMPLETE_ENTITY_PATTERN . '|' . LEGACY_ENTITY_PREFIX_PATTERN . '/',
+            fn($entity) => decodeMathEntity($entity[0]),
+            $matches[1]
+        );
+        $asciimath = str_replace("\u{00A0}", '', $asciimath);
         $tex = $AMT->convert($asciimath);
 
         if ($wrap) {
